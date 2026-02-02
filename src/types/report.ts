@@ -2,7 +2,7 @@
 export type ReportStatus = 'draft' | 'submitted' | 'approved' | 'rejected';
 
 // Turnos
-export type ShiftType = 'morning' | 'afternoon' | 'night';
+export type ShiftType = 'mañana' | 'tarde' | 'noche';
 
 // Reporte principal (Encabezado DDR)
 export interface Report {
