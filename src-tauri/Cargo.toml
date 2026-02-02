@@ -15,11 +15,28 @@ name = "d_planner_temp_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
-tauri-build = { version = "2", features = [] }
+tauri-build = { version = "2.5", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = [] }
-tauri-plugin-opener = "2"
+tauri = { version = "2.9", features = [] }
+tauri-plugin-opener = "2.5"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+
+# Database
+rusqlite = { version = "0.31", features = ["bundled", "modern_sqlite"] }
+refinery = { version = "0.8", features = ["rusqlite"] }
+
+# Authentication & Security
+bcrypt = "0.15"
+uuid = { version = "1.6", features = ["v4", "serde"] }
+
+# Error Handling
+thiserror = "1.0"
+
+# Date/Time
+chrono = { version = "0.4", features = ["serde"] }
+
+# Utilities
+dirs = "5.0"
 

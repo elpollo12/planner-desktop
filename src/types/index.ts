@@ -1,2 +1,77 @@
-export * from './user';
-export * from './report';
+// User types
+export interface User {
+  id: string;
+  username: string;
+  full_name: string;
+  ci?: string;
+  role: 'operator' | 'supervisor' | 'admin';
+  position?: string;
+  active: boolean;
+  last_login?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LoginResponse {
+  session_token: string;
+  user: User;
+}
+
+export interface CreateUserRequest {
+  username: string;
+  password: string;
+  full_name: string;
+  ci?: string;
+  role: string;
+  position?: string;
+}
+
+// Report types
+export interface Report {
+  id: string;
+  report_number: number;
+  report_date: string;
+  well_number?: string;
+  api_number?: string;
+  contract?: string;
+  contractor?: string;
+  operator?: string;
+  field_district?: string;
+  municipality?: string;
+  rig_number?: string;
+  company?: string;
+  supervisor_24h?: string;
+  status: 'draft' | 'submitted' | 'approved' | 'rejected';
+  created_by?: string;
+  approved_by?: string;
+  submitted_at?: string;
+  approved_at?: string;
+  rejected_at?: string;
+  rejection_reason?: string;
+  created_at: string;
+  updated_at: string;
+  synced: boolean;
+}
+
+export interface CreateReportRequest {
+  report_number: number;
+  report_date: string;
+  well_number?: string;
+  api_number?: string;
+  contract?: string;
+  contractor?: string;
+  operator?: string;
+  field_district?: string;
+  municipality?: string;
+  rig_number?: string;
+  company?: string;
+  supervisor_24h?: string;
+}
+
+export interface ReportFilters {
+  date_from?: string;
+  date_to?: string;
+  status?: string;
+  created_by?: string;
+  well_number?: string;
+}

@@ -1,0 +1,370 @@
+use crate::error::AppError;
+use crate::models::user::UserRole;
+use rusqlite::{params, Connection, Row};
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum ReportStatus {
+    Draft,
+    Submitted,
+    Approved,
+    Rejected,
+}
+
+impl ReportStatus {
+    pub fn from_str(s: &str) -> Result<Self, AppError> {
+        match s {
+            "draft" => Ok(ReportStatus::Draft),
+            "submitted" => Ok(ReportStatus::Submitted),
+            "approved" => Ok(ReportStatus::Approved),
+            "rejected" => Ok(ReportStatus::Rejected),
+            _ => Err(AppError::ValidationError(format!("Invalid status: {}", s))),
+        }
+    }
+
+    pub fn to_str(&self) -> &str {
+        match self {
+            ReportStatus::Draft => "draft",
+            ReportStatus::Submitted => "submitted",
+            ReportStatus::Approved => "approved",
+            ReportStatus::Rejected => "rejected",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Report {
+    pub id: String,
+    pub report_number: i32,
+    pub report_date: String,
+    pub well_number: Option<String>,
+    pub api_number: Option<String>,
+    pub contract: Option<String>,
+    pub contractor: Option<String>,
+    pub operator: Option<String>,
+    pub field_district: Option<String>,
+    pub municipality: Option<String>,
+    pub rig_number: Option<String>,
+    pub company: Option<String>,
+    pub supervisor_24h: Option<String>,
+    pub status: String,
+    pub created_by: Option<String>,
+    pub approved_by: Option<String>,
+    pub submitted_at: Option<String>,
+    pub approved_at: Option<String>,
+    pub rejected_at: Option<String>,
+    pub rejection_reason: Option<String>,
+    pub created_at: String,
+    pub updated_at: String,
+    pub synced: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreateReportRequest {
+    pub report_number: i32,
+    pub report_date: String,
+    pub well_number: Option<String>,
+    pub api_number: Option<String>,
+    pub contract: Option<String>,
+    pub contractor: Option<String>,
+    pub operator: Option<String>,
+    pub field_district: Option<String>,
+    pub municipality: Option<String>,
+    pub rig_number: Option<String>,
+    pub company: Option<String>,
+    pub supervisor_24h: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UpdateReportRequest {
+    pub report_number: Option<i32>,
+    pub report_date: Option<String>,
+    pub well_number: Option<String>,
+    pub api_number: Option<String>,
+    pub contract: Option<String>,
+    pub contractor: Option<String>,
+    pub operator: Option<String>,
+    pub field_district: Option<String>,
+    pub municipality: Option<String>,
+    pub rig_number: Option<String>,
+    pub company: Option<String>,
+    pub supervisor_24h: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ReportFilters {
+    pub date_from: Option<String>,
+    pub date_to: Option<String>,
+    pub status: Option<String>,
+    pub created_by: Option<String>,
+    pub well_number: Option<String>,
+}
+
+impl Report {
+    fn from_row(row: &Row) -> Result<Self, rusqlite::Error> {
+        Ok(Report {
+            id: row.get(0)?,
+            report_number: row.get(1)?,
+            report_date: row.get(2)?,
+            well_number: row.get(3)?,
+            api_number: row.get(4)?,
+            contract: row.get(5)?,
+            contractor: row.get(6)?,
+            operator: row.get(7)?,
+            field_district: row.get(8)?,
+            municipality: row.get(9)?,
+            rig_number: row.get(10)?,
+            company: row.get(11)?,
+            supervisor_24h: row.get(12)?,
+            status: row.get(13)?,
+            created_by: row.get(14)?,
+            approved_by: row.get(15)?,
+            submitted_at: row.get(16)?,
+            approved_at: row.get(17)?,
+            rejected_at: row.get(18)?,
+            rejection_reason: row.get(19)?,
+            created_at: row.get(20)?,
+            updated_at: row.get(21)?,
+            synced: row.get::<_, i32>(22)? == 1,
+        })
+    }
+
+    /// Create a new report
+    pub fn create(
+        conn: &Connection,
+        request: &CreateReportRequest,
+        created_by: String,
+    ) -> Result<Report, AppError> {
+        let id = uuid::Uuid::new_v4().to_string();
+        let now = chrono::Utc::now().to_rfc3339();
+
+        conn.execute(
+            "INSERT INTO reports (id, report_number, report_date, well_number, api_number, contract, contractor, operator, field_district, municipality, rig_number, company, supervisor_24h, status, created_by, created_at, updated_at, synced)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18)",
+            params![
+                &id,
+                request.report_number,
+                &request.report_date,
+                &request.well_number,
+                &request.api_number,
+                &request.contract,
+                &request.contractor,
+                &request.operator,
+                &request.field_district,
+                &request.municipality,
+                &request.rig_number,
+                &request.company,
+                &request.supervisor_24h,
+                "draft",
+                &created_by,
+                &now,
+                &now,
+                0
+            ],
+        )?;
+
+        Report::get_by_id(conn, &id)
+    }
+
+    /// Get report by ID
+    pub fn get_by_id(conn: &Connection, report_id: &str) -> Result<Report, AppError> {
+        let report = conn.query_row(
+            "SELECT id, report_number, report_date, well_number, api_number, contract, contractor, operator, field_district, municipality, rig_number, company, supervisor_24h, status, created_by, approved_by, submitted_at, approved_at, rejected_at, rejection_reason, created_at, updated_at, synced
+             FROM reports WHERE id = ?1",
+            params![report_id],
+            Report::from_row,
+        )?;
+
+        Ok(report)
+    }
+
+    /// List reports with filters and permission-aware filtering
+    pub fn list(
+        conn: &Connection,
+        filters: &ReportFilters,
+        user_id: Option<&str>,
+        user_role: &UserRole,
+    ) -> Result<Vec<Report>, AppError> {
+        let mut query = String::from(
+            "SELECT id, report_number, report_date, well_number, api_number, contract, contractor, operator, field_district, municipality, rig_number, company, supervisor_24h, status, created_by, approved_by, submitted_at, approved_at, rejected_at, rejection_reason, created_at, updated_at, synced FROM reports WHERE 1=1"
+        );
+        let mut params_vec: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
+
+        // Permission-based filtering: operators only see their own reports
+        if *user_role == UserRole::Operator {
+            if let Some(uid) = user_id {
+                query.push_str(" AND created_by = ?");
+                params_vec.push(Box::new(uid.to_string()));
+            }
+        }
+
+        // Apply filters
+        if let Some(ref date_from) = filters.date_from {
+            query.push_str(" AND report_date >= ?");
+            params_vec.push(Box::new(date_from.clone()));
+        }
+
+        if let Some(ref date_to) = filters.date_to {
+            query.push_str(" AND report_date <= ?");
+            params_vec.push(Box::new(date_to.clone()));
+        }
+
+        if let Some(ref status) = filters.status {
+            query.push_str(" AND status = ?");
+            params_vec.push(Box::new(status.clone()));
+        }
+
+        if let Some(ref created_by) = filters.created_by {
+            query.push_str(" AND created_by = ?");
+            params_vec.push(Box::new(created_by.clone()));
+        }
+
+        if let Some(ref well_number) = filters.well_number {
+            query.push_str(" AND well_number = ?");
+            params_vec.push(Box::new(well_number.clone()));
+        }
+
+        query.push_str(" ORDER BY report_date DESC, created_at DESC");
+
+        let params_refs: Vec<&dyn rusqlite::ToSql> = params_vec.iter().map(|p| p.as_ref()).collect();
+
+        let mut stmt = conn.prepare(&query)?;
+        let reports = stmt
+            .query_map(params_refs.as_slice(), Report::from_row)?
+            .collect::<Result<Vec<_>, _>>()?;
+
+        Ok(reports)
+    }
+
+    /// Update report
+    pub fn update(
+        conn: &Connection,
+        report_id: &str,
+        request: &UpdateReportRequest,
+    ) -> Result<Report, AppError> {
+        let now = chrono::Utc::now().to_rfc3339();
+
+        let mut updates = Vec::new();
+        let mut params_vec: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
+
+        if let Some(report_number) = request.report_number {
+            updates.push("report_number = ?");
+            params_vec.push(Box::new(report_number));
+        }
+        if let Some(ref report_date) = request.report_date {
+            updates.push("report_date = ?");
+            params_vec.push(Box::new(report_date.clone()));
+        }
+        if let Some(ref well_number) = request.well_number {
+            updates.push("well_number = ?");
+            params_vec.push(Box::new(well_number.clone()));
+        }
+        if let Some(ref api_number) = request.api_number {
+            updates.push("api_number = ?");
+            params_vec.push(Box::new(api_number.clone()));
+        }
+        if let Some(ref contract) = request.contract {
+            updates.push("contract = ?");
+            params_vec.push(Box::new(contract.clone()));
+        }
+        if let Some(ref contractor) = request.contractor {
+            updates.push("contractor = ?");
+            params_vec.push(Box::new(contractor.clone()));
+        }
+        if let Some(ref operator) = request.operator {
+            updates.push("operator = ?");
+            params_vec.push(Box::new(operator.clone()));
+        }
+        if let Some(ref field_district) = request.field_district {
+            updates.push("field_district = ?");
+            params_vec.push(Box::new(field_district.clone()));
+        }
+        if let Some(ref municipality) = request.municipality {
+            updates.push("municipality = ?");
+            params_vec.push(Box::new(municipality.clone()));
+        }
+        if let Some(ref rig_number) = request.rig_number {
+            updates.push("rig_number = ?");
+            params_vec.push(Box::new(rig_number.clone()));
+        }
+        if let Some(ref company) = request.company {
+            updates.push("company = ?");
+            params_vec.push(Box::new(company.clone()));
+        }
+        if let Some(ref supervisor_24h) = request.supervisor_24h {
+            updates.push("supervisor_24h = ?");
+            params_vec.push(Box::new(supervisor_24h.clone()));
+        }
+
+        updates.push("updated_at = ?");
+        params_vec.push(Box::new(now.clone()));
+
+        params_vec.push(Box::new(report_id.to_string()));
+
+        let query = format!("UPDATE reports SET {} WHERE id = ?", updates.join(", "));
+
+        let params_refs: Vec<&dyn rusqlite::ToSql> = params_vec.iter().map(|p| p.as_ref()).collect();
+
+        conn.execute(&query, params_refs.as_slice())?;
+
+        Report::get_by_id(conn, report_id)
+    }
+
+    /// Delete report
+    pub fn delete(conn: &Connection, report_id: &str) -> Result<(), AppError> {
+        conn.execute("DELETE FROM reports WHERE id = ?1", params![report_id])?;
+        Ok(())
+    }
+
+    /// Submit report (draft → submitted)
+    pub fn submit(conn: &Connection, report_id: &str) -> Result<Report, AppError> {
+        let now = chrono::Utc::now().to_rfc3339();
+
+        conn.execute(
+            "UPDATE reports SET status = ?1, submitted_at = ?2, updated_at = ?3 WHERE id = ?4",
+            params!["submitted", &now, &now, report_id],
+        )?;
+
+        Report::get_by_id(conn, report_id)
+    }
+
+    /// Approve report (submitted → approved)
+    pub fn approve(conn: &Connection, report_id: &str, approved_by: String) -> Result<Report, AppError> {
+        let now = chrono::Utc::now().to_rfc3339();
+
+        conn.execute(
+            "UPDATE reports SET status = ?1, approved_by = ?2, approved_at = ?3, updated_at = ?4 WHERE id = ?5",
+            params!["approved", &approved_by, &now, &now, report_id],
+        )?;
+
+        Report::get_by_id(conn, report_id)
+    }
+
+    /// Reject report (submitted → rejected)
+    pub fn reject(
+        conn: &Connection,
+        report_id: &str,
+        rejected_by: String,
+        reason: String,
+    ) -> Result<Report, AppError> {
+        let now = chrono::Utc::now().to_rfc3339();
+
+        conn.execute(
+            "UPDATE reports SET status = ?1, approved_by = ?2, rejected_at = ?3, rejection_reason = ?4, updated_at = ?5 WHERE id = ?6",
+            params!["rejected", &rejected_by, &now, &reason, &now, report_id],
+        )?;
+
+        Report::get_by_id(conn, report_id)
+    }
+
+    /// Check if user can edit report
+    pub fn can_edit(report: &Report, user_id: &str, user_role: &UserRole) -> bool {
+        match user_role {
+            UserRole::Admin | UserRole::Supervisor => true,
+            UserRole::Operator => {
+                // Operators can only edit their own draft reports
+                report.status == "draft" && report.created_by.as_deref() == Some(user_id)
+            }
+        }
+    }
+}
