@@ -3,9 +3,10 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { MainLayout } from '../components/layout';
-import { Button, Card } from '../components/ui';
+import { Button, Card, AutoSaveIndicator } from '../components/ui';
 import { Save, Send, ArrowLeft } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
+import { useAutoSave } from '../hooks/useAutoSave';
 import { completeReportSchema, type CompleteReportData } from '../schemas';
 import { reportsApi, drillStringApi, crewApi, bitRecordsApi } from '../lib/api';
 import { transformFormToReportData, transformReportToForm } from '../lib/reportHelpers';
@@ -91,18 +92,22 @@ export default function ReportForm() {
     { id: 'observations', label: 'Observaciones', icon: '📝' },
   ];
 
-  // Auto-save effect
-  useEffect(() => {
-    if (!isDirty) return;
+  // Watch all form data for auto-save
+  const formData = watch();
 
-    const timeoutId = setTimeout(() => {
-      const formData = watch();
-      localStorage.setItem('report-draft', JSON.stringify(formData));
-      console.log('Auto-saved to localStorage');
-    }, 2000); // Save after 2 seconds of inactivity
-
-    return () => clearTimeout(timeoutId);
-  }, [watch, isDirty]);
+  // Auto-save hook (only for new reports, not when editing)
+  const {
+    status: autoSaveStatus,
+    lastSaved,
+    clearSaved: clearAutoSave,
+    loadFromStorage,
+  } = useAutoSave({
+    data: formData,
+    storageKey: 'report-draft',
+    debounceMs: 2000,
+    enabled: !isEditMode && isDirty,
+    onSave: () => console.log('Auto-saved to localStorage'),
+  });
 
   // Load draft on mount OR load existing report if editing
   useEffect(() => {
@@ -110,29 +115,25 @@ export default function ReportForm() {
       if (isEditMode && id && sessionToken) {
         try {
           const report = await reportsApi.get(sessionToken, id);
-          const formData = transformReportToForm(report);
-          methods.reset(formData);
+          const loadedFormData = transformReportToForm(report);
+          methods.reset(loadedFormData);
           console.log('Report loaded for editing:', report);
         } catch (error) {
           console.error('Error loading report:', error);
           alert('Error al cargar el reporte');
         }
       } else if (!isEditMode) {
-        const draft = localStorage.getItem('report-draft');
-        if (draft) {
-          try {
-            const parsedDraft = JSON.parse(draft);
-            methods.reset(parsedDraft);
-            console.log('Draft loaded from localStorage');
-          } catch (error) {
-            console.error('Error loading draft:', error);
-          }
+        // Use the hook's loadFromStorage function
+        const savedDraft = loadFromStorage();
+        if (savedDraft) {
+          methods.reset(savedDraft);
+          console.log('Draft loaded from localStorage');
         }
       }
     };
 
     loadData();
-  }, [isEditMode, id, sessionToken, methods]);
+  }, [isEditMode, id, sessionToken, methods, loadFromStorage]);
 
   const handleSaveDraft = async () => {
     if (!sessionToken) {
@@ -147,8 +148,8 @@ export default function ReportForm() {
 
       const report = await reportsApi.create(sessionToken, reportData);
       console.log('Draft saved successfully:', report);
-      
-      localStorage.removeItem('report-draft');
+
+      clearAutoSave();
       alert('Borrador guardado exitosamente');
       
       // Navigate to edit mode with the created report ID
@@ -213,7 +214,7 @@ export default function ReportForm() {
       await reportsApi.submit(sessionToken, reportId);
       console.log('Report submitted');
 
-      localStorage.removeItem('report-draft');
+      clearAutoSave();
       alert('Reporte enviado exitosamente');
       navigate('/reports');
       
@@ -252,8 +253,17 @@ export default function ReportForm() {
           subtitle={isEditMode ? `Reporte #${id}` : 'Crear nuevo reporte diario de operaciones'}
           headerActions={
             <div className="flex gap-2 items-center">
-              {isDirty && (
-                <span className="text-xs text-gray-500">Cambios sin guardar</span>
+              {/* Auto-save indicator */}
+              {!isEditMode && (
+                <AutoSaveIndicator
+                  status={autoSaveStatus}
+                  lastSaved={lastSaved}
+                />
+              )}
+              {isEditMode && isDirty && (
+                <span className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded">
+                  Cambios sin guardar
+                </span>
               )}
               <Button
                 variant="outline"

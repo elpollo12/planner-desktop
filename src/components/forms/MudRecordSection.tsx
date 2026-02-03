@@ -8,7 +8,6 @@ export function MudRecordSection() {
   const {
     register,
     control,
-    formState: { errors },
   } = useFormContext<CompleteReportData>();
 
   const { fields: mudFields, append: appendMud, remove: removeMud } = useFieldArray({

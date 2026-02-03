@@ -48,7 +48,7 @@ export const crewMemberSchema = z.object({
 
 export const crewShiftSchema = z.object({
   shift: z.enum(['morning', 'afternoon', 'night'], {
-    errorMap: () => ({ message: 'Seleccione un turno válido' }),
+    message: 'Seleccione un turno válido',
   }),
   shiftStart: z.string().optional(),
   shiftEnd: z.string().optional(),

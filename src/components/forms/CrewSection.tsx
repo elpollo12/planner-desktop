@@ -26,7 +26,6 @@ export function CrewSection() {
   const {
     register,
     control,
-    formState: { errors },
   } = useFormContext<CompleteReportData>();
 
   const shiftIndex = activeShift === 'morning' ? 0 : activeShift === 'afternoon' ? 1 : 2;
