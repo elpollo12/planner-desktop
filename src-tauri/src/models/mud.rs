@@ -3,6 +3,7 @@ use rusqlite::{params, Connection, Row};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct MudRecord {
     pub id: String,
     pub report_id: String,
@@ -20,6 +21,7 @@ pub struct MudRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct MudAdditive {
     pub id: String,
     pub report_id: String,
@@ -31,6 +33,7 @@ pub struct MudAdditive {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateMudRecordRequest {
     pub shift: Option<String>,
     pub hour: Option<String>,
@@ -44,6 +47,7 @@ pub struct CreateMudRecordRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateMudAdditiveRequest {
     pub shift: Option<String>,
     pub additive_type: Option<String>,
