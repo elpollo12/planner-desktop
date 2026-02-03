@@ -3,6 +3,7 @@ use rusqlite::{params, Connection, Row};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct DeviationRecord {
     pub id: String,
     pub report_id: String,
@@ -16,6 +17,7 @@ pub struct DeviationRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateDeviationRecordRequest {
     pub depth: Option<String>,
     pub deviation: Option<String>,

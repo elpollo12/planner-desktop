@@ -3,6 +3,7 @@ use rusqlite::{params, Connection, Row};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct BitRecord {
     pub id: String,
     pub report_id: String,
@@ -25,6 +26,7 @@ pub struct BitRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateBitRecordRequest {
     pub shift: Option<String>,
     pub size: Option<String>,

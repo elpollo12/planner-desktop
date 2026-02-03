@@ -33,6 +33,7 @@ impl ReportStatus {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Report {
     pub id: String,
     pub report_number: i32,
@@ -60,6 +61,7 @@ pub struct Report {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateReportRequest {
     pub report_number: i32,
     pub report_date: String,
@@ -76,6 +78,7 @@ pub struct CreateReportRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UpdateReportRequest {
     pub report_number: Option<i32>,
     pub report_date: Option<String>,
@@ -92,6 +95,7 @@ pub struct UpdateReportRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ReportFilters {
     pub date_from: Option<String>,
     pub date_to: Option<String>,

@@ -2,7 +2,14 @@
 export type ReportStatus = 'draft' | 'submitted' | 'approved' | 'rejected';
 
 // Turnos
-export type ShiftType = 'mañana' | 'tarde' | 'noche';
+export type ShiftType = 'morning' | 'afternoon' | 'night';
+
+// Helper para labels de turnos en UI
+export const SHIFT_LABELS: Record<ShiftType, string> = {
+  morning: 'Mañana',
+  afternoon: 'Tarde',
+  night: 'Noche',
+};
 
 // Reporte principal (Encabezado DDR)
 export interface Report {

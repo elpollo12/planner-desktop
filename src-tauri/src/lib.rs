@@ -52,6 +52,28 @@ pub fn run() {
             commands::reports::submit_report,
             commands::reports::approve_report,
             commands::reports::reject_report,
+
+            // Drill string commands
+            commands::drill_string::save_drill_string,
+            commands::drill_string::get_drill_string,
+
+            // Crew commands
+            commands::crew::create_crew_shift,
+            commands::crew::list_crew_shifts,
+            commands::crew::delete_crew_shift,
+
+            // Bit records commands
+            commands::bit_records::create_bit_record,
+            commands::bit_records::list_bit_records,
+            commands::bit_records::update_bit_record,
+            commands::bit_records::delete_bit_record,
+
+            // Operation codes commands (admin)
+            commands::operation_codes::create_operation_code,
+            commands::operation_codes::list_operation_codes,
+            commands::operation_codes::get_operation_code,
+            commands::operation_codes::update_operation_code,
+            commands::operation_codes::delete_operation_code,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -3,6 +3,7 @@ use rusqlite::{params, Connection, Row};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CrewShift {
     pub id: String,
     pub report_id: String,
@@ -14,6 +15,7 @@ pub struct CrewShift {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CrewMember {
     pub id: String,
     pub crew_shift_id: String,
@@ -26,6 +28,7 @@ pub struct CrewMember {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CrewMemberData {
     pub position: String,
     pub ci: Option<String>,
@@ -34,6 +37,7 @@ pub struct CrewMemberData {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CrewShiftData {
     pub shift: String,
     pub shift_start: Option<String>,
@@ -42,6 +46,7 @@ pub struct CrewShiftData {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CrewShiftWithMembers {
     #[serde(flatten)]
     pub shift: CrewShift,
