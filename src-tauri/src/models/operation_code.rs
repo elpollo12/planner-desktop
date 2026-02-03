@@ -3,6 +3,7 @@ use rusqlite::{params, Connection, Row};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct OperationCode {
     pub id: String,
     pub code: String,
@@ -16,6 +17,7 @@ pub struct OperationCode {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateOperationCodeRequest {
     pub code: String,
     pub name: String,
@@ -24,6 +26,7 @@ pub struct CreateOperationCodeRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UpdateOperationCodeRequest {
     pub code: Option<String>,
     pub name: Option<String>,

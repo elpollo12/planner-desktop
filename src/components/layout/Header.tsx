@@ -1,3 +1,4 @@
+import { useAuthStore } from '../../store/authStore';
 import { Bell } from 'lucide-react';
 
 interface HeaderProps {
@@ -8,6 +9,7 @@ interface HeaderProps {
 }
 
 export function Header({ title, subtitle, actions, className = '' }: HeaderProps) {
+  // Future: const { user } = useAuthStore();
 
   return (
     <header className={`bg-white border-b border-gray-200 ${className}`}>

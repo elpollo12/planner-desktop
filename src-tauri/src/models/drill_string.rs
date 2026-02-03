@@ -3,6 +3,7 @@ use rusqlite::{params, Connection, Row};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct DrillString {
     pub id: String,
     pub report_id: String,
@@ -19,6 +20,7 @@ pub struct DrillString {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct DrillStringData {
     pub size: Option<String>,
     pub weight: Option<String>,
