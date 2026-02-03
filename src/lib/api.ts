@@ -153,3 +153,68 @@ export const operationCodesApi = {
   delete: (sessionToken: string, codeId: string) =>
     invoke<void>('delete_operation_code', { sessionToken, codeId }),
 };
+// ============================================================================
+// MUD RECORDS COMMANDS
+// ============================================================================
+
+export const mudApi = {
+  createRecord: (sessionToken: string, reportId: string, data: any) =>
+    invoke('create_mud_record', { sessionToken, reportId, data }),
+
+  listRecords: (sessionToken: string, reportId: string) =>
+    invoke('list_mud_records', { sessionToken, reportId }),
+
+  createAdditive: (sessionToken: string, reportId: string, data: any) =>
+    invoke('create_mud_additive', { sessionToken, reportId, data }),
+
+  listAdditives: (sessionToken: string, reportId: string) =>
+    invoke('list_mud_additives', { sessionToken, reportId }),
+};
+
+// ============================================================================
+// TIME DISTRIBUTION COMMANDS
+// ============================================================================
+
+export const timeDistributionApi = {
+  saveBulk: (sessionToken: string, reportId: string, data: any[]) =>
+    invoke('save_time_distributions', { sessionToken, reportId, data }),
+
+  list: (sessionToken: string, reportId: string) =>
+    invoke('list_time_distributions', { sessionToken, reportId }),
+};
+
+// ============================================================================
+// DRILLING PARAMETERS COMMANDS
+// ============================================================================
+
+export const drillingParamsApi = {
+  create: (sessionToken: string, reportId: string, data: any) =>
+    invoke('create_drilling_parameter', { sessionToken, reportId, data }),
+
+  list: (sessionToken: string, reportId: string) =>
+    invoke('list_drilling_parameters', { sessionToken, reportId }),
+};
+
+// ============================================================================
+// DEVIATION COMMANDS
+// ============================================================================
+
+export const deviationApi = {
+  create: (sessionToken: string, reportId: string, data: any) =>
+    invoke('create_deviation_record', { sessionToken, reportId, data }),
+
+  list: (sessionToken: string, reportId: string) =>
+    invoke('list_deviation_records', { sessionToken, reportId }),
+};
+
+// ============================================================================
+// OPERATIONS LOG COMMANDS
+// ============================================================================
+
+export const operationsLogApi = {
+  create: (sessionToken: string, reportId: string, data: any) =>
+    invoke('create_operation_log', { sessionToken, reportId, data }),
+
+  list: (sessionToken: string, reportId: string) =>
+    invoke('list_operation_logs', { sessionToken, reportId }),
+};

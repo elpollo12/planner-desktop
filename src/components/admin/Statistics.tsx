@@ -1,0 +1,220 @@
+import { useState, useEffect } from 'react';
+import { Card } from '../ui';
+import { FileText, Users, Clock, CheckCircle, XCircle, TrendingUp } from 'lucide-react';
+import { useAuthStore } from '../../store/authStore';
+import { reportsApi, usersApi } from '../../lib/api';
+
+export function Statistics() {
+  const { sessionToken } = useAuthStore();
+  const [stats, setStats] = useState({
+    totalReports: 0,
+    totalUsers: 0,
+    reportsByStatus: {
+      draft: 0,
+      submitted: 0,
+      approved: 0,
+      rejected: 0,
+    },
+    usersByRole: {
+      admin: 0,
+      supervisor: 0,
+      operator: 0,
+    },
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadStatistics();
+  }, []);
+
+  const loadStatistics = async () => {
+    if (!sessionToken) return;
+
+    setLoading(true);
+    try {
+      const [reports, users] = await Promise.all([
+        reportsApi.list(sessionToken, {}),
+        usersApi.list(sessionToken),
+      ]);
+
+      // Calculate stats
+      const reportsByStatus = {
+        draft: reports.filter(r => r.status === 'draft').length,
+        submitted: reports.filter(r => r.status === 'submitted').length,
+        approved: reports.filter(r => r.status === 'approved').length,
+        rejected: reports.filter(r => r.status === 'rejected').length,
+      };
+
+      const usersByRole = {
+        admin: users.filter(u => u.role === 'admin').length,
+        supervisor: users.filter(u => u.role === 'supervisor').length,
+        operator: users.filter(u => u.role === 'operator').length,
+      };
+
+      setStats({
+        totalReports: reports.length,
+        totalUsers: users.length,
+        reportsByStatus,
+        usersByRole,
+      });
+    } catch (error) {
+      console.error('Error loading statistics:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return <div className="text-center py-8 text-gray-500">Cargando estadísticas...</div>;
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Overall Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Card className="p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Total Reportes</p>
+              <p className="text-3xl font-bold text-gray-900">{stats.totalReports}</p>
+            </div>
+            <FileText className="text-blue-500" size={32} />
+          </div>
+        </Card>
+
+        <Card className="p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Total Usuarios</p>
+              <p className="text-3xl font-bold text-gray-900">{stats.totalUsers}</p>
+            </div>
+            <Users className="text-green-500" size={32} />
+          </div>
+        </Card>
+
+        <Card className="p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Tasa Aprobación</p>
+              <p className="text-3xl font-bold text-gray-900">
+                {stats.totalReports > 0
+                  ? Math.round((stats.reportsByStatus.approved / stats.totalReports) * 100)
+                  : 0}
+                %
+              </p>
+            </div>
+            <TrendingUp className="text-purple-500" size={32} />
+          </div>
+        </Card>
+
+        <Card className="p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Pendientes</p>
+              <p className="text-3xl font-bold text-gray-900">{stats.reportsByStatus.submitted}</p>
+            </div>
+            <Clock className="text-yellow-500" size={32} />
+          </div>
+        </Card>
+      </div>
+
+      {/* Reports by Status */}
+      <Card>
+        <div className="p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-6">Reportes por Estado</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 rounded-full bg-gray-100">
+                <Clock className="text-gray-600" size={24} />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-900">{stats.reportsByStatus.draft}</p>
+                <p className="text-sm text-gray-600">Borradores</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <div className="p-3 rounded-full bg-blue-100">
+                <FileText className="text-blue-600" size={24} />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-blue-600">{stats.reportsByStatus.submitted}</p>
+                <p className="text-sm text-gray-600">Enviados</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <div className="p-3 rounded-full bg-green-100">
+                <CheckCircle className="text-green-600" size={24} />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-green-600">{stats.reportsByStatus.approved}</p>
+                <p className="text-sm text-gray-600">Aprobados</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <div className="p-3 rounded-full bg-red-100">
+                <XCircle className="text-red-600" size={24} />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-red-600">{stats.reportsByStatus.rejected}</p>
+                <p className="text-sm text-gray-600">Rechazados</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      {/* Users by Role */}
+      <Card>
+        <div className="p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-6">Usuarios por Rol</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 rounded-full bg-purple-100">
+                <Users className="text-purple-600" size={24} />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-purple-600">{stats.usersByRole.admin}</p>
+                <p className="text-sm text-gray-600">Administradores</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <div className="p-3 rounded-full bg-blue-100">
+                <Users className="text-blue-600" size={24} />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-blue-600">{stats.usersByRole.supervisor}</p>
+                <p className="text-sm text-gray-600">Supervisores</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <div className="p-3 rounded-full bg-green-100">
+                <Users className="text-green-600" size={24} />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-green-600">{stats.usersByRole.operator}</p>
+                <p className="text-sm text-gray-600">Operadores</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      {/* Performance Chart Placeholder */}
+      <Card>
+        <div className="p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-6">Resumen de Actividad</h3>
+          <div className="text-center py-12 text-gray-500">
+            <TrendingUp className="mx-auto mb-4 text-gray-400" size={48} />
+            <p>Gráfico de actividad por implementar</p>
+            <p className="text-sm mt-2">Próximamente: Reportes por día, semana y mes</p>
+          </div>
+        </div>
+      </Card>
+    </div>
+  );
+}
