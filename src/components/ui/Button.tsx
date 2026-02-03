@@ -4,6 +4,7 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'danger' | 'success';
   size?: 'sm' | 'md' | 'lg';
   loading?: boolean;
+  icon?: React.ReactNode;
 }
 
 export function Button({
@@ -11,6 +12,7 @@ export function Button({
   variant = 'primary',
   size = 'md',
   loading = false,
+  icon = '',
   disabled,
   className = '',
   ...props
@@ -45,7 +47,8 @@ export function Button({
           Cargando...
         </span>
       ) : (
-        children
+        icon ? <span className="flex items-center">{icon}{children}</span> 
+        : children
       )}
     </button>
   );
