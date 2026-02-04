@@ -33,10 +33,13 @@ pub enum AppError {
 
 // Implement Serialize for Tauri compatibility
 impl serde::Serialize for AppError {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
     {
         serializer.serialize_str(&self.to_string())
     }
 }
+
+// Type alias for Result with AppError
+pub type Result<T> = std::result::Result<T, AppError>;

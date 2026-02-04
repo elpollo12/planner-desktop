@@ -10,6 +10,8 @@ pub mod time_distribution;
 pub mod drilling_params;
 pub mod deviation;
 pub mod operations_log;
+pub mod areas;
+pub mod rigs;
 
 // Re-export all command handlers for Tauri
 // Allow unused imports as these are registered in main.rs
@@ -37,3 +39,7 @@ pub use drilling_params::*;
 pub use deviation::*;
 #[allow(unused_imports)]
 pub use operations_log::*;
+#[allow(unused_imports)]
+pub use areas::*;
+#[allow(unused_imports)]
+pub use rigs::*;

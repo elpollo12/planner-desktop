@@ -96,6 +96,20 @@ pub fn run() {
             // Operations log commands
             commands::operations_log::create_operation_log,
             commands::operations_log::list_operation_logs,
+
+            // Areas commands (admin)
+            commands::areas::create_area,
+            commands::areas::list_areas,
+            commands::areas::get_area,
+            commands::areas::update_area,
+            commands::areas::delete_area,
+
+            // Rigs commands (admin)
+            commands::rigs::create_rig,
+            commands::rigs::list_rigs,
+            commands::rigs::get_rig,
+            commands::rigs::update_rig,
+            commands::rigs::delete_rig,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
