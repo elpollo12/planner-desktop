@@ -12,6 +12,9 @@ export interface User {
   updated_at: string;
 }
 
+// Re-export rig and area types
+export * from './rig';
+
 export interface LoginResponse {
   session_token: string;
   user: User;

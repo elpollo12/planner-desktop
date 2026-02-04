@@ -219,7 +219,7 @@ export function TimeDistributionSection() {
                     <td className="px-4 py-3 text-center">
                       <Button
                         type="button"
-                        variant="outline"
+                        variant="secondary"
                         size="sm"
                         onClick={() => remove(index)}
                         icon={<Trash2 size={16} />}

@@ -87,7 +87,7 @@ export function LithologySection() {
                   <h4 className="font-medium text-gray-900">Registro #{index + 1}</h4>
                   <Button
                     type="button"
-                    variant="outline"
+                    variant="secondary"
                     size="sm"
                     onClick={() => removeParam(index)}
                     icon={<Trash2 size={16} />}
@@ -288,7 +288,7 @@ export function LithologySection() {
                     <td className="px-4 py-3 text-center">
                       <Button
                         type="button"
-                        variant="outline"
+                        variant="secondary"
                         size="sm"
                         onClick={() => removeDeviation(index)}
                         icon={<Trash2 size={16} />}

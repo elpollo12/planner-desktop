@@ -9,6 +9,8 @@ pub mod mud;
 pub mod drilling_params;
 pub mod deviation;
 pub mod operations_log;
+pub mod area;
+pub mod rig;
 
 // Re-export commonly used types
 // Allow unused imports as these are exposed for library consumers
@@ -34,3 +36,7 @@ pub use drilling_params::*;
 pub use deviation::*;
 #[allow(unused_imports)]
 pub use operations_log::*;
+#[allow(unused_imports)]
+pub use area::*;
+#[allow(unused_imports)]
+pub use rig::*;

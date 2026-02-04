@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
+import { Button } from '../ui';
 import {
   LayoutDashboard,
   Plus,
@@ -24,15 +25,15 @@ export function Sidebar({ className = '' }: SidebarProps) {
       show: true,
     },
     {
-      name: 'Nuevo Reporte',
-      href: '/reports/new',
-      icon: Plus,
-      show: true,
-    },
-    {
       name: 'Reportes',
       href: '/reports',
       icon: List,
+      show: true,
+    },
+    {
+      name: 'Nuevo Reporte',
+      href: '/reports/new',
+      icon: Plus,
       show: true,
     },
     {
@@ -41,10 +42,31 @@ export function Sidebar({ className = '' }: SidebarProps) {
       icon: Shield,
       show: user?.role === 'admin',
     },
+        {
+      name: 'Test',
+      href: '/test',
+      icon: Shield,
+      show: user?.role === 'admin',
+    },
   ];
 
   const isActive = (href: string) => {
-    return location.pathname === href || location.pathname.startsWith(href + '/');
+    // Exact match for the route
+    if (location.pathname === href) {
+      return true;
+    }
+    
+    // For nested routes, check if it starts with href but exclude specific cases
+    // Example: /reports/view/123 should activate /reports but not /reports/new
+    if (href === '/reports') {
+      // Only activate for /reports, /reports/view/:id, /reports/edit/:id
+      // NOT for /reports/new
+      return location.pathname.startsWith('/reports/view/') || 
+             location.pathname.startsWith('/reports/edit/');
+    }
+    
+    // For other routes, check if pathname starts with href + '/'
+    return location.pathname.startsWith(href + '/');
   };
 
   return (
@@ -93,13 +115,13 @@ export function Sidebar({ className = '' }: SidebarProps) {
           </p>
           <p className="text-xs text-gray-500 capitalize">{user?.role}</p>
         </div>
-        <button
+        <Button
           onClick={logout}
-          className="flex items-center gap-2 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+          variant="danger"
+          icon={<LogOut size={18} />}     
         >
-          <LogOut size={18} />
           <span>Cerrar Sesión</span>
-        </button>
+        </Button>
       </div>
     </aside>
   );

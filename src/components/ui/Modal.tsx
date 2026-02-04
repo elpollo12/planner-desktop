@@ -1,104 +1,160 @@
-import { useEffect } from 'react';
-import { X } from 'lucide-react';
+import { useEffect, useCallback } from "react";
+import { useModalStore } from "../../store";
+import { X } from "lucide-react";
+import { Button } from "./Button";
 
-interface ModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  title?: string;
-  children: React.ReactNode;
-  footer?: React.ReactNode;
-  size?: 'sm' | 'md' | 'lg' | 'xl' | 'full';
-  closeOnOverlayClick?: boolean;
-  showCloseButton?: boolean;
-}
+export const Modal = () => {
+  const { isOpen, content, options, closeModal } = useModalStore();
 
-const sizeClasses = {
-  sm: 'max-w-md',
-  md: 'max-w-lg',
-  lg: 'max-w-2xl',
-  xl: 'max-w-4xl',
-  full: 'max-w-7xl',
-};
+  const {
+    title,
+    size = 'sm',
+    showCloseButton = true,
+    closeOnOutsideClick = true,
+    closeOnEsc = true,
+    onClose,
+    onConfirm,
+    confirmText = 'Confirmar',
+    cancelText = 'Cancelar',
+    showConfirmButton = false,
+    showCancelButton = false,
+    disableConfirm = false,
+    disableCancel = false,
+    className = '',
+    disableBodyScroll = true,
+  } = options;
 
-export function Modal({
-  isOpen,
-  onClose,
-  title,
-  children,
-  footer,
-  size = 'md',
-  closeOnOverlayClick = true,
-  showCloseButton = true,
-}: ModalProps) {
-  // Close on ESC key
+  // Handle ESC key
   useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
-        onClose();
+    const handleEsc = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && closeOnEsc && isOpen) {
+        closeModal();
       }
     };
 
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
-  }, [isOpen, onClose]);
-
-  // Prevent body scroll when modal is open
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
+    if (isOpen && closeOnEsc) {
+      document.addEventListener('keydown', handleEsc);
     }
 
     return () => {
-      document.body.style.overflow = 'unset';
+      document.removeEventListener('keydown', handleEsc);
     };
-  }, [isOpen]);
+  }, [isOpen, closeOnEsc, closeModal]);
+
+  // Handle body scroll
+  useEffect(() => {
+    if (isOpen && disableBodyScroll) {
+      document.body.style.overflow = 'hidden';
+    }
+
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen, disableBodyScroll]);
+
+  const handleOutsideClick = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (e.target === e.currentTarget && closeOnOutsideClick) {
+        closeModal();
+      }
+    },
+    [closeModal, closeOnOutsideClick]
+  );
+
+  const handleConfirm = useCallback(() => {
+    onConfirm?.();
+    closeModal();
+  }, [onConfirm, closeModal]);
+
+  const handleCancel = useCallback(() => {
+    onClose?.();
+    closeModal();
+  }, [onClose, closeModal]);
+
+  const sizeClasses = {
+    sm: 'min-w-[24rem]',  // 24rem = 384px
+    md: 'min-w-[28rem]',  // 28rem = 448px
+    lg: 'min-w-[32rem]',  // 32rem = 512px
+    xl: 'min-w-[36rem]',  // 36rem = 576px
+    full: 'w-full',
+  };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+    <div className="fixed inset-0 z-50">
       {/* Overlay */}
       <div
-        className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
-        onClick={closeOnOverlayClick ? onClose : undefined}
+        className={`fixed inset-0 bg-black/50 transition-opacity ${
+          isOpen ? 'opacity-100' : 'opacity-0'
+        }`}
+        onClick={handleOutsideClick}
+        aria-hidden="true"
       />
 
-      {/* Modal Content */}
-      <div className="flex min-h-full items-center justify-center p-4">
+      {/* Modal Container */}
+      <div className={`fixed inset-0 z-50 flex items-center justify-center p-4`}>
         <div
-          className={`relative bg-white rounded-lg shadow-xl w-full ${sizeClasses[size]} transform transition-all`}
-          onClick={(e) => e.stopPropagation()}
+          className={`relative bg-white flex flex-col rounded-lg shadow-xl w-full max-h-[90vh] ${sizeClasses[size]}
+          } transform transition-all duration-300 ${
+            isOpen ? 'scale-100 opacity-100' : 'scale-95 opacity-0'
+          } ${className}`}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="modal-title"
         >
           {/* Header */}
           {(title || showCloseButton) && (
-            <div className="flex items-center justify-between px-6 py-4 border-b">
+            <div className="flex items-center justify-between p-6 pb-4 border-b border-gray-200">
               {title && (
-                <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+                <h3
+                  id="modal-title"
+                  className="text-xl font-semibold text-gray-900"
+                >
+                  {title}
+                </h3>
               )}
               {showCloseButton && (
                 <button
-                  onClick={onClose}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                  onClick={handleCancel}
+                  className="ml-auto inline-flex items-center justify-center rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-900 transition-colors"
+                  type="button"
+                  aria-label="Close modal"
                 >
-                  <X size={20} />
+                  <X className="h-5 w-5" />
                 </button>
               )}
             </div>
           )}
 
-          {/* Body */}
-          <div className="px-6 py-4">{children}</div>
+          {/* Content */}
+          <div className="p-6 overflow-y-auto grow">{content}</div>
 
           {/* Footer */}
-          {footer && (
-            <div className="px-6 py-4 border-t bg-gray-50 rounded-b-lg">
-              {footer}
+          {(showConfirmButton || showCancelButton) && (
+            <div className="flex items-center justify-end gap-3 p-6 pt-4 border-t border-gray-200">
+              {showCancelButton && (
+                <Button
+                  variant="secondary"
+                  onClick={handleCancel}
+                  disabled={disableCancel}
+                >
+                  {cancelText}
+                </Button>
+              )}
+              {showConfirmButton && (
+                <Button
+                  variant="primary"
+                  onClick={handleConfirm}
+                  disabled={disableConfirm}
+                >
+                  {confirmText}
+                </Button>
+              )}
             </div>
           )}
         </div>
       </div>
     </div>
   );
-}
+};

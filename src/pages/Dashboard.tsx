@@ -46,7 +46,7 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <button
             onClick={() => navigate('/reports/new')}
-            className="p-6 border-2 border-dashed border-gray-300 rounded-lg hover:border-[#1E3A5F] hover:bg-blue-50 transition text-left"
+            className="p-6 border-2 border-dashed cursor-pointer border-gray-300 rounded-lg hover:border-[#1E3A5F] hover:bg-blue-50 transition text-left"
           >
             <div className="text-2xl mb-2">📝</div>
             <h3 className="font-semibold text-gray-900 mb-1">Nuevo Reporte</h3>
@@ -55,7 +55,7 @@ export default function Dashboard() {
 
           <button
             onClick={() => navigate('/reports')}
-            className="p-6 border-2 border-dashed border-gray-300 rounded-lg hover:border-[#1E3A5F] hover:bg-blue-50 transition text-left"
+            className="p-6 border-2 border-dashed cursor-pointer border-gray-300 rounded-lg hover:border-[#1E3A5F] hover:bg-blue-50 transition text-left"
           >
             <div className="text-2xl mb-2">📊</div>
             <h3 className="font-semibold text-gray-900 mb-1">Ver Reportes</h3>
@@ -64,8 +64,8 @@ export default function Dashboard() {
 
           {user.role === 'admin' && (
             <button
-              onClick={() => navigate('/admin/users')}
-              className="p-6 border-2 border-dashed border-gray-300 rounded-lg hover:border-[#1E3A5F] hover:bg-blue-50 transition text-left"
+              onClick={() => navigate('/admin/')}
+              className="p-6 border-2 border-dashed cursor-pointer border-gray-300 rounded-lg hover:border-[#1E3A5F] hover:bg-blue-50 transition text-left"
             >
               <div className="text-2xl mb-2">👥</div>
               <h3 className="font-semibold text-gray-900 mb-1">Usuarios</h3>

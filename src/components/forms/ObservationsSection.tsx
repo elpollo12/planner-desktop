@@ -69,7 +69,7 @@ export function ObservationsSection() {
                 <h4 className="font-medium text-gray-900">Operación #{index + 1}</h4>
                 <Button
                   type="button"
-                  variant="outline"
+                  variant="secondary"
                   size="sm"
                   onClick={() => remove(index)}
                   icon={<Trash2 size={16} />}

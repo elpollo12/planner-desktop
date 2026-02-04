@@ -28,8 +28,8 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#1E3A5F] to-[#2d5a8f] flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
+    <div className="min-h-screen bg-gradient-to-br from-[#1E3A5F] to-[#2d5a8f] flex items-center justify-center">
+      <Card className="min-w-1/3 max-w-md">
         <div className="text-center mb-6">
           <h1 className="text-3xl font-bold text-[#1E3A5F] mb-2">
             Sistema de Reportes DDR

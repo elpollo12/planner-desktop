@@ -2,6 +2,7 @@
 export * from './reportSchema';
 export * from './reportSchemaExtended';
 export * from './reportSchemaFinal';
+export * from './rigSchemas';
 
 import { z } from 'zod';
 import {

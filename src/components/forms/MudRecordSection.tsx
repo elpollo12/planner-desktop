@@ -80,7 +80,7 @@ export function MudRecordSection() {
                   <h4 className="font-medium text-gray-900">Medición #{index + 1}</h4>
                   <Button
                     type="button"
-                    variant="outline"
+                    variant="secondary"
                     size="sm"
                     onClick={() => removeMud(index)}
                     icon={<Trash2 size={16} />}
@@ -233,7 +233,7 @@ export function MudRecordSection() {
                     <td className="px-4 py-3 text-center">
                       <Button
                         type="button"
-                        variant="outline"
+                        variant="secondary"
                         size="sm"
                         onClick={() => removeAdditive(index)}
                         icon={<Trash2 size={16} />}
