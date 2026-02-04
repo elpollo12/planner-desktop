@@ -1,4 +1,206 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
+/* ============================================
+   CUSTOM THEME - Paleta Petrolera Moderna
+   ============================================ */
+@theme {
+  /* Primary Colors - Azul Petróleo */
+  --color-primary-50: #EEF4F9;
+  --color-primary-100: #D5E4F0;
+  --color-primary-200: #A8C8E0;
+  --color-primary-300: #7AABD0;
+  --color-primary-400: #4D8FC0;
+  --color-primary-500: #1E3A5F;
+  --color-primary-600: #1A3252;
+  --color-primary-700: #152A45;
+  --color-primary-800: #112238;
+  --color-primary-900: #0C1A2B;
+
+  /* Secondary Colors - Naranja Energía */
+  --color-secondary-50: #FFF7ED;
+  --color-secondary-100: #FFEDD5;
+  --color-secondary-200: #FED7AA;
+  --color-secondary-300: #FDBA74;
+  --color-secondary-400: #FB923C;
+  --color-secondary-500: #F97316;
+  --color-secondary-600: #EA580C;
+  --color-secondary-700: #C2410C;
+  --color-secondary-800: #9A3412;
+  --color-secondary-900: #7C2D12;
+
+  /* Surface & Background */
+  --color-surface: #FFFFFF;
+  --color-background: #F8FAFC;
+
+  /* Fonts */
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* ============================================
+   BASE STYLES
+   ============================================ */
+html {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background-color: var(--color-background);
+  color: #1E293B;
+  margin: 0;
+  padding: 0;
+}
+
+/* ============================================
+   FORM COMPONENTS
+   ============================================ */
+
+/* Input styles */
+input[type="text"],
+input[type="number"],
+input[type="email"],
+input[type="password"],
+input[type="date"],
+input[type="time"],
+input[type="tel"],
+textarea,
+select {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #D1D5DB;
+  border-radius: 0.5rem;
+  background-color: white;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: #1F2937;
+  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: var(--color-primary-500);
+  box-shadow: 0 0 0 3px rgba(30, 58, 95, 0.1);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #9CA3AF;
+}
+
+input:disabled,
+textarea:disabled,
+select:disabled {
+  background-color: #F3F4F6;
+  cursor: not-allowed;
+}
+
+/* Input with error */
+input.error,
+textarea.error,
+select.error {
+  border-color: #EF4444;
+}
+
+input.error:focus,
+textarea.error:focus,
+select.error:focus {
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+/* Labels */
+label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 0.25rem;
+}
+
+/* ============================================
+   BUTTON BASE STYLES (fallback)
+   ============================================ */
+button {
+  cursor: pointer;
+  font-family: inherit;
+}
+
+/* ============================================
+   CARD COMPONENT
+   ============================================ */
+.card {
+  background-color: white;
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+  border: 1px solid #E5E7EB;
+}
+
+/* ============================================
+   TABLE STYLES
+   ============================================ */
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th {
+  text-align: left;
+  padding: 0.75rem 1rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #6B7280;
+  background-color: #F9FAFB;
+  border-bottom: 1px solid #E5E7EB;
+}
+
+td {
+  padding: 1rem;
+  font-size: 0.875rem;
+  color: #1F2937;
+  border-bottom: 1px solid #E5E7EB;
+}
+
+tr:hover {
+  background-color: #F9FAFB;
+}
+
+/* ============================================
+   SCROLLBAR STYLES
+   ============================================ */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #F1F5F9;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}
+
+/* ============================================
+   UTILITY CLASSES
+   ============================================ */
+.text-primary {
+  color: var(--color-primary-500);
+}
+
+.bg-primary {
+  background-color: var(--color-primary-500);
+}
+
+.border-primary {
+  border-color: var(--color-primary-500);
+}
