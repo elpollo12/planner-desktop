@@ -61,7 +61,7 @@ export default function ReportView() {
       setReport(reportData);
 
       // Load all related entities in parallel
-      const [crew, bits, drill, timeDist, mud, mudAdd, drillingPar, deviation, opsLog] = await Promise.all([
+      const results = await Promise.all([
         crewApi.listShifts(sessionToken, id).catch(() => []),
         bitRecordsApi.list(sessionToken, id).catch(() => []),
         drillStringApi.get(sessionToken, id).catch(() => null),
@@ -73,15 +73,15 @@ export default function ReportView() {
         operationsLogApi.list(sessionToken, id).catch(() => []),
       ]);
 
-      setCrewShifts(crew);
-      setBitRecords(bits);
-      setDrillString(drill);
-      setTimeDistributions(timeDist);
-      setMudRecords(mud);
-      setMudAdditives(mudAdd);
-      setDrillingParams(drillingPar);
-      setDeviationHistory(deviation);
-      setOperationsLog(opsLog);
+      setCrewShifts(results[0] as CrewShift[]);
+      setBitRecords(results[1] as BitRecord[]);
+      setDrillString(results[2] as DrillString | null);
+      setTimeDistributions(results[3] as TimeDistribution[]);
+      setMudRecords(results[4] as MudRecord[]);
+      setMudAdditives(results[5] as MudAdditive[]);
+      setDrillingParams(results[6] as DrillingParameters[]);
+      setDeviationHistory(results[7] as DeviationHistory[]);
+      setOperationsLog(results[8] as OperationsLog[]);
     } catch (error) {
       console.error('Error loading report:', error);
       alert('Error al cargar el reporte');

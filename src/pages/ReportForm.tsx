@@ -8,16 +8,11 @@ import { Save, Send, ArrowLeft } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useAutoSave } from '../hooks/useAutoSave';
 import { completeReportSchema, type CompleteReportData } from '../schemas';
-import { 
-  reportsApi, 
-  drillStringApi, 
-  crewApi, 
-  bitRecordsApi, 
-  mudApi,
-  timeDistributionApi,
-  drillingParamsApi,
-  deviationApi,
-  operationsLogApi 
+import {
+  reportsApi,
+  drillStringApi,
+  crewApi,
+  bitRecordsApi
 } from '../lib/api';
 import { transformFormToReportData, transformReportToForm } from '../lib/reportHelpers';
 

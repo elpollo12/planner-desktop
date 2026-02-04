@@ -30,7 +30,14 @@ export default function ReportList() {
 
     setLoading(true);
     try {
-      const data = await reportsApi.list(sessionToken, filters);
+      // Convert empty strings to undefined for API compatibility
+      const apiFilters = {
+        status: filters.status || undefined,
+        wellNumber: filters.wellNumber || undefined,
+        dateFrom: filters.dateFrom || undefined,
+        dateTo: filters.dateTo || undefined,
+      };
+      const data = await reportsApi.list(sessionToken, apiFilters);
       setReports(data);
     } catch (error) {
       console.error('Error loading reports:', error);

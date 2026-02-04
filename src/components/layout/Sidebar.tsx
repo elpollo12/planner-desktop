@@ -4,8 +4,6 @@ import {
   LayoutDashboard,
   Plus,
   List,
-  Users,
-  Settings,
   LogOut,
   Shield,
 } from 'lucide-react';

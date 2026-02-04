@@ -9,7 +9,7 @@ interface UserFormData {
   username: string;
   password: string;
   fullName: string;
-  email: string;
+  ci: string;
   role: UserRole;
 }
 
@@ -24,7 +24,7 @@ export function UsersManagement() {
     username: '',
     password: '',
     fullName: '',
-    email: '',
+    ci: '',
     role: 'operator',
   });
 
@@ -63,7 +63,7 @@ export function UsersManagement() {
         username: '',
         password: '',
         fullName: '',
-        email: '',
+        ci: '',
         role: 'operator',
       });
       loadUsers();
@@ -79,7 +79,7 @@ export function UsersManagement() {
     try {
       const updateData = {
         fullName: formData.fullName,
-        email: formData.email,
+        ci: formData.ci,
         role: formData.role,
       };
       await usersApi.update(sessionToken, userId, updateData);
@@ -113,7 +113,7 @@ export function UsersManagement() {
       username: user.username,
       password: '',
       fullName: user.fullName || '',
-      email: user.email || '',
+      ci: user.ci || '',
       role: user.role,
     });
   };
@@ -173,11 +173,11 @@ export function UsersManagement() {
               placeholder="Juan Pérez"
             />
             <Input
-              label="Email"
-              type="email"
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              placeholder="juan@example.com"
+              label="Cédula (CI)"
+              type="text"
+              value={formData.ci}
+              onChange={(e) => setFormData({ ...formData, ci: e.target.value })}
+              placeholder="12345678"
             />
             <Select
               label="Rol *"
@@ -217,7 +217,7 @@ export function UsersManagement() {
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Usuario</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nombre</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">CI</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Rol</th>
               <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Acciones</th>
             </tr>
@@ -238,9 +238,9 @@ export function UsersManagement() {
                     </td>
                     <td className="px-6 py-4">
                       <Input
-                        type="email"
-                        value={formData.email}
-                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                        type="text"
+                        value={formData.ci}
+                        onChange={(e) => setFormData({ ...formData, ci: e.target.value })}
                       />
                     </td>
                     <td className="px-6 py-4">
@@ -279,7 +279,7 @@ export function UsersManagement() {
                       <span className="text-sm text-gray-900">{user.fullName || '-'}</span>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="text-sm text-gray-900">{user.email || '-'}</span>
+                      <span className="text-sm text-gray-900">{user.ci || '-'}</span>
                     </td>
                     <td className="px-6 py-4">
                       {getRoleBadge(user.role)}
