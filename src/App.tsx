@@ -4,7 +4,8 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import ReportForm from './pages/ReportForm';
 import ReportList from './pages/ReportList';
-import TestCommands from './pages/TestCommands';
+import ReportView from './pages/ReportView';
+import AdminPanel from './pages/AdminPanel';
 import './App.css';
 
 // Protected Route Component
@@ -49,6 +50,15 @@ function App() {
           </ProtectedRoute>
         }
       />
+
+      <Route
+        path="/reports/view/:id"
+        element={
+          <ProtectedRoute>
+            <ReportView />
+          </ProtectedRoute>
+        }
+      />
       
       <Route
         path="/reports"
@@ -58,8 +68,16 @@ function App() {
           </ProtectedRoute>
         }
       />
-      
-      <Route path="/test" element={<TestCommands />} />
+
+      <Route
+        path="/admin"
+        element={
+          <ProtectedRoute>
+            <AdminPanel />
+          </ProtectedRoute>
+        }
+      />
+
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   );

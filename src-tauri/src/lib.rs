@@ -74,6 +74,28 @@ pub fn run() {
             commands::operation_codes::get_operation_code,
             commands::operation_codes::update_operation_code,
             commands::operation_codes::delete_operation_code,
+
+            // Mud commands
+            commands::mud::create_mud_record,
+            commands::mud::list_mud_records,
+            commands::mud::create_mud_additive,
+            commands::mud::list_mud_additives,
+
+            // Time distribution commands
+            commands::time_distribution::save_time_distributions,
+            commands::time_distribution::list_time_distributions,
+
+            // Drilling parameters commands
+            commands::drilling_params::create_drilling_parameter,
+            commands::drilling_params::list_drilling_parameters,
+
+            // Deviation commands
+            commands::deviation::create_deviation_record,
+            commands::deviation::list_deviation_records,
+
+            // Operations log commands
+            commands::operations_log::create_operation_log,
+            commands::operations_log::list_operation_logs,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

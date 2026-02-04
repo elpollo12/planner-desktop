@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use crate::error::AppError;
 use crate::models::user::UserRole;
 use rusqlite::{params, Connection, Row};

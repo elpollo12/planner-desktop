@@ -1,9 +1,9 @@
-import React from 'react';
+import { ReactNode } from 'react';
 
 interface Column<T> {
   key: string;
   header: string;
-  render?: (row: T) => React.ReactNode;
+  render?: (row: T) => ReactNode;
   width?: string;
   align?: 'left' | 'center' | 'right';
 }
@@ -18,7 +18,7 @@ interface TableProps<T> {
   hoverable?: boolean;
 }
 
-export function Table<T extends Record<string, any>>({
+export function Table<T extends Record<string, unknown>>({
   columns,
   data,
   onRowClick,
@@ -27,8 +27,21 @@ export function Table<T extends Record<string, any>>({
   striped = true,
   hoverable = true,
 }: TableProps<T>) {
-  const getNestedValue = (obj: T, key: string) => {
-    return key.split('.').reduce((acc, part) => acc?.[part], obj);
+  const getNestedValue = (obj: T, key: string): unknown => {
+    return key.split('.').reduce<unknown>((acc, part) => {
+      if (acc && typeof acc === 'object' && part in acc) {
+        return (acc as Record<string, unknown>)[part];
+      }
+      return undefined;
+    }, obj);
+  };
+
+  const renderCellValue = (value: unknown): ReactNode => {
+    if (value === null || value === undefined) return '-';
+    if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+      return String(value);
+    }
+    return '-';
   };
 
   return (
@@ -75,7 +88,7 @@ export function Table<T extends Record<string, any>>({
                   >
                     {column.render
                       ? column.render(row)
-                      : getNestedValue(row, column.key) || '-'}
+                      : renderCellValue(getNestedValue(row, column.key))}
                   </td>
                 ))}
               </tr>

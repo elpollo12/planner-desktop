@@ -8,7 +8,6 @@ export function ObservationsSection() {
   const {
     register,
     control,
-    formState: { errors },
   } = useFormContext<CompleteReportData>();
 
   const { fields, append, remove } = useFieldArray({

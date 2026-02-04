@@ -6,3 +6,4 @@ export { Table } from './Table';
 export { Modal } from './Modal';
 export { Tabs, TabPanel } from './Tabs';
 export type { Tab } from './Tabs';
+export { AutoSaveIndicator, AutoSaveIndicatorCompact } from './AutoSaveIndicator';

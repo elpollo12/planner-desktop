@@ -4,9 +4,8 @@ import {
   LayoutDashboard,
   Plus,
   List,
-  Users,
-  Settings,
   LogOut,
+  Shield,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -37,15 +36,9 @@ export function Sidebar({ className = '' }: SidebarProps) {
       show: true,
     },
     {
-      name: 'Usuarios',
-      href: '/admin/users',
-      icon: Users,
-      show: user?.role === 'admin',
-    },
-    {
-      name: 'Configuración',
-      href: '/admin/settings',
-      icon: Settings,
+      name: 'Administración',
+      href: '/admin',
+      icon: Shield,
       show: user?.role === 'admin',
     },
   ];

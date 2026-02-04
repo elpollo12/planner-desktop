@@ -1,5 +1,5 @@
 use crate::error::AppError;
-use crate::models::user::{User, UserRole};
+use crate::models::user::UserRole;
 use crate::state::{AppState, SessionInfo};
 
 /// Hash a password using bcrypt with cost factor 12
