@@ -25,7 +25,7 @@ export function TabNavigation({
               onClick={() => onTabChange(tab.id)}
               className={`
                 flex items-center gap-2 px-6 py-4 border-b-2 transition-colors
-                whitespace-nowrap min-w-fit
+                whitespace-nowrap min-w-fit hover:cursor-pointer
                 ${
                   isActive
                     ? 'border-[#1E3A5F] text-[#1E3A5F] bg-blue-50'
