@@ -3,10 +3,10 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { Area, CreateAreaInput, UpdateAreaInput } from '@/types/rig';
 import { createAreaSchema, updateAreaSchema } from '@/schemas';
-import Modal from '@/components/ui/Modal';
-import Input from '@/components/ui/Input';
-import Select from '@/components/ui/Select';
-import Button from '@/components/ui/Button';
+import { DialogModal } from '@/components/ui/DialogModal';
+import { Input } from '@/components/ui/Input';
+import { Select } from '@/components/ui/Select';
+import { Button } from '@/components/ui/Button';
 import { COMMON_COUNTRIES, VENEZUELA_STATES } from '@/types/rig';
 
 interface AreaFormModalProps {
@@ -95,7 +95,7 @@ export default function AreaFormModal({
   const showStateInput = selectedCountry && selectedCountry !== 'Venezuela';
 
   return (
-    <Modal
+    <DialogModal
       isOpen={isOpen}
       onClose={handleClose}
       title={isEditMode ? 'Editar Área' : 'Crear Nueva Área'}
@@ -195,6 +195,6 @@ export default function AreaFormModal({
           </Button>
         </div>
       </form>
-    </Modal>
+    </DialogModal>
   );
 }

@@ -3,13 +3,13 @@ import { toast } from 'react-toastify';
 import { Plus, Pencil, Trash2, Search, Filter } from 'lucide-react';
 import { rigsApi, areasApi } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
-import type { RigWithArea, Area } from '@/types/rig';
+import type { RigWithArea, Area, CreateRigInput, UpdateRigInput } from '@/types/rig';
 import RigFormModal from './RigFormModal';
-import Button from '@/components/ui/Button';
-import Input from '@/components/ui/Input';
-import Select from '@/components/ui/Select';
-import Table from '@/components/ui/Table';
-import Card from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { Select } from '@/components/ui/Select';
+import { Table } from '@/components/ui/Table';
+import { Card } from '@/components/ui/Card';
 
 export default function RigsManagement() {
   const user = useAuthStore((state) => state.user);
@@ -122,12 +122,12 @@ export default function RigsManagement() {
 
   // Columnas de la tabla
   const columns = [
-    { key: 'name', label: 'Nombre' },
-    { key: 'operator', label: 'Operador' },
-    { key: 'power', label: 'Potencia' },
-    { key: 'area', label: 'Área' },
-    { key: 'status', label: 'Estado' },
-    { key: 'actions', label: 'Acciones' },
+    { key: 'name', header: 'Nombre' },
+    { key: 'operator', header: 'Operador' },
+    { key: 'power', header: 'Potencia' },
+    { key: 'area', header: 'Área' },
+    { key: 'status', header: 'Estado' },
+    { key: 'actions', header: 'Acciones' },
   ];
 
   // Renderizar filas de la tabla

@@ -3,12 +3,12 @@ import { toast } from 'react-toastify';
 import { Plus, Pencil, Trash2, Search } from 'lucide-react';
 import { areasApi } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
-import type { Area } from '@/types/rig';
+import type { Area, CreateAreaInput, UpdateAreaInput } from '@/types/rig';
 import AreaFormModal from './AreaFormModal';
-import Button from '@/components/ui/Button';
-import Input from '@/components/ui/Input';
-import Table from '@/components/ui/Table';
-import Card from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { Table } from '@/components/ui/Table';
+import { Card } from '@/components/ui/Card';
 
 export default function AreasManagement() {
   const user = useAuthStore((state) => state.user);
@@ -102,11 +102,11 @@ export default function AreasManagement() {
 
   // Columnas de la tabla
   const columns = [
-    { key: 'name', label: 'Nombre' },
-    { key: 'country', label: 'País' },
-    { key: 'state', label: 'Estado/Provincia' },
-    { key: 'status', label: 'Estado' },
-    { key: 'actions', label: 'Acciones' },
+    { key: 'name', header: 'Nombre' },
+    { key: 'country', header: 'País' },
+    { key: 'state', header: 'Estado/Provincia' },
+    { key: 'status', header: 'Estado' },
+    { key: 'actions', header: 'Acciones' },
   ];
 
   // Renderizar filas de la tabla

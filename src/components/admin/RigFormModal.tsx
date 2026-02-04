@@ -1,12 +1,12 @@
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import type { Rig, RigWithArea, CreateRigInput, UpdateRigInput, Area } from '@/types/rig';
+import type { RigWithArea, CreateRigInput, UpdateRigInput, Area } from '@/types/rig';
 import { createRigSchema, updateRigSchema } from '@/schemas';
-import Modal from '@/components/ui/Modal';
-import Input from '@/components/ui/Input';
-import Select from '@/components/ui/Select';
-import Button from '@/components/ui/Button';
+import { DialogModal } from '@/components/ui/DialogModal';
+import { Input } from '@/components/ui/Input';
+import { Select } from '@/components/ui/Select';
+import { Button } from '@/components/ui/Button';
 
 interface RigFormModalProps {
   isOpen: boolean;
@@ -85,7 +85,7 @@ export default function RigFormModal({
   ];
 
   return (
-    <Modal
+    <DialogModal
       isOpen={isOpen}
       onClose={handleClose}
       title={isEditMode ? 'Editar Taladro' : 'Crear Nuevo Taladro'}
@@ -172,6 +172,6 @@ export default function RigFormModal({
           </Button>
         </div>
       </form>
-    </Modal>
+    </DialogModal>
   );
 }
