@@ -3,8 +3,9 @@ import { toast } from 'react-toastify';
 import { Plus, Pencil, Trash2, Search, Filter } from 'lucide-react';
 import { rigsApi, areasApi } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
-import type { RigWithArea, Area, CreateRigInput, UpdateRigInput } from '@/types/rig';
-import RigFormModal from './RigFormModal';
+import { useModal } from '@/store/modalStore';
+import type { RigWithArea, Area } from '@/types/rig';
+import RigForm from './RigForm';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
@@ -13,16 +14,13 @@ import { Card } from '@/components/ui/Card';
 
 export default function RigsManagement() {
   const user = useAuthStore((state) => state.user);
+  const { openModal, closeModal } = useModal();
   const [rigs, setRigs] = useState<RigWithArea[]>([]);
   const [areas, setAreas] = useState<Area[]>([]);
   const [loading, setLoading] = useState(true);
   const [includeInactive, setIncludeInactive] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterArea, setFilterArea] = useState<string>('');
-  const [modalState, setModalState] = useState({
-    isOpen: false,
-    rig: null as RigWithArea | null,
-  });
 
   // Cargar taladros y áreas
   useEffect(() => {
@@ -48,53 +46,90 @@ export default function RigsManagement() {
 
   // Abrir modal para crear
   const handleCreate = () => {
-    setModalState({ isOpen: true, rig: null });
+    openModal(
+      <RigForm 
+        areas={areas}
+        onSubmit={async (data) => {
+          try {
+            await rigsApi.create(user!.id, data);
+            toast.success('Taladro creado exitosamente');
+            closeModal();
+            loadData();
+          } catch (error) {
+            console.error('Error creando taladro:', error);
+            toast.error('Error al crear el taladro');
+          }
+        }}
+      />,
+      {
+        title: 'Crear Nuevo Taladro',
+        size: 'md',
+        showCloseButton: true,
+      }
+    );
   };
 
   // Abrir modal para editar
   const handleEdit = (rig: RigWithArea) => {
-    setModalState({ isOpen: true, rig });
-  };
-
-  // Cerrar modal
-  const handleCloseModal = () => {
-    setModalState({ isOpen: false, rig: null });
-  };
-
-  // Guardar (crear o actualizar)
-  const handleSubmit = async (data: CreateRigInput | UpdateRigInput) => {
-    try {
-      if (modalState.rig) {
-        // Actualizar
-        await rigsApi.update(modalState.rig.id, user!.id, data);
-        toast.success('Taladro actualizado exitosamente');
-      } else {
-        // Crear
-        await rigsApi.create(user!.id, data as CreateRigInput);
-        toast.success('Taladro creado exitosamente');
+    openModal(
+      <RigForm 
+        rig={rig}
+        areas={areas}
+        onSubmit={async (data) => {
+          try {
+            await rigsApi.update(rig.id, user!.id, data);
+            toast.success('Taladro actualizado exitosamente');
+            closeModal();
+            loadData();
+          } catch (error) {
+            console.error('Error actualizando taladro:', error);
+            toast.error('Error al actualizar el taladro');
+          }
+        }}
+      />,
+      {
+        title: 'Editar Taladro',
+        size: 'md',
+        showCloseButton: true,
       }
-      handleCloseModal();
-      loadData();
-    } catch (error) {
-      console.error('Error guardando taladro:', error);
-      toast.error('Error al guardar el taladro');
-    }
+    );
   };
 
-  // Eliminar taladro
-  const handleDelete = async (rig: RigWithArea) => {
-    if (!confirm(`¿Estás seguro de eliminar el taladro "${rig.name}"?`)) {
-      return;
-    }
-
-    try {
-      await rigsApi.delete(rig.id);
-      toast.success('Taladro eliminado exitosamente');
-      loadData();
-    } catch (error) {
-      console.error('Error eliminando taladro:', error);
-      toast.error('Error al eliminar el taladro');
-    }
+  // Eliminar taladro con confirmación
+  const handleDelete = (rig: RigWithArea) => {
+    openModal(
+      <div className="space-y-3">
+        <p className="text-gray-700">
+          ¿Estás seguro de eliminar el taladro <strong className="text-gray-900">"{rig.name}"</strong>?
+        </p>
+        <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded">
+          <p><strong>Operador:</strong> {rig.operator}</p>
+          <p><strong>Potencia:</strong> {rig.power}</p>
+          {rig.areaName && <p><strong>Área:</strong> {rig.areaName}</p>}
+        </div>
+        <p className="text-sm text-gray-500">
+          Esta acción no se puede deshacer.
+        </p>
+      </div>,
+      {
+        title: 'Confirmar Eliminación',
+        size: 'md',
+        showConfirmButton: true,
+        showCancelButton: true,
+        confirmText: 'Eliminar',
+        cancelText: 'Cancelar',
+        onConfirm: async () => {
+          try {
+            await rigsApi.delete(rig.id);
+            toast.success('Taladro eliminado exitosamente');
+            loadData();
+          } catch (error) {
+            console.error('Error eliminando taladro:', error);
+            toast.error('Error al eliminar el taladro');
+          }
+        },
+      }
+    );
   };
 
   // Filtrar taladros
@@ -120,63 +155,77 @@ export default function RigsManagement() {
       })),
   ];
 
-  // Columnas de la tabla
+  // Columnas de la tabla con función render
   const columns = [
-    { key: 'name', header: 'Nombre' },
-    { key: 'operator', header: 'Operador' },
-    { key: 'power', header: 'Potencia' },
-    { key: 'area', header: 'Área' },
-    { key: 'status', header: 'Estado' },
-    { key: 'actions', header: 'Acciones' },
-  ];
-
-  // Renderizar filas de la tabla
-  const renderRow = (rig: RigWithArea) => ({
-    name: rig.name,
-    operator: rig.operator,
-    power: rig.power,
-    area: rig.areaName ? (
-      <div className="text-sm">
-        <div className="font-medium">{rig.areaName}</div>
-        <div className="text-gray-500">
-          {rig.areaCountry}, {rig.areaState}
+    { 
+      key: 'name', 
+      header: 'Nombre',
+      render: (rig: RigWithArea) => <span className="font-medium">{rig.name}</span>
+    },
+    { 
+      key: 'operator', 
+      header: 'Operador',
+      render: (rig: RigWithArea) => rig.operator
+    },
+    { 
+      key: 'power', 
+      header: 'Potencia',
+      render: (rig: RigWithArea) => rig.power
+    },
+    { 
+      key: 'area', 
+      header: 'Área',
+      render: (rig: RigWithArea) => rig.areaName ? (
+        <div className="text-sm">
+          <div className="font-medium">{rig.areaName}</div>
+          <div className="text-gray-500">
+            {rig.areaCountry}, {rig.areaState}
+          </div>
         </div>
-      </div>
-    ) : (
-      <span className="text-gray-400 italic">Sin área asignada</span>
-    ),
-    status: (
-      <span
-        className={`px-2 py-1 text-xs font-medium rounded-full ${
-          rig.active
-            ? 'bg-green-100 text-green-800'
-            : 'bg-gray-100 text-gray-800'
-        }`}
-      >
-        {rig.active ? 'Activo' : 'Inactivo'}
-      </span>
-    ),
-    actions: (
-      <div className="flex gap-2">
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={() => handleEdit(rig)}
-          title="Editar"
+      ) : (
+        <span className="text-gray-400 italic">Sin área asignada</span>
+      )
+    },
+    { 
+      key: 'status', 
+      header: 'Estado',
+      render: (rig: RigWithArea) => (
+        <span
+          className={`px-2 py-1 text-xs font-medium rounded-full ${
+            rig.active
+              ? 'bg-green-100 text-green-800'
+              : 'bg-gray-100 text-gray-800'
+          }`}
         >
-          <Pencil className="w-4 h-4" />
-        </Button>
-        <Button
-          variant="danger"
-          size="sm"
-          onClick={() => handleDelete(rig)}
-          title="Eliminar"
-        >
-          <Trash2 className="w-4 h-4" />
-        </Button>
-      </div>
-    ),
-  });
+          {rig.active ? 'Activo' : 'Inactivo'}
+        </span>
+      )
+    },
+    { 
+      key: 'actions', 
+      header: 'Acciones',
+      render: (rig: RigWithArea) => (
+        <div className="flex gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => handleEdit(rig)}
+            title="Editar"
+          >
+            <Pencil className="w-4 h-4" />
+          </Button>
+          <Button
+            variant="danger"
+            size="sm"
+            onClick={() => handleDelete(rig)}
+            title="Eliminar"
+          >
+            <Trash2 className="w-4 h-4" />
+          </Button>
+        </div>
+      )
+    },
+  ];
 
   return (
     <div className="space-y-6">
@@ -188,8 +237,10 @@ export default function RigsManagement() {
             Administra los taladros petroleros y sus áreas de operación
           </p>
         </div>
-        <Button variant="primary" onClick={handleCreate}>
-          <Plus className="w-4 h-4 mr-2" />
+        <Button variant="primary" 
+          onClick={handleCreate}
+          icon={<Plus/>}
+        >
           Crear Taladro
         </Button>
       </div>
@@ -263,8 +314,12 @@ export default function RigsManagement() {
                 : 'No hay taladros registrados'}
             </p>
             {!searchTerm && !filterArea && (
-              <Button variant="primary" onClick={handleCreate} className="mt-4">
-                <Plus className="w-4 h-4 mr-2" />
+              <Button 
+                variant="primary" 
+                onClick={handleCreate} 
+                className="mt-4" 
+                icon={<Plus className="w-4 h-4 mr-2" />}
+              >
                 Crear Primer Taladro
               </Button>
             )}
@@ -273,7 +328,7 @@ export default function RigsManagement() {
           <>
             <Table
               columns={columns}
-              data={filteredRigs.map(renderRow)}
+              data={filteredRigs}
             />
             <div className="mt-4 text-sm text-gray-600">
               Mostrando {filteredRigs.length} de {rigs.length} taladros
@@ -281,15 +336,6 @@ export default function RigsManagement() {
           </>
         )}
       </Card>
-
-      {/* Modal de formulario */}
-      <RigFormModal
-        isOpen={modalState.isOpen}
-        onClose={handleCloseModal}
-        onSubmit={handleSubmit}
-        rig={modalState.rig}
-        areas={areas}
-      />
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { MainLayout } from '../components/layout';
 import { Card } from '../components/ui';
-import { Users, Code, BarChart3, Activity, MapPin, Drill } from 'lucide-react';
+import { Users, BookMarked, BarChart3, Activity, MapPin, Drill } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { Navigate } from 'react-router-dom';
 import { UsersManagement } from '../components/admin/UsersManagement';
@@ -14,7 +14,7 @@ type AdminTab = 'users' | 'codes' | 'stats' | 'areas' | 'rigs';
 
 export default function AdminPanel() {
   const { user } = useAuthStore();
-  const [activeTab, setActiveTab] = useState<AdminTab>('users');
+  const [activeTab, setActiveTab] = useState<AdminTab>('stats');
 
   // Only admins can access
   if (!user || user.role !== 'admin') {
@@ -22,11 +22,11 @@ export default function AdminPanel() {
   }
 
   const tabs = [
+    { id: 'stats' as AdminTab, label: 'Estadísticas', icon: BarChart3 },
     { id: 'users' as AdminTab, label: 'Usuarios', icon: Users },
     { id: 'areas' as AdminTab, label: 'Áreas', icon: MapPin },
     { id: 'rigs' as AdminTab, label: 'Taladros', icon: Drill },
-    { id: 'codes' as AdminTab, label: 'Códigos de Operación', icon: Code },
-    { id: 'stats' as AdminTab, label: 'Estadísticas', icon: BarChart3 },
+    { id: 'codes' as AdminTab, label: 'Códigos de Operación', icon: BookMarked },
   ];
 
   return (

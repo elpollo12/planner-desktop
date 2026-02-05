@@ -18,7 +18,61 @@ export default function TestArea() {
 
     const { openModal } = useModal();
 
-    const openTestModal = () => {
+    const openTestModalSm = () => {
+      openModal(<TestModal />, {
+        title: 'Test Modal',
+        size: 'sm',
+        showConfirmButton: true,
+        showCancelButton: true,
+        disableConfirm: false,
+        confirmText: 'Aceptar',
+        cancelText: 'Cancelar',
+        onConfirm: () => {
+          console.log('Confirmed!');
+          notify();
+        },
+        onClose: () => {
+          console.log('Modal closed');
+        },
+      });
+    };
+        const openTestModalMd = () => {
+      openModal(<TestModal />, {
+        title: 'Test Modal',
+        size: 'md',
+        showConfirmButton: true,
+        showCancelButton: true,
+        disableConfirm: false,
+        confirmText: 'Aceptar',
+        cancelText: 'Cancelar',
+        onConfirm: () => {
+          console.log('Confirmed!');
+          notify();
+        },
+        onClose: () => {
+          console.log('Modal closed');
+        },
+      });
+    };
+        const openTestModalLg = () => {
+      openModal(<TestModal />, {
+        title: 'Test Modal',
+        size: 'lg',
+        showConfirmButton: true,
+        showCancelButton: true,
+        disableConfirm: false,
+        confirmText: 'Aceptar',
+        cancelText: 'Cancelar',
+        onConfirm: () => {
+          console.log('Confirmed!');
+          notify();
+        },
+        onClose: () => {
+          console.log('Modal closed');
+        },
+      });
+    };
+        const openTestModalFull = () => {
       openModal(<TestModal />, {
         title: 'Test Modal',
         size: 'full',
@@ -39,7 +93,7 @@ export default function TestArea() {
 
   return (
     <MainLayout title="Área de Pruebas" subtitle="Testing de componentes">
-      <div className="space-y-6 m-2">
+      <div className="space-y-6">
         <Button 
           variant='danger'
           className='m-2'
@@ -49,14 +103,39 @@ export default function TestArea() {
         </Button>
         <ToastContainer />
       </div>
-            <div className="space-y-6 m-2">
+      <div className="space-y-6 m-2">
               <Button
-          onClick={openTestModal}
+          onClick={openTestModalSm}
           variant='primary'
         >
-          Show Modal
+          Show Modal SM
         </Button>
       </div>
+            <div className="space-y-6 m-2">
+              <Button
+          onClick={openTestModalMd}
+          variant='primary'
+        >
+          Show Modal MD
+        </Button>
+      </div>
+            <div className="space-y-6 m-2">
+              <Button
+          onClick={openTestModalLg}
+          variant='primary'
+        >
+          Show Modal LG
+        </Button>
+      </div>
+            <div className="space-y-6 m-2">
+              <Button
+          onClick={openTestModalFull}
+          variant='primary'
+        >
+          Show Modal Full
+        </Button>
+      </div>
+      
 
     </MainLayout>
   );
