@@ -12,7 +12,7 @@ export function TabNavigation({
   completedTabs = new Set() 
 }: TabNavigationProps) {
   return (
-    <div className="border-b border-gray-200 bg-white">
+    <div className="border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
       <nav className="flex overflow-x-auto">
         {REPORT_TABS.map((tab: Tab) => {
           const Icon = tab.icon;
@@ -28,10 +28,15 @@ export function TabNavigation({
                 whitespace-nowrap min-w-fit hover:cursor-pointer
                 ${
                   isActive
-                    ? 'border-[#1E3A5F] text-[#1E3A5F] bg-blue-50'
-                    : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'
+                    ? ''
+                    : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:border-gray-300'
                 }
               `}
+              style={isActive ? {
+                color: 'var(--color-primary-500)',
+                borderBottomColor: 'var(--color-primary-500)',
+                backgroundColor: 'color-mix(in srgb, var(--color-primary-500) 10%, transparent)',
+              } : undefined}
             >
               <Icon size={20} />
               <div className="text-left">

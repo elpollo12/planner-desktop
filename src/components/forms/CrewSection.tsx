@@ -48,12 +48,12 @@ export function CrewSection() {
 
   return (
     <div className="p-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-6">
+      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-6">
         Cuadrilla por Turno
       </h3>
 
       {/* Shift Tabs */}
-      <div className="mb-6 border-b border-gray-200">
+      <div className="mb-6 border-b border-gray-200 dark:border-gray-700">
         <nav className="flex gap-4">
           {shifts.map((shift) => (
             <button
@@ -64,10 +64,14 @@ export function CrewSection() {
                 px-4 py-2 font-medium text-sm border-b-2 transition-colors
                 ${
                   activeShift === shift
-                    ? 'border-[#1E3A5F] text-[#1E3A5F]'
-                    : 'border-transparent text-gray-600 hover:text-gray-900'
+                    ? ''
+                    : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
                 }
               `}
+              style={activeShift === shift ? {
+                color: 'var(--color-primary-500)',
+                borderBottomColor: 'var(--color-primary-500)',
+              } : undefined}
             >
               {SHIFT_LABELS[shift]}
             </button>
@@ -92,7 +96,7 @@ export function CrewSection() {
       {/* Members Table */}
       <div className="mb-4">
         <div className="flex items-center justify-between mb-3">
-          <h4 className="text-sm font-semibold text-gray-700">
+          <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
             Miembros de la Cuadrilla
           </h4>
           <Button
@@ -107,27 +111,27 @@ export function CrewSection() {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead className="bg-gray-50 dark:bg-gray-800">
               <tr>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                   Posición
                 </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                   CI
                 </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                   Nombre
                 </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                   Horas
                 </th>
-                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                   Acciones
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               {fields.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-3 py-8 text-center text-gray-500 text-sm">
@@ -186,8 +190,8 @@ export function CrewSection() {
       </div>
 
       {/* Info Box */}
-      <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-        <p className="text-sm text-blue-800">
+      <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg">
+        <p className="text-sm text-blue-800 dark:text-blue-300">
           <strong>Nota:</strong> Registra todos los miembros de la cuadrilla para cada turno.
           Las horas trabajadas son opcionales pero recomendadas para reportes completos.
         </p>

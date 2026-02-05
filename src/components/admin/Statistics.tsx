@@ -75,8 +75,8 @@ export function Statistics() {
         <Card className="p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Total Reportes</p>
-              <p className="text-3xl font-bold text-gray-900">{stats.totalReports}</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Total Reportes</p>
+              <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">{stats.totalReports}</p>
             </div>
             <FileText className="text-blue-500" size={32} />
           </div>
@@ -85,8 +85,8 @@ export function Statistics() {
         <Card className="p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Total Usuarios</p>
-              <p className="text-3xl font-bold text-gray-900">{stats.totalUsers}</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Total Usuarios</p>
+              <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">{stats.totalUsers}</p>
             </div>
             <Users className="text-green-500" size={32} />
           </div>
@@ -95,8 +95,8 @@ export function Statistics() {
         <Card className="p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Tasa Aprobación</p>
-              <p className="text-3xl font-bold text-gray-900">
+              <p className="text-sm text-gray-600 dark:text-gray-400">Tasa Aprobación</p>
+              <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">
                 {stats.totalReports > 0
                   ? Math.round((stats.reportsByStatus.approved / stats.totalReports) * 100)
                   : 0}
@@ -110,8 +110,8 @@ export function Statistics() {
         <Card className="p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Pendientes</p>
-              <p className="text-3xl font-bold text-gray-900">{stats.reportsByStatus.submitted}</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Pendientes</p>
+              <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">{stats.reportsByStatus.submitted}</p>
             </div>
             <Clock className="text-yellow-500" size={32} />
           </div>
@@ -121,45 +121,45 @@ export function Statistics() {
       {/* Reports by Status */}
       <Card>
         <div className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-6">Reportes por Estado</h3>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-6">Reportes por Estado</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <div className="flex items-center gap-4">
-              <div className="p-3 rounded-full bg-gray-100">
+              <div className="p-3 rounded-full bg-gray-100 dark:bg-gray-700">
                 <Clock className="text-gray-600" size={24} />
               </div>
               <div>
-                <p className="text-2xl font-bold text-gray-900">{stats.reportsByStatus.draft}</p>
-                <p className="text-sm text-gray-600">Borradores</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{stats.reportsByStatus.draft}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Borradores</p>
               </div>
             </div>
 
             <div className="flex items-center gap-4">
-              <div className="p-3 rounded-full bg-blue-100">
+              <div className="p-3 rounded-full bg-blue-100 dark:bg-blue-900/40">
                 <FileText className="text-blue-600" size={24} />
               </div>
               <div>
                 <p className="text-2xl font-bold text-blue-600">{stats.reportsByStatus.submitted}</p>
-                <p className="text-sm text-gray-600">Enviados</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Enviados</p>
               </div>
             </div>
 
             <div className="flex items-center gap-4">
-              <div className="p-3 rounded-full bg-green-100">
+              <div className="p-3 rounded-full bg-green-100 dark:bg-green-900/40">
                 <CheckCircle className="text-green-600" size={24} />
               </div>
               <div>
                 <p className="text-2xl font-bold text-green-600">{stats.reportsByStatus.approved}</p>
-                <p className="text-sm text-gray-600">Aprobados</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Aprobados</p>
               </div>
             </div>
 
             <div className="flex items-center gap-4">
-              <div className="p-3 rounded-full bg-red-100">
+              <div className="p-3 rounded-full bg-red-100 dark:bg-red-900/40">
                 <XCircle className="text-red-600" size={24} />
               </div>
               <div>
                 <p className="text-2xl font-bold text-red-600">{stats.reportsByStatus.rejected}</p>
-                <p className="text-sm text-gray-600">Rechazados</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Rechazados</p>
               </div>
             </div>
           </div>
@@ -169,35 +169,35 @@ export function Statistics() {
       {/* Users by Role */}
       <Card>
         <div className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-6">Usuarios por Rol</h3>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-6">Usuarios por Rol</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="flex items-center gap-4">
-              <div className="p-3 rounded-full bg-purple-100">
+              <div className="p-3 rounded-full bg-purple-100 dark:bg-purple-900/40">
                 <Users className="text-purple-600" size={24} />
               </div>
               <div>
                 <p className="text-2xl font-bold text-purple-600">{stats.usersByRole.admin}</p>
-                <p className="text-sm text-gray-600">Administradores</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Administradores</p>
               </div>
             </div>
 
             <div className="flex items-center gap-4">
-              <div className="p-3 rounded-full bg-blue-100">
+              <div className="p-3 rounded-full bg-blue-100 dark:bg-blue-900/40">
                 <Users className="text-blue-600" size={24} />
               </div>
               <div>
                 <p className="text-2xl font-bold text-blue-600">{stats.usersByRole.supervisor}</p>
-                <p className="text-sm text-gray-600">Supervisores</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Supervisores</p>
               </div>
             </div>
 
             <div className="flex items-center gap-4">
-              <div className="p-3 rounded-full bg-green-100">
+              <div className="p-3 rounded-full bg-green-100 dark:bg-green-900/40">
                 <Users className="text-green-600" size={24} />
               </div>
               <div>
                 <p className="text-2xl font-bold text-green-600">{stats.usersByRole.operator}</p>
-                <p className="text-sm text-gray-600">Operadores</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Operadores</p>
               </div>
             </div>
           </div>
@@ -207,7 +207,7 @@ export function Statistics() {
       {/* Performance Chart Placeholder */}
       <Card>
         <div className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-6">Resumen de Actividad</h3>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-6">Resumen de Actividad</h3>
           <div className="text-center py-12 text-gray-500">
             <TrendingUp className="mx-auto mb-4 text-gray-400" size={48} />
             <p>Gráfico de actividad por implementar</p>

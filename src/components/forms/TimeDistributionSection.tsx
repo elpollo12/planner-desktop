@@ -73,10 +73,10 @@ export function TimeDistributionSection() {
     <div className="p-6">
       <div className="flex justify-between items-start mb-6">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
             Distribución de Tiempo por Operación
           </h3>
-          <p className="text-sm text-gray-600 mt-1">
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
             Cada turno debe sumar exactamente 24 horas
           </p>
         </div>
@@ -115,7 +115,7 @@ export function TimeDistributionSection() {
 
       {/* Table */}
       {fields.length === 0 ? (
-        <div className="text-center py-8 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+        <div className="text-center py-8 bg-gray-50 dark:bg-gray-800 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600">
           <AlertCircle className="mx-auto mb-3 text-gray-400" size={48} />
           <p className="text-gray-500 mb-3">No hay operaciones registradas</p>
           <Button
@@ -130,36 +130,36 @@ export function TimeDistributionSection() {
         </div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200 border border-gray-200 rounded-lg">
-            <thead className="bg-gray-50">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 border border-gray-200 dark:border-gray-700 rounded-lg">
+            <thead className="bg-gray-50 dark:bg-gray-800">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Código de Operación
                 </th>
-                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Mañana (hrs)
                 </th>
-                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Tarde (hrs)
                 </th>
-                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Noche (hrs)
                 </th>
-                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Total
                 </th>
-                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Acciones
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               {fields.map((field, index) => {
                 const row = distributions[index] || {};
                 const rowTotal = (row.hoursShift1 || 0) + (row.hoursShift2 || 0) + (row.hoursShift3 || 0);
                 
                 return (
-                  <tr key={field.id} className="hover:bg-gray-50">
+                  <tr key={field.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                     <td className="px-4 py-3">
                       <Select
                         {...register(`timeDistribution.distributions.${index}.operationCodeId`)}
@@ -214,7 +214,7 @@ export function TimeDistributionSection() {
                       />
                     </td>
                     <td className="px-4 py-3 text-center">
-                      <span className="font-medium text-gray-900">{rowTotal.toFixed(1)}h</span>
+                      <span className="font-medium text-gray-900 dark:text-gray-100">{rowTotal.toFixed(1)}h</span>
                     </td>
                     <td className="px-4 py-3 text-center">
                       <Button
@@ -230,7 +230,7 @@ export function TimeDistributionSection() {
                 );
               })}
             </tbody>
-            <tfoot className="bg-gray-50 font-bold">
+            <tfoot className="bg-gray-50 dark:bg-gray-800 font-bold">
               <tr>
                 <td className="px-4 py-3 text-right">TOTALES:</td>
                 <td className="px-4 py-3 text-center">

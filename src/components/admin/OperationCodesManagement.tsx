@@ -169,20 +169,20 @@ export function OperationCodesManagement() {
 
       {/* Codes Table */}
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200 border border-gray-200 rounded-lg">
-          <thead className="bg-gray-50">
+        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 border border-gray-200 dark:border-gray-700 rounded-lg">
+          <thead className="bg-gray-50 dark:bg-gray-800">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Código</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nombre</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Categoría</th>
-              <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Orden</th>
-              <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Estado</th>
-              <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Acciones</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Código</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Nombre</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Categoría</th>
+              <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Orden</th>
+              <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Estado</th>
+              <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Acciones</th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
             {codes.map((code) => (
-              <tr key={code.id} className="hover:bg-gray-50">
+              <tr key={code.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                 {editingId === code.id ? (
                   <>
                     <td className="px-6 py-4">
@@ -239,16 +239,16 @@ export function OperationCodesManagement() {
                 ) : (
                   <>
                     <td className="px-6 py-4">
-                      <span className="text-sm font-medium text-gray-900">{code.code}</span>
+                      <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{code.code}</span>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="text-sm text-gray-900">{code.name}</span>
+                      <span className="text-sm text-gray-900 dark:text-gray-100">{code.name}</span>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="text-sm text-gray-900">{code.category || '-'}</span>
+                      <span className="text-sm text-gray-900 dark:text-gray-100">{code.category || '-'}</span>
                     </td>
                     <td className="px-6 py-4 text-center">
-                      <span className="text-sm text-gray-900">{code.sortOrder}</span>
+                      <span className="text-sm text-gray-900 dark:text-gray-100">{code.sortOrder}</span>
                     </td>
                     <td className="px-6 py-4 text-center">
                       {code.active ? (

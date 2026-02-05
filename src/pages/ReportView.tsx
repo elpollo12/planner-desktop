@@ -286,7 +286,7 @@ export default function ReportView() {
         {/* Header Information */}
         <Card>
           <div className="p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Datos Generales</h3>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Datos Generales</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               <div>
                 <p className="text-sm text-gray-600">Número de Pozo</p>
@@ -336,7 +336,7 @@ export default function ReportView() {
         {crewShifts.length > 0 && (
           <Card>
             <div className="p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Cuadrilla por Turno</h3>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Cuadrilla por Turno</h3>
               {crewShifts.map((shift, idx) => (
                 <div key={idx} className="mb-6 last:mb-0">
                   <h4 className="font-medium text-gray-900 mb-3">
@@ -344,22 +344,22 @@ export default function ReportView() {
                   </h4>
                   {shift.members && shift.members.length > 0 ? (
                     <div className="overflow-x-auto">
-                      <table className="min-w-full divide-y divide-gray-200 border border-gray-200 rounded">
-                        <thead className="bg-gray-50">
+                      <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 border border-gray-200 dark:border-gray-700 rounded">
+                        <thead className="bg-gray-50 dark:bg-gray-800">
                           <tr>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Posición</th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">CI</th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Nombre</th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Horas</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Posición</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">CI</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Nombre</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Horas</th>
                           </tr>
                         </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
+                        <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                           {shift.members.map((member, mIdx) => (
                             <tr key={mIdx}>
-                              <td className="px-4 py-2 text-sm text-gray-900">{member.position}</td>
-                              <td className="px-4 py-2 text-sm text-gray-900">{member.ci}</td>
-                              <td className="px-4 py-2 text-sm text-gray-900">{member.name}</td>
-                              <td className="px-4 py-2 text-sm text-gray-900">{member.hours || '-'}</td>
+                              <td className="px-4 py-2 text-sm text-gray-900 dark:text-gray-100">{member.position}</td>
+                              <td className="px-4 py-2 text-sm text-gray-900 dark:text-gray-100">{member.ci}</td>
+                              <td className="px-4 py-2 text-sm text-gray-900 dark:text-gray-100">{member.name}</td>
+                              <td className="px-4 py-2 text-sm text-gray-900 dark:text-gray-100">{member.hours || '-'}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -378,28 +378,28 @@ export default function ReportView() {
         {timeDistributions.length > 0 && (
           <Card>
             <div className="p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Distribución de Tiempo</h3>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Distribución de Tiempo</h3>
               <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200 border border-gray-200 rounded">
-                  <thead className="bg-gray-50">
+                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 border border-gray-200 dark:border-gray-700 rounded">
+                  <thead className="bg-gray-50 dark:bg-gray-800">
                     <tr>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Código</th>
-                      <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">Mañana (hrs)</th>
-                      <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">Tarde (hrs)</th>
-                      <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">Noche (hrs)</th>
-                      <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">Total</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Código</th>
+                      <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Mañana (hrs)</th>
+                      <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Tarde (hrs)</th>
+                      <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Noche (hrs)</th>
+                      <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Total</th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                     {timeDistributions.map((td, idx) => (
                       <tr key={idx}>
-                        <td className="px-4 py-2 text-sm text-gray-900">
+                        <td className="px-4 py-2 text-sm text-gray-900 dark:text-gray-100">
                           {td.operationCode?.name || td.operationCodeId}
                         </td>
-                        <td className="px-4 py-2 text-sm text-gray-900 text-center">{td.hoursShift1}</td>
-                        <td className="px-4 py-2 text-sm text-gray-900 text-center">{td.hoursShift2}</td>
-                        <td className="px-4 py-2 text-sm text-gray-900 text-center">{td.hoursShift3}</td>
-                        <td className="px-4 py-2 text-sm font-medium text-gray-900 text-center">
+                        <td className="px-4 py-2 text-sm text-gray-900 dark:text-gray-100 text-center">{td.hoursShift1}</td>
+                        <td className="px-4 py-2 text-sm text-gray-900 dark:text-gray-100 text-center">{td.hoursShift2}</td>
+                        <td className="px-4 py-2 text-sm text-gray-900 dark:text-gray-100 text-center">{td.hoursShift3}</td>
+                        <td className="px-4 py-2 text-sm font-medium text-gray-900 dark:text-gray-100 text-center">
                           {td.hoursShift1 + td.hoursShift2 + td.hoursShift3}h
                         </td>
                       </tr>
@@ -415,11 +415,11 @@ export default function ReportView() {
         {bitRecords.length > 0 && (
           <Card>
             <div className="p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Records de Mechas</h3>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Records de Mechas</h3>
               <div className="space-y-4">
                 {bitRecords.map((bit, idx) => (
-                  <div key={idx} className="border border-gray-200 rounded-lg p-4">
-                    <h4 className="font-medium text-gray-900 mb-3">Mecha #{idx + 1}</h4>
+                  <div key={idx} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                    <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-3">Mecha #{idx + 1}</h4>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                       <div>
                         <p className="text-gray-600">Tamaño</p>
@@ -449,11 +449,11 @@ export default function ReportView() {
         {mudRecords.length > 0 && (
           <Card>
             <div className="p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Propiedades del Lodo</h3>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Propiedades del Lodo</h3>
               <div className="space-y-4">
                 {mudRecords.map((mud, idx) => (
-                  <div key={idx} className="border border-gray-200 rounded-lg p-4">
-                    <h4 className="font-medium text-gray-900 mb-3">
+                  <div key={idx} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                    <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-3">
                       Medición #{idx + 1} - {mud.shift ? SHIFT_LABELS[mud.shift] : ''} {mud.hour ? `(${mud.hour})` : ''}
                     </h4>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
@@ -493,24 +493,24 @@ export default function ReportView() {
         {mudAdditives.length > 0 && (
           <Card>
             <div className="p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Aditivos del Lodo</h3>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Aditivos del Lodo</h3>
               <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200 border border-gray-200 rounded">
-                  <thead className="bg-gray-50">
+                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 border border-gray-200 dark:border-gray-700 rounded">
+                  <thead className="bg-gray-50 dark:bg-gray-800">
                     <tr>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Turno</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Tipo</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Cantidad</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Turno</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Tipo</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Cantidad</th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                     {mudAdditives.map((additive, idx) => (
                       <tr key={idx}>
-                        <td className="px-4 py-2 text-sm text-gray-900">
+                        <td className="px-4 py-2 text-sm text-gray-900 dark:text-gray-100">
                           {additive.shift ? SHIFT_LABELS[additive.shift] : '-'}
                         </td>
-                        <td className="px-4 py-2 text-sm text-gray-900">{additive.additiveType || '-'}</td>
-                        <td className="px-4 py-2 text-sm text-gray-900">{additive.quantity || '-'}</td>
+                        <td className="px-4 py-2 text-sm text-gray-900 dark:text-gray-100">{additive.additiveType || '-'}</td>
+                        <td className="px-4 py-2 text-sm text-gray-900 dark:text-gray-100">{additive.quantity || '-'}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -524,44 +524,44 @@ export default function ReportView() {
         {drillingParams.length > 0 && (
           <Card>
             <div className="p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Parámetros de Perforación</h3>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Parámetros de Perforación</h3>
               <div className="space-y-4">
                 {drillingParams.map((param, idx) => (
-                  <div key={idx} className="border border-gray-200 rounded-lg p-4">
-                    <h4 className="font-medium text-gray-900 mb-3">
+                  <div key={idx} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                    <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-3">
                       Registro #{idx + 1} - {param.shift ? SHIFT_LABELS[param.shift] : ''} 
                       {param.depthFrom && param.depthTo && ` (${param.depthFrom} - ${param.depthTo} ft)`}
                     </h4>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-3">
                       {param.rotaryRpm && (
                         <div>
-                          <p className="text-gray-600">RPM</p>
-                          <p className="text-gray-900">{param.rotaryRpm}</p>
+                          <p className="text-gray-600 dark:text-gray-400">RPM</p>
+                          <p className="text-gray-900 dark:text-gray-100">{param.rotaryRpm}</p>
                         </div>
                       )}
                       {param.bitWeight && (
                         <div>
-                          <p className="text-gray-600">Peso Mecha</p>
-                          <p className="text-gray-900">{param.bitWeight}</p>
+                          <p className="text-gray-600 dark:text-gray-400">Peso Mecha</p>
+                          <p className="text-gray-900 dark:text-gray-100">{param.bitWeight}</p>
                         </div>
                       )}
                       {param.pumpPressure && (
                         <div>
-                          <p className="text-gray-600">Presión</p>
-                          <p className="text-gray-900">{param.pumpPressure}</p>
+                          <p className="text-gray-600 dark:text-gray-400">Presión</p>
+                          <p className="text-gray-900 dark:text-gray-100">{param.pumpPressure}</p>
                         </div>
                       )}
                       {param.totalGpm && (
                         <div>
-                          <p className="text-gray-600">GPM</p>
-                          <p className="text-gray-900">{param.totalGpm}</p>
+                          <p className="text-gray-600 dark:text-gray-400">GPM</p>
+                          <p className="text-gray-900 dark:text-gray-100">{param.totalGpm}</p>
                         </div>
                       )}
                     </div>
                     {param.lithologyNotes && (
                       <div>
-                        <p className="text-sm text-gray-600 mb-1">Notas:</p>
-                        <p className="text-sm text-gray-900">{param.lithologyNotes}</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Notas:</p>
+                        <p className="text-sm text-gray-900 dark:text-gray-100">{param.lithologyNotes}</p>
                       </div>
                     )}
                   </div>
@@ -575,26 +575,26 @@ export default function ReportView() {
         {deviationHistory.length > 0 && (
           <Card>
             <div className="p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Historial de Desviación</h3>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Historial de Desviación</h3>
               <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200 border border-gray-200 rounded">
-                  <thead className="bg-gray-50">
+                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 border border-gray-200 dark:border-gray-700 rounded">
+                  <thead className="bg-gray-50 dark:bg-gray-800">
                     <tr>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Profundidad (ft)</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Desviación (°)</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Dirección</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">TVO (ft)</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Desp. Horizontal (ft)</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Profundidad (ft)</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Desviación (°)</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Dirección</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">TVO (ft)</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Desp. Horizontal (ft)</th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                     {deviationHistory.map((dev, idx) => (
                       <tr key={idx}>
-                        <td className="px-4 py-2 text-sm text-gray-900">{dev.depth || '-'}</td>
-                        <td className="px-4 py-2 text-sm text-gray-900">{dev.deviation || '-'}</td>
-                        <td className="px-4 py-2 text-sm text-gray-900">{dev.direction || '-'}</td>
-                        <td className="px-4 py-2 text-sm text-gray-900">{dev.tvo || '-'}</td>
-                        <td className="px-4 py-2 text-sm text-gray-900">{dev.horizontalDisplacement || '-'}</td>
+                        <td className="px-4 py-2 text-sm text-gray-900 dark:text-gray-100">{dev.depth || '-'}</td>
+                        <td className="px-4 py-2 text-sm text-gray-900 dark:text-gray-100">{dev.deviation || '-'}</td>
+                        <td className="px-4 py-2 text-sm text-gray-900 dark:text-gray-100">{dev.direction || '-'}</td>
+                        <td className="px-4 py-2 text-sm text-gray-900 dark:text-gray-100">{dev.tvo || '-'}</td>
+                        <td className="px-4 py-2 text-sm text-gray-900 dark:text-gray-100">{dev.horizontalDisplacement || '-'}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -608,24 +608,24 @@ export default function ReportView() {
         {operationsLog.length > 0 && (
           <Card>
             <div className="p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Log de Operaciones</h3>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Log de Operaciones</h3>
               <div className="space-y-4">
                 {operationsLog.map((op, idx) => (
-                  <div key={idx} className="border border-gray-200 rounded-lg p-4">
+                  <div key={idx} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
                     <div className="flex items-start justify-between mb-2">
                       <div>
-                        <h4 className="font-medium text-gray-900">
+                        <h4 className="font-medium text-gray-900 dark:text-gray-100">
                           {op.operationCode || 'Operación'} #{idx + 1}
                         </h4>
-                        <p className="text-sm text-gray-600">
-                          {op.shift ? SHIFT_LABELS[op.shift] : ''} 
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          {op.shift ? SHIFT_LABELS[op.shift] : ''}
                           {op.timeFrom && op.timeTo && ` • ${op.timeFrom} - ${op.timeTo}`}
                           {op.duration && ` • Duración: ${op.duration}`}
                         </p>
                       </div>
                     </div>
                     {op.details && (
-                      <p className="text-sm text-gray-700 mt-2">{op.details}</p>
+                      <p className="text-sm text-gray-700 dark:text-gray-300 mt-2">{op.details}</p>
                     )}
                   </div>
                 ))}
@@ -638,30 +638,30 @@ export default function ReportView() {
         {drillString && (
           <Card>
             <div className="p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Sarta de Perforación</h3>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Sarta de Perforación</h3>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                 {drillString.size && (
                   <div>
-                    <p className="text-gray-600">Tamaño</p>
-                    <p className="text-gray-900">{drillString.size}</p>
+                    <p className="text-gray-600 dark:text-gray-400">Tamaño</p>
+                    <p className="text-gray-900 dark:text-gray-100">{drillString.size}</p>
                   </div>
                 )}
                 {drillString.weight && (
                   <div>
-                    <p className="text-gray-600">Peso</p>
-                    <p className="text-gray-900">{drillString.weight}</p>
+                    <p className="text-gray-600 dark:text-gray-400">Peso</p>
+                    <p className="text-gray-900 dark:text-gray-100">{drillString.weight}</p>
                   </div>
                 )}
                 {drillString.grade && (
                   <div>
-                    <p className="text-gray-600">Grado</p>
-                    <p className="text-gray-900">{drillString.grade}</p>
+                    <p className="text-gray-600 dark:text-gray-400">Grado</p>
+                    <p className="text-gray-900 dark:text-gray-100">{drillString.grade}</p>
                   </div>
                 )}
                 {drillString.connectionType && (
                   <div>
-                    <p className="text-gray-600">Conexión</p>
-                    <p className="text-gray-900">{drillString.connectionType}</p>
+                    <p className="text-gray-600 dark:text-gray-400">Conexión</p>
+                    <p className="text-gray-900 dark:text-gray-100">{drillString.connectionType}</p>
                   </div>
                 )}
               </div>

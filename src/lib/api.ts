@@ -301,3 +301,54 @@ export const rigsApi = {
   delete: (id: string) =>
     invoke<void>('delete_rig', { id }),
 };
+
+// ============================================================================
+// User Preferences Commands
+// ============================================================================
+
+export const preferencesApi = {
+  get: (sessionToken: string) =>
+    invoke<import('../types/preferences').UserPreferences | null>('get_user_preferences', { sessionToken }),
+
+  save: (sessionToken: string, input: import('../types/preferences').SavePreferencesInput) =>
+    invoke<import('../types/preferences').UserPreferences>('save_user_preferences', { sessionToken, input }),
+
+  uploadLogo: (sessionToken: string, fileData: number[], fileName: string) =>
+    invoke<string>('upload_logo', { sessionToken, fileData, fileName }),
+
+  removeLogo: (sessionToken: string) =>
+    invoke<void>('remove_logo', { sessionToken }),
+
+  getLogoData: (sessionToken: string) =>
+    invoke<string | null>('get_logo_data', { sessionToken }),
+};
+
+// ============================================================================
+// Sync Commands (Turso Cloud)
+// ============================================================================
+
+export const syncApi = {
+  getStatus: (sessionToken: string) =>
+    invoke<import('../types/sync').SyncStatus>('get_sync_status', { sessionToken }),
+
+  saveConfig: (sessionToken: string, input: import('../types/sync').SyncConfigInput) =>
+    invoke<import('../types/sync').SyncStatus>('save_sync_config', { sessionToken, input }),
+
+  testConnection: (sessionToken: string, tursoUrl: string, authToken: string) =>
+    invoke<string>('test_turso_connection', { sessionToken, tursoUrl, authToken }),
+
+  initializeRemote: (sessionToken: string) =>
+    invoke<string>('initialize_remote_database', { sessionToken }),
+
+  push: (sessionToken: string) =>
+    invoke<import('../types/sync').SyncResult>('sync_push', { sessionToken }),
+
+  pull: (sessionToken: string) =>
+    invoke<import('../types/sync').SyncResult>('sync_pull', { sessionToken }),
+
+  fullSync: (sessionToken: string) =>
+    invoke<import('../types/sync').SyncResult>('sync_full', { sessionToken }),
+
+  disable: (sessionToken: string) =>
+    invoke<void>('disable_sync', { sessionToken }),
+};

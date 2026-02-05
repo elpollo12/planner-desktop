@@ -18,7 +18,7 @@ export function Card({
   return (
     <div
       className={`
-        bg-white rounded-xl border border-gray-200
+        bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700
         shadow-sm
         ${noPadding ? '' : 'p-6'}
         ${className}
@@ -27,7 +27,7 @@ export function Card({
       {(title || subtitle) && (
         <div className={noPadding ? 'px-6 pt-6 pb-4' : 'mb-4'}>
           {title && (
-            <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{title}</h3>
           )}
           {subtitle && (
             <p className="text-sm text-gray-500 mt-1">{subtitle}</p>

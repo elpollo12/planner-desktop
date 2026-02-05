@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { toast } from 'react-toastify';
 import { areasApi } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';

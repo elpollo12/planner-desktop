@@ -1,6 +1,6 @@
 use crate::auth::{get_session, verify_password};
 use crate::models::user::User;
-use crate::state::{AppState, SessionInfo};
+use crate::state::{self, AppState, SessionInfo};
 use serde::{Deserialize, Serialize};
 use tauri::State;
 
@@ -45,24 +45,27 @@ pub async fn login(
     // Generate session token
     let session_token = uuid::Uuid::new_v4().to_string();
 
-    // Create session info
+    // Create session info (expires in 30 days)
+    let now = chrono::Utc::now();
+    let expires_at = now + chrono::Duration::days(30);
     let session_info = SessionInfo {
         user_id: user.id.clone(),
         username: user.username.clone(),
         role: user.role.clone(),
-        login_time: chrono::Utc::now().to_rfc3339(),
+        login_time: now.to_rfc3339(),
+        expires_at: expires_at.to_rfc3339(),
     };
 
-    // Store session
+    // Store session in memory
     let mut sessions = state
         .sessions
         .lock()
         .map_err(|e| format!("Failed to lock sessions: {}", e))?;
-
-    sessions.insert(session_token.clone(), session_info);
-
-    // Release locks
+    sessions.insert(session_token.clone(), session_info.clone());
     drop(sessions);
+
+    // Persist session to SQLite
+    state::save_session_to_db(&conn, &session_token, &session_info);
     drop(conn);
 
     // Return response
@@ -74,12 +77,20 @@ pub async fn login(
 
 #[tauri::command]
 pub async fn logout(session_token: String, state: State<'_, AppState>) -> Result<(), String> {
+    // Remove from memory
     let mut sessions = state
         .sessions
         .lock()
         .map_err(|e| format!("Failed to lock sessions: {}", e))?;
-
     sessions.remove(&session_token);
+    drop(sessions);
+
+    // Remove from SQLite
+    let conn = state
+        .db
+        .lock()
+        .map_err(|e| format!("Failed to lock database: {}", e))?;
+    state::remove_session_from_db(&conn, &session_token);
 
     Ok(())
 }

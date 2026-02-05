@@ -95,7 +95,7 @@ export const Modal = () => {
       {/* Modal Container */}
       <div className={`fixed inset-0 z-50 flex items-center justify-center p-4`}>
         <div
-          className={`relative bg-white flex flex-col rounded-lg shadow-xl w-full max-h-[90vh] ${sizeClasses[size]}
+          className={`relative bg-white dark:bg-gray-800 flex flex-col rounded-lg shadow-xl w-full max-h-[90vh] ${sizeClasses[size]}
           } transform transition-all duration-300 ${
             isOpen ? 'scale-100 opacity-100' : 'scale-95 opacity-0'
           } ${className}`}
@@ -105,11 +105,11 @@ export const Modal = () => {
         >
           {/* Header */}
           {(title || showCloseButton) && (
-            <div className="flex items-center justify-between p-6 pb-4 border-b border-gray-200">
+            <div className="flex items-center justify-between p-6 pb-4 border-b border-gray-200 dark:border-gray-700">
               {title && (
                 <h3
                   id="modal-title"
-                  className="text-xl font-semibold text-gray-900"
+                  className="text-xl font-semibold text-gray-900 dark:text-gray-100"
                 >
                   {title}
                 </h3>
@@ -117,7 +117,7 @@ export const Modal = () => {
               {showCloseButton && (
                 <button
                   onClick={handleCancel}
-                  className="ml-auto inline-flex items-center justify-center rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-900 transition-colors"
+                  className="ml-auto inline-flex items-center justify-center rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
                   type="button"
                   aria-label="Close modal"
                 >
@@ -132,7 +132,7 @@ export const Modal = () => {
 
           {/* Footer */}
           {(showConfirmButton || showCancelButton) && (
-            <div className="flex items-center justify-end gap-3 p-6 pt-4 border-t border-gray-200">
+            <div className="flex items-center justify-end gap-3 p-6 pt-4 border-t border-gray-200 dark:border-gray-700">
               {showCancelButton && (
                 <Button
                   variant="secondary"

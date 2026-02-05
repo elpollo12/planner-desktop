@@ -33,7 +33,8 @@ export default function RigFormModal({
     formState: { errors, isSubmitting },
     reset,
   } = useForm<CreateRigInput | UpdateRigInput>({
-    resolver: zodResolver(isEditMode ? updateRigSchema : createRigSchema),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    resolver: zodResolver(isEditMode ? updateRigSchema : createRigSchema) as any,
     defaultValues: {
       name: '',
       operator: '',

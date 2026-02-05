@@ -38,7 +38,7 @@ export function BitRecordSection() {
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
-        <h3 className="text-lg font-semibold text-gray-900">Record de Mechas</h3>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Record de Mechas</h3>
         <Button
           type="button"
           variant="secondary"
@@ -51,7 +51,7 @@ export function BitRecordSection() {
       </div>
 
       {fields.length === 0 ? (
-        <div className="text-center py-8 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+        <div className="text-center py-8 bg-gray-50 dark:bg-gray-800 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600">
           <p className="text-gray-500 mb-3">No hay mechas registradas</p>
           <Button
             type="button"
@@ -66,9 +66,9 @@ export function BitRecordSection() {
       ) : (
         <div className="space-y-6">
           {fields.map((field, index) => (
-            <div key={field.id} className="border border-gray-200 rounded-lg p-6 bg-white">
+            <div key={field.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-6 bg-white dark:bg-gray-800">
               <div className="flex justify-between items-center mb-4">
-                <h4 className="font-medium text-gray-900">Mecha #{index + 1}</h4>
+                <h4 className="font-medium text-gray-900 dark:text-gray-100">Mecha #{index + 1}</h4>
                 <Button
                   type="button"
                   variant="secondary"

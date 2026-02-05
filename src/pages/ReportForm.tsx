@@ -301,27 +301,35 @@ export default function ReportForm() {
           <div className="max-w-7xl mx-auto">
             {/* Tabs Navigation */}
             <Card className="mb-6">
-              <div className="border-b border-gray-200">
+              <div className="border-b border-gray-200 dark:border-gray-700">
                 <nav className="flex overflow-x-auto">
-                  {tabs.map((tab) => (
-                    <button
-                      key={tab.id}
-                      type="button"
-                      onClick={() => setActiveTab(tab.id)}
-                      className={`
-                        flex items-center gap-2 px-6 py-4 font-medium text-sm whitespace-nowrap
-                        border-b-2 transition-colors
-                        ${
-                          activeTab === tab.id
-                            ? 'border-[#1E3A5F] text-[#1E3A5F]'
-                            : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'
-                        }
-                      `}
-                    >
-                      <span className="text-lg">{tab.icon}</span>
-                      {tab.label}
-                    </button>
-                  ))}
+                  {tabs.map((tab) => {
+                    const isActive = activeTab === tab.id;
+                    return (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        onClick={() => setActiveTab(tab.id)}
+                        className={`
+                          flex items-center gap-2 px-6 py-4 font-medium text-sm whitespace-nowrap
+                          border-b-2 transition-colors
+                          ${
+                            isActive
+                              ? ''
+                              : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:border-gray-300'
+                          }
+                        `}
+                        style={isActive ? {
+                          color: 'var(--color-primary-500)',
+                          borderBottomColor: 'var(--color-primary-500)',
+                          backgroundColor: 'color-mix(in srgb, var(--color-primary-500) 10%, transparent)',
+                        } : undefined}
+                      >
+                        <span className="text-lg">{tab.icon}</span>
+                        {tab.label}
+                      </button>
+                    );
+                  })}
                 </nav>
               </div>
             </Card>

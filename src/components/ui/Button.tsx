@@ -28,15 +28,15 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
 
     const variants = {
       primary:
-        'bg-[#1E3A5F] text-white hover:bg-[#2d5a8f] active:bg-[#163050] focus:ring-[#1E3A5F]',
+        'bg-primary-500 text-white hover:bg-primary-400 active:bg-primary-700 focus:ring-primary-500',
       secondary:
         'bg-gray-200 text-gray-800 hover:bg-gray-300 active:bg-gray-400 focus:ring-gray-400',
       danger:
-        'bg-[#EF4444] text-white hover:bg-red-600 active:bg-red-700 focus:ring-red-500',
+        'bg-danger-500 text-white hover:bg-danger-600 active:bg-danger-700 focus:ring-danger-500',
       success:
-        'bg-[#22C55E] text-white hover:bg-green-600 active:bg-green-700 focus:ring-green-500',
+        'bg-success-500 text-white hover:bg-success-600 active:bg-success-700 focus:ring-success-500',
       outline:
-        'border-2 border-[#1E3A5F] text-[#1E3A5F] bg-transparent hover:bg-[#1E3A5F] hover:text-white active:bg-[#163050] focus:ring-[#1E3A5F]',
+        'border-2 border-primary-500 text-primary-500 bg-transparent hover:bg-primary-500 hover:text-white active:bg-primary-700 focus:ring-primary-500',
       ghost:
         'text-gray-600 bg-transparent hover:bg-gray-100 active:bg-gray-200 focus:ring-gray-400',
     };
