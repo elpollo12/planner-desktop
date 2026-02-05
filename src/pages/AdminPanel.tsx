@@ -14,7 +14,7 @@ type AdminTab = 'users' | 'codes' | 'stats' | 'areas' | 'rigs';
 
 export default function AdminPanel() {
   const { user } = useAuthStore();
-  const [activeTab, setActiveTab] = useState<AdminTab>('stats');
+  const [activeTab, setActiveTab] = useState<AdminTab>('users');
 
   // Only admins can access
   if (!user || user.role !== 'admin') {
@@ -22,11 +22,11 @@ export default function AdminPanel() {
   }
 
   const tabs = [
-    { id: 'stats' as AdminTab, label: 'Estadísticas', icon: BarChart3 },
     { id: 'users' as AdminTab, label: 'Usuarios', icon: Users },
     { id: 'areas' as AdminTab, label: 'Áreas', icon: MapPin },
     { id: 'rigs' as AdminTab, label: 'Taladros', icon: Drill },
     { id: 'codes' as AdminTab, label: 'Códigos de Operación', icon: BookMarked },
+    { id: 'stats' as AdminTab, label: 'Estadísticas', icon: BarChart3 },
   ];
 
   return (
@@ -34,8 +34,7 @@ export default function AdminPanel() {
       title="Panel de Administración"
       subtitle="Gestión del sistema"
     >
-      <div className="space-y-6">
-        {/* Quick Stats */}
+      {activeTab !== 'stats' && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <Card className="p-6">
             <div className="flex items-center justify-between">
@@ -76,8 +75,9 @@ export default function AdminPanel() {
               <Activity className="text-purple-500" size={32} />
             </div>
           </Card>
-        </div>
-
+        </div> 
+      )}
+      <div className="space-y-6">
         {/* Tabs */}
         <Card>
           <div className="border-b border-gray-200">

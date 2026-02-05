@@ -2,6 +2,9 @@
 // Areas Commands (Admin Only)
 // ============================================================================
 
+import { Area, CreateAreaInput, CreateRigInput, Rig, RigWithArea, UpdateAreaInput, UpdateRigInput } from "@/types";
+import { invoke } from "@tauri-apps/api/core";
+
 export const areasApi = {
   /**
    * Crear una nueva área
