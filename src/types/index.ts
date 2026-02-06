@@ -16,6 +16,7 @@ export interface User {
 export * from './rig';
 export * from './preferences';
 export * from './sync';
+export * from './operator';
 
 export interface LoginResponse {
   sessionToken: string;

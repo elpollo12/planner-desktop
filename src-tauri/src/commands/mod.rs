@@ -14,6 +14,7 @@ pub mod areas;
 pub mod rigs;
 pub mod preferences;
 pub mod sync;
+pub mod operators;
 
 // Re-export all command handlers for Tauri
 // Allow unused imports as these are registered in main.rs
@@ -47,3 +48,5 @@ pub use areas::*;
 pub use rigs::*;
 #[allow(unused_imports)]
 pub use preferences::*;
+#[allow(unused_imports)]
+pub use operators::*;

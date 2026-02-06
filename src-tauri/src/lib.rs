@@ -134,6 +134,16 @@ pub fn run() {
             commands::sync::sync_pull,
             commands::sync::sync_full,
             commands::sync::disable_sync,
+
+            // Operators commands
+            commands::operators::list_operators,
+            commands::operators::get_operator,
+            commands::operators::create_operator,
+            commands::operators::update_operator,
+            commands::operators::delete_operator,
+            commands::operators::upload_operator_logo,
+            commands::operators::remove_operator_logo,
+            commands::operators::get_operator_logo_data,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

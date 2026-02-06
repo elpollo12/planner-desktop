@@ -24,11 +24,18 @@ export function Statistics() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadStatistics();
-  }, []);
+    if (sessionToken) {
+      loadStatistics();
+    } else {
+      setLoading(false);
+    }
+  }, [sessionToken]);
 
   const loadStatistics = async () => {
-    if (!sessionToken) return;
+    if (!sessionToken) {
+      setLoading(false);
+      return;
+    }
 
     setLoading(true);
     try {

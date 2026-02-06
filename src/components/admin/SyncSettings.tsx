@@ -43,11 +43,18 @@ export default function SyncSettings() {
   const [authToken, setAuthToken] = useState('');
 
   useEffect(() => {
-    loadStatus();
-  }, []);
+    if (sessionToken) {
+      loadStatus();
+    } else {
+      setLoading(false);
+    }
+  }, [sessionToken]);
 
   const loadStatus = async () => {
-    if (!sessionToken) return;
+    if (!sessionToken) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const s = await syncApi.getStatus(sessionToken);

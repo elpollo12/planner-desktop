@@ -12,6 +12,7 @@ pub mod operations_log;
 pub mod area;
 pub mod rig;
 pub mod user_preferences;
+pub mod operator;
 
 // Re-export commonly used types
 // Allow unused imports as these are exposed for library consumers
@@ -43,3 +44,5 @@ pub use area::*;
 pub use rig::*;
 #[allow(unused_imports)]
 pub use user_preferences::*;
+#[allow(unused_imports)]
+pub use operator::*;

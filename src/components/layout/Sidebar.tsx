@@ -44,12 +44,6 @@ export function Sidebar({ className = '' }: SidebarProps) {
       icon: Shield,
       show: user?.role === 'admin',
     },
-        {
-      name: 'Test',
-      href: '/test',
-      icon: Shield,
-      show: user?.role === 'admin',
-    },
   ];
 
   const isActive = (href: string) => {

@@ -21,19 +21,28 @@ export function OperationCodesManagement() {
   });
 
   useEffect(() => {
-    loadCodes();
-  }, []);
+    if (sessionToken) {
+      loadCodes();
+    } else {
+      setLoading(false);
+    }
+  }, [sessionToken]);
 
   const loadCodes = async () => {
-    if (!sessionToken) return;
+    if (!sessionToken) {
+      setLoading(false);
+      return;
+    }
 
     setLoading(true);
     try {
+      console.log('[OperationCodes] Loading codes with token:', sessionToken?.substring(0, 8) + '...');
       const data = await operationCodesApi.list(sessionToken, false); // Include inactive
+      console.log('[OperationCodes] Loaded codes:', data);
       setCodes(data);
     } catch (error) {
-      console.error('Error loading codes:', error);
-      alert('Error al cargar códigos');
+      console.error('[OperationCodes] Error loading codes:', error);
+      alert(`Error al cargar códigos: ${error}`);
     } finally {
       setLoading(false);
     }

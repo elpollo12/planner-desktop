@@ -1,6 +1,7 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { RigWithArea, CreateRigInput, Area } from '@/types/rig';
+import type { Operator } from '@/types/operator';
 import { createRigSchema } from '@/schemas/rigSchemas';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
@@ -10,9 +11,10 @@ interface RigFormProps {
   onSubmit: (data: CreateRigInput) => Promise<void>;
   rig?: RigWithArea | null;
   areas: Area[];
+  operators: Operator[];
 }
 
-export default function RigForm({ onSubmit, rig, areas }: RigFormProps) {
+export default function RigForm({ onSubmit, rig, areas, operators }: RigFormProps) {
   const {
     register,
     handleSubmit,
@@ -37,6 +39,16 @@ export default function RigForm({ onSubmit, rig, areas }: RigFormProps) {
       })),
   ];
 
+  const operatorOptions = [
+    { value: '', label: 'Selecciona un operador' },
+    ...operators
+      .filter((op) => op.active)
+      .map((op) => ({
+        value: op.name,
+        label: op.name,
+      })),
+  ];
+
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <div>
@@ -53,13 +65,13 @@ export default function RigForm({ onSubmit, rig, areas }: RigFormProps) {
       </div>
 
       <div>
-        <label htmlFor="operator" className="block text-sm font-medium text-gray-700 mb-1">
+        <label htmlFor="operator" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
           Operador <span className="text-red-500">*</span>
         </label>
-        <Input
+        <Select
           id="operator"
           {...register('operator')}
-          placeholder="Ej: PDVSA, Chevron, Shell"
+          options={operatorOptions}
           error={errors.operator?.message}
           disabled={isSubmitting}
         />

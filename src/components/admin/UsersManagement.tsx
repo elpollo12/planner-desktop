@@ -29,19 +29,28 @@ export function UsersManagement() {
   });
 
   useEffect(() => {
-    loadUsers();
-  }, []);
+    if (sessionToken) {
+      loadUsers();
+    } else {
+      setLoading(false);
+    }
+  }, [sessionToken]);
 
   const loadUsers = async () => {
-    if (!sessionToken) return;
+    if (!sessionToken) {
+      setLoading(false);
+      return;
+    }
 
     setLoading(true);
     try {
+      console.log('[UsersManagement] Loading users with token:', sessionToken?.substring(0, 8) + '...');
       const data = await usersApi.list(sessionToken);
+      console.log('[UsersManagement] Loaded users:', data);
       setUsers(data);
     } catch (error) {
-      console.error('Error loading users:', error);
-      alert('Error al cargar usuarios');
+      console.error('[UsersManagement] Error loading users:', error);
+      alert(`Error al cargar usuarios: ${error}`);
     } finally {
       setLoading(false);
     }

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { MainLayout } from '../components/layout';
 import { Card } from '../components/ui';
-import { Users, Bookmark, BarChart3, Activity, MapPin, Palette, Cloud } from 'lucide-react';
+import { Users, Bookmark, BarChart3, Activity, MapPin, Palette, Cloud, Building2 } from 'lucide-react';
 import { OilRigIcon } from '../components/ui/icons/OilRigIcon';
 import { useAuthStore } from '../store/authStore';
 import { Navigate } from 'react-router-dom';
@@ -12,8 +12,9 @@ import AreasManagement from '../components/admin/AreasManagement';
 import RigsManagement from '../components/admin/RigsManagement';
 import AppearanceSettings from '../components/admin/AppearanceSettings';
 import SyncSettings from '../components/admin/SyncSettings';
+import OperatorsManagement from '../components/admin/OperatorsManagement';
 
-type AdminTab = 'users' | 'codes' | 'stats' | 'areas' | 'rigs' | 'appearance' | 'sync';
+type AdminTab = 'users' | 'codes' | 'stats' | 'areas' | 'rigs' | 'operators' | 'appearance' | 'sync';
 
 export default function AdminPanel() {
   const { user } = useAuthStore();
@@ -28,6 +29,7 @@ export default function AdminPanel() {
     { id: 'users' as AdminTab, label: 'Usuarios', icon: Users },
     { id: 'areas' as AdminTab, label: 'Áreas', icon: MapPin },
     { id: 'rigs' as AdminTab, label: 'Taladros', icon: OilRigIcon },
+    { id: 'operators' as AdminTab, label: 'Operadores', icon: Building2 },
     { id: 'codes' as AdminTab, label: 'Códigos de Operación', icon: Bookmark },
     { id: 'stats' as AdminTab, label: 'Estadísticas', icon: BarChart3 },
     { id: 'appearance' as AdminTab, label: 'Apariencia', icon: Palette },
@@ -118,6 +120,7 @@ export default function AdminPanel() {
             {activeTab === 'users' && <UsersManagement />}
             {activeTab === 'areas' && <AreasManagement />}
             {activeTab === 'rigs' && <RigsManagement />}
+            {activeTab === 'operators' && <OperatorsManagement />}
             {activeTab === 'codes' && <OperationCodesManagement />}
             {activeTab === 'stats' && <Statistics />}
             {activeTab === 'appearance' && <AppearanceSettings />}

@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { Plus, Pencil, Trash2, Search, Filter } from 'lucide-react';
-import { rigsApi, areasApi } from '@/lib/api';
+import { rigsApi, areasApi, operatorsApi } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 import { useModal } from '@/store/modalStore';
 import type { RigWithArea, Area } from '@/types/rig';
+import type { Operator } from '@/types/operator';
 import RigForm from './RigForm';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -13,10 +14,11 @@ import { Table } from '@/components/ui/Table';
 import { Card } from '@/components/ui/Card';
 
 export default function RigsManagement() {
-  const user = useAuthStore((state) => state.user);
+  const { user, sessionToken } = useAuthStore();
   const { openModal, closeModal } = useModal();
   const [rigs, setRigs] = useState<RigWithArea[]>([]);
   const [areas, setAreas] = useState<Area[]>([]);
+  const [operators, setOperators] = useState<Operator[]>([]);
   const [loading, setLoading] = useState(true);
   const [includeInactive, setIncludeInactive] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -30,12 +32,14 @@ export default function RigsManagement() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [rigsData, areasData] = await Promise.all([
+      const [rigsData, areasData, operatorsData] = await Promise.all([
         rigsApi.list(includeInactive),
         areasApi.list(true), // Cargar todas las áreas para el selector
+        sessionToken ? operatorsApi.list(sessionToken, true) : Promise.resolve([]),
       ]);
       setRigs(rigsData);
       setAreas(areasData);
+      setOperators(operatorsData);
     } catch (error) {
       console.error('Error cargando datos:', error);
       toast.error('Error al cargar los datos');
@@ -47,8 +51,9 @@ export default function RigsManagement() {
   // Abrir modal para crear
   const handleCreate = () => {
     openModal(
-      <RigForm 
+      <RigForm
         areas={areas}
+        operators={operators}
         onSubmit={async (data) => {
           try {
             await rigsApi.create(user!.id, data);
@@ -72,9 +77,10 @@ export default function RigsManagement() {
   // Abrir modal para editar
   const handleEdit = (rig: RigWithArea) => {
     openModal(
-      <RigForm 
+      <RigForm
         rig={rig}
         areas={areas}
+        operators={operators}
         onSubmit={async (data) => {
           try {
             await rigsApi.update(rig.id, user!.id, data);

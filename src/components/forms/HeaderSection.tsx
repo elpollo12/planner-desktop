@@ -1,12 +1,54 @@
+import { useEffect, useState } from 'react';
 import { useFormContext } from 'react-hook-form';
-import { Input } from '../ui';
+import { Input, Select } from '../ui';
 import type { CompleteReportData } from '../../schemas';
+import { useOperatorsStore } from '@/store/operatorsStore';
+import { useAuthStore } from '@/store/authStore';
+import { areasApi } from '@/lib/api';
+import type { Area } from '@/types/rig';
 
 export function HeaderSection() {
   const {
     register,
     formState: { errors },
   } = useFormContext<CompleteReportData>();
+
+  const { sessionToken } = useAuthStore();
+  const { operators, loadOperators } = useOperatorsStore();
+  const [areas, setAreas] = useState<Area[]>([]);
+
+  // Load operators and areas on mount
+  useEffect(() => {
+    if (sessionToken && operators.length === 0) {
+      loadOperators(sessionToken, true);
+    }
+    // Load areas
+    areasApi.list(false).then(setAreas).catch(console.error);
+  }, [sessionToken, operators.length, loadOperators]);
+
+  const operatorOptions = [
+    { value: '', label: 'Selecciona un operador' },
+    ...operators.map((op) => ({
+      value: op.name,
+      label: op.name,
+    })),
+  ];
+
+  const contractorOptions = [
+    { value: '', label: 'Selecciona un contratista' },
+    ...operators.map((op) => ({
+      value: op.name,
+      label: op.name,
+    })),
+  ];
+
+  const areaOptions = [
+    { value: '', label: 'Selecciona un campo/distrito' },
+    ...areas.map((area) => ({
+      value: area.name,
+      label: `${area.name} (${area.state})`,
+    })),
+  ];
 
   return (
     <div className="p-6">
@@ -33,12 +75,12 @@ export function HeaderSection() {
           required
         />
 
-        {/* Well Number */}
+        {/* Well Name */}
         <Input
-          label="Número de Pozo"
+          label="Nombre del Pozo"
           {...register('header.wellNumber')}
           error={errors.header?.wellNumber?.message}
-          placeholder="Ej: Well-123"
+          placeholder="Ej: Pozo Norte-1"
         />
 
         {/* API Number */}
@@ -57,31 +99,27 @@ export function HeaderSection() {
         />
 
         {/* Contractor */}
-        <Input
+        <Select
           label="Contratista"
           {...register('header.contractor')}
+          options={contractorOptions}
           error={errors.header?.contractor?.message}
         />
 
         {/* Operator */}
-        <Input
+        <Select
           label="Operador"
           {...register('header.operator')}
+          options={operatorOptions}
           error={errors.header?.operator?.message}
         />
 
         {/* Field/District */}
-        <Input
+        <Select
           label="Campo o Distrito"
           {...register('header.fieldDistrict')}
+          options={areaOptions}
           error={errors.header?.fieldDistrict?.message}
-        />
-
-        {/* Municipality */}
-        <Input
-          label="Municipio"
-          {...register('header.municipality')}
-          error={errors.header?.municipality?.message}
         />
 
         {/* Rig Number */}
