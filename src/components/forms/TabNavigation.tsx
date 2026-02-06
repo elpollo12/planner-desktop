@@ -22,6 +22,7 @@ export function TabNavigation({
           return (
             <button
               key={tab.id}
+              type="button"
               onClick={() => onTabChange(tab.id)}
               className={`
                 flex items-center gap-2 px-6 py-4 border-b-2 transition-colors

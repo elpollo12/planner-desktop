@@ -36,7 +36,6 @@ export function Header({ title, subtitle, actions, className = '' }: HeaderProps
             </button>
           </div>
         </div>
-        <BreadCrumps/>
       </div>
     </header>
   );

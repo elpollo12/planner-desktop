@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { MainLayout } from '../components/layout';
 import { Card } from '../components/ui';
-import { Users, Code, BarChart3, Activity, MapPin, Palette, Cloud } from 'lucide-react';
+import { Users, Bookmark, BarChart3, Activity, MapPin, Palette, Cloud } from 'lucide-react';
 import { OilRigIcon } from '../components/ui/icons/OilRigIcon';
 import { useAuthStore } from '../store/authStore';
 import { Navigate } from 'react-router-dom';
@@ -28,7 +28,7 @@ export default function AdminPanel() {
     { id: 'users' as AdminTab, label: 'Usuarios', icon: Users },
     { id: 'areas' as AdminTab, label: 'Áreas', icon: MapPin },
     { id: 'rigs' as AdminTab, label: 'Taladros', icon: OilRigIcon },
-    { id: 'codes' as AdminTab, label: 'Códigos de Operación', icon: Code },
+    { id: 'codes' as AdminTab, label: 'Códigos de Operación', icon: Bookmark },
     { id: 'stats' as AdminTab, label: 'Estadísticas', icon: BarChart3 },
     { id: 'appearance' as AdminTab, label: 'Apariencia', icon: Palette },
     { id: 'sync' as AdminTab, label: 'Sincronización', icon: Cloud },

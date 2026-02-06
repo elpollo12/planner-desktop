@@ -250,9 +250,20 @@ export default function ReportForm() {
     }
   };
 
+  // Handler para prevenir submit accidental al presionar Enter
+  const handleFormKeyDown = (e: React.KeyboardEvent<HTMLFormElement>) => {
+    if (e.key === 'Enter' && e.target instanceof HTMLInputElement) {
+      // Solo permitir Enter en el caso de búsqueda o campos específicos
+      const target = e.target as HTMLInputElement;
+      if (target.type !== 'submit' && target.type !== 'button') {
+        e.preventDefault();
+      }
+    }
+  };
+
   return (
     <FormProvider {...methods}>
-      <form onSubmit={hookFormSubmit(onSubmit)}>
+      <form onSubmit={hookFormSubmit(onSubmit)} onKeyDown={handleFormKeyDown}>
         <MainLayout
           title={isEditMode ? 'Editar Reporte DDR' : 'Nuevo Reporte DDR'}
           subtitle={isEditMode ? `Reporte #${id}` : 'Crear nuevo reporte diario de operaciones'}
