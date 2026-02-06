@@ -205,6 +205,7 @@ export interface FullReport extends Report {
 
 // Input para crear reporte
 export interface CreateReportInput {
+  reportNumber: number;
   reportDate: string;
   wellNumber?: string;
   apiNumber?: string;

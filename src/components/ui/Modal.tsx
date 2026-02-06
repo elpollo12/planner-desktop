@@ -76,7 +76,7 @@ export const Modal = () => {
     md: 'max-w-[28rem]',  // 28rem = 448px
     lg: 'max-w-[32rem]',  // 32rem = 512px
     xl: 'max-w-[36rem]',  // 36rem = 576px
-    full: 'w-full',
+    full: 'max-w-[90vw]',
   };
 
   if (!isOpen) return null;

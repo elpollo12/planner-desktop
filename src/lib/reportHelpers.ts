@@ -6,6 +6,7 @@ import type { Report, CrewShift, BitRecord } from '../types/report';
  */
 export function transformFormToReportData(formData: CompleteReportData) {
   return {
+    reportNumber: formData.header.reportNumber,
     reportDate: formData.header.reportDate,
     wellNumber: formData.header.wellNumber,
     apiNumber: formData.header.apiNumber,
@@ -75,6 +76,10 @@ export function validateMinimumData(formData: CompleteReportData): {
 
   if (!formData.header.reportDate) {
     errors.push('La fecha del reporte es requerida');
+  }
+
+  if (!formData.header.reportNumber || formData.header.reportNumber <= 0) {
+    errors.push('El número de reporte es requerido y debe ser positivo');
   }
 
   // Add more validations as needed
