@@ -141,7 +141,7 @@ export default function AppearanceSettings() {
             type="color"
             value={primaryColor}
             onChange={(e) => handlePrimaryColorChange(e.target.value)}
-            className="w-12 h-12 rounded-lg cursor-pointer border border-gray-300"
+            className="w-12 h-12 rounded-lg cursor-pointer border border-gray-300 dark:border-gray-600"
           />
           <div className="w-36">
             <Input
@@ -164,7 +164,7 @@ export default function AppearanceSettings() {
               key={color}
               onClick={() => handlePrimaryColorChange(color)}
               className={`w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 cursor-pointer ${
-                primaryColor === color ? 'border-gray-900 scale-110' : 'border-gray-300'
+                primaryColor === color ? 'border-gray-900 dark:border-gray-100 scale-110' : 'border-gray-300 dark:border-gray-600'
               }`}
               style={{ backgroundColor: color }}
               title={color}
@@ -197,7 +197,7 @@ export default function AppearanceSettings() {
             type="color"
             value={secondaryColor}
             onChange={(e) => handleSecondaryColorChange(e.target.value)}
-            className="w-12 h-12 rounded-lg cursor-pointer border border-gray-300"
+            className="w-12 h-12 rounded-lg cursor-pointer border border-gray-300 dark:border-gray-600"
           />
           <div className="w-36">
             <Input
@@ -220,7 +220,7 @@ export default function AppearanceSettings() {
               key={color}
               onClick={() => handleSecondaryColorChange(color)}
               className={`w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 cursor-pointer ${
-                secondaryColor === color ? 'border-gray-900 scale-110' : 'border-gray-300'
+                secondaryColor === color ? 'border-gray-900 dark:border-gray-100 scale-110' : 'border-gray-300 dark:border-gray-600'
               }`}
               style={{ backgroundColor: color }}
               title={color}
@@ -301,8 +301,8 @@ export default function AppearanceSettings() {
             onClick={() => setThemeMode('light')}
             className={`flex items-center gap-2 px-5 py-3 rounded-lg border-2 transition-all cursor-pointer ${
               themeMode === 'light'
-                ? 'border-primary-500 bg-primary-50 text-primary-700'
-                : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300'
+                : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-500'
             }`}
           >
             <Sun size={20} />
@@ -312,8 +312,8 @@ export default function AppearanceSettings() {
             onClick={() => setThemeMode('dark')}
             className={`flex items-center gap-2 px-5 py-3 rounded-lg border-2 transition-all cursor-pointer ${
               themeMode === 'dark'
-                ? 'border-primary-500 bg-primary-50 text-primary-700'
-                : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300'
+                : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-500'
             }`}
           >
             <Moon size={20} />

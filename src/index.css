@@ -146,6 +146,7 @@
     margin: 0;
     padding: 0;
     line-height: 1.5;
+    transition: background-color 0.1s ease-out, color 0.1s ease-out;
   }
 
   /* Headings */
@@ -506,6 +507,17 @@ html.dark * {
 html.dark .card {
   background-color: var(--color-gray-800);
   border-color: var(--color-gray-700);
+}
+
+/* Smooth transitions for theme changes */
+.card,
+input,
+textarea,
+select,
+thead,
+td,
+th {
+  transition: background-color 0.1s ease-out, border-color 0.1s ease-out, color 0.1s ease-out;
 }
 
 /* Dark mode - Form elements */
