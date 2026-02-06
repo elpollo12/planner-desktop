@@ -1,12 +1,8 @@
 import { useState } from 'react';
 import { MainLayout } from '../components/layout';
 import { Card } from '../components/ui';
-<<<<<<< HEAD
-import { Users, BookMarked, BarChart3, Activity, MapPin, Drill } from 'lucide-react';
-=======
 import { Users, Code, BarChart3, Activity, MapPin, Palette, Cloud } from 'lucide-react';
 import { OilRigIcon } from '../components/ui/icons/OilRigIcon';
->>>>>>> 1d68aaa4090c40c95d36af199e152a255d3a7fa5
 import { useAuthStore } from '../store/authStore';
 import { Navigate } from 'react-router-dom';
 import { UsersManagement } from '../components/admin/UsersManagement';
@@ -31,13 +27,8 @@ export default function AdminPanel() {
   const tabs = [
     { id: 'users' as AdminTab, label: 'Usuarios', icon: Users },
     { id: 'areas' as AdminTab, label: 'Áreas', icon: MapPin },
-<<<<<<< HEAD
-    { id: 'rigs' as AdminTab, label: 'Taladros', icon: Drill },
-    { id: 'codes' as AdminTab, label: 'Códigos de Operación', icon: BookMarked },
-=======
     { id: 'rigs' as AdminTab, label: 'Taladros', icon: OilRigIcon },
     { id: 'codes' as AdminTab, label: 'Códigos de Operación', icon: Code },
->>>>>>> 1d68aaa4090c40c95d36af199e152a255d3a7fa5
     { id: 'stats' as AdminTab, label: 'Estadísticas', icon: BarChart3 },
     { id: 'appearance' as AdminTab, label: 'Apariencia', icon: Palette },
     { id: 'sync' as AdminTab, label: 'Sincronización', icon: Cloud },
