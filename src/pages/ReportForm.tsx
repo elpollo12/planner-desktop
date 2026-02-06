@@ -15,6 +15,7 @@ import {
   bitRecordsApi
 } from '../lib/api';
 import { transformFormToReportData, transformReportToForm } from '../lib/reportHelpers';
+import { toast } from '../lib/toast';
 
 // Import form sections
 import { HeaderSection } from '../components/forms/HeaderSection';
@@ -125,7 +126,7 @@ export default function ReportForm() {
           console.log('Report loaded for editing:', report);
         } catch (error) {
           console.error('Error loading report:', error);
-          alert('Error al cargar el reporte');
+          toast.error('Error al cargar el reporte');
         }
       } else if (!isEditMode) {
         // Use the hook's loadFromStorage function
@@ -155,14 +156,14 @@ export default function ReportForm() {
       console.log('Draft saved successfully:', report);
 
       clearAutoSave();
-      alert('Borrador guardado exitosamente');
+      toast.success('Borrador guardado exitosamente');
       
-      // Navigate to edit mode with the created report ID
-      navigate(`/reports/edit/${report.id}`);
+      // Navigate to reports list
+      navigate('/reports');
       
     } catch (error) {
       console.error('Error saving draft:', error);
-      alert('Error al guardar el borrador: ' + error);
+      toast.error(`Error al guardar el borrador: ${error}`);
     } finally {
       setIsSaving(false);
     }
@@ -220,12 +221,12 @@ export default function ReportForm() {
       console.log('Report submitted');
 
       clearAutoSave();
-      alert('Reporte enviado exitosamente');
+      toast.success('Reporte enviado exitosamente');
       navigate('/reports');
       
     } catch (error) {
       console.error('Error submitting report:', error);
-      alert('Error al enviar el reporte: ' + error);
+      toast.error(`Error al enviar el reporte: ${error}`);
     }
   };
 

@@ -373,4 +373,185 @@ impl Report {
             }
         }
     }
+
+    /// Get report completeness - which sections have data
+    pub fn get_completeness(conn: &Connection, report_id: &str) -> Result<ReportCompleteness, AppError> {
+        // Check header (always true if report exists)
+        let has_header = true;
+
+        // Check crew shifts
+        let crew_count: i32 = conn.query_row(
+            "SELECT COUNT(*) FROM crew_shifts WHERE report_id = ?1",
+            params![report_id],
+            |row| row.get(0),
+        )?;
+        let has_crew = crew_count > 0;
+
+        // Check time distribution
+        let time_count: i32 = conn.query_row(
+            "SELECT COUNT(*) FROM time_distributions WHERE report_id = ?1",
+            params![report_id],
+            |row| row.get(0),
+        )?;
+        let has_time_distribution = time_count > 0;
+
+        // Check bit records
+        let bit_count: i32 = conn.query_row(
+            "SELECT COUNT(*) FROM bit_records WHERE report_id = ?1",
+            params![report_id],
+            |row| row.get(0),
+        )?;
+        let has_bit_records = bit_count > 0;
+
+        // Check mud records
+        let mud_count: i32 = conn.query_row(
+            "SELECT COUNT(*) FROM mud_records WHERE report_id = ?1",
+            params![report_id],
+            |row| row.get(0),
+        )?;
+        let has_mud = mud_count > 0;
+
+        // Check drilling parameters
+        let drilling_count: i32 = conn.query_row(
+            "SELECT COUNT(*) FROM drilling_parameters WHERE report_id = ?1",
+            params![report_id],
+            |row| row.get(0),
+        )?;
+        let has_drilling_params = drilling_count > 0;
+
+        // Check deviation history
+        let deviation_count: i32 = conn.query_row(
+            "SELECT COUNT(*) FROM deviation_history WHERE report_id = ?1",
+            params![report_id],
+            |row| row.get(0),
+        )?;
+        let has_deviation = deviation_count > 0;
+
+        // Check operations log
+        let operations_count: i32 = conn.query_row(
+            "SELECT COUNT(*) FROM operations_log WHERE report_id = ?1",
+            params![report_id],
+            |row| row.get(0),
+        )?;
+        let has_operations_log = operations_count > 0;
+
+        // Check drill string
+        let drill_string_count: i32 = conn.query_row(
+            "SELECT COUNT(*) FROM drill_string WHERE report_id = ?1",
+            params![report_id],
+            |row| row.get(0),
+        )?;
+        let has_drill_string = drill_string_count > 0;
+
+        Ok(ReportCompleteness {
+            has_header,
+            has_crew,
+            has_time_distribution,
+            has_bit_records,
+            has_mud,
+            has_drilling_params,
+            has_deviation,
+            has_operations_log,
+            has_drill_string,
+        })
+    }
+}
+
+
+    /// Get report completeness - which sections have data
+    pub fn get_completeness(conn: &Connection, report_id: &str) -> Result<ReportCompleteness, AppError> {
+        // Check header (always true if report exists)
+        let has_header = true;
+
+        // Check crew shifts
+        let crew_count: i32 = conn.query_row(
+            "SELECT COUNT(*) FROM crew_shifts WHERE report_id = ?1",
+            params![report_id],
+            |row| row.get(0),
+        )?;
+        let has_crew = crew_count > 0;
+
+        // Check time distribution
+        let time_count: i32 = conn.query_row(
+            "SELECT COUNT(*) FROM time_distributions WHERE report_id = ?1",
+            params![report_id],
+            |row| row.get(0),
+        )?;
+        let has_time_distribution = time_count > 0;
+
+        // Check bit records
+        let bit_count: i32 = conn.query_row(
+            "SELECT COUNT(*) FROM bit_records WHERE report_id = ?1",
+            params![report_id],
+            |row| row.get(0),
+        )?;
+        let has_bit_records = bit_count > 0;
+
+        // Check mud records
+        let mud_count: i32 = conn.query_row(
+            "SELECT COUNT(*) FROM mud_records WHERE report_id = ?1",
+            params![report_id],
+            |row| row.get(0),
+        )?;
+        let has_mud = mud_count > 0;
+
+        // Check drilling parameters
+        let drilling_count: i32 = conn.query_row(
+            "SELECT COUNT(*) FROM drilling_parameters WHERE report_id = ?1",
+            params![report_id],
+            |row| row.get(0),
+        )?;
+        let has_drilling_params = drilling_count > 0;
+
+        // Check deviation history
+        let deviation_count: i32 = conn.query_row(
+            "SELECT COUNT(*) FROM deviation_history WHERE report_id = ?1",
+            params![report_id],
+            |row| row.get(0),
+        )?;
+        let has_deviation = deviation_count > 0;
+
+        // Check operations log
+        let operations_count: i32 = conn.query_row(
+            "SELECT COUNT(*) FROM operations_log WHERE report_id = ?1",
+            params![report_id],
+            |row| row.get(0),
+        )?;
+        let has_operations_log = operations_count > 0;
+
+        // Check drill string
+        let drill_string_count: i32 = conn.query_row(
+            "SELECT COUNT(*) FROM drill_string WHERE report_id = ?1",
+            params![report_id],
+            |row| row.get(0),
+        )?;
+        let has_drill_string = drill_string_count > 0;
+
+        Ok(ReportCompleteness {
+            has_header,
+            has_crew,
+            has_time_distribution,
+            has_bit_records,
+            has_mud,
+            has_drilling_params,
+            has_deviation,
+            has_operations_log,
+            has_drill_string,
+        })
+    }
+
+
+/// Report completeness information
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReportCompleteness {
+    pub has_header: bool,
+    pub has_crew: bool,
+    pub has_time_distribution: bool,
+    pub has_bit_records: bool,
+    pub has_mud: bool,
+    pub has_drilling_params: bool,
+    pub has_deviation: bool,
+    pub has_operations_log: bool,
+    pub has_drill_string: bool,
 }

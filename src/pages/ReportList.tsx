@@ -4,13 +4,17 @@ import { MainLayout } from '../components/layout';
 import { Button, Card, Input, Select } from '../components/ui';
 import { Plus, Search, Eye, Edit, Trash2, CheckCircle, Clock, XCircle, FileSpreadsheet } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
+import { useModal } from '../store/modalStore';
+import ConfirmDeleteModal from '../components/modals/ConfirmDeleteReport';
 import { reportsApi } from '../lib/api';
 import { exportReportsToExcel } from '../lib/excelExport';
+import { toast } from '../lib/toast';
 import type { Report, ReportStatus } from '../types/report';
 
 export default function ReportList() {
   const navigate = useNavigate();
   const { sessionToken, user } = useAuthStore();
+  const { openModal } = useModal();
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
@@ -19,6 +23,18 @@ export default function ReportList() {
     dateFrom: '',
     dateTo: '',
   });
+  
+  // Delete modal state
+  const [deleteModal, setDeleteModal] = useState<{
+    isOpen: boolean;
+    reportId: string | null;
+    reportName: string | null;
+  }>({
+    isOpen: false,
+    reportId: null,
+    reportName: null,
+  });
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Load reports
   useEffect(() => {
@@ -41,7 +57,7 @@ export default function ReportList() {
       setReports(data);
     } catch (error) {
       console.error('Error loading reports:', error);
-      alert('Error al cargar reportes');
+      toast.error('Error al cargar reportes');
     } finally {
       setLoading(false);
     }
@@ -60,19 +76,38 @@ export default function ReportList() {
     });
   };
 
-  const handleDelete = async (reportId: string) => {
-    if (!sessionToken) return;
+  const handleDelete = (report: Report) => {
+    console.log('🔴 handleDelete called for report:', report.id);
     
-    if (!confirm('¿Estás seguro de eliminar este reporte?')) return;
+    const onConfirm = async () => {
+      console.log('✅ onConfirm called');
+      if (!sessionToken) return;
 
-    try {
-      await reportsApi.delete(sessionToken, reportId);
-      alert('Reporte eliminado exitosamente');
-      loadReports();
-    } catch (error) {
-      console.error('Error deleting report:', error);
-      alert('Error al eliminar reporte');
-    }
+      try {
+        await reportsApi.delete(sessionToken, report.id);
+        toast.success('Reporte eliminado exitosamente');
+        loadReports();
+      } catch (error) {
+        console.error('Error deleting report:', error);
+        toast.error('Error al eliminar reporte');
+        throw error; // Re-throw to keep modal open on error
+      }
+    };
+
+    console.log('📦 Calling openModal...');
+    openModal(
+      <ConfirmDeleteModal
+        message="¿Estás seguro de que deseas eliminar este reporte?"
+        itemName={`Reporte #${report.reportNumber} - ${new Date(report.reportDate).toLocaleDateString()}`}
+        onConfirm={onConfirm}
+      />,
+      {
+        title: '¿Eliminar reporte?',
+        size: 'sm',
+        showCloseButton: true,
+      }
+    );
+    console.log('✅ openModal called');
   };
 
   const getStatusBadge = (status: ReportStatus) => {
@@ -120,16 +155,21 @@ export default function ReportList() {
 
   const handleExportToExcel = () => {
     if (reports.length === 0) {
-      alert('No hay reportes para exportar');
+      toast.warning('No hay reportes para exportar');
       return;
     }
 
     try {
+      toast.info(`Exportando ${reports.length} reporte(s)...`, { autoClose: 1000 });
+      
       const filename = `reportes_${new Date().toISOString().split('T')[0]}.xlsx`;
       exportReportsToExcel(reports, filename);
+      
+      toast.success(`${reports.length} reporte(s) exportado(s) exitosamente`);
     } catch (error) {
       console.error('Error exporting to Excel:', error);
-      alert('Error al exportar a Excel');
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+      toast.error(`Error al exportar a Excel: ${errorMessage}`);
     }
   };
 
@@ -306,7 +346,7 @@ export default function ReportList() {
                           
                           {canDelete(report) && (
                             <button
-                              onClick={() => handleDelete(report.id)}
+                              onClick={() => handleDelete(report)}
                               className="text-red-600 hover:text-red-800 transition-colors"
                               title="Eliminar"
                             >
