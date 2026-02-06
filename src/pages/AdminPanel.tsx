@@ -40,7 +40,7 @@ export default function AdminPanel() {
       subtitle="Gestión del sistema"
     >
       {activeTab !== 'stats' && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-2">
           <Card className="p-6">
             <div className="flex items-center justify-between">
               <div>
