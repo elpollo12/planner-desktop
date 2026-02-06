@@ -19,7 +19,7 @@ export function Card({
     <div
       className={`
         bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700
-        shadow-sm
+        shadow-sm transition-colors duration-100
         ${noPadding ? '' : 'p-6'}
         ${className}
       `}

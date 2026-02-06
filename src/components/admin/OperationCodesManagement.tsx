@@ -117,8 +117,8 @@ export function OperationCodesManagement() {
     <div className="space-y-6">
       {/* Create Form */}
       {showCreateForm ? (
-        <div className="border border-gray-200 rounded-lg p-6 bg-gray-50">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Crear Nuevo Código</h3>
+        <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-6 bg-gray-50 dark:bg-gray-800">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Crear Nuevo Código</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <Input
               label="Código *"
