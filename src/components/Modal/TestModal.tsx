@@ -9,7 +9,7 @@ export default function TestModal() {
       <p className="text-gray-700">
         Este es un modal de prueba. Puedes usar este componente como ejemplo
         para crear tus propios modales personalizados.
-      </p>
+      </p>z
       
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <h4 className="text-sm font-medium text-blue-900 mb-2">

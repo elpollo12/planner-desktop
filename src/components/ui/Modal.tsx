@@ -72,10 +72,10 @@ export const Modal = () => {
   }, [onClose, closeModal]);
 
   const sizeClasses = {
-    sm: 'min-w-[24rem]',  // 24rem = 384px
-    md: 'min-w-[28rem]',  // 28rem = 448px
-    lg: 'min-w-[32rem]',  // 32rem = 512px
-    xl: 'min-w-[36rem]',  // 36rem = 576px
+    sm: 'max-w-[24rem]',  // 24rem = 384px
+    md: 'max-w-[28rem]',  // 28rem = 448px
+    lg: 'max-w-[32rem]',  // 32rem = 512px
+    xl: 'max-w-[36rem]',  // 36rem = 576px
     full: 'w-full',
   };
 
@@ -95,8 +95,7 @@ export const Modal = () => {
       {/* Modal Container */}
       <div className={`fixed inset-0 z-50 flex items-center justify-center p-4`}>
         <div
-          className={`relative bg-white dark:bg-gray-800 flex flex-col rounded-lg shadow-xl w-full max-h-[90vh] ${sizeClasses[size]}
-          } transform transition-all duration-300 ${
+          className={`relative bg-white dark:bg-gray-800 flex flex-col rounded-lg shadow-xl w-full max-h-[90vh] ${sizeClasses[size]} transform transition-all duration-300 ${
             isOpen ? 'scale-100 opacity-100' : 'scale-95 opacity-0'
           } ${className}`}
           role="dialog"

@@ -3,8 +3,9 @@ import { toast } from 'react-toastify';
 import { Plus, Pencil, Trash2, Search } from 'lucide-react';
 import { areasApi } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
-import type { Area, CreateAreaInput, UpdateAreaInput } from '@/types/rig';
-import AreaFormModal from './AreaFormModal';
+import { useModal } from '@/store/modalStore';
+import type { Area } from '@/types/rig';
+import AreaForm from './AreaForm';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Table } from '@/components/ui/Table';
@@ -12,14 +13,11 @@ import { Card } from '@/components/ui/Card';
 
 export default function AreasManagement() {
   const user = useAuthStore((state) => state.user);
+  const { openModal, closeModal } = useModal();
   const [areas, setAreas] = useState<Area[]>([]);
   const [loading, setLoading] = useState(true);
   const [includeInactive, setIncludeInactive] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [modalState, setModalState] = useState({
-    isOpen: false,
-    area: null as Area | null,
-  });
 
   // Cargar áreas
   useEffect(() => {
@@ -41,53 +39,83 @@ export default function AreasManagement() {
 
   // Abrir modal para crear
   const handleCreate = () => {
-    setModalState({ isOpen: true, area: null });
+    openModal(
+      <AreaForm 
+        onSubmit={async (data) => {
+          try {
+            await areasApi.create(user!.id, data);
+            toast.success('Área creada exitosamente');
+            closeModal();
+            loadAreas();
+          } catch (error) {
+            console.error('Error creando área:', error);
+            toast.error('Error al crear el área');
+          }
+        }}
+      />,
+      {
+        title: 'Crear Nueva Área',
+        size: 'md',
+        showCloseButton: true,
+      }
+    );
   };
 
   // Abrir modal para editar
   const handleEdit = (area: Area) => {
-    setModalState({ isOpen: true, area });
-  };
-
-  // Cerrar modal
-  const handleCloseModal = () => {
-    setModalState({ isOpen: false, area: null });
-  };
-
-  // Guardar (crear o actualizar)
-  const handleSubmit = async (data: CreateAreaInput | UpdateAreaInput) => {
-    try {
-      if (modalState.area) {
-        // Actualizar
-        await areasApi.update(modalState.area.id, user!.id, data);
-        toast.success('Área actualizada exitosamente');
-      } else {
-        // Crear
-        await areasApi.create(user!.id, data as CreateAreaInput);
-        toast.success('Área creada exitosamente');
+    openModal(
+      <AreaForm 
+        area={area}
+        onSubmit={async (data) => {
+          try {
+            await areasApi.update(area.id, user!.id, data);
+            toast.success('Área actualizada exitosamente');
+            closeModal();
+            loadAreas();
+          } catch (error) {
+            console.error('Error actualizando área:', error);
+            toast.error('Error al actualizar el área');
+          }
+        }}
+      />,
+      {
+        title: 'Editar Área',
+        size: 'md',
+        showCloseButton: true,
       }
-      handleCloseModal();
-      loadAreas();
-    } catch (error) {
-      console.error('Error guardando área:', error);
-      toast.error('Error al guardar el área');
-    }
+    );
   };
 
-  // Eliminar área
-  const handleDelete = async (area: Area) => {
-    if (!confirm(`¿Estás seguro de eliminar el área "${area.name}"?`)) {
-      return;
-    }
-
-    try {
-      await areasApi.delete(area.id);
-      toast.success('Área eliminada exitosamente');
-      loadAreas();
-    } catch (error) {
-      console.error('Error eliminando área:', error);
-      toast.error('Error al eliminar el área');
-    }
+  // Eliminar área con confirmación
+  const handleDelete = (area: Area) => {
+    openModal(
+      <div className="space-y-3">
+        <p className="text-gray-700">
+          ¿Estás seguro de eliminar el área <strong className="text-gray-900">"{area.name}"</strong>?
+        </p>
+        <p className="text-sm text-gray-500">
+          Esta acción no se puede deshacer.
+        </p>
+      </div>,
+      {
+        title: 'Confirmar Eliminación',
+        size: 'sm',
+        showConfirmButton: true,
+        showCancelButton: true,
+        confirmText: 'Eliminar',
+        cancelText: 'Cancelar',
+        onConfirm: async () => {
+          try {
+            await areasApi.delete(area.id);
+            toast.success('Área eliminada exitosamente');
+            loadAreas();
+          } catch (error) {
+            console.error('Error eliminando área:', error);
+            toast.error('Error al eliminar el área');
+          }
+        },
+      }
+    );
   };
 
   // Filtrar áreas
@@ -100,52 +128,63 @@ export default function AreasManagement() {
     return matchesSearch;
   });
 
-  // Columnas de la tabla
+  // Columnas de la tabla con función render
   const columns = [
-    { key: 'name', header: 'Nombre' },
-    { key: 'country', header: 'País' },
-    { key: 'state', header: 'Estado/Provincia' },
-    { key: 'status', header: 'Estado' },
-    { key: 'actions', header: 'Acciones' },
+    { 
+      key: 'name', 
+      header: 'Nombre',
+      render: (area: Area) => <span className="font-medium">{area.name}</span>
+    },
+    { 
+      key: 'country', 
+      header: 'País',
+      render: (area: Area) => area.country
+    },
+    { 
+      key: 'state', 
+      header: 'Estado/Provincia',
+      render: (area: Area) => area.state
+    },
+    { 
+      key: 'status', 
+      header: 'Estado',
+      render: (area: Area) => (
+        <span
+          className={`px-2 py-1 text-xs font-medium rounded-full ${
+            area.active
+              ? 'bg-green-100 text-green-800'
+              : 'bg-gray-100 text-gray-800'
+          }`}
+        >
+          {area.active ? 'Activa' : 'Inactiva'}
+        </span>
+      )
+    },
+    { 
+      key: 'actions', 
+      header: 'Acciones',
+      render: (area: Area) => (
+        <div className="flex gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => handleEdit(area)}
+            title="Editar"
+          >
+            <Pencil className="w-4 h-4" />
+          </Button>
+          <Button
+            variant="danger"
+            size="sm"
+            onClick={() => handleDelete(area)}
+            title="Eliminar"
+          >
+            <Trash2 className="w-4 h-4" />
+          </Button>
+        </div>
+      )
+    },
   ];
-
-  // Renderizar filas de la tabla
-  const renderRow = (area: Area) => ({
-    name: <span className="font-medium">{area.name}</span>,
-    country: area.country,
-    state: area.state,
-    status: (
-      <span
-        className={`px-2 py-1 text-xs font-medium rounded-full ${
-          area.active
-            ? 'bg-green-100 text-green-800'
-            : 'bg-gray-100 text-gray-800'
-        }`}
-      >
-        {area.active ? 'Activa' : 'Inactiva'}
-      </span>
-    ),
-    actions: (
-      <div className="flex gap-2">
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={() => handleEdit(area)}
-          title="Editar"
-        >
-          <Pencil className="w-4 h-4" />
-        </Button>
-        <Button
-          variant="danger"
-          size="sm"
-          onClick={() => handleDelete(area)}
-          title="Eliminar"
-        >
-          <Trash2 className="w-4 h-4" />
-        </Button>
-      </div>
-    ),
-  });
 
   return (
     <div className="space-y-6">
@@ -157,8 +196,10 @@ export default function AreasManagement() {
             Administra las áreas geográficas donde operan los taladros
           </p>
         </div>
-        <Button variant="primary" onClick={handleCreate}>
-          <Plus className="w-4 h-4 mr-2" />
+        <Button variant="primary" 
+          onClick={handleCreate}
+          icon={ <Plus />}
+          >
           Crear Área
         </Button>
       </div>
@@ -218,8 +259,11 @@ export default function AreasManagement() {
                 : 'No hay áreas registradas'}
             </p>
             {!searchTerm && (
-              <Button variant="primary" onClick={handleCreate} className="mt-4">
-                <Plus className="w-4 h-4 mr-2" />
+              <Button variant="primary" 
+                onClick={handleCreate} 
+                className="mt-4"
+                icon={ <Plus />}
+              >
                 Crear Primera Área
               </Button>
             )}
@@ -228,7 +272,7 @@ export default function AreasManagement() {
           <>
             <Table
               columns={columns}
-              data={filteredAreas.map(renderRow)}
+              data={filteredAreas}
             />
             <div className="mt-4 text-sm text-gray-600">
               Mostrando {filteredAreas.length} de {areas.length} áreas
@@ -236,14 +280,6 @@ export default function AreasManagement() {
           </>
         )}
       </Card>
-
-      {/* Modal de formulario */}
-      <AreaFormModal
-        isOpen={modalState.isOpen}
-        onClose={handleCloseModal}
-        onSubmit={handleSubmit}
-        area={modalState.area}
-      />
     </div>
   );
 }

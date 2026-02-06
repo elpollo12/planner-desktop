@@ -1,4 +1,5 @@
 import { Bell } from 'lucide-react';
+import { BreadCrumps } from '../ui';
 
 interface HeaderProps {
   title?: string;
@@ -35,6 +36,7 @@ export function Header({ title, subtitle, actions, className = '' }: HeaderProps
             </button>
           </div>
         </div>
+        <BreadCrumps/>
       </div>
     </header>
   );

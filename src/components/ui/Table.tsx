@@ -3,7 +3,7 @@ import { ReactNode } from 'react';
 interface Column<T> {
   key: string;
   header: string;
-  render?: (row: T) => ReactNode;
+  render: (row: T) => React.ReactNode;
   width?: string;
   align?: 'left' | 'center' | 'right';
 }
@@ -18,7 +18,7 @@ interface TableProps<T> {
   hoverable?: boolean;
 }
 
-export function Table<T extends Record<string, unknown>>({
+export function Table<T>({
   columns,
   data,
   onRowClick,

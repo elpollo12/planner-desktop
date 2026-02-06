@@ -128,7 +128,7 @@ export function Sidebar({ className = '' }: SidebarProps) {
           <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
             {user?.full_name}
           </p>
-          <p className="text-xs text-gray-500 capitalize">{user?.role}</p>
+          <p className="text-xs text-gray-500 capitalize">Rol: <strong>{user?.role}</strong></p>
         </div>
         <Button
           onClick={logout}

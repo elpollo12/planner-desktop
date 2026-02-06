@@ -39,8 +39,7 @@ export default function AdminPanel() {
       title="Panel de Administración"
       subtitle="Gestión del sistema"
     >
-      <div className="space-y-6">
-        {/* Quick Stats */}
+      {activeTab !== 'stats' && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <Card className="p-6">
             <div className="flex items-center justify-between">
@@ -81,8 +80,9 @@ export default function AdminPanel() {
               <Activity className="text-purple-500" size={32} />
             </div>
           </Card>
-        </div>
-
+        </div> 
+      )}
+      <div className="space-y-6">
         {/* Tabs */}
         <Card>
           <div className="border-b border-gray-200 dark:border-gray-700">
