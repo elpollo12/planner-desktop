@@ -26,7 +26,7 @@ export default function Dashboard() {
   return (
     <MainLayout
       title="Dashboard"
-      subtitle={`Bienvenido, ${user.full_name}`}
+      subtitle={`Bienvenido, ${user.fullName}`}
     >
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">

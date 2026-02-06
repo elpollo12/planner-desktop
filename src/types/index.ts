@@ -2,30 +2,31 @@
 export interface User {
   id: string;
   username: string;
-  full_name: string;
+  fullName: string;
   ci?: string;
   role: 'operator' | 'supervisor' | 'admin';
   position?: string;
   active: boolean;
-  last_login?: string;
-  created_at: string;
-  updated_at: string;
+  lastLogin?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // Re-export rig and area types
 export * from './rig';
 export * from './preferences';
 export * from './sync';
+export * from './operator';
 
 export interface LoginResponse {
-  session_token: string;
+  sessionToken: string;
   user: User;
 }
 
 export interface CreateUserRequest {
   username: string;
   password: string;
-  full_name: string;
+  fullName: string;
   ci?: string;
   role: string;
   position?: string;

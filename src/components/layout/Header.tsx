@@ -1,5 +1,4 @@
 import { Bell } from 'lucide-react';
-import { BreadCrumps } from '../ui';
 
 interface HeaderProps {
   title?: string;

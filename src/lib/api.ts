@@ -334,6 +334,9 @@ export const syncApi = {
   saveConfig: (sessionToken: string, input: import('../types/sync').SyncConfigInput) =>
     invoke<import('../types/sync').SyncStatus>('save_sync_config', { sessionToken, input }),
 
+  setInterval: (sessionToken: string, intervalMinutes: number) =>
+    invoke<import('../types/sync').SyncStatus>('set_sync_interval', { sessionToken, intervalMinutes }),
+
   testConnection: (sessionToken: string, tursoUrl: string, authToken: string) =>
     invoke<string>('test_turso_connection', { sessionToken, tursoUrl, authToken }),
 
@@ -351,4 +354,34 @@ export const syncApi = {
 
   disable: (sessionToken: string) =>
     invoke<void>('disable_sync', { sessionToken }),
+};
+
+// ============================================================================
+// Operators Commands
+// ============================================================================
+
+export const operatorsApi = {
+  list: (sessionToken: string, onlyActive: boolean = true) =>
+    invoke<import('../types/operator').Operator[]>('list_operators', { sessionToken, onlyActive }),
+
+  get: (sessionToken: string, operatorId: string) =>
+    invoke<import('../types/operator').Operator | null>('get_operator', { sessionToken, operatorId }),
+
+  create: (sessionToken: string, input: import('../types/operator').CreateOperatorInput) =>
+    invoke<import('../types/operator').Operator>('create_operator', { sessionToken, input }),
+
+  update: (sessionToken: string, operatorId: string, input: import('../types/operator').UpdateOperatorInput) =>
+    invoke<import('../types/operator').Operator>('update_operator', { sessionToken, operatorId, input }),
+
+  delete: (sessionToken: string, operatorId: string) =>
+    invoke<boolean>('delete_operator', { sessionToken, operatorId }),
+
+  uploadLogo: (sessionToken: string, operatorId: string, fileData: number[], fileName: string) =>
+    invoke<import('../types/operator').Operator>('upload_operator_logo', { sessionToken, operatorId, fileData, fileName }),
+
+  removeLogo: (sessionToken: string, operatorId: string) =>
+    invoke<import('../types/operator').Operator>('remove_operator_logo', { sessionToken, operatorId }),
+
+  getLogoData: (sessionToken: string, operatorId: string) =>
+    invoke<string | null>('get_operator_logo_data', { sessionToken, operatorId }),
 };

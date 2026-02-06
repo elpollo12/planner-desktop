@@ -127,12 +127,23 @@ pub fn run() {
             // Sync commands (Turso cloud)
             commands::sync::get_sync_status,
             commands::sync::save_sync_config,
+            commands::sync::set_sync_interval,
             commands::sync::test_turso_connection,
             commands::sync::initialize_remote_database,
             commands::sync::sync_push,
             commands::sync::sync_pull,
             commands::sync::sync_full,
             commands::sync::disable_sync,
+
+            // Operators commands
+            commands::operators::list_operators,
+            commands::operators::get_operator,
+            commands::operators::create_operator,
+            commands::operators::update_operator,
+            commands::operators::delete_operator,
+            commands::operators::upload_operator_logo,
+            commands::operators::remove_operator_logo,
+            commands::operators::get_operator_logo_data,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

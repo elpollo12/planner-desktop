@@ -12,6 +12,8 @@ use tauri::State;
 pub struct SyncConfigInput {
     pub turso_url: String,
     pub auth_token: String,
+    #[serde(default)]
+    pub sync_interval_minutes: Option<u32>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -23,6 +25,7 @@ pub struct SyncStatus {
     pub last_sync_at: Option<String>,
     pub last_push_at: Option<String>,
     pub last_pull_at: Option<String>,
+    pub sync_interval_minutes: u32,
 }
 
 fn build_status(cfg: &config::SyncConfig) -> SyncStatus {
@@ -37,6 +40,7 @@ fn build_status(cfg: &config::SyncConfig) -> SyncStatus {
         last_sync_at: cfg.last_sync_at.clone(),
         last_push_at: cfg.last_push_at.clone(),
         last_pull_at: cfg.last_pull_at.clone(),
+        sync_interval_minutes: cfg.sync_interval_minutes,
     }
 }
 
@@ -74,8 +78,28 @@ pub async fn save_sync_config(
     cfg.turso_url = input.turso_url.trim().to_string();
     cfg.auth_token = input.auth_token.trim().to_string();
     cfg.enabled = true;
+    if let Some(interval) = input.sync_interval_minutes {
+        cfg.sync_interval_minutes = interval;
+    }
 
     config::save_config(&cfg)?;
+    Ok(build_status(&cfg))
+}
+
+/// Update sync interval (admin only)
+#[tauri::command]
+pub async fn set_sync_interval(
+    session_token: String,
+    interval_minutes: u32,
+    state: State<'_, AppState>,
+) -> Result<SyncStatus, String> {
+    check_permission(&session_token, UserRole::Admin, &state)
+        .map_err(|e| e.to_string())?;
+
+    let mut cfg = config::load_config()?;
+    cfg.sync_interval_minutes = interval_minutes;
+    config::save_config(&cfg)?;
+
     Ok(build_status(&cfg))
 }
 

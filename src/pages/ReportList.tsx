@@ -38,11 +38,18 @@ export default function ReportList() {
 
   // Load reports
   useEffect(() => {
-    loadReports();
-  }, []);
+    if (sessionToken) {
+      loadReports();
+    } else {
+      setLoading(false);
+    }
+  }, [sessionToken]);
 
   const loadReports = async () => {
-    if (!sessionToken) return;
+    if (!sessionToken) {
+      setLoading(false);
+      return;
+    }
 
     setLoading(true);
     try {

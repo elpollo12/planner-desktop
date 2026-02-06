@@ -10,6 +10,13 @@ pub struct SyncConfig {
     pub last_sync_at: Option<String>,
     pub last_push_at: Option<String>,
     pub last_pull_at: Option<String>,
+    /// Auto-sync interval in minutes (0 = disabled)
+    #[serde(default = "default_sync_interval")]
+    pub sync_interval_minutes: u32,
+}
+
+fn default_sync_interval() -> u32 {
+    5 // Default: 5 minutes
 }
 
 impl Default for SyncConfig {
@@ -21,6 +28,7 @@ impl Default for SyncConfig {
             last_sync_at: None,
             last_push_at: None,
             last_pull_at: None,
+            sync_interval_minutes: default_sync_interval(),
         }
     }
 }

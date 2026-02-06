@@ -33,6 +33,14 @@ const SYNC_TABLES: &[TableDef] = &[
         has_updated_at: true,
     },
     TableDef {
+        name: "operators",
+        columns: &[
+            "id", "name", "logo_path", "active", "created_at", "updated_at",
+        ],
+        id_col: "id",
+        has_updated_at: true,
+    },
+    TableDef {
         name: "rigs",
         columns: &[
             "id", "name", "operator", "power", "area_id", "active",
@@ -220,6 +228,15 @@ CREATE TABLE IF NOT EXISTS areas (
   active INTEGER DEFAULT 1,
   created_by TEXT,
   updated_by TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS operators (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL UNIQUE,
+  logo_path TEXT,
+  active INTEGER DEFAULT 1,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );

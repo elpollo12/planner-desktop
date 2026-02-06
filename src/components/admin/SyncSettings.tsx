@@ -12,10 +12,21 @@ import {
   Wifi,
   WifiOff,
   Trash2,
+  Clock,
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { syncApi } from '../../lib/api';
 import type { SyncStatus, SyncResult } from '../../types/sync';
+
+const INTERVAL_OPTIONS = [
+  { value: 0, label: 'Desactivado' },
+  { value: 1, label: '1 minuto' },
+  { value: 5, label: '5 minutos' },
+  { value: 10, label: '10 minutos' },
+  { value: 15, label: '15 minutos' },
+  { value: 30, label: '30 minutos' },
+  { value: 60, label: '1 hora' },
+];
 
 export default function SyncSettings() {
   const { sessionToken } = useAuthStore();
@@ -32,11 +43,18 @@ export default function SyncSettings() {
   const [authToken, setAuthToken] = useState('');
 
   useEffect(() => {
-    loadStatus();
-  }, []);
+    if (sessionToken) {
+      loadStatus();
+    } else {
+      setLoading(false);
+    }
+  }, [sessionToken]);
 
   const loadStatus = async () => {
-    if (!sessionToken) return;
+    if (!sessionToken) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const s = await syncApi.getStatus(sessionToken);
@@ -161,6 +179,20 @@ export default function SyncSettings() {
       await loadStatus();
     } catch (error) {
       showMessage('error', `Error: ${error}`);
+    }
+  };
+
+  const handleIntervalChange = async (intervalMinutes: number) => {
+    if (!sessionToken) return;
+    try {
+      const s = await syncApi.setInterval(sessionToken, intervalMinutes);
+      setStatus(s);
+      showMessage('success', intervalMinutes > 0
+        ? `Sincronización automática cada ${intervalMinutes} minutos`
+        : 'Sincronización automática desactivada'
+      );
+    } catch (error) {
+      showMessage('error', `Error al cambiar intervalo: ${error}`);
     }
   };
 
@@ -362,6 +394,30 @@ export default function SyncSettings() {
                   {status.lastPullAt ? new Date(status.lastPullAt).toLocaleString() : 'Nunca'}
                 </p>
               </div>
+            </div>
+
+            {/* Auto-sync Interval */}
+            <div className="flex items-center justify-between p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
+              <div className="flex items-center gap-3">
+                <Clock className="text-purple-500" size={24} />
+                <div>
+                  <p className="font-medium text-purple-800 dark:text-purple-300">Sincronización Automática</p>
+                  <p className="text-sm text-purple-600 dark:text-purple-400">
+                    Sincroniza automáticamente en segundo plano
+                  </p>
+                </div>
+              </div>
+              <select
+                value={status.syncIntervalMinutes}
+                onChange={(e) => handleIntervalChange(parseInt(e.target.value))}
+                className="px-3 py-2 border border-purple-300 dark:border-purple-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              >
+                {INTERVAL_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
         </Card>

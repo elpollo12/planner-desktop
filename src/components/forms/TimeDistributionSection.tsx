@@ -27,8 +27,11 @@ export function TimeDistributionSection() {
   // Load operation codes
   useEffect(() => {
     const loadOperationCodes = async () => {
-      if (!sessionToken) return;
-      
+      if (!sessionToken) {
+        setLoading(false);
+        return;
+      }
+
       try {
         const codes = await operationCodesApi.list(sessionToken, true);
         setOperationCodes(codes);

@@ -5,11 +5,13 @@ export interface SyncStatus {
   lastSyncAt: string | null;
   lastPushAt: string | null;
   lastPullAt: string | null;
+  syncIntervalMinutes: number;
 }
 
 export interface SyncConfigInput {
   tursoUrl: string;
   authToken: string;
+  syncIntervalMinutes?: number;
 }
 
 export interface SyncResult {
