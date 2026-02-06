@@ -14,6 +14,8 @@ export interface User {
 
 // Re-export rig and area types
 export * from './rig';
+export * from './preferences';
+export * from './sync';
 
 export interface LoginResponse {
   session_token: string;

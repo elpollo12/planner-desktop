@@ -37,6 +37,10 @@ thiserror = "1.0"
 # Date/Time
 chrono = { version = "0.4", features = ["serde"] }
 
+# HTTP Client (for Turso cloud sync)
+reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
+tokio = { version = "1", features = ["full"] }
+
 # Utilities
 dirs = "5.0"
 

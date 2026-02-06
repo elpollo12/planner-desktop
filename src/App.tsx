@@ -1,5 +1,8 @@
+import { useEffect, useState } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './store/authStore';
+import { usePreferencesStore } from './store/preferencesStore';
+import { useThemeApplicator } from './hooks/useThemeApplicator';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import ReportForm from './pages/ReportForm';
@@ -21,6 +24,39 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 function App() {
+  const { sessionToken, getCurrentUser, isAuthenticated } = useAuthStore();
+  const { loadPreferences, clearPreferences } = usePreferencesStore();
+  const [validating, setValidating] = useState(true);
+
+  // Apply theme reactively whenever preferences change
+  useThemeApplicator();
+
+  // Validate session on startup
+  useEffect(() => {
+    if (sessionToken) {
+      getCurrentUser().finally(() => setValidating(false));
+    } else {
+      setValidating(false);
+    }
+  }, []);
+
+  // Load preferences whenever we have a valid session, clear on logout
+  useEffect(() => {
+    if (isAuthenticated && sessionToken) {
+      loadPreferences(sessionToken);
+    } else {
+      clearPreferences();
+    }
+  }, [isAuthenticated, sessionToken]);
+
+  if (validating) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500" />
+      </div>
+    );
+  }
+
   return (
     <Routes>
       <Route path="/login" element={<Login />} />

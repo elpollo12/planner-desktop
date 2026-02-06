@@ -28,10 +28,15 @@ export default function Login() {
   };
 
   return (
+<<<<<<< HEAD
     <div className="min-h-screen bg-gradient-to-br from-[#1E3A5F] to-[#2d5a8f] flex items-center justify-center">
       <Card className="sm:min-w-1/2 md:min-w-1/3 max-w-md">
+=======
+    <div className="min-h-screen bg-gradient-to-br from-primary-500 to-primary-400 flex items-center justify-center">
+      <Card className="min-w-1/3 max-w-md">
+>>>>>>> 1d68aaa4090c40c95d36af199e152a255d3a7fa5
         <div className="text-center mb-6">
-          <h1 className="text-3xl font-bold text-[#1E3A5F] mb-2">
+          <h1 className="text-3xl font-bold text-primary-500 mb-2">
             Sistema de Reportes DDR
           </h1>
           <p className="text-gray-600">Gestión de Taladros Petroleros</p>

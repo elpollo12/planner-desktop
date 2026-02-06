@@ -5,6 +5,7 @@ mod auth;
 mod db;
 mod models;
 mod commands;
+mod sync;
 
 use state::AppState;
 
@@ -22,8 +23,13 @@ pub fn run() {
     println!("Checking for default admin user...");
     db::create_default_admin_user(&db_conn).expect("Failed to create default admin user");
 
-    // Create application state
+    // Load persisted sessions from SQLite
+    println!("Loading persisted sessions...");
+    let sessions = state::load_sessions_from_db(&db_conn);
+
+    // Create application state with restored sessions
     let app_state = AppState::new(db_conn);
+    *app_state.sessions.lock().unwrap() = sessions;
 
     println!("Starting Tauri application...");
 
@@ -110,6 +116,23 @@ pub fn run() {
             commands::rigs::get_rig,
             commands::rigs::update_rig,
             commands::rigs::delete_rig,
+
+            // User preferences commands
+            commands::preferences::get_user_preferences,
+            commands::preferences::save_user_preferences,
+            commands::preferences::upload_logo,
+            commands::preferences::remove_logo,
+            commands::preferences::get_logo_data,
+
+            // Sync commands (Turso cloud)
+            commands::sync::get_sync_status,
+            commands::sync::save_sync_config,
+            commands::sync::test_turso_connection,
+            commands::sync::initialize_remote_database,
+            commands::sync::sync_push,
+            commands::sync::sync_pull,
+            commands::sync::sync_full,
+            commands::sync::disable_sync,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

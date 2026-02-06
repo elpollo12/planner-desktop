@@ -232,8 +232,8 @@ export default function RigsManagement() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Gestión de Taladros</h2>
-          <p className="text-sm text-gray-600 mt-1">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Gestión de Taladros</h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
             Administra los taladros petroleros y sus áreas de operación
           </p>
         </div>

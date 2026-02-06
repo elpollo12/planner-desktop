@@ -191,8 +191,8 @@ export default function AreasManagement() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Gestión de Áreas</h2>
-          <p className="text-sm text-gray-600 mt-1">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Gestión de Áreas</h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
             Administra las áreas geográficas donde operan los taladros
           </p>
         </div>

@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Dark mode based on .dark class instead of media query */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* ============================================
    CONFIGURACIÓN COMPLETA DE THEME
    Funciona para cualquier profundidad de rutas
@@ -18,6 +21,7 @@
   --color-primary-800: #112238;
   --color-primary-900: #0c1a2b;
   --color-primary-950: #070f18;
+  --color-primary-contrast: #ffffff;
 
   /* === SECONDARY COLORS (Naranja) === */
   --color-secondary-50: #fff7ed;
@@ -458,4 +462,151 @@
 * {
   scrollbar-width: thin;
   scrollbar-color: var(--color-gray-300) var(--color-gray-100);
+}
+
+/* ============================================
+   DARK MODE
+   ============================================ */
+html.dark {
+  color-scheme: dark;
+}
+
+html.dark body {
+  background-color: var(--color-gray-900);
+  color: var(--color-gray-100);
+}
+
+html.dark h1,
+html.dark h2,
+html.dark h3,
+html.dark h4,
+html.dark h5,
+html.dark h6 {
+  color: var(--color-gray-100);
+}
+
+html.dark a {
+  color: var(--color-primary-300);
+}
+
+html.dark a:hover {
+  color: var(--color-primary-200);
+}
+
+html.dark ::selection {
+  background-color: var(--color-primary-700);
+  color: var(--color-primary-100);
+}
+
+html.dark * {
+  border-color: var(--color-gray-700);
+}
+
+/* Dark mode - Cards */
+html.dark .card {
+  background-color: var(--color-gray-800);
+  border-color: var(--color-gray-700);
+}
+
+/* Dark mode - Form elements */
+html.dark input[type="text"],
+html.dark input[type="number"],
+html.dark input[type="email"],
+html.dark input[type="password"],
+html.dark input[type="date"],
+html.dark input[type="time"],
+html.dark input[type="datetime-local"],
+html.dark input[type="tel"],
+html.dark input[type="url"],
+html.dark input[type="search"],
+html.dark textarea,
+html.dark select {
+  background-color: var(--color-gray-800);
+  color: var(--color-gray-100);
+  border-color: var(--color-gray-600);
+}
+
+html.dark input:focus,
+html.dark textarea:focus,
+html.dark select:focus {
+  border-color: var(--color-primary-400);
+  box-shadow: 0 0 0 3px rgba(77, 143, 192, 0.2);
+}
+
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: var(--color-gray-500);
+}
+
+html.dark input:disabled,
+html.dark textarea:disabled,
+html.dark select:disabled {
+  background-color: var(--color-gray-700);
+  color: var(--color-gray-500);
+}
+
+html.dark label {
+  color: var(--color-gray-300);
+}
+
+/* Dark mode - Tables */
+html.dark thead {
+  background-color: var(--color-gray-800);
+}
+
+html.dark th {
+  color: var(--color-gray-400);
+  border-color: var(--color-gray-700);
+}
+
+html.dark td {
+  color: var(--color-gray-200);
+  border-color: var(--color-gray-700);
+}
+
+html.dark tbody tr:hover {
+  background-color: var(--color-gray-800);
+}
+
+/* Dark mode - Badges */
+html.dark .badge-primary {
+  background-color: var(--color-primary-900);
+  color: var(--color-primary-200);
+}
+
+html.dark .badge-success {
+  background-color: var(--color-success-900);
+  color: var(--color-success-200);
+}
+
+html.dark .badge-danger {
+  background-color: var(--color-danger-900);
+  color: var(--color-danger-200);
+}
+
+html.dark .badge-warning {
+  background-color: var(--color-warning-900);
+  color: var(--color-warning-200);
+}
+
+html.dark .badge-gray {
+  background-color: var(--color-gray-700);
+  color: var(--color-gray-200);
+}
+
+/* Dark mode - Scrollbar */
+html.dark ::-webkit-scrollbar-track {
+  background: var(--color-gray-800);
+}
+
+html.dark ::-webkit-scrollbar-thumb {
+  background: var(--color-gray-600);
+}
+
+html.dark ::-webkit-scrollbar-thumb:hover {
+  background: var(--color-gray-500);
+}
+
+html.dark * {
+  scrollbar-color: var(--color-gray-600) var(--color-gray-800);
 }

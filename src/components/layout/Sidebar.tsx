@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
+import { usePreferencesStore } from '../../store/preferencesStore';
 import { Button } from '../ui';
 import {
   LayoutDashboard,
@@ -16,6 +17,7 @@ interface SidebarProps {
 export function Sidebar({ className = '' }: SidebarProps) {
   const location = useLocation();
   const { user, logout } = useAuthStore();
+  const { logoDataUrl } = usePreferencesStore();
 
   const navigation = [
     {
@@ -71,12 +73,24 @@ export function Sidebar({ className = '' }: SidebarProps) {
 
   return (
     <aside
-      className={`w-64 bg-white border-r border-gray-200 flex flex-col ${className}`}
+      className={`w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col ${className}`}
     >
-      {/* Logo/Brand */}
-      <div className="p-6 border-b border-gray-200">
-        <h1 className="text-xl font-bold text-[#1E3A5F]">DDR System</h1>
-        <p className="text-xs text-gray-500 mt-1">Reportes Petroleros</p>
+      {/* Logo/Brand — height matches Header component (py-4) */}
+      <div className="h-[60px] px-6 border-b border-gray-200 dark:border-gray-700 flex items-center">
+        {logoDataUrl ? (
+          <div className="flex items-center justify-center w-full">
+            <img
+              src={logoDataUrl}
+              alt="Logo"
+              className="max-h-12 w-auto object-contain"
+            />
+          </div>
+        ) : (
+          <div>
+            <h1 className="text-xl font-bold text-primary-500">DDR System</h1>
+            <p className="text-xs text-gray-500 mt-1">Reportes Petroleros</p>
+          </div>
+        )}
       </div>
 
       {/* Navigation */}
@@ -95,10 +109,11 @@ export function Sidebar({ className = '' }: SidebarProps) {
                   flex items-center gap-3 px-4 py-3 rounded-lg transition-colors
                   ${
                     active
-                      ? 'bg-[#1E3A5F] text-white'
-                      : 'text-gray-700 hover:bg-gray-100'
+                      ? 'bg-primary-500'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                   }
                 `}
+                style={active ? { color: 'var(--color-primary-contrast)' } : undefined}
               >
                 <Icon size={20} />
                 <span className="font-medium">{item.name}</span>
@@ -108,9 +123,9 @@ export function Sidebar({ className = '' }: SidebarProps) {
       </nav>
 
       {/* User Info & Logout */}
-      <div className="p-4 border-t border-gray-200">
+      <div className="p-4 border-t border-gray-200 dark:border-gray-700">
         <div className="mb-3 px-2">
-          <p className="text-sm font-medium text-gray-900 truncate">
+          <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
             {user?.full_name}
           </p>
           <p className="text-xs text-gray-500 capitalize">Rol: <strong>{user?.role}</strong></p>
@@ -118,7 +133,9 @@ export function Sidebar({ className = '' }: SidebarProps) {
         <Button
           onClick={logout}
           variant="danger"
-          icon={<LogOut size={18} />}     
+          size="sm"
+          icon={<LogOut size={16} />}
+          className="w-full"
         >
           <span>Cerrar Sesión</span>
         </Button>

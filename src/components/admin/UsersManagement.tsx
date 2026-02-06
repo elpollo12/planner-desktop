@@ -150,8 +150,8 @@ export function UsersManagement() {
     <div className="space-y-6">
       {/* Create Form */}
       {showCreateForm ? (
-        <div className="border border-gray-200 rounded-lg p-6 bg-gray-50">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Crear Nuevo Usuario</h3>
+        <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-6 bg-gray-50 dark:bg-gray-800">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Crear Nuevo Usuario</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <Input
               label="Usuario *"
@@ -212,23 +212,23 @@ export function UsersManagement() {
 
       {/* Users Table */}
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200 border border-gray-200 rounded-lg">
-          <thead className="bg-gray-50">
+        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 border border-gray-200 dark:border-gray-700 rounded-lg">
+          <thead className="bg-gray-50 dark:bg-gray-800">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Usuario</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nombre</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">CI</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Rol</th>
-              <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Acciones</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Usuario</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Nombre</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">CI</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Rol</th>
+              <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Acciones</th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
             {users.map((user) => (
-              <tr key={user.id} className="hover:bg-gray-50">
+              <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                 {editingId === user.id ? (
                   <>
                     <td className="px-6 py-4">
-                      <span className="text-sm text-gray-900">{user.username}</span>
+                      <span className="text-sm text-gray-900 dark:text-gray-100">{user.username}</span>
                     </td>
                     <td className="px-6 py-4">
                       <Input
@@ -273,13 +273,13 @@ export function UsersManagement() {
                 ) : (
                   <>
                     <td className="px-6 py-4">
-                      <span className="text-sm font-medium text-gray-900">{user.username}</span>
+                      <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{user.username}</span>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="text-sm text-gray-900">{user.fullName || '-'}</span>
+                      <span className="text-sm text-gray-900 dark:text-gray-100">{user.fullName || '-'}</span>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="text-sm text-gray-900">{user.ci || '-'}</span>
+                      <span className="text-sm text-gray-900 dark:text-gray-100">{user.ci || '-'}</span>
                     </td>
                     <td className="px-6 py-4">
                       {getRoleBadge(user.role)}
