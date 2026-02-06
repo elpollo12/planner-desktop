@@ -1,7 +1,7 @@
 use crate::auth::check_permission;
 use crate::models::user::UserRole;
 use crate::state::AppState;
-use crate::sync::config;
+use crate::sync::config::{self, TursoCredentials};
 use crate::sync::engine::{self, SyncResult};
 use crate::sync::turso_client::TursoClient;
 use serde::{Deserialize, Serialize};
@@ -9,38 +9,39 @@ use tauri::State;
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct SyncConfigInput {
-    pub turso_url: String,
-    pub auth_token: String,
-    #[serde(default)]
-    pub sync_interval_minutes: Option<u32>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct SyncStatus {
+    /// Whether Turso credentials are configured via environment variables
     pub configured: bool,
+    /// Whether sync is enabled by admin
     pub enabled: bool,
-    pub turso_url: Option<String>,
+    /// Last full sync timestamp
     pub last_sync_at: Option<String>,
+    /// Last push timestamp
     pub last_push_at: Option<String>,
+    /// Last pull timestamp
     pub last_pull_at: Option<String>,
+    /// Auto-sync interval in minutes
     pub sync_interval_minutes: u32,
+    /// Error message if credentials are not configured
+    pub config_error: Option<String>,
 }
 
 fn build_status(cfg: &config::SyncConfig) -> SyncStatus {
+    let credentials_configured = TursoCredentials::is_configured();
+    let config_error = if !credentials_configured {
+        Some("Variables de entorno TURSO_DATABASE_URL y TURSO_AUTH_TOKEN no configuradas. Contacte al administrador del sistema.".to_string())
+    } else {
+        None
+    };
+
     SyncStatus {
-        configured: !cfg.turso_url.is_empty() && !cfg.auth_token.is_empty(),
-        enabled: cfg.enabled,
-        turso_url: if cfg.turso_url.is_empty() {
-            None
-        } else {
-            Some(cfg.turso_url.clone())
-        },
+        configured: credentials_configured,
+        enabled: cfg.enabled && credentials_configured,
         last_sync_at: cfg.last_sync_at.clone(),
         last_push_at: cfg.last_push_at.clone(),
         last_pull_at: cfg.last_pull_at.clone(),
         sync_interval_minutes: cfg.sync_interval_minutes,
+        config_error,
     }
 }
 
@@ -57,32 +58,24 @@ pub async fn get_sync_status(
     Ok(build_status(&cfg))
 }
 
-/// Save Turso sync configuration (admin only)
+/// Enable sync (admin only)
 #[tauri::command]
-pub async fn save_sync_config(
+pub async fn enable_sync(
     session_token: String,
-    input: SyncConfigInput,
     state: State<'_, AppState>,
 ) -> Result<SyncStatus, String> {
     check_permission(&session_token, UserRole::Admin, &state)
         .map_err(|e| e.to_string())?;
 
-    if input.turso_url.trim().is_empty() {
-        return Err("Turso URL is required".to_string());
-    }
-    if input.auth_token.trim().is_empty() {
-        return Err("Auth token is required".to_string());
+    // Check that credentials are configured
+    if !TursoCredentials::is_configured() {
+        return Err("No se puede habilitar: Variables de entorno TURSO_DATABASE_URL y TURSO_AUTH_TOKEN no configuradas.".to_string());
     }
 
     let mut cfg = config::load_config()?;
-    cfg.turso_url = input.turso_url.trim().to_string();
-    cfg.auth_token = input.auth_token.trim().to_string();
     cfg.enabled = true;
-    if let Some(interval) = input.sync_interval_minutes {
-        cfg.sync_interval_minutes = interval;
-    }
-
     config::save_config(&cfg)?;
+
     Ok(build_status(&cfg))
 }
 
@@ -103,18 +96,17 @@ pub async fn set_sync_interval(
     Ok(build_status(&cfg))
 }
 
-/// Test connection to Turso (admin only)
+/// Test connection to Turso using environment variables (admin only)
 #[tauri::command]
 pub async fn test_turso_connection(
     session_token: String,
-    turso_url: String,
-    auth_token: String,
     state: State<'_, AppState>,
 ) -> Result<String, String> {
     check_permission(&session_token, UserRole::Admin, &state)
         .map_err(|e| e.to_string())?;
 
-    let client = TursoClient::new(&turso_url, &auth_token);
+    let credentials = TursoCredentials::from_env()?;
+    let client = TursoClient::new(&credentials.database_url, &credentials.auth_token);
     client.test_connection().await?;
 
     Ok("Conexión exitosa con Turso".to_string())
@@ -129,12 +121,8 @@ pub async fn initialize_remote_database(
     check_permission(&session_token, UserRole::Admin, &state)
         .map_err(|e| e.to_string())?;
 
-    let cfg = config::load_config()?;
-    if cfg.turso_url.is_empty() || cfg.auth_token.is_empty() {
-        return Err("Sync no configurado. Guarda las credenciales primero.".to_string());
-    }
-
-    let client = TursoClient::new(&cfg.turso_url, &cfg.auth_token);
+    let credentials = TursoCredentials::from_env()?;
+    let client = TursoClient::new(&credentials.database_url, &credentials.auth_token);
     engine::initialize_remote_db(&client).await
 }
 
@@ -149,9 +137,7 @@ pub async fn sync_push(
         .map_err(|e| e.to_string())?;
 
     let cfg = config::load_config()?;
-    if cfg.turso_url.is_empty() || cfg.auth_token.is_empty() {
-        return Err("Sync no configurado".to_string());
-    }
+    let credentials = TursoCredentials::from_env()?;
 
     // Step 1: Read all local data synchronously (lock held briefly)
     let table_data = {
@@ -163,7 +149,7 @@ pub async fn sync_push(
     }; // Lock released here
 
     // Step 2: Push to Turso asynchronously (no lock held)
-    let client = TursoClient::new(&cfg.turso_url, &cfg.auth_token);
+    let client = TursoClient::new(&credentials.database_url, &credentials.auth_token);
     let result = engine::push_data_to_turso(&client, table_data).await?;
 
     // Step 3: Mark reports as synced (lock held briefly)
@@ -195,12 +181,10 @@ pub async fn sync_pull(
         .map_err(|e| e.to_string())?;
 
     let cfg = config::load_config()?;
-    if cfg.turso_url.is_empty() || cfg.auth_token.is_empty() {
-        return Err("Sync no configurado".to_string());
-    }
+    let credentials = TursoCredentials::from_env()?;
 
     // Step 1: Pull from Turso asynchronously (no lock needed)
-    let client = TursoClient::new(&cfg.turso_url, &cfg.auth_token);
+    let client = TursoClient::new(&credentials.database_url, &credentials.auth_token);
     let (pulled_data, mut result) =
         engine::pull_data_from_turso(&client, cfg.last_pull_at.as_deref()).await?;
 
@@ -238,11 +222,8 @@ pub async fn sync_full(
         .map_err(|e| e.to_string())?;
 
     let cfg = config::load_config()?;
-    if cfg.turso_url.is_empty() || cfg.auth_token.is_empty() {
-        return Err("Sync no configurado".to_string());
-    }
-
-    let client = TursoClient::new(&cfg.turso_url, &cfg.auth_token);
+    let credentials = TursoCredentials::from_env()?;
+    let client = TursoClient::new(&credentials.database_url, &credentials.auth_token);
     let now = chrono::Utc::now().to_rfc3339();
 
     // === PUSH ===
@@ -308,7 +289,7 @@ pub async fn sync_full(
     Ok(result)
 }
 
-/// Disable sync (admin only)
+/// Disable sync (admin only) - resets timestamps and enabled flag
 #[tauri::command]
 pub async fn disable_sync(
     session_token: String,
@@ -319,8 +300,6 @@ pub async fn disable_sync(
 
     let mut cfg = config::load_config()?;
     cfg.enabled = false;
-    cfg.turso_url = String::new();
-    cfg.auth_token = String::new();
     cfg.last_sync_at = None;
     cfg.last_push_at = None;
     cfg.last_pull_at = None;

@@ -1,11 +1,15 @@
 use serde::{Deserialize, Serialize};
+use std::env;
 use std::path::PathBuf;
 
+/// Environment variable names for Turso credentials
+pub const ENV_TURSO_DATABASE_URL: &str = "TURSO_DATABASE_URL";
+pub const ENV_TURSO_AUTH_TOKEN: &str = "TURSO_AUTH_TOKEN";
+
+/// Sync configuration stored locally (no credentials)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SyncConfig {
-    pub turso_url: String,
-    pub auth_token: String,
     pub enabled: bool,
     pub last_sync_at: Option<String>,
     pub last_push_at: Option<String>,
@@ -22,14 +26,49 @@ fn default_sync_interval() -> u32 {
 impl Default for SyncConfig {
     fn default() -> Self {
         Self {
-            turso_url: String::new(),
-            auth_token: String::new(),
             enabled: false,
             last_sync_at: None,
             last_push_at: None,
             last_pull_at: None,
             sync_interval_minutes: default_sync_interval(),
         }
+    }
+}
+
+/// Turso credentials read from environment variables
+#[derive(Debug, Clone)]
+pub struct TursoCredentials {
+    pub database_url: String,
+    pub auth_token: String,
+}
+
+impl TursoCredentials {
+    /// Load credentials from environment variables
+    pub fn from_env() -> Result<Self, String> {
+        let database_url = env::var(ENV_TURSO_DATABASE_URL)
+            .map_err(|_| format!("Variable de entorno {} no configurada", ENV_TURSO_DATABASE_URL))?;
+
+        let auth_token = env::var(ENV_TURSO_AUTH_TOKEN)
+            .map_err(|_| format!("Variable de entorno {} no configurada", ENV_TURSO_AUTH_TOKEN))?;
+
+        if database_url.is_empty() {
+            return Err(format!("{} está vacía", ENV_TURSO_DATABASE_URL));
+        }
+
+        if auth_token.is_empty() {
+            return Err(format!("{} está vacía", ENV_TURSO_AUTH_TOKEN));
+        }
+
+        Ok(Self {
+            database_url,
+            auth_token,
+        })
+    }
+
+    /// Check if credentials are configured (without loading them)
+    pub fn is_configured() -> bool {
+        env::var(ENV_TURSO_DATABASE_URL).map(|v| !v.is_empty()).unwrap_or(false)
+            && env::var(ENV_TURSO_AUTH_TOKEN).map(|v| !v.is_empty()).unwrap_or(false)
     }
 }
 

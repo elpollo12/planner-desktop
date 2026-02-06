@@ -24,18 +24,6 @@ export default function ReportList() {
     dateTo: '',
   });
   
-  // Delete modal state
-  const [deleteModal, setDeleteModal] = useState<{
-    isOpen: boolean;
-    reportId: string | null;
-    reportName: string | null;
-  }>({
-    isOpen: false,
-    reportId: null,
-    reportName: null,
-  });
-  const [isDeleting, setIsDeleting] = useState(false);
-
   // Load reports
   useEffect(() => {
     if (sessionToken) {

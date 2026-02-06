@@ -7,9 +7,14 @@ export interface User {
   role: 'operator' | 'supervisor' | 'admin';
   position?: string;
   active: boolean;
+  hasAllRigs: boolean;
   lastLogin?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface UserWithRigs extends User {
+  assignedRigIds: string[];
 }
 
 // Re-export rig and area types
@@ -17,6 +22,7 @@ export * from './rig';
 export * from './preferences';
 export * from './sync';
 export * from './operator';
+export { type UserRole, type CreateUserInput, type UpdateUserInput } from './user';
 
 export interface LoginResponse {
   sessionToken: string;
@@ -30,6 +36,8 @@ export interface CreateUserRequest {
   ci?: string;
   role: string;
   position?: string;
+  hasAllRigs?: boolean;
+  assignedRigIds?: string[];
 }
 
 // Report types

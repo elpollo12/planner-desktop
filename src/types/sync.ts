@@ -1,17 +1,18 @@
 export interface SyncStatus {
+  /** Whether Turso credentials are configured via environment variables */
   configured: boolean;
+  /** Whether sync is enabled by admin */
   enabled: boolean;
-  tursoUrl: string | null;
+  /** Last full sync timestamp */
   lastSyncAt: string | null;
+  /** Last push timestamp */
   lastPushAt: string | null;
+  /** Last pull timestamp */
   lastPullAt: string | null;
+  /** Auto-sync interval in minutes */
   syncIntervalMinutes: number;
-}
-
-export interface SyncConfigInput {
-  tursoUrl: string;
-  authToken: string;
-  syncIntervalMinutes?: number;
+  /** Error message if credentials are not configured */
+  configError: string | null;
 }
 
 export interface SyncResult {

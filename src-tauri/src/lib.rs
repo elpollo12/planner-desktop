@@ -11,6 +11,12 @@ use state::AppState;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Load environment variables from .env file (if it exists)
+    match dotenvy::dotenv() {
+        Ok(path) => println!("Loaded environment from: {:?}", path),
+        Err(_) => println!("No .env file found, using system environment variables"),
+    }
+
     // Initialize database
     println!("Initializing database...");
     let mut db_conn = db::initialize_database().expect("Failed to initialize database");
@@ -124,9 +130,9 @@ pub fn run() {
             commands::preferences::remove_logo,
             commands::preferences::get_logo_data,
 
-            // Sync commands (Turso cloud)
+            // Sync commands (Turso cloud - credentials via environment variables)
             commands::sync::get_sync_status,
-            commands::sync::save_sync_config,
+            commands::sync::enable_sync,
             commands::sync::set_sync_interval,
             commands::sync::test_turso_connection,
             commands::sync::initialize_remote_database,

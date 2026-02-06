@@ -1,6 +1,6 @@
 use crate::auth::{check_permission, get_session};
 use crate::models::report::{CreateReportRequest, Report, ReportFilters, UpdateReportRequest};
-use crate::models::user::UserRole;
+use crate::models::user::{User, UserRole};
 use crate::state::AppState;
 use tauri::State;
 
@@ -37,8 +37,18 @@ pub async fn list_reports(
         .lock()
         .map_err(|e| format!("Failed to lock database: {}", e))?;
 
-    let reports = Report::list(&conn, &filters, Some(&session.user_id), &user_role)
+    // Get user's accessible rig names for filtering
+    let accessible_rig_names = User::get_accessible_rig_names(&conn, &session.user_id)
         .map_err(|e| e.to_string())?;
+
+    let reports = Report::list(
+        &conn,
+        &filters,
+        Some(&session.user_id),
+        &user_role,
+        accessible_rig_names.as_deref(),
+    )
+    .map_err(|e| e.to_string())?;
 
     Ok(reports)
 }

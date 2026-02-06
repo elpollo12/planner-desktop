@@ -13,6 +13,8 @@ import {
   WifiOff,
   Trash2,
   Clock,
+  AlertTriangle,
+  Power,
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { syncApi } from '../../lib/api';
@@ -35,12 +37,9 @@ export default function SyncSettings() {
   const [syncing, setSyncing] = useState(false);
   const [testing, setTesting] = useState(false);
   const [initializing, setInitializing] = useState(false);
+  const [enabling, setEnabling] = useState(false);
   const [lastResult, setLastResult] = useState<SyncResult | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-
-  // Form state
-  const [tursoUrl, setTursoUrl] = useState('');
-  const [authToken, setAuthToken] = useState('');
 
   useEffect(() => {
     if (sessionToken) {
@@ -59,7 +58,6 @@ export default function SyncSettings() {
     try {
       const s = await syncApi.getStatus(sessionToken);
       setStatus(s);
-      if (s.tursoUrl) setTursoUrl(s.tursoUrl);
     } catch (error) {
       console.error('Error loading sync status:', error);
     } finally {
@@ -73,10 +71,10 @@ export default function SyncSettings() {
   };
 
   const handleTestConnection = async () => {
-    if (!sessionToken || !tursoUrl || !authToken) return;
+    if (!sessionToken) return;
     setTesting(true);
     try {
-      const msg = await syncApi.testConnection(sessionToken, tursoUrl, authToken);
+      const msg = await syncApi.testConnection(sessionToken);
       showMessage('success', msg);
     } catch (error) {
       showMessage('error', `Error de conexión: ${error}`);
@@ -85,14 +83,17 @@ export default function SyncSettings() {
     }
   };
 
-  const handleSaveConfig = async () => {
-    if (!sessionToken || !tursoUrl || !authToken) return;
+  const handleEnable = async () => {
+    if (!sessionToken) return;
+    setEnabling(true);
     try {
-      const s = await syncApi.saveConfig(sessionToken, { tursoUrl, authToken });
+      const s = await syncApi.enable(sessionToken);
       setStatus(s);
-      showMessage('success', 'Configuración guardada exitosamente');
+      showMessage('success', 'Sincronización habilitada exitosamente');
     } catch (error) {
-      showMessage('error', `Error al guardar: ${error}`);
+      showMessage('error', `Error al habilitar: ${error}`);
+    } finally {
+      setEnabling(false);
     }
   };
 
@@ -168,12 +169,9 @@ export default function SyncSettings() {
 
   const handleDisable = async () => {
     if (!sessionToken) return;
-    if (!confirm('¿Desactivar la sincronización con Turso? Los datos locales no se verán afectados.')) return;
+    if (!confirm('¿Desactivar la sincronización? Los datos locales no se verán afectados.')) return;
     try {
       await syncApi.disable(sessionToken);
-      setStatus(null);
-      setTursoUrl('');
-      setAuthToken('');
       setLastResult(null);
       showMessage('success', 'Sincronización desactivada');
       await loadStatus();
@@ -207,7 +205,9 @@ export default function SyncSettings() {
         className={`flex items-center gap-3 p-4 rounded-lg ${
           status?.configured && status?.enabled
             ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
-            : 'bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600'
+            : status?.configured
+            ? 'bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800'
+            : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
         }`}
       >
         {status?.configured && status?.enabled ? (
@@ -216,7 +216,7 @@ export default function SyncSettings() {
             <div>
               <p className="font-medium text-green-800 dark:text-green-300">Sincronización Activa</p>
               <p className="text-sm text-green-600 dark:text-green-400">
-                Conectado a: {status.tursoUrl}
+                Conectado a Turso Cloud
               </p>
               {status.lastSyncAt && (
                 <p className="text-xs text-green-500 dark:text-green-500 mt-1">
@@ -225,13 +225,23 @@ export default function SyncSettings() {
               )}
             </div>
           </>
+        ) : status?.configured ? (
+          <>
+            <CloudOff className="text-yellow-500" size={24} />
+            <div>
+              <p className="font-medium text-yellow-800 dark:text-yellow-300">Sincronización Disponible</p>
+              <p className="text-sm text-yellow-600 dark:text-yellow-400">
+                Credenciales configuradas. Habilita la sincronización para comenzar.
+              </p>
+            </div>
+          </>
         ) : (
           <>
-            <CloudOff className="text-gray-400" size={24} />
+            <AlertTriangle className="text-red-500" size={24} />
             <div>
-              <p className="font-medium text-gray-700 dark:text-gray-300">Sincronización No Configurada</p>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Configura tus credenciales de Turso para habilitar la sincronización en la nube
+              <p className="font-medium text-red-800 dark:text-red-300">Sincronización No Disponible</p>
+              <p className="text-sm text-red-600 dark:text-red-400">
+                {status?.configError || 'Las variables de entorno TURSO_DATABASE_URL y TURSO_AUTH_TOKEN no están configuradas.'}
               </p>
             </div>
           </>
@@ -252,69 +262,73 @@ export default function SyncSettings() {
         </div>
       )}
 
-      {/* Configuration */}
-      <Card className="p-6">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
-          <Database size={20} />
-          Configuración de Turso
-        </h3>
+      {/* Enable/Disable and Test Connection */}
+      {status?.configured && (
+        <Card className="p-6">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+            <Database size={20} />
+            Control de Sincronización
+          </h3>
 
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              URL de la Base de Datos
-            </label>
-            <input
-              type="text"
-              value={tursoUrl}
-              onChange={(e) => setTursoUrl(e.target.value)}
-              placeholder="libsql://tu-base-de-datos-org.turso.io"
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-            />
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              Formato: libsql://nombre-org.turso.io
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Las credenciales de Turso están configuradas mediante variables de entorno del sistema.
+              Solo los administradores del sistema pueden modificar estas credenciales.
+            </p>
+
+            <div className="flex flex-wrap gap-3">
+              <Button
+                variant="outline"
+                onClick={handleTestConnection}
+                loading={testing}
+                icon={<Wifi size={16} />}
+              >
+                Probar Conexión
+              </Button>
+
+              {!status.enabled ? (
+                <Button
+                  variant="primary"
+                  onClick={handleEnable}
+                  loading={enabling}
+                  icon={<Power size={16} />}
+                >
+                  Habilitar Sincronización
+                </Button>
+              ) : null}
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {/* Not Configured Info */}
+      {!status?.configured && (
+        <Card className="p-6">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+            <AlertTriangle size={20} className="text-amber-500" />
+            Configuración Requerida
+          </h3>
+
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Para habilitar la sincronización en la nube, el administrador del sistema debe configurar
+              las siguientes variables de entorno:
+            </p>
+
+            <div className="bg-gray-100 dark:bg-gray-700 p-4 rounded-lg font-mono text-sm">
+              <p className="text-gray-800 dark:text-gray-200">TURSO_DATABASE_URL=libsql://tu-db.turso.io</p>
+              <p className="text-gray-800 dark:text-gray-200">TURSO_AUTH_TOKEN=eyJhbGciOiJF...</p>
+            </div>
+
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Estas variables deben configurarse antes de iniciar la aplicación.
+              Contacte al administrador del sistema para obtener asistencia.
             </p>
           </div>
+        </Card>
+      )}
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Token de Autenticación
-            </label>
-            <input
-              type="password"
-              value={authToken}
-              onChange={(e) => setAuthToken(e.target.value)}
-              placeholder="eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9..."
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-            />
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              Genera un token en el dashboard de Turso o con: turso db tokens create tu-db
-            </p>
-          </div>
-
-          <div className="flex gap-3">
-            <Button
-              variant="outline"
-              onClick={handleTestConnection}
-              loading={testing}
-              disabled={!tursoUrl || !authToken}
-              icon={<Wifi size={16} />}
-            >
-              Probar Conexión
-            </Button>
-            <Button
-              variant="primary"
-              onClick={handleSaveConfig}
-              disabled={!tursoUrl || !authToken}
-              icon={<CheckCircle size={16} />}
-            >
-              Guardar Configuración
-            </Button>
-          </div>
-        </div>
-      </Card>
-
-      {/* Sync Actions (only when configured) */}
+      {/* Sync Actions (only when configured and enabled) */}
       {status?.configured && status?.enabled && (
         <Card className="p-6">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
@@ -480,10 +494,10 @@ export default function SyncSettings() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-700 dark:text-gray-300">
-                Desactivar sincronización y eliminar credenciales guardadas.
+                Desactivar la sincronización en la nube.
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                Los datos locales no se verán afectados.
+                Los datos locales no se verán afectados. Puede volver a habilitar en cualquier momento.
               </p>
             </div>
             <Button
@@ -500,24 +514,20 @@ export default function SyncSettings() {
       {/* Help Info */}
       <Card className="p-6">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">
-          ¿Cómo configurar Turso?
+          Información de Configuración
         </h3>
-        <ol className="text-sm text-gray-600 dark:text-gray-400 space-y-2 list-decimal list-inside">
-          <li>Crea una cuenta en <span className="font-mono text-primary-500">turso.tech</span></li>
-          <li>Instala el CLI: <span className="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">curl -sSfL https://get.tur.so/install.sh | bash</span></li>
-          <li>Crea una base de datos: <span className="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">turso db create ddr-planner</span></li>
-          <li>Obtén la URL: <span className="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">turso db show ddr-planner --url</span></li>
-          <li>Genera un token: <span className="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">turso db tokens create ddr-planner</span></li>
-          <li>Pega la URL y el token en los campos de arriba</li>
-          <li>Haz clic en "Probar Conexión" para verificar</li>
-          <li>Guarda la configuración e inicializa la base remota</li>
-          <li>Usa "Sincronización Completa" para sincronizar datos</li>
-        </ol>
-        <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
-          <p className="text-sm text-amber-800 dark:text-amber-300">
-            <strong>Plan gratuito de Turso:</strong> 9 GB de almacenamiento, 500 bases de datos, ubicaciones ilimitadas.
-            Suficiente para miles de reportes DDR.
+        <div className="text-sm text-gray-600 dark:text-gray-400 space-y-3">
+          <p>
+            La sincronización con Turso Cloud permite que múltiples instalaciones de la aplicación
+            compartan datos en tiempo real. Los datos se sincronizan de forma bidireccional.
           </p>
+          <div className="bg-amber-50 dark:bg-amber-900/20 p-3 rounded-lg">
+            <p className="text-amber-800 dark:text-amber-300">
+              <strong>Nota para administradores:</strong> Las credenciales de Turso se configuran
+              mediante variables de entorno del sistema (TURSO_DATABASE_URL y TURSO_AUTH_TOKEN).
+              Esto garantiza que las credenciales no se expongan en la interfaz de usuario.
+            </p>
+          </div>
         </div>
       </Card>
     </div>

@@ -43,4 +43,5 @@ tokio = { version = "1", features = ["full"] }
 
 # Utilities
 dirs = "5.0"
+dotenvy = "0.15"
 

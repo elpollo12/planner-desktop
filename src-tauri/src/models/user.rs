@@ -54,11 +54,21 @@ pub struct User {
     pub role: String,
     pub position: Option<String>,
     pub active: bool,
+    pub has_all_rigs: bool,
     pub last_login: Option<String>,
     pub created_by: Option<String>,
     pub updated_by: Option<String>,
     pub created_at: String,
     pub updated_at: String,
+}
+
+/// User with assigned rigs (for API responses)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UserWithRigs {
+    #[serde(flatten)]
+    pub user: User,
+    pub assigned_rig_ids: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -70,6 +80,10 @@ pub struct CreateUserRequest {
     pub ci: Option<String>,
     pub role: String,
     pub position: Option<String>,
+    #[serde(default)]
+    pub has_all_rigs: bool,
+    #[serde(default)]
+    pub assigned_rig_ids: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -80,10 +94,12 @@ pub struct UpdateUserRequest {
     pub role: Option<String>,
     pub position: Option<String>,
     pub active: Option<bool>,
+    pub has_all_rigs: Option<bool>,
+    pub assigned_rig_ids: Option<Vec<String>>,
 }
 
 impl User {
-    fn from_row(row: &Row) -> Result<Self, rusqlite::Error> {
+    pub fn from_row(row: &Row) -> Result<Self, rusqlite::Error> {
         Ok(User {
             id: row.get(0)?,
             username: row.get(1)?,
@@ -93,11 +109,12 @@ impl User {
             role: row.get(5)?,
             position: row.get(6)?,
             active: row.get::<_, i32>(7)? == 1,
-            last_login: row.get(8)?,
-            created_by: row.get(9)?,
-            updated_by: row.get(10)?,
-            created_at: row.get(11)?,
-            updated_at: row.get(12)?,
+            has_all_rigs: row.get::<_, i32>(8).unwrap_or(0) == 1,
+            last_login: row.get(9)?,
+            created_by: row.get(10)?,
+            updated_by: row.get(11)?,
+            created_at: row.get(12)?,
+            updated_at: row.get(13)?,
         })
     }
 
@@ -115,8 +132,8 @@ impl User {
         UserRole::from_str(&request.role)?;
 
         conn.execute(
-            "INSERT INTO users (id, username, password_hash, full_name, ci, role, position, active, created_by, created_at, updated_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+            "INSERT INTO users (id, username, password_hash, full_name, ci, role, position, active, has_all_rigs, created_by, created_at, updated_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
             params![
                 &id,
                 &request.username,
@@ -126,11 +143,17 @@ impl User {
                 &request.role,
                 &request.position,
                 1,
+                if request.has_all_rigs { 1 } else { 0 },
                 &created_by,
                 &now,
                 &now
             ],
         )?;
+
+        // Assign rigs if specified
+        if !request.has_all_rigs && !request.assigned_rig_ids.is_empty() {
+            User::assign_rigs(conn, &id, &request.assigned_rig_ids, created_by.as_deref())?;
+        }
 
         User::get_by_id(conn, &id)
     }
@@ -138,7 +161,7 @@ impl User {
     /// Get user by ID
     pub fn get_by_id(conn: &Connection, user_id: &str) -> Result<User, AppError> {
         let user = conn.query_row(
-            "SELECT id, username, password_hash, full_name, ci, role, position, active, last_login, created_by, updated_by, created_at, updated_at
+            "SELECT id, username, password_hash, full_name, ci, role, position, active, has_all_rigs, last_login, created_by, updated_by, created_at, updated_at
              FROM users WHERE id = ?1",
             params![user_id],
             User::from_row,
@@ -150,7 +173,7 @@ impl User {
     /// Get user by username
     pub fn get_by_username(conn: &Connection, username: &str) -> Result<User, AppError> {
         let user = conn.query_row(
-            "SELECT id, username, password_hash, full_name, ci, role, position, active, last_login, created_by, updated_by, created_at, updated_at
+            "SELECT id, username, password_hash, full_name, ci, role, position, active, has_all_rigs, last_login, created_by, updated_by, created_at, updated_at
              FROM users WHERE username = ?1",
             params![username],
             User::from_row,
@@ -162,7 +185,7 @@ impl User {
     /// List all users
     pub fn list(conn: &Connection) -> Result<Vec<User>, AppError> {
         let mut stmt = conn.prepare(
-            "SELECT id, username, password_hash, full_name, ci, role, position, active, last_login, created_by, updated_by, created_at, updated_at
+            "SELECT id, username, password_hash, full_name, ci, role, position, active, has_all_rigs, last_login, created_by, updated_by, created_at, updated_at
              FROM users ORDER BY created_at DESC"
         )?;
 
@@ -171,6 +194,123 @@ impl User {
             .collect::<Result<Vec<_>, _>>()?;
 
         Ok(users)
+    }
+
+    /// Get user with assigned rigs
+    pub fn get_with_rigs(conn: &Connection, user_id: &str) -> Result<UserWithRigs, AppError> {
+        let user = User::get_by_id(conn, user_id)?;
+        let assigned_rig_ids = User::get_assigned_rig_ids(conn, user_id)?;
+        Ok(UserWithRigs { user, assigned_rig_ids })
+    }
+
+    /// List all users with their assigned rigs
+    pub fn list_with_rigs(conn: &Connection) -> Result<Vec<UserWithRigs>, AppError> {
+        let users = User::list(conn)?;
+        let mut users_with_rigs = Vec::new();
+
+        for user in users {
+            let assigned_rig_ids = User::get_assigned_rig_ids(conn, &user.id)?;
+            users_with_rigs.push(UserWithRigs { user, assigned_rig_ids });
+        }
+
+        Ok(users_with_rigs)
+    }
+
+    /// Get assigned rig IDs for a user
+    pub fn get_assigned_rig_ids(conn: &Connection, user_id: &str) -> Result<Vec<String>, AppError> {
+        let mut stmt = conn.prepare(
+            "SELECT rig_id FROM user_rigs WHERE user_id = ?1"
+        )?;
+
+        let rig_ids = stmt
+            .query_map(params![user_id], |row| row.get(0))?
+            .collect::<Result<Vec<String>, _>>()?;
+
+        Ok(rig_ids)
+    }
+
+    /// Assign rigs to a user (replaces existing assignments)
+    pub fn assign_rigs(conn: &Connection, user_id: &str, rig_ids: &[String], assigned_by: Option<&str>) -> Result<(), AppError> {
+        let now = chrono::Utc::now().to_rfc3339();
+
+        // Remove existing assignments
+        conn.execute("DELETE FROM user_rigs WHERE user_id = ?1", params![user_id])?;
+
+        // Add new assignments
+        for rig_id in rig_ids {
+            let id = uuid::Uuid::new_v4().to_string();
+            conn.execute(
+                "INSERT INTO user_rigs (id, user_id, rig_id, assigned_by, assigned_at) VALUES (?1, ?2, ?3, ?4, ?5)",
+                params![&id, user_id, rig_id, assigned_by, &now],
+            )?;
+        }
+
+        Ok(())
+    }
+
+    /// Check if user has access to a specific rig
+    pub fn has_rig_access(conn: &Connection, user_id: &str, rig_id: &str) -> Result<bool, AppError> {
+        let user = User::get_by_id(conn, user_id)?;
+
+        // Admin or has_all_rigs = full access
+        if user.role == "admin" || user.has_all_rigs {
+            return Ok(true);
+        }
+
+        // Check specific assignment
+        let count: i32 = conn.query_row(
+            "SELECT COUNT(*) FROM user_rigs WHERE user_id = ?1 AND rig_id = ?2",
+            params![user_id, rig_id],
+            |row| row.get(0),
+        )?;
+
+        Ok(count > 0)
+    }
+
+    /// Get rigs accessible by user (returns all if has_all_rigs or admin)
+    pub fn get_accessible_rig_ids(conn: &Connection, user_id: &str) -> Result<Option<Vec<String>>, AppError> {
+        let user = User::get_by_id(conn, user_id)?;
+
+        // Admin or has_all_rigs = no filter (None means all)
+        if user.role == "admin" || user.has_all_rigs {
+            return Ok(None);
+        }
+
+        // Return specific assignments
+        let rig_ids = User::get_assigned_rig_ids(conn, user_id)?;
+        Ok(Some(rig_ids))
+    }
+
+    /// Get rig names by their IDs
+    pub fn get_rig_names_by_ids(conn: &Connection, rig_ids: &[String]) -> Result<Vec<String>, AppError> {
+        if rig_ids.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        let placeholders: Vec<&str> = rig_ids.iter().map(|_| "?").collect();
+        let query = format!("SELECT name FROM rigs WHERE id IN ({})", placeholders.join(","));
+
+        let mut stmt = conn.prepare(&query)?;
+        let params: Vec<&dyn rusqlite::ToSql> = rig_ids.iter().map(|id| id as &dyn rusqlite::ToSql).collect();
+
+        let names = stmt
+            .query_map(params.as_slice(), |row| row.get::<_, String>(0))?
+            .collect::<Result<Vec<String>, _>>()?;
+
+        Ok(names)
+    }
+
+    /// Get accessible rig names for a user (None means all rigs - no filter needed)
+    pub fn get_accessible_rig_names(conn: &Connection, user_id: &str) -> Result<Option<Vec<String>>, AppError> {
+        let rig_ids = User::get_accessible_rig_ids(conn, user_id)?;
+
+        match rig_ids {
+            None => Ok(None), // User has access to all rigs
+            Some(ids) => {
+                let names = User::get_rig_names_by_ids(conn, &ids)?;
+                Ok(Some(names))
+            }
+        }
     }
 
     /// Update user
@@ -211,6 +351,10 @@ impl User {
             updates.push("active = ?");
             params_vec.push(Box::new(if active { 1 } else { 0 }));
         }
+        if let Some(has_all_rigs) = request.has_all_rigs {
+            updates.push("has_all_rigs = ?");
+            params_vec.push(Box::new(if has_all_rigs { 1 } else { 0 }));
+        }
 
         updates.push("updated_by = ?");
         params_vec.push(Box::new(updated_by.clone()));
@@ -224,6 +368,11 @@ impl User {
         let params_refs: Vec<&dyn rusqlite::ToSql> = params_vec.iter().map(|p| p.as_ref()).collect();
 
         conn.execute(&query, params_refs.as_slice())?;
+
+        // Update rig assignments if provided
+        if let Some(ref rig_ids) = request.assigned_rig_ids {
+            User::assign_rigs(conn, user_id, rig_ids, updated_by.as_deref())?;
+        }
 
         User::get_by_id(conn, user_id)
     }

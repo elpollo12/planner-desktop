@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { Button, Input, Select } from '../ui';
 import { Plus, Edit, Trash2, Save, X } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
-import { usersApi } from '../../lib/api';
-import type { User, UserRole } from '../../types/user';
+import { usersApi, rigsApi } from '../../lib/api';
+import type { UserRole, UserWithRigs } from '../../types/user';
+import type { Rig } from '../../types/rig';
 
 interface UserFormData {
   username: string;
@@ -11,26 +12,33 @@ interface UserFormData {
   fullName: string;
   ci: string;
   role: UserRole;
+  hasAllRigs: boolean;
+  assignedRigIds: string[];
 }
+
+const initialFormData: UserFormData = {
+  username: '',
+  password: '',
+  fullName: '',
+  ci: '',
+  role: 'operator',
+  hasAllRigs: false,
+  assignedRigIds: [],
+};
 
 export function UsersManagement() {
   const { sessionToken } = useAuthStore();
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<UserWithRigs[]>([]);
+  const [rigs, setRigs] = useState<Rig[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
-  
-  const [formData, setFormData] = useState<UserFormData>({
-    username: '',
-    password: '',
-    fullName: '',
-    ci: '',
-    role: 'operator',
-  });
+  const [formData, setFormData] = useState<UserFormData>(initialFormData);
 
   useEffect(() => {
     if (sessionToken) {
       loadUsers();
+      loadRigs();
     } else {
       setLoading(false);
     }
@@ -44,15 +52,22 @@ export function UsersManagement() {
 
     setLoading(true);
     try {
-      console.log('[UsersManagement] Loading users with token:', sessionToken?.substring(0, 8) + '...');
       const data = await usersApi.list(sessionToken);
-      console.log('[UsersManagement] Loaded users:', data);
-      setUsers(data);
+      setUsers(data as UserWithRigs[]);
     } catch (error) {
       console.error('[UsersManagement] Error loading users:', error);
       alert(`Error al cargar usuarios: ${error}`);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadRigs = async () => {
+    try {
+      const data = await rigsApi.list(false);
+      setRigs(data);
+    } catch (error) {
+      console.error('Error loading rigs:', error);
     }
   };
 
@@ -65,16 +80,18 @@ export function UsersManagement() {
     }
 
     try {
-      await usersApi.create(sessionToken, formData);
+      await usersApi.create(sessionToken, {
+        username: formData.username,
+        password: formData.password,
+        fullName: formData.fullName,
+        ci: formData.ci || undefined,
+        role: formData.role,
+        hasAllRigs: formData.hasAllRigs,
+        assignedRigIds: formData.hasAllRigs ? [] : formData.assignedRigIds,
+      });
       alert('Usuario creado exitosamente');
       setShowCreateForm(false);
-      setFormData({
-        username: '',
-        password: '',
-        fullName: '',
-        ci: '',
-        role: 'operator',
-      });
+      setFormData(initialFormData);
       loadUsers();
     } catch (error) {
       console.error('Error creating user:', error);
@@ -86,12 +103,13 @@ export function UsersManagement() {
     if (!sessionToken) return;
 
     try {
-      const updateData = {
+      await usersApi.update(sessionToken, userId, {
         fullName: formData.fullName,
-        ci: formData.ci,
+        ci: formData.ci || undefined,
         role: formData.role,
-      };
-      await usersApi.update(sessionToken, userId, updateData);
+        hasAllRigs: formData.hasAllRigs,
+        assignedRigIds: formData.hasAllRigs ? [] : formData.assignedRigIds,
+      });
       alert('Usuario actualizado exitosamente');
       setEditingId(null);
       loadUsers();
@@ -116,7 +134,7 @@ export function UsersManagement() {
     }
   };
 
-  const startEdit = (user: User) => {
+  const startEdit = (user: UserWithRigs) => {
     setEditingId(user.id);
     setFormData({
       username: user.username,
@@ -124,18 +142,44 @@ export function UsersManagement() {
       fullName: user.fullName || '',
       ci: user.ci || '',
       role: user.role,
+      hasAllRigs: user.hasAllRigs,
+      assignedRigIds: user.assignedRigIds || [],
     });
   };
 
   const cancelEdit = () => {
     setEditingId(null);
+    setFormData(initialFormData);
+  };
+
+  const toggleRigSelection = (rigId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      assignedRigIds: prev.assignedRigIds.includes(rigId)
+        ? prev.assignedRigIds.filter(id => id !== rigId)
+        : [...prev.assignedRigIds, rigId],
+    }));
+  };
+
+  const selectAllRigs = () => {
+    setFormData(prev => ({
+      ...prev,
+      assignedRigIds: rigs.map(r => r.id),
+    }));
+  };
+
+  const deselectAllRigs = () => {
+    setFormData(prev => ({
+      ...prev,
+      assignedRigIds: [],
+    }));
   };
 
   const getRoleBadge = (role: UserRole) => {
     const badges = {
-      admin: 'bg-purple-100 text-purple-800',
-      supervisor: 'bg-blue-100 text-blue-800',
-      operator: 'bg-green-100 text-green-800',
+      admin: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
+      supervisor: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
+      operator: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
     };
 
     const labels = {
@@ -150,6 +194,95 @@ export function UsersManagement() {
       </span>
     );
   };
+
+  const getRigAccessBadge = (user: UserWithRigs) => {
+    if (user.role === 'admin') {
+      return <span className="text-xs text-purple-600 dark:text-purple-400">Todos (Admin)</span>;
+    }
+    if (user.hasAllRigs) {
+      return <span className="text-xs text-green-600 dark:text-green-400">Todos los taladros</span>;
+    }
+    const count = user.assignedRigIds?.length || 0;
+    if (count === 0) {
+      return <span className="text-xs text-red-600 dark:text-red-400">Sin acceso</span>;
+    }
+    return <span className="text-xs text-blue-600 dark:text-blue-400">{count} taladro(s)</span>;
+  };
+
+  // Rig selection component
+  const RigSelector = () => (
+    <div className="col-span-2 border border-gray-200 dark:border-gray-600 rounded-lg p-4">
+      <div className="flex items-center justify-between mb-3">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+          Acceso a Taladros
+        </label>
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={formData.hasAllRigs}
+            onChange={(e) => setFormData({ ...formData, hasAllRigs: e.target.checked })}
+            className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+          />
+          <span className="text-sm text-gray-700 dark:text-gray-300">Acceso a todos los taladros</span>
+        </label>
+      </div>
+
+      {!formData.hasAllRigs && (
+        <>
+          <div className="flex gap-2 mb-3">
+            <button
+              type="button"
+              onClick={selectAllRigs}
+              className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400"
+            >
+              Seleccionar todos
+            </button>
+            <span className="text-gray-400">|</span>
+            <button
+              type="button"
+              onClick={deselectAllRigs}
+              className="text-xs text-gray-600 hover:text-gray-800 dark:text-gray-400"
+            >
+              Deseleccionar todos
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-48 overflow-y-auto">
+            {rigs.map((rig) => (
+              <label
+                key={rig.id}
+                className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors ${
+                  formData.assignedRigIds.includes(rig.id)
+                    ? 'bg-primary-50 dark:bg-primary-900/20 border border-primary-300 dark:border-primary-700'
+                    : 'bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600'
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={formData.assignedRigIds.includes(rig.id)}
+                  onChange={() => toggleRigSelection(rig.id)}
+                  className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                />
+                <span className="text-sm text-gray-900 dark:text-gray-100 truncate">
+                  {rig.name}
+                </span>
+              </label>
+            ))}
+          </div>
+
+          {rigs.length === 0 && (
+            <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
+              No hay taladros registrados
+            </p>
+          )}
+
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+            {formData.assignedRigIds.length} taladro(s) seleccionado(s)
+          </p>
+        </>
+      )}
+    </div>
+  );
 
   if (loading) {
     return <div className="text-center py-8 text-gray-500">Cargando usuarios...</div>;
@@ -197,12 +330,14 @@ export function UsersManagement() {
               <option value="supervisor">Supervisor</option>
               <option value="admin">Administrador</option>
             </Select>
+
+            <RigSelector />
           </div>
           <div className="flex gap-2">
             <Button variant="primary" onClick={handleCreate} icon={<Save size={16} />}>
               Crear Usuario
             </Button>
-            <Button variant="outline" onClick={() => setShowCreateForm(false)} icon={<X size={16} />}>
+            <Button variant="outline" onClick={() => { setShowCreateForm(false); setFormData(initialFormData); }} icon={<X size={16} />}>
               Cancelar
             </Button>
           </div>
@@ -228,6 +363,7 @@ export function UsersManagement() {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Nombre</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">CI</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Rol</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Acceso</th>
               <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Acciones</th>
             </tr>
           </thead>
@@ -262,6 +398,31 @@ export function UsersManagement() {
                         <option value="admin">Administrador</option>
                       </Select>
                     </td>
+                    <td className="px-6 py-4">
+                      <div className="space-y-2">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={formData.hasAllRigs}
+                            onChange={(e) => setFormData({ ...formData, hasAllRigs: e.target.checked })}
+                            className="w-4 h-4 rounded"
+                          />
+                          <span className="text-xs">Todos</span>
+                        </label>
+                        {!formData.hasAllRigs && (
+                          <button
+                            onClick={() => {
+                              // Show a modal or expand to show rig selection
+                              // For simplicity, using alert for now
+                              alert(`Seleccionados: ${formData.assignedRigIds.length} taladros.\nUsa el formulario de creación para cambiar la selección completa.`);
+                            }}
+                            className="text-xs text-blue-600 hover:underline"
+                          >
+                            {formData.assignedRigIds.length} seleccionados
+                          </button>
+                        )}
+                      </div>
+                    </td>
                     <td className="px-6 py-4 text-center">
                       <div className="flex items-center justify-center gap-2">
                         <button
@@ -292,6 +453,9 @@ export function UsersManagement() {
                     </td>
                     <td className="px-6 py-4">
                       {getRoleBadge(user.role)}
+                    </td>
+                    <td className="px-6 py-4">
+                      {getRigAccessBadge(user)}
                     </td>
                     <td className="px-6 py-4 text-center">
                       <div className="flex items-center justify-center gap-2">

@@ -331,14 +331,14 @@ export const syncApi = {
   getStatus: (sessionToken: string) =>
     invoke<import('../types/sync').SyncStatus>('get_sync_status', { sessionToken }),
 
-  saveConfig: (sessionToken: string, input: import('../types/sync').SyncConfigInput) =>
-    invoke<import('../types/sync').SyncStatus>('save_sync_config', { sessionToken, input }),
+  enable: (sessionToken: string) =>
+    invoke<import('../types/sync').SyncStatus>('enable_sync', { sessionToken }),
 
   setInterval: (sessionToken: string, intervalMinutes: number) =>
     invoke<import('../types/sync').SyncStatus>('set_sync_interval', { sessionToken, intervalMinutes }),
 
-  testConnection: (sessionToken: string, tursoUrl: string, authToken: string) =>
-    invoke<string>('test_turso_connection', { sessionToken, tursoUrl, authToken }),
+  testConnection: (sessionToken: string) =>
+    invoke<string>('test_turso_connection', { sessionToken }),
 
   initializeRemote: (sessionToken: string) =>
     invoke<string>('initialize_remote_database', { sessionToken }),

@@ -8,8 +8,14 @@ export interface User {
   role: UserRole;
   position?: string;
   active: boolean;
+  hasAllRigs: boolean;
+  lastLogin?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface UserWithRigs extends User {
+  assignedRigIds: string[];
 }
 
 export interface LoginCredentials {
@@ -35,6 +41,8 @@ export interface CreateUserInput {
   ci?: string;
   role: UserRole;
   position?: string;
+  hasAllRigs?: boolean;
+  assignedRigIds?: string[];
 }
 
 export interface UpdateUserInput {
@@ -43,6 +51,8 @@ export interface UpdateUserInput {
   role?: UserRole;
   position?: string;
   active?: boolean;
+  hasAllRigs?: boolean;
+  assignedRigIds?: string[];
 }
 
 // Permisos por rol

@@ -1,5 +1,5 @@
 use crate::auth::{check_permission, hash_password};
-use crate::models::user::{CreateUserRequest, UpdateUserRequest, User, UserRole};
+use crate::models::user::{CreateUserRequest, UpdateUserRequest, User, UserRole, UserWithRigs};
 use crate::state::AppState;
 use tauri::State;
 
@@ -8,7 +8,7 @@ pub async fn create_user(
     session_token: String,
     user_data: CreateUserRequest,
     state: State<'_, AppState>,
-) -> Result<User, String> {
+) -> Result<UserWithRigs, String> {
     // Only admin can create users
     let current_user = check_permission(&session_token, UserRole::Admin, &state)
         .map_err(|e| e.to_string())?;
@@ -23,17 +23,20 @@ pub async fn create_user(
         .map_err(|e| format!("Failed to lock database: {}", e))?;
 
     // Create user
-    let user = User::create(&conn, &user_data, password_hash, Some(current_user.user_id))
+    let user = User::create(&conn, &user_data, password_hash, Some(current_user.user_id.clone()))
         .map_err(|e| e.to_string())?;
 
-    Ok(user)
+    // Get user with rigs
+    let user_with_rigs = User::get_with_rigs(&conn, &user.id).map_err(|e| e.to_string())?;
+
+    Ok(user_with_rigs)
 }
 
 #[tauri::command]
 pub async fn list_users(
     session_token: String,
     state: State<'_, AppState>,
-) -> Result<Vec<User>, String> {
+) -> Result<Vec<UserWithRigs>, String> {
     // Only admin can list all users
     check_permission(&session_token, UserRole::Admin, &state).map_err(|e| e.to_string())?;
 
@@ -42,7 +45,7 @@ pub async fn list_users(
         .lock()
         .map_err(|e| format!("Failed to lock database: {}", e))?;
 
-    let users = User::list(&conn).map_err(|e| e.to_string())?;
+    let users = User::list_with_rigs(&conn).map_err(|e| e.to_string())?;
 
     Ok(users)
 }
@@ -52,7 +55,7 @@ pub async fn get_user(
     session_token: String,
     user_id: String,
     state: State<'_, AppState>,
-) -> Result<User, String> {
+) -> Result<UserWithRigs, String> {
     // Only admin can get any user
     check_permission(&session_token, UserRole::Admin, &state).map_err(|e| e.to_string())?;
 
@@ -61,7 +64,7 @@ pub async fn get_user(
         .lock()
         .map_err(|e| format!("Failed to lock database: {}", e))?;
 
-    let user = User::get_by_id(&conn, &user_id).map_err(|e| e.to_string())?;
+    let user = User::get_with_rigs(&conn, &user_id).map_err(|e| e.to_string())?;
 
     Ok(user)
 }
@@ -72,7 +75,7 @@ pub async fn update_user(
     user_id: String,
     user_data: UpdateUserRequest,
     state: State<'_, AppState>,
-) -> Result<User, String> {
+) -> Result<UserWithRigs, String> {
     // Only admin can update users
     let current_user = check_permission(&session_token, UserRole::Admin, &state)
         .map_err(|e| e.to_string())?;
@@ -82,10 +85,13 @@ pub async fn update_user(
         .lock()
         .map_err(|e| format!("Failed to lock database: {}", e))?;
 
-    let user = User::update(&conn, &user_id, &user_data, Some(current_user.user_id))
+    let _user = User::update(&conn, &user_id, &user_data, Some(current_user.user_id))
         .map_err(|e| e.to_string())?;
 
-    Ok(user)
+    // Get user with rigs
+    let user_with_rigs = User::get_with_rigs(&conn, &user_id).map_err(|e| e.to_string())?;
+
+    Ok(user_with_rigs)
 }
 
 #[tauri::command]
