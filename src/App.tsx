@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import { useAuthStore } from './store/authStore';
 import { usePreferencesStore } from './store/preferencesStore';
 import { useThemeApplicator } from './hooks/useThemeApplicator';
@@ -62,8 +64,21 @@ function App() {
   }
 
   return (
-    <Routes>
-      <Route path="/login" element={<Login />} />
+    <>
+      <ToastContainer
+        position="bottom-right"
+        autoClose={2000}
+        hideProgressBar={true}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="colored"
+      />
+      <Routes>
+        <Route path="/login" element={<Login />} />
       
       <Route
         path="/dashboard"
@@ -129,7 +144,8 @@ function App() {
       />
 
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
-    </Routes>
+      </Routes>
+    </>
   );
 }
 

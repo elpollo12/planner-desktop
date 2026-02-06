@@ -179,3 +179,22 @@ pub async fn reject_report(
 
     Ok(updated_report)
 }
+
+#[tauri::command]
+pub async fn get_report_completeness(
+    session_token: String,
+    report_id: String,
+    state: State<'_, AppState>,
+) -> Result<crate::models::report::ReportCompleteness, String> {
+    let _session = get_session(&session_token, &state).map_err(|e| e.to_string())?;
+
+    let conn = state
+        .db
+        .lock()
+        .map_err(|e| format!("Failed to lock database: {}", e))?;
+
+    let completeness = crate::models::report::Report::get_completeness(&conn, &report_id)
+        .map_err(|e| e.to_string())?;
+
+    Ok(completeness)
+}

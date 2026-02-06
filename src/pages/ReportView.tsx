@@ -17,6 +17,7 @@ import {
 } from '../lib/api';
 import { exportReportToPDF } from '../lib/pdfExport';
 import { exportSingleReportToExcel } from '../lib/excelExport';
+import { toast } from '../lib/toast';
 import type { 
   Report, 
   CrewShift, 
@@ -84,7 +85,7 @@ export default function ReportView() {
       setOperationsLog(results[8] as OperationsLog[]);
     } catch (error) {
       console.error('Error loading report:', error);
-      alert('Error al cargar el reporte');
+      toast.error('Error al cargar el reporte');
     } finally {
       setLoading(false);
     }
@@ -95,11 +96,11 @@ export default function ReportView() {
 
     try {
       await reportsApi.approve(sessionToken, id);
-      alert('Reporte aprobado exitosamente');
+      toast.success('Reporte aprobado exitosamente');
       loadReport();
     } catch (error) {
       console.error('Error approving report:', error);
-      alert('Error al aprobar el reporte');
+      toast.error('Error al aprobar el reporte');
     }
   };
 
@@ -111,11 +112,11 @@ export default function ReportView() {
 
     try {
       await reportsApi.reject(sessionToken, id, reason);
-      alert('Reporte rechazado');
+      toast.success('Reporte rechazado');
       loadReport();
     } catch (error) {
       console.error('Error rejecting report:', error);
-      alert('Error al rechazar el reporte');
+      toast.error('Error al rechazar el reporte');
     }
   };
 
@@ -133,9 +134,14 @@ export default function ReportView() {
   };
 
   const handleExportPDF = async () => {
-    if (!report) return;
+    if (!report) {
+      toast.warning('No hay información del reporte para exportar');
+      return;
+    }
 
     try {
+      toast.info('Generando PDF...', { autoClose: 1000 });
+      
       await exportReportToPDF({
         report,
         crewShifts,
@@ -146,16 +152,24 @@ export default function ReportView() {
         deviationHistory,
         operationsLog,
       });
+      
+      toast.success('PDF generado exitosamente');
     } catch (error) {
       console.error('Error exporting PDF:', error);
-      alert('Error al exportar PDF');
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+      toast.error(`Error al exportar PDF: ${errorMessage}`);
     }
   };
 
   const handleExportExcel = () => {
-    if (!report) return;
+    if (!report) {
+      toast.warning('No hay información del reporte para exportar');
+      return;
+    }
 
     try {
+      toast.info('Generando Excel...', { autoClose: 1000 });
+      
       const filename = `DDR_${report.reportNumber}_${report.reportDate}.xlsx`;
       exportSingleReportToExcel({
         report,
@@ -164,9 +178,12 @@ export default function ReportView() {
         timeDistributions,
         mudRecords,
       }, filename);
+      
+      toast.success('Excel generado exitosamente');
     } catch (error) {
       console.error('Error exporting Excel:', error);
-      alert('Error al exportar Excel');
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+      toast.error(`Error al exportar Excel: ${errorMessage}`);
     }
   };
 
@@ -670,5 +687,4 @@ export default function ReportView() {
         )}
       </div>
     </MainLayout>
-  );
-}
+)};

@@ -1,7 +1,7 @@
 import { MainLayout } from '../components/layout';
 import { ToastContainer, toast } from 'react-toastify';
 import { useModal } from '../store/modalStore';
-import TestModal from '../components/Modal/TestModal';
+import TestModal from '../components/modals/TestModal';
 import { Button } from '../components/ui';
 
 
