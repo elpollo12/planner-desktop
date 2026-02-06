@@ -4,10 +4,11 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   error?: string;
   helperText?: string;
+  allowSubmitOnEnter?: boolean;
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ label, error, helperText, className = '', ...props }, ref) => {
+  ({ label, error, helperText, className = '', allowSubmitOnEnter = false, onKeyDown, ...props }, ref) => {
     const baseInputStyles = `
       w-full px-3 py-2.5
       bg-white dark:bg-gray-800
@@ -23,6 +24,26 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
       ? 'border-red-500 focus:ring-red-500/20 focus:border-red-500'
       : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500';
 
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Enter' && !allowSubmitOnEnter) {
+        e.preventDefault();
+        const form = e.currentTarget.form;
+        if (form) {
+          const inputs = Array.from(form.querySelectorAll('input, select, textarea'));
+          const currentIndex = inputs.indexOf(e.currentTarget);
+          const nextInput = inputs[currentIndex + 1] as HTMLElement;
+          if (nextInput && (nextInput instanceof HTMLInputElement || 
+              nextInput instanceof HTMLSelectElement || 
+              nextInput instanceof HTMLTextAreaElement)) {
+            nextInput.focus();
+          }
+        }
+      }
+      if (onKeyDown) {
+        onKeyDown(e);
+      }
+    };
+
     return (
       <div className="w-full">
         {label && (
@@ -34,6 +55,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         <input
           ref={ref}
           className={`${baseInputStyles} ${errorStyles} ${className}`}
+          onKeyDown={handleKeyDown}
           {...props}
         />
         {error && (
