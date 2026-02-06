@@ -126,7 +126,7 @@ export function Sidebar({ className = '' }: SidebarProps) {
       <div className="p-4 border-t border-gray-200 dark:border-gray-700">
         <div className="mb-3 px-2">
           <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-            {user?.full_name}
+            {user?.fullName}
           </p>
           <p className="text-xs text-gray-500 capitalize">Rol: <strong>{user?.role}</strong></p>
         </div>

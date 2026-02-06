@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './store/authStore';
 import { usePreferencesStore } from './store/preferencesStore';
 import { useThemeApplicator } from './hooks/useThemeApplicator';
+import { useAutoSync } from './hooks/useAutoSync';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import ReportForm from './pages/ReportForm';
@@ -30,6 +31,9 @@ function App() {
 
   // Apply theme reactively whenever preferences change
   useThemeApplicator();
+
+  // Auto-sync with Turso cloud (for admin users)
+  useAutoSync();
 
   // Validate session on startup
   useEffect(() => {

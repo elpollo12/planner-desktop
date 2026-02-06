@@ -23,36 +23,49 @@ export default function AppearanceSettings() {
   const { sessionToken } = useAuthStore();
   const { preferences, logoDataUrl, savePreferences, uploadLogo, removeLogo, isLoading } = usePreferencesStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const isInitializedRef = useRef(false);
+  const userHasInteractedRef = useRef(false);
 
-  const [primaryColor, setPrimaryColor] = useState(DEFAULT_PREFERENCES.primaryColor);
-  const [secondaryColor, setSecondaryColor] = useState(DEFAULT_PREFERENCES.secondaryColor);
-  const [themeMode, setThemeMode] = useState<ThemeMode>(DEFAULT_PREFERENCES.themeMode);
-  const [primaryHex, setPrimaryHex] = useState(DEFAULT_PREFERENCES.primaryColor);
-  const [secondaryHex, setSecondaryHex] = useState(DEFAULT_PREFERENCES.secondaryColor);
+  // Initialize state from preferences (if available) or defaults
+  const initialPrimary = preferences?.primaryColor ?? DEFAULT_PREFERENCES.primaryColor;
+  const initialSecondary = preferences?.secondaryColor ?? DEFAULT_PREFERENCES.secondaryColor;
+  const initialTheme = preferences?.themeMode ?? DEFAULT_PREFERENCES.themeMode;
+
+  const [primaryColor, setPrimaryColor] = useState(initialPrimary);
+  const [secondaryColor, setSecondaryColor] = useState(initialSecondary);
+  const [themeMode, setThemeMode] = useState<ThemeMode>(initialTheme);
+  const [primaryHex, setPrimaryHex] = useState(initialPrimary);
+  const [secondaryHex, setSecondaryHex] = useState(initialSecondary);
   const [saving, setSaving] = useState(false);
 
-  // Initialize from stored preferences
+  // Sync state when preferences load/change (but only if not initialized yet)
   useEffect(() => {
-    if (preferences) {
+    if (preferences && !isInitializedRef.current) {
       setPrimaryColor(preferences.primaryColor);
       setSecondaryColor(preferences.secondaryColor);
       setThemeMode(preferences.themeMode);
       setPrimaryHex(preferences.primaryColor);
       setSecondaryHex(preferences.secondaryColor);
+      isInitializedRef.current = true;
     }
   }, [preferences]);
 
-  // Live preview: apply theme as user changes settings
+  // Live preview: ONLY apply theme when user makes changes (not on mount)
+  // The global theme is already applied by useThemeApplicator in App.tsx
   useEffect(() => {
-    applyThemeToDOM({ primaryColor, secondaryColor, themeMode });
+    if (userHasInteractedRef.current) {
+      applyThemeToDOM({ primaryColor, secondaryColor, themeMode });
+    }
   }, [primaryColor, secondaryColor, themeMode]);
 
   const handlePrimaryColorChange = (color: string) => {
+    userHasInteractedRef.current = true;
     setPrimaryColor(color);
     setPrimaryHex(color);
   };
 
   const handleSecondaryColorChange = (color: string) => {
+    userHasInteractedRef.current = true;
     setSecondaryColor(color);
     setSecondaryHex(color);
   };
@@ -60,6 +73,7 @@ export default function AppearanceSettings() {
   const handlePrimaryHexInput = (value: string) => {
     setPrimaryHex(value);
     if (isValidHexColor(value)) {
+      userHasInteractedRef.current = true;
       setPrimaryColor(value);
     }
   };
@@ -67,6 +81,7 @@ export default function AppearanceSettings() {
   const handleSecondaryHexInput = (value: string) => {
     setSecondaryHex(value);
     if (isValidHexColor(value)) {
+      userHasInteractedRef.current = true;
       setSecondaryColor(value);
     }
   };
@@ -118,8 +133,14 @@ export default function AppearanceSettings() {
     }
   };
 
-  const handleResetPrimary = () => handlePrimaryColorChange(DEFAULT_PREFERENCES.primaryColor);
-  const handleResetSecondary = () => handleSecondaryColorChange(DEFAULT_PREFERENCES.secondaryColor);
+  const handleResetPrimary = () => {
+    userHasInteractedRef.current = true;
+    handlePrimaryColorChange(DEFAULT_PREFERENCES.primaryColor);
+  };
+  const handleResetSecondary = () => {
+    userHasInteractedRef.current = true;
+    handleSecondaryColorChange(DEFAULT_PREFERENCES.secondaryColor);
+  };
 
   const primaryPalette = generatePalette(primaryColor);
   const secondaryPalette = generatePalette(secondaryColor);
@@ -298,7 +319,10 @@ export default function AppearanceSettings() {
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Modo de Tema</h3>
         <div className="flex gap-3">
           <button
-            onClick={() => setThemeMode('light')}
+            onClick={() => {
+              userHasInteractedRef.current = true;
+              setThemeMode('light');
+            }}
             className={`flex items-center gap-2 px-5 py-3 rounded-lg border-2 transition-all cursor-pointer ${
               themeMode === 'light'
                 ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300'
@@ -309,7 +333,10 @@ export default function AppearanceSettings() {
             <span className="font-medium">Claro</span>
           </button>
           <button
-            onClick={() => setThemeMode('dark')}
+            onClick={() => {
+              userHasInteractedRef.current = true;
+              setThemeMode('dark');
+            }}
             className={`flex items-center gap-2 px-5 py-3 rounded-lg border-2 transition-all cursor-pointer ${
               themeMode === 'dark'
                 ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300'

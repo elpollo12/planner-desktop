@@ -127,6 +127,7 @@ pub fn run() {
             // Sync commands (Turso cloud)
             commands::sync::get_sync_status,
             commands::sync::save_sync_config,
+            commands::sync::set_sync_interval,
             commands::sync::test_turso_connection,
             commands::sync::initialize_remote_database,
             commands::sync::sync_push,

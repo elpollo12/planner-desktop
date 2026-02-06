@@ -334,6 +334,9 @@ export const syncApi = {
   saveConfig: (sessionToken: string, input: import('../types/sync').SyncConfigInput) =>
     invoke<import('../types/sync').SyncStatus>('save_sync_config', { sessionToken, input }),
 
+  setInterval: (sessionToken: string, intervalMinutes: number) =>
+    invoke<import('../types/sync').SyncStatus>('set_sync_interval', { sessionToken, intervalMinutes }),
+
   testConnection: (sessionToken: string, tursoUrl: string, authToken: string) =>
     invoke<string>('test_turso_connection', { sessionToken, tursoUrl, authToken }),
 
