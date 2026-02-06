@@ -12,7 +12,6 @@ import ReportForm from './pages/ReportForm';
 import ReportList from './pages/ReportList';
 import ReportView from './pages/ReportView';
 import AdminPanel from './pages/AdminPanel';
-import TestArea from './pages/TestArea';
 import './App.css';
 
 // Protected Route Component
@@ -130,15 +129,6 @@ function App() {
         element={
           <ProtectedRoute>
             <AdminPanel />
-          </ProtectedRoute>
-        }
-      />
-
-        <Route
-        path="/test"
-        element={
-          <ProtectedRoute>
-            <TestArea />
           </ProtectedRoute>
         }
       />
