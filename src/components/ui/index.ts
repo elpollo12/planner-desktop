@@ -8,3 +8,5 @@ export { Tabs, TabPanel } from './Tabs';
 export type { Tab } from './Tabs';
 export { BreadCrumps } from './BreadCrumps';
 export { AutoSaveIndicator, AutoSaveIndicatorCompact } from './AutoSaveIndicator';
+export { Badge } from './Badge';
+export type { BadgeVariant, BadgeSize } from './Badge';

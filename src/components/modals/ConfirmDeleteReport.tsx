@@ -13,7 +13,6 @@ export default function ConfirmDeleteModal({
   itemName,
   onConfirm,
 }: ConfirmDeleteModalProps) {
-  console.log('🎨 ConfirmDeleteModal rendered', { message, itemName });
   
   const { closeModal, updateOptions } = useModal();
 

@@ -43,7 +43,6 @@ export function exportReportsToExcel(reports: Report[], filename: string = 'repo
     XLSX.utils.book_append_sheet(wb, ws, 'Reportes');
     XLSX.writeFile(wb, filename);
 
-    console.log('✅ Excel generado exitosamente:', filename);
   } catch (error) {
     console.error('❌ Error al generar Excel:', error);
     throw new Error(`Error al exportar a Excel: ${error instanceof Error ? error.message : 'Error desconocido'}`);
@@ -185,7 +184,6 @@ export function exportSingleReportToExcel(data: any, filename: string): void {
 
     // Save file
     XLSX.writeFile(wb, filename);
-    console.log('✅ Reporte Excel generado exitosamente:', filename);
   } catch (error) {
     console.error('❌ Error al generar reporte Excel:', error);
     throw new Error(`Error al exportar reporte: ${error instanceof Error ? error.message : 'Error desconocido'}`);

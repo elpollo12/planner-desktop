@@ -77,10 +77,8 @@ export default function ReportList() {
   };
 
   const handleDelete = (report: Report) => {
-    console.log('🔴 handleDelete called for report:', report.id);
     
     const onConfirm = async () => {
-      console.log('✅ onConfirm called');
       if (!sessionToken) return;
 
       try {
@@ -94,7 +92,6 @@ export default function ReportList() {
       }
     };
 
-    console.log('📦 Calling openModal...');
     openModal(
       <ConfirmDeleteModal
         message="¿Estás seguro de que deseas eliminar este reporte?"
@@ -107,7 +104,6 @@ export default function ReportList() {
         showCloseButton: true,
       }
     );
-    console.log('✅ openModal called');
   };
 
   const getStatusBadge = (status: ReportStatus) => {

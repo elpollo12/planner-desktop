@@ -315,8 +315,6 @@ export async function exportReportToPDF(data: ReportData): Promise<void> {
     const filename = `DDR_${report.reportNumber || 'reporte'}_${report.reportDate}.pdf`;
     doc.save(filename);
     
-    console.log('✅ PDF generado exitosamente:', filename);
-
   } catch (error) {
     console.error('❌ Error al generar PDF:', error);
     throw new Error(`Error al generar PDF: ${error instanceof Error ? error.message : 'Error desconocido'}`);

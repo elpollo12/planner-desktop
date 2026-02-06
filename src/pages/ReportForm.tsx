@@ -112,7 +112,6 @@ export default function ReportForm() {
     storageKey: 'report-draft',
     debounceMs: 2000,
     enabled: !isEditMode && isDirty,
-    onSave: () => console.log('Auto-saved to localStorage'),
   });
 
   // Load draft on mount OR load existing report if editing
@@ -123,7 +122,6 @@ export default function ReportForm() {
           const report = await reportsApi.get(sessionToken, id);
           const loadedFormData = transformReportToForm(report);
           methods.reset(loadedFormData);
-          console.log('Report loaded for editing:', report);
         } catch (error) {
           console.error('Error loading report:', error);
           toast.error('Error al cargar el reporte');
@@ -133,7 +131,6 @@ export default function ReportForm() {
         const savedDraft = loadFromStorage();
         if (savedDraft) {
           methods.reset(savedDraft);
-          console.log('Draft loaded from localStorage');
         }
       }
     };
@@ -149,12 +146,6 @@ export default function ReportForm() {
 
     setIsSaving(true);
     try {
-      const formData = watch();
-      const reportData = transformFormToReportData(formData);
-
-      const report = await reportsApi.create(sessionToken, reportData);
-      console.log('Draft saved successfully:', report);
-
       clearAutoSave();
       toast.success('Borrador guardado exitosamente');
       
@@ -183,19 +174,16 @@ export default function ReportForm() {
         const reportData = transformFormToReportData(data);
         const report = await reportsApi.update(sessionToken, id, reportData);
         reportId = report.id;
-        console.log('Report updated:', report);
       } else {
         // Create new report
         const reportData = transformFormToReportData(data);
         const report = await reportsApi.create(sessionToken, reportData);
         reportId = report.id;
-        console.log('Report created:', report);
       }
 
       // Save drill string if provided
       if (data.drillString && Object.keys(data.drillString).length > 0) {
         await drillStringApi.save(sessionToken, reportId, data.drillString);
-        console.log('Drill string saved');
       }
 
       // Save crew shifts
@@ -205,7 +193,6 @@ export default function ReportForm() {
             await crewApi.createShift(sessionToken, reportId, shift);
           }
         }
-        console.log('Crew shifts saved');
       }
 
       // Save bit records
@@ -213,12 +200,10 @@ export default function ReportForm() {
         for (const record of data.bitRecords.records) {
           await bitRecordsApi.create(sessionToken, reportId, record);
         }
-        console.log('Bit records saved');
       }
 
       // Submit report (change status to 'submitted')
       await reportsApi.submit(sessionToken, reportId);
-      console.log('Report submitted');
 
       clearAutoSave();
       toast.success('Reporte enviado exitosamente');
