@@ -470,7 +470,6 @@ export default function ReportForm() {
       };
 
       methods.reset(formData);
-      toast.success('Reporte cargado exitosamente');
 
     } catch (error) {
       console.error('Error loading report:', error);
@@ -518,7 +517,7 @@ export default function ReportForm() {
       clearAutoSave();
       localStorage.removeItem('report-header-draft');
 
-      navigate('/reports');
+      navigate('/reports/view/' + currentReportId);
 
     } catch (error) {
       console.error('Error saving draft:', error);
@@ -949,7 +948,7 @@ export default function ReportForm() {
 
                 {/* Active Section Content */}
                 <Card>
-                  <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
+                  <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <span className="text-2xl">{TABS.find(t => t.id === activeTab)?.icon}</span>
                       <div>
@@ -960,6 +959,9 @@ export default function ReportForm() {
                           {TABS.find(t => t.id === activeTab)?.description}
                         </p>
                       </div>
+                    </div>
+                    <div>
+                      Completacion
                     </div>
                   </div>
                   <div className="p-6">
