@@ -130,13 +130,6 @@ export function HeaderSection() {
           placeholder="Ej: TAL-05"
         />
 
-        {/* Company */}
-        <Input
-          label="Compañía"
-          {...register('header.company')}
-          error={errors.header?.company?.message}
-        />
-
         {/* Supervisor 24h */}
         <Input
           label="Supervisor 24h"

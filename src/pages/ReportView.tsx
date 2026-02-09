@@ -341,10 +341,6 @@ export default function ReportView() {
                 <p className="text-base font-medium text-gray-900">{report.rigNumber || '-'}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-600">Compañía</p>
-                <p className="text-base font-medium text-gray-900">{report.company || '-'}</p>
-              </div>
-              <div>
                 <p className="text-sm text-gray-600">Supervisor 24h</p>
                 <p className="text-base font-medium text-gray-900">{report.supervisor24h || '-'}</p>
               </div>

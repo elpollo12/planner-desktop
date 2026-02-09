@@ -38,7 +38,6 @@ CREATE TABLE IF NOT EXISTS reports (
   field_district TEXT,
   municipality TEXT,
   rig_number TEXT,
-  company TEXT,
   supervisor_24h TEXT,
   status TEXT CHECK(status IN ('draft', 'submitted', 'approved', 'rejected')) DEFAULT 'draft',
   created_by TEXT REFERENCES users(id) ON DELETE SET NULL,

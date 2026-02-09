@@ -16,7 +16,6 @@ export function transformFormToReportData(formData: CompleteReportData) {
     fieldDistrict: formData.header.fieldDistrict,
     municipality: formData.header.municipality,
     rigNumber: formData.header.rigNumber,
-    company: formData.header.company,
     supervisor24h: formData.header.supervisor24h,
   };
 }
@@ -36,16 +35,15 @@ export function transformReportToForm(
     header: {
       reportNumber: report.reportNumber,
       reportDate: report.reportDate,
-      wellNumber: report.wellNumber,
-      apiNumber: report.apiNumber,
-      contract: report.contract,
-      contractor: report.contractor,
-      operator: report.operator,
-      fieldDistrict: report.fieldDistrict,
-      municipality: report.municipality,
-      rigNumber: report.rigNumber,
-      company: report.company,
-      supervisor24h: report.supervisor24h,
+      wellNumber: report.wellNumber ?? '',
+      apiNumber: report.apiNumber ?? '',
+      contract: report.contract ?? '',
+      contractor: report.contractor ?? '',
+      operator: report.operator ?? '',
+      fieldDistrict: report.fieldDistrict ?? '',
+      municipality: report.municipality ?? '',
+      rigNumber: report.rigNumber ?? '',
+      supervisor24h: report.supervisor24h ?? '',
     },
     crew: {
       shifts: relatedData?.crewShifts || [
