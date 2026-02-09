@@ -14,7 +14,6 @@ export const headerSectionSchema = z.object({
   fieldDistrict: z.string().optional(),
   municipality: z.string().optional(),
   rigNumber: z.string().optional(),
-  company: z.string().optional(),
   supervisor24h: z.string().optional(),
 });
 

@@ -139,7 +139,6 @@ CREATE TABLE reports (
   field_district TEXT,            -- Campo o Distrito
   municipality TEXT,
   rig_number TEXT,                -- TAL N°
-  company TEXT,
   supervisor_24h TEXT,
   status TEXT CHECK(status IN ('draft', 'submitted', 'approved', 'rejected')) DEFAULT 'draft',
   created_by TEXT REFERENCES users(id),

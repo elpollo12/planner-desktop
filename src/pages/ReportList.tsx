@@ -308,11 +308,6 @@ export default function ReportList() {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm text-gray-900 dark:text-gray-100">
-                          {report.company || '-'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
                         {getStatusBadge(report.status)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">

@@ -110,7 +110,6 @@ const DEFAULT_VALUES: Partial<CompleteReportData> = {
     reportDate: new Date().toISOString().split('T')[0],
     wellNumber: '',
     rigNumber: '',
-    company: '',
     operator: ''
   },
   crew: {
@@ -375,8 +374,6 @@ export default function ReportForm() {
    */
   const handleBackToHeader = () => {
     // Limpiar el header guardado ya que vamos a re-editarlo
-    localStorage.removeItem('report-header-draft');
-
     setHeaderLocked(false);
     setWizardStep('header');
     toast.info('Ahora puedes modificar el encabezado');
@@ -438,7 +435,6 @@ export default function ReportForm() {
           fieldDistrict: report.fieldDistrict ?? '',
           municipality: report.municipality ?? '',
           rigNumber: report.rigNumber ?? '',
-          company: report.company ?? '',
           supervisor24h: report.supervisor24h ?? '',
         },
         drillString: drillString || {},
@@ -922,14 +918,6 @@ export default function ReportForm() {
                 <span className="text-gray-600 dark:text-gray-400">TAL:</span>
                 <span className="ml-2 font-medium text-gray-900 dark:text-gray-100">
                   {headerData.rigNumber}
-                </span>
-              </div>
-            )}
-            {headerData.company && (
-              <div>
-                <span className="text-gray-600 dark:text-gray-400">Compañía:</span>
-                <span className="ml-2 font-medium text-gray-900 dark:text-gray-100">
-                  {headerData.company}
                 </span>
               </div>
             )}

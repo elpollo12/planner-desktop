@@ -102,7 +102,7 @@ export async function exportReportToPDF(data: ReportData): Promise<void> {
       ['Contrato:', report.contract || '-', 'Contratista:', report.contractor || '-'],
       ['Operador:', report.operator || '-', 'Campo/Distrito:', report.fieldDistrict || '-'],
       ['Municipio:', report.municipality || '-', 'Taladro #:', report.rigNumber || '-'],
-      ['Compañía:', report.company || '-', 'Supervisor 24h:', report.supervisor24h || '-'],
+      ['Supervisor 24h:', report.supervisor24h || '-'],
     ];
 
     info.forEach(row => {

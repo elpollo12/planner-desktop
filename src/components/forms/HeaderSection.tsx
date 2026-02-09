@@ -171,13 +171,6 @@ export function HeaderSection() {
           error={errors.header?.rigNumber?.message}
         />
 
-        {/* Company */}
-        <Input
-          label="Compañía"
-          {...register('header.company')}
-          error={errors.header?.company?.message}
-        />
-
         {/* Supervisor 24h */}
         <Input
           label="Supervisor 24h"

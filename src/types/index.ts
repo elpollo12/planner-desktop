@@ -53,7 +53,6 @@ export interface Report {
   field_district?: string;
   municipality?: string;
   rig_number?: string;
-  company?: string;
   supervisor_24h?: string;
   status: 'draft' | 'submitted' | 'approved' | 'rejected';
   created_by?: string;
@@ -78,7 +77,6 @@ export interface CreateReportRequest {
   field_district?: string;
   municipality?: string;
   rig_number?: string;
-  company?: string;
   supervisor_24h?: string;
 }
 

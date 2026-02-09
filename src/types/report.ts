@@ -24,7 +24,6 @@ export interface Report {
   fieldDistrict?: string;
   municipality?: string;
   rigNumber?: string;
-  company?: string;
   supervisor24h?: string;
   status: ReportStatus;
   createdBy: string;
@@ -215,7 +214,6 @@ export interface CreateReportInput {
   fieldDistrict?: string;
   municipality?: string;
   rigNumber?: string;
-  company?: string;
   supervisor24h?: string;
 }
 

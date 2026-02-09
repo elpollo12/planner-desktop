@@ -54,7 +54,7 @@ const SYNC_TABLES: &[TableDef] = &[
         columns: &[
             "id", "report_number", "report_date", "well_number", "api_number",
             "contract", "contractor", "operator", "field_district", "municipality",
-            "rig_number", "company", "supervisor_24h", "status", "created_by",
+            "rig_number", "supervisor_24h", "status", "created_by",
             "approved_by", "submitted_at", "approved_at", "rejected_at",
             "rejection_reason", "created_at", "updated_at", "synced",
         ],
@@ -266,7 +266,6 @@ CREATE TABLE IF NOT EXISTS reports (
   field_district TEXT,
   municipality TEXT,
   rig_number TEXT,
-  company TEXT,
   supervisor_24h TEXT,
   status TEXT DEFAULT 'draft',
   created_by TEXT,

@@ -10,7 +10,6 @@ export const headerSectionSchema = z.object({
   reportDate: z.string().min(1, 'La fecha es requerida'),
   wellNumber: z.string().min(1, 'El número de pozo es requerido'),
   rigNumber: z.string().min(1, 'El número de taladro es requerido'),
-  company: z.string().min(1, 'La compañía es requerida'),
   operator: z.string().min(1, 'El operador es requerido'),
   
   // Campos opcionales
