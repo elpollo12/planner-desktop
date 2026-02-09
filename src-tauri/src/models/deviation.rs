@@ -98,4 +98,9 @@ impl DeviationRecord {
         conn.execute("DELETE FROM deviation_history WHERE id = ?1", params![id])?;
         Ok(())
     }
+
+    pub fn delete_all_by_report(conn: &Connection, report_id: &str) -> Result<(), AppError> {
+        conn.execute("DELETE FROM deviation_history WHERE report_id = ?1", params![report_id])?;
+        Ok(())
+    }
 }

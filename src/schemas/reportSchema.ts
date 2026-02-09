@@ -5,17 +5,20 @@ import { z } from 'zod';
 // ============================================================================
 
 export const headerSectionSchema = z.object({
+  // Campos obligatorios
   reportNumber: z.number().int().positive('El número de reporte debe ser positivo'),
   reportDate: z.string().min(1, 'La fecha es requerida'),
-  wellNumber: z.string().optional(),
+  wellNumber: z.string().min(1, 'El número de pozo es requerido'),
+  rigNumber: z.string().min(1, 'El número de taladro es requerido'),
+  company: z.string().min(1, 'La compañía es requerida'),
+  operator: z.string().min(1, 'El operador es requerido'),
+  
+  // Campos opcionales
   apiNumber: z.string().optional(),
   contract: z.string().optional(),
   contractor: z.string().optional(),
-  operator: z.string().optional(),
   fieldDistrict: z.string().optional(),
   municipality: z.string().optional(),
-  rigNumber: z.string().optional(),
-  company: z.string().optional(),
   supervisor24h: z.string().optional(),
 });
 

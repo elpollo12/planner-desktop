@@ -85,4 +85,9 @@ impl TimeDistribution {
 
         Ok(distributions)
     }
+
+    pub fn delete_all_by_report(conn: &Connection, report_id: &str) -> Result<(), AppError> {
+        conn.execute("DELETE FROM time_distribution WHERE report_id = ?1", params![report_id])?;
+        Ok(())
+    }
 }

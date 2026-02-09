@@ -122,6 +122,9 @@ export const crewApi = {
 
   deleteShift: (sessionToken: string, shiftId: string) =>
     invoke<void>('delete_crew_shift', { sessionToken, shiftId }),
+
+  deleteAllShifts: (sessionToken: string, reportId: string) =>
+    invoke<void>('delete_all_crew_shifts', { sessionToken, reportId }),
 };
 
 // ============================================================================
@@ -140,6 +143,9 @@ export const bitRecordsApi = {
 
   delete: (sessionToken: string, recordId: string) =>
     invoke<void>('delete_bit_record', { sessionToken, recordId }),
+
+  deleteAll: (sessionToken: string, reportId: string) =>
+    invoke<void>('delete_all_bit_records', { sessionToken, reportId }),
 };
 
 // ============================================================================
@@ -178,6 +184,12 @@ export const mudApi = {
 
   listAdditives: (sessionToken: string, reportId: string) =>
     invoke('list_mud_additives', { sessionToken, reportId }),
+
+  deleteAllRecords: (sessionToken: string, reportId: string) =>
+    invoke('delete_all_mud_records', { sessionToken, reportId }),
+
+  deleteAllAdditives: (sessionToken: string, reportId: string) =>
+    invoke('delete_all_mud_additives', { sessionToken, reportId }),
 };
 
 // ============================================================================
@@ -185,11 +197,27 @@ export const mudApi = {
 // ============================================================================
 
 export const timeDistributionApi = {
-  saveBulk: (sessionToken: string, reportId: string, data: any[]) =>
-    invoke('save_time_distributions', { sessionToken, reportId, data }),
+  saveBulk: (sessionToken: string, reportId: string, data: any[]) => {
+    // Transform camelCase to snake_case for Rust backend
+    const transformedData = data.map(distribution => ({
+      operation_code_id: distribution.operationCodeId,
+      hours_shift1: distribution.hoursShift1,
+      hours_shift2: distribution.hoursShift2,
+      hours_shift3: distribution.hoursShift3,
+    }));
+    
+    return invoke('save_time_distributions', { 
+      sessionToken, 
+      reportId, 
+      data: transformedData 
+    });
+  },
 
   list: (sessionToken: string, reportId: string) =>
     invoke('list_time_distributions', { sessionToken, reportId }),
+
+  deleteAll: (sessionToken: string, reportId: string) =>
+    invoke('delete_all_time_distributions', { sessionToken, reportId }),
 };
 
 // ============================================================================
@@ -202,6 +230,9 @@ export const drillingParamsApi = {
 
   list: (sessionToken: string, reportId: string) =>
     invoke('list_drilling_parameters', { sessionToken, reportId }),
+
+  deleteAll: (sessionToken: string, reportId: string) =>
+    invoke('delete_all_drilling_parameters', { sessionToken, reportId }),
 };
 
 // ============================================================================
@@ -214,6 +245,9 @@ export const deviationApi = {
 
   list: (sessionToken: string, reportId: string) =>
     invoke('list_deviation_records', { sessionToken, reportId }),
+
+  deleteAll: (sessionToken: string, reportId: string) =>
+    invoke('delete_all_deviation_records', { sessionToken, reportId }),
 };
 
 // ============================================================================
@@ -226,6 +260,9 @@ export const operationsLogApi = {
 
   list: (sessionToken: string, reportId: string) =>
     invoke('list_operation_logs', { sessionToken, reportId }),
+
+  deleteAll: (sessionToken: string, reportId: string) =>
+    invoke('delete_all_operation_logs', { sessionToken, reportId }),
 };
 
 // ============================================================================

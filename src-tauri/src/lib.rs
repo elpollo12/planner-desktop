@@ -73,12 +73,14 @@ pub fn run() {
             commands::crew::create_crew_shift,
             commands::crew::list_crew_shifts,
             commands::crew::delete_crew_shift,
+            commands::crew::delete_all_crew_shifts,
 
             // Bit records commands
             commands::bit_records::create_bit_record,
             commands::bit_records::list_bit_records,
             commands::bit_records::update_bit_record,
             commands::bit_records::delete_bit_record,
+            commands::bit_records::delete_all_bit_records,
 
             // Operation codes commands (admin)
             commands::operation_codes::create_operation_code,
@@ -92,22 +94,28 @@ pub fn run() {
             commands::mud::list_mud_records,
             commands::mud::create_mud_additive,
             commands::mud::list_mud_additives,
+            commands::mud::delete_all_mud_records,
+            commands::mud::delete_all_mud_additives,
 
             // Time distribution commands
             commands::time_distribution::save_time_distributions,
             commands::time_distribution::list_time_distributions,
+            commands::time_distribution::delete_all_time_distributions,
 
             // Drilling parameters commands
             commands::drilling_params::create_drilling_parameter,
             commands::drilling_params::list_drilling_parameters,
+            commands::drilling_params::delete_all_drilling_parameters,
 
             // Deviation commands
             commands::deviation::create_deviation_record,
             commands::deviation::list_deviation_records,
+            commands::deviation::delete_all_deviation_records,
 
             // Operations log commands
             commands::operations_log::create_operation_log,
             commands::operations_log::list_operation_logs,
+            commands::operations_log::delete_all_operation_logs,
 
             // Areas commands (admin)
             commands::areas::create_area,

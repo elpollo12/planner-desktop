@@ -152,8 +152,9 @@ export default function ReportView() {
         deviationHistory,
         operationsLog,
       });
-      
-      toast.success('PDF generado exitosamente');
+      setTimeout(() => {
+        toast.success('PDF generado exitosamente');
+      }, 1000);
     } catch (error) {
       console.error('Error exporting PDF:', error);
       const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
@@ -179,7 +180,9 @@ export default function ReportView() {
         mudRecords,
       }, filename);
       
-      toast.success('Excel generado exitosamente');
+      setTimeout(() => {
+        toast.success('Excel generado exitosamente');
+      }, 1000);
     } catch (error) {
       console.error('Error exporting Excel:', error);
       const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
