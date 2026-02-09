@@ -100,4 +100,9 @@ impl OperationLog {
         conn.execute("DELETE FROM operations_log WHERE id = ?1", params![id])?;
         Ok(())
     }
+
+    pub fn delete_all_by_report(conn: &Connection, report_id: &str) -> Result<(), AppError> {
+        conn.execute("DELETE FROM operations_log WHERE report_id = ?1", params![report_id])?;
+        Ok(())
+    }
 }

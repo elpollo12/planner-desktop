@@ -134,6 +134,11 @@ impl MudRecord {
         conn.execute("DELETE FROM mud_records WHERE id = ?1", params![id])?;
         Ok(())
     }
+
+    pub fn delete_all_by_report(conn: &Connection, report_id: &str) -> Result<(), AppError> {
+        conn.execute("DELETE FROM mud_records WHERE report_id = ?1", params![report_id])?;
+        Ok(())
+    }
 }
 
 impl MudAdditive {
@@ -202,4 +207,10 @@ impl MudAdditive {
         conn.execute("DELETE FROM mud_additives WHERE id = ?1", params![id])?;
         Ok(())
     }
+
+    pub fn delete_all_by_report(conn: &Connection, report_id: &str) -> Result<(), AppError> {
+        conn.execute("DELETE FROM mud_additives WHERE report_id = ?1", params![report_id])?;
+        Ok(())
+    }
 }
+

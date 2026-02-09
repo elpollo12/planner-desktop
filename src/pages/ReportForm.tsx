@@ -511,13 +511,13 @@ export default function ReportForm() {
         toast.success('Reporte guardado como borrador');
       }
 
-      await saveActiveSection(currentReportId, activeTab);
+      await saveAllSectionsWithData(currentReportId);
 
       // CAMBIO: Limpiar AMBOS localStorage al guardar borrador
       clearAutoSave();
       localStorage.removeItem('report-header-draft');
 
-      navigate('/reports/view/' + currentReportId);
+      navigate('/reports');
 
     } catch (error) {
       console.error('Error saving draft:', error);
@@ -552,7 +552,7 @@ export default function ReportForm() {
         setReportId(currentReportId);
       }
 
-      await saveActiveSection(currentReportId, activeTab);
+      await saveAllSectionsWithData(currentReportId);
       await reportsApi.submit(sessionToken, currentReportId);
 
       // CAMBIO: Limpiar AMBOS localStorage al enviar
@@ -570,84 +570,278 @@ export default function ReportForm() {
     }
   };
 
-  const saveActiveSection = async (reportId: string, sectionId: TabId) => {
+  // ============================================================================
+  // HELPERS - SECTION SAVING (Individual functions)
+  // ============================================================================
+
+  /**
+   * Check if a section has data
+   */
+  const hasSectionData = (sectionId: TabId): boolean => {
+    switch (sectionId) {
+      case 'drillString':
+        return !!(formData.drillString && Object.keys(formData.drillString).length > 0);
+      
+      case 'crew':
+        return !!(formData.crew?.shifts?.some(s => s.members.length > 0));
+      
+      case 'bits':
+        return !!(formData.bitRecords?.records && formData.bitRecords.records.length > 0);
+      
+      case 'time':
+        return !!(formData.timeDistribution?.distributions && formData.timeDistribution.distributions.length > 0);
+      
+      case 'mud':
+        return !!(
+          (formData.mudRecords?.records && formData.mudRecords.records.length > 0) ||
+          (formData.mudRecords?.additives && formData.mudRecords.additives.length > 0)
+        );
+      
+      case 'lithology':
+        return !!(
+          (formData.lithology?.drillingParameters && formData.lithology.drillingParameters.length > 0) ||
+          (formData.lithology?.deviationHistory && formData.lithology.deviationHistory.length > 0)
+        );
+      
+      case 'observations':
+        return !!(formData.observations?.operations && formData.observations.operations.length > 0);
+      
+      default:
+        return false;
+    }
+  };
+
+  /**
+   * Save DrillString section
+   */
+  const saveDrillString = async (reportId: string) => {
+    if (!sessionToken || !formData.drillString) return;
+    await drillStringApi.save(sessionToken, reportId, formData.drillString);
+  };
+
+  /**
+   * Save Crew section
+   * Strategy: DELETE ALL + INSERT ALL to avoid duplicates
+   */
+  const saveCrew = async (reportId: string) => {
+    if (!sessionToken || !formData.crew?.shifts) return;
+    
+    // PASO 1: Eliminar todos los shifts existentes (evita duplicación)
+    if (isEditMode) {
+      try {
+        await crewApi.deleteAllShifts(sessionToken, reportId);
+        console.log('✓ Deleted all existing crew shifts');
+      } catch (error) {
+        console.warn('Could not delete existing shifts (might be new report):', error);
+      }
+    }
+    
+    // PASO 2: Insertar todos los shifts del formulario
+    for (const shift of formData.crew.shifts) {
+      if (shift.members.length > 0) {
+        await crewApi.createShift(sessionToken, reportId, shift);
+      }
+    }
+  };
+
+  /**
+   * Save Bit Records section
+   * Strategy: DELETE ALL + INSERT ALL to avoid duplicates
+   */
+  const saveBits = async (reportId: string) => {
+    if (!sessionToken || !formData.bitRecords?.records) return;
+    
+    // PASO 1: Eliminar todos los records existentes
+    if (isEditMode) {
+      try {
+        await bitRecordsApi.deleteAll(sessionToken, reportId);
+        console.log('✓ Deleted all existing bit records');
+      } catch (error) {
+        console.warn('Could not delete existing bit records:', error);
+      }
+    }
+    
+    // PASO 2: Insertar todos los records del formulario
+    for (const record of formData.bitRecords.records) {
+      await bitRecordsApi.create(sessionToken, reportId, record);
+    }
+  };
+
+  /**
+   * Save Time Distribution section
+   * Strategy: DELETE ALL + INSERT ALL to avoid duplicates
+   */
+  const saveTime = async (reportId: string) => {
+    if (!sessionToken || !formData.timeDistribution?.distributions) return;
+    
+    // PASO 1: Eliminar todos los distributions existentes
+    if (isEditMode) {
+      try {
+        await timeDistributionApi.deleteAll(sessionToken, reportId);
+        console.log('✓ Deleted all existing time distributions');
+      } catch (error) {
+        console.warn('Could not delete existing time distributions:', error);
+      }
+    }
+    
+    // PASO 2: Insertar todos los distributions del formulario
+    await timeDistributionApi.saveBulk(
+      sessionToken,
+      reportId,
+      formData.timeDistribution.distributions
+    );
+  };
+
+  /**
+   * Save Mud Records section
+   * Strategy: DELETE ALL + INSERT ALL to avoid duplicates
+   */
+  const saveMud = async (reportId: string) => {
+    if (!sessionToken || !formData.mudRecords) return;
+    
+    // PASO 1: Eliminar todos los records y additives existentes
+    if (isEditMode) {
+      try {
+        await mudApi.deleteAllRecords(sessionToken, reportId);
+        await mudApi.deleteAllAdditives(sessionToken, reportId);
+        console.log('✓ Deleted all existing mud records and additives');
+      } catch (error) {
+        console.warn('Could not delete existing mud data:', error);
+      }
+    }
+    
+    // PASO 2: Insertar todos los records del formulario
+    if (formData.mudRecords.records && formData.mudRecords.records.length > 0) {
+      for (const record of formData.mudRecords.records) {
+        await mudApi.createRecord(sessionToken, reportId, record);
+      }
+    }
+    
+    // PASO 3: Insertar todos los additives del formulario
+    if (formData.mudRecords.additives && formData.mudRecords.additives.length > 0) {
+      for (const additive of formData.mudRecords.additives) {
+        await mudApi.createAdditive(sessionToken, reportId, additive);
+      }
+    }
+  };
+
+  /**
+   * Save Lithology section
+   * Strategy: DELETE ALL + INSERT ALL to avoid duplicates
+   */
+  const saveLithology = async (reportId: string) => {
+    if (!sessionToken || !formData.lithology) return;
+    
+    // PASO 1: Eliminar todos los params y deviations existentes
+    if (isEditMode) {
+      try {
+        await drillingParamsApi.deleteAll(sessionToken, reportId);
+        await deviationApi.deleteAll(sessionToken, reportId);
+        console.log('✓ Deleted all existing lithology data');
+      } catch (error) {
+        console.warn('Could not delete existing lithology data:', error);
+      }
+    }
+    
+    // PASO 2: Insertar todos los drilling parameters del formulario
+    if (formData.lithology.drillingParameters && formData.lithology.drillingParameters.length > 0) {
+      for (const param of formData.lithology.drillingParameters) {
+        await drillingParamsApi.create(sessionToken, reportId, param);
+      }
+    }
+    
+    // PASO 3: Insertar todos los deviation history del formulario
+    if (formData.lithology.deviationHistory && formData.lithology.deviationHistory.length > 0) {
+      for (const deviation of formData.lithology.deviationHistory) {
+        await deviationApi.create(sessionToken, reportId, deviation);
+      }
+    }
+  };
+
+  /**
+   * Save Observations section
+   * Strategy: DELETE ALL + INSERT ALL to avoid duplicates
+   */
+  const saveObservations = async (reportId: string) => {
+    if (!sessionToken || !formData.observations?.operations) return;
+    
+    // PASO 1: Eliminar todos los operations existentes
+    if (isEditMode) {
+      try {
+        await operationsLogApi.deleteAll(sessionToken, reportId);
+        console.log('✓ Deleted all existing operations');
+      } catch (error) {
+        console.warn('Could not delete existing operations:', error);
+      }
+    }
+    
+    // PASO 2: Insertar todos los operations del formulario
+    for (const operation of formData.observations.operations) {
+      await operationsLogApi.create(sessionToken, reportId, operation);
+    }
+  };
+
+  /**
+   * Save ALL sections that have data
+   * This is the MAIN function to use instead of saveActiveSection
+   */
+  const saveAllSectionsWithData = async (reportId: string) => {
     if (!sessionToken) return;
 
-    try {
-      switch (sectionId) {
-        case 'drillString':
-          if (formData.drillString && Object.keys(formData.drillString).length > 0) {
-            await drillStringApi.save(sessionToken, reportId, formData.drillString);
-          }
-          break;
+    const sectionsToSave: Array<{ id: TabId; name: string; saveFn: () => Promise<void> }> = [];
 
-        case 'crew':
-          if (formData.crew?.shifts) {
-            for (const shift of formData.crew.shifts) {
-              if (shift.members.length > 0) {
-                await crewApi.createShift(sessionToken, reportId, shift);
-              }
-            }
-          }
-          break;
+    // Detect which sections have data
+    if (hasSectionData('drillString')) {
+      sectionsToSave.push({ id: 'drillString', name: 'Sarta de Perforación', saveFn: () => saveDrillString(reportId) });
+    }
+    if (hasSectionData('crew')) {
+      sectionsToSave.push({ id: 'crew', name: 'Cuadrilla', saveFn: () => saveCrew(reportId) });
+    }
+    if (hasSectionData('bits')) {
+      sectionsToSave.push({ id: 'bits', name: 'Mechas', saveFn: () => saveBits(reportId) });
+    }
+    if (hasSectionData('time')) {
+      sectionsToSave.push({ id: 'time', name: 'Distribución de Tiempo', saveFn: () => saveTime(reportId) });
+    }
+    if (hasSectionData('mud')) {
+      sectionsToSave.push({ id: 'mud', name: 'Lodo', saveFn: () => saveMud(reportId) });
+    }
+    if (hasSectionData('lithology')) {
+      sectionsToSave.push({ id: 'lithology', name: 'Litología', saveFn: () => saveLithology(reportId) });
+    }
+    if (hasSectionData('observations')) {
+      sectionsToSave.push({ id: 'observations', name: 'Observaciones', saveFn: () => saveObservations(reportId) });
+    }
 
-        case 'bits':
-          if (formData.bitRecords?.records && formData.bitRecords.records.length > 0) {
-            for (const record of formData.bitRecords.records) {
-              await bitRecordsApi.create(sessionToken, reportId, record);
-            }
-          }
-          break;
+    // If no sections have data, return early
+    if (sectionsToSave.length === 0) {
+      console.log('No sections with data to save');
+      return;
+    }
 
-        case 'time':
-          if (formData.timeDistribution?.distributions && formData.timeDistribution.distributions.length > 0) {
-            await timeDistributionApi.saveBulk(
-              sessionToken,
-              reportId,
-              formData.timeDistribution.distributions
-            );
-          }
-          break;
+    // Save all sections with data
+    console.log(`Saving ${sectionsToSave.length} sections:`, sectionsToSave.map(s => s.name).join(', '));
+    
+    const errors: Array<{ section: string; error: any }> = [];
 
-        case 'mud':
-          if (formData.mudRecords?.records && formData.mudRecords.records.length > 0) {
-            for (const record of formData.mudRecords.records) {
-              await mudApi.createRecord(sessionToken, reportId, record);
-            }
-          }
-          if (formData.mudRecords?.additives && formData.mudRecords.additives.length > 0) {
-            for (const additive of formData.mudRecords.additives) {
-              await mudApi.createAdditive(sessionToken, reportId, additive);
-            }
-          }
-          break;
-
-        case 'lithology':
-          if (formData.lithology?.drillingParameters && formData.lithology.drillingParameters.length > 0) {
-            for (const param of formData.lithology.drillingParameters) {
-              await drillingParamsApi.create(sessionToken, reportId, param);
-            }
-          }
-          if (formData.lithology?.deviationHistory && formData.lithology.deviationHistory.length > 0) {
-            for (const deviation of formData.lithology.deviationHistory) {
-              await deviationApi.create(sessionToken, reportId, deviation);
-            }
-          }
-          break;
-
-        case 'observations':
-          if (formData.observations?.operations && formData.observations.operations.length > 0) {
-            for (const operation of formData.observations.operations) {
-              await operationsLogApi.create(sessionToken, reportId, operation);
-            }
-          }
-          break;
+    for (const section of sectionsToSave) {
+      try {
+        await section.saveFn();
+        console.log(`✓ Saved: ${section.name}`);
+      } catch (error) {
+        console.error(`✗ Error saving ${section.name}:`, error);
+        errors.push({ section: section.name, error });
       }
+    }
 
-      toast.success(`Sección "${TABS.find(t => t.id === sectionId)?.label}" guardada`);
-    } catch (error) {
-      console.error('Error saving section:', error);
-      throw error;
+    // Report results
+    if (errors.length === 0) {
+      toast.success(`${sectionsToSave.length} sección${sectionsToSave.length > 1 ? 'es' : ''} guardada${sectionsToSave.length > 1 ? 's' : ''} exitosamente`);
+    } else if (errors.length < sectionsToSave.length) {
+      toast.warning(`${sectionsToSave.length - errors.length} de ${sectionsToSave.length} secciones guardadas. ${errors.length} fallaron.`);
+    } else {
+      toast.error('Error al guardar las secciones');
+      throw new Error(`Failed to save sections: ${errors.map(e => e.section).join(', ')}`);
     }
   };
 
@@ -881,6 +1075,29 @@ export default function ReportForm() {
               <>
                 {/* Header Summary */}
                 {renderHeaderSummary()}
+
+                {/* Sections Data Summary */}
+                {(() => {
+                  const sectionsWithData = TABS.filter(tab => hasSectionData(tab.id));
+                  if (sectionsWithData.length > 0) {
+                    return (
+                      <Card className="bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-800">
+                        <div className="p-4">
+                          <div className="flex items-center gap-2 mb-2">
+                            <CheckCircle2 className="text-green-600" size={20} />
+                            <h3 className="font-semibold text-green-900 dark:text-green-100">
+                              {sectionsWithData.length} Sección{sectionsWithData.length > 1 ? 'es' : ''} con Datos
+                            </h3>
+                          </div>
+                          <p className="text-sm text-green-800 dark:text-green-200">
+                            Al guardar, se registrarán: <strong>{sectionsWithData.map(t => t.label).join(', ')}</strong>
+                          </p>
+                        </div>
+                      </Card>
+                    );
+                  }
+                  return null;
+                })()}
 
                 {/* Section Selection */}
                 <Card>

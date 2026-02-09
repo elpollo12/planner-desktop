@@ -72,3 +72,38 @@ pub async fn list_mud_additives(
     let additives = MudAdditive::list_by_report(&conn, &report_id).map_err(|e| e.to_string())?;
     Ok(additives)
 }
+
+
+#[tauri::command]
+pub async fn delete_all_mud_records(
+    session_token: String,
+    report_id: String,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    get_session(&session_token, &state).map_err(|e| e.to_string())?;
+
+    let conn = state
+        .db
+        .lock()
+        .map_err(|e| format!("Failed to lock database: {}", e))?;
+
+    MudRecord::delete_all_by_report(&conn, &report_id).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn delete_all_mud_additives(
+    session_token: String,
+    report_id: String,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    get_session(&session_token, &state).map_err(|e| e.to_string())?;
+
+    let conn = state
+        .db
+        .lock()
+        .map_err(|e| format!("Failed to lock database: {}", e))?;
+
+    MudAdditive::delete_all_by_report(&conn, &report_id).map_err(|e| e.to_string())?;
+    Ok(())
+}

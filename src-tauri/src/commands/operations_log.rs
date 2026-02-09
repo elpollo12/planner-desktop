@@ -41,3 +41,23 @@ pub async fn list_operation_logs(
 
     Ok(logs)
 }
+
+
+#[tauri::command]
+pub async fn delete_all_operation_logs(
+    session_token: String,
+    report_id: String,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    get_session(&session_token, &state).map_err(|e| e.to_string())?;
+
+    let conn = state
+        .db
+        .lock()
+        .map_err(|e| format!("Failed to lock database: {}", e))?;
+
+    OperationLog::delete_all_by_report(&conn, &report_id)
+        .map_err(|e| e.to_string())?;
+
+    Ok(())
+}

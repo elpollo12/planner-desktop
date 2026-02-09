@@ -80,3 +80,22 @@ pub async fn delete_bit_record(
 
     Ok(())
 }
+
+#[tauri::command]
+pub async fn delete_all_bit_records(
+    session_token: String,
+    report_id: String,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    // Verify session
+    get_session(&session_token, &state).map_err(|e| e.to_string())?;
+
+    let conn = state
+        .db
+        .lock()
+        .map_err(|e| format!("Failed to lock database: {}", e))?;
+
+    BitRecord::delete_all_by_report(&conn, &report_id).map_err(|e| e.to_string())?;
+
+    Ok(())
+}
