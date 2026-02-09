@@ -29,6 +29,7 @@ import {
 } from '../lib/api';
 import { transformFormToReportData } from '../lib/reportHelpers';
 import { toast } from '../lib/toast';
+import { loadLastReportTemplate, saveLastReportTemplate } from '../lib/lastReportData';
 import type { Report } from '../types/report';
 
 // Import form sections
@@ -151,7 +152,6 @@ export default function ReportForm() {
   // Wizard state
   const [wizardStep, setWizardStep] = useState<WizardStep>('header');
   const [activeTab, setActiveTab] = useState<TabId>('crew');
-  const [headerLocked, setHeaderLocked] = useState(false);
 
   // Loading states
   const [isSaving, setIsSaving] = useState(false);
@@ -184,10 +184,7 @@ export default function ReportForm() {
 
   // Auto-save hook (only for new reports in sections step)
   const {
-    status: autoSaveStatus,
-    lastSaved,
     clearSaved: clearAutoSave,
-    loadFromStorage,
   } = useAutoSave({
     data: formData,
     storageKey: 'report-draft',
@@ -283,39 +280,17 @@ export default function ReportForm() {
       if (isEditMode && id && sessionToken) {
         await loadExistingReport(id);
         setWizardStep('sections');
-        setHeaderLocked(true);
       } else if (!isEditMode) {
-        // NUEVO: Intentar restaurar header guardado
-        let headerRestored = false;
-        try {
-          const savedHeader = localStorage.getItem('report-header-draft');
-          if (savedHeader) {
-            const { header } = JSON.parse(savedHeader);
-            methods.reset({ ...DEFAULT_VALUES, header });
-            headerRestored = true;
-            toast.info('Encabezado restaurado desde la última sesión');
-
-            // Si el header es válido, ir directo a secciones
-            if (header?.reportNumber && header?.reportDate) {
-              setWizardStep('sections');
-              setHeaderLocked(true);
-            }
-          }
-        } catch (error) {
-          console.error('Error loading header from localStorage:', error);
-        }
-
-        // Si no se restauró el header, intentar restaurar borrador completo
-        if (!headerRestored) {
-          const savedDraft = loadFromStorage();
-          if (savedDraft) {
-            methods.reset(savedDraft);
-            toast.info('Borrador restaurado');
-            if (savedDraft.header?.reportNumber && savedDraft.header?.reportDate) {
-              setWizardStep('sections');
-              setHeaderLocked(true);
-            }
-          }
+        // Cargar plantilla del último reporte para auto-completar
+        const lastReportTemplate = loadLastReportTemplate();
+        if (lastReportTemplate) {
+          const newHeader = {
+            ...DEFAULT_VALUES.header,
+            ...lastReportTemplate,
+            reportDate: new Date().toISOString().split('T')[0], // Siempre fecha actual
+          };
+          methods.reset({ ...DEFAULT_VALUES, header: newHeader });
+          toast.info('Datos del último reporte cargados');
         }
       }
     };
@@ -353,18 +328,6 @@ export default function ReportForm() {
       return;
     }
 
-    // NUEVO: Guardar header en localStorage al continuar
-    try {
-      const headerToSave = {
-        header: headerData,
-        timestamp: new Date().toISOString(),
-      };
-      localStorage.setItem('report-header-draft', JSON.stringify(headerToSave));
-    } catch (error) {
-      console.error('Error saving header to localStorage:', error);
-    }
-
-    setHeaderLocked(true);
     setWizardStep('sections');
     toast.success('Encabezado completado. Ahora selecciona una sección para llenar.');
   };
@@ -373,8 +336,6 @@ export default function ReportForm() {
    * Handle back to header editing
    */
   const handleBackToHeader = () => {
-    // Limpiar el header guardado ya que vamos a re-editarlo
-    setHeaderLocked(false);
     setWizardStep('header');
     toast.info('Ahora puedes modificar el encabezado');
   };
@@ -504,14 +465,27 @@ export default function ReportForm() {
         const newReport = await reportsApi.create(sessionToken, reportData);
         currentReportId = newReport.id;
         setReportId(currentReportId);
+
+        // Guardar datos del reporte como plantilla para el próximo
+        saveLastReportTemplate({
+          reportNumber: formData.header.reportNumber,
+          wellNumber: formData.header.wellNumber,
+          apiNumber: formData.header.apiNumber,
+          contract: formData.header.contract,
+          contractor: formData.header.contractor,
+          operator: formData.header.operator,
+          fieldDistrict: formData.header.fieldDistrict,
+          municipality: formData.header.municipality,
+          rigNumber: formData.header.rigNumber,
+          supervisor24h: formData.header.supervisor24h,
+        });
+
         toast.success('Reporte guardado como borrador');
       }
 
       await saveAllSectionsWithData(currentReportId);
 
-      // CAMBIO: Limpiar AMBOS localStorage al guardar borrador
       clearAutoSave();
-      localStorage.removeItem('report-header-draft');
 
       navigate('/reports');
 
@@ -546,14 +520,26 @@ export default function ReportForm() {
         const newReport = await reportsApi.create(sessionToken, reportData);
         currentReportId = newReport.id;
         setReportId(currentReportId);
+
+        // Guardar datos del reporte como plantilla para el próximo
+        saveLastReportTemplate({
+          reportNumber: data.header.reportNumber,
+          wellNumber: data.header.wellNumber,
+          apiNumber: data.header.apiNumber,
+          contract: data.header.contract,
+          contractor: data.header.contractor,
+          operator: data.header.operator,
+          fieldDistrict: data.header.fieldDistrict,
+          municipality: data.header.municipality,
+          rigNumber: data.header.rigNumber,
+          supervisor24h: data.header.supervisor24h,
+        });
       }
 
       await saveAllSectionsWithData(currentReportId);
       await reportsApi.submit(sessionToken, currentReportId);
 
-      // CAMBIO: Limpiar AMBOS localStorage al enviar
       clearAutoSave();
-      localStorage.removeItem('report-header-draft');
 
       toast.success('Reporte enviado exitosamente');
       navigate('/reports');
