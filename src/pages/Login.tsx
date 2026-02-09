@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
+import { preferencesApi } from '../lib/api';
 import { Button, Input, Card } from '../components/ui';
 
 export default function Login() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [logoData, setLogoData] = useState<string | null>(null);
   const { login, isLoading, error, isAuthenticated, setError } = useAuthStore();
   const navigate = useNavigate();
 
@@ -15,7 +17,20 @@ export default function Login() {
     }
   }, [isAuthenticated, navigate]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Load public logo data
+  useEffect(() => {
+    const loadLogo = async () => {
+      try {
+        const data = await preferencesApi.getPublicLogoData();
+        setLogoData(data);
+      } catch (err) {
+        console.error('Failed to load logo:', err);
+      }
+    };
+    loadLogo();
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
 
@@ -28,13 +43,36 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#1E3A5F] to-[#2d5a8f] flex items-center justify-center">
-      <Card className="sm:min-w-1/2 md:min-w-1/3 max-w-md">
+    <div
+      className="min-h-screen flex items-center justify-center relative"
+      style={{
+        backgroundImage: 'url(/login.png)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+      }}
+    >
+      {/* Dark overlay for better readability */}
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
+
+      <Card className="sm:min-w-1/2 md:min-w-1/3 max-w-md relative z-10 shadow-2xl">
         <div className="text-center mb-6">
-          <h1 className="text-3xl font-bold text-primary-500 mb-2">
-            Sistema de Reportes DDR
-          </h1>
-          <p className="text-gray-600">Gestión de Taladros Petroleros</p>
+          {logoData ? (
+            <div className="flex justify-center mb-4">
+              <img
+                src={logoData}
+                alt="Logo de la aplicación"
+                className="h-20 w-auto object-contain"
+              />
+            </div>
+          ) : (
+            <>
+              <h1 className="text-3xl font-bold text-primary-500 mb-2">
+                Sistema de Reportes DDR
+              </h1>
+              <p className="text-gray-600">Gestión de Taladros Petroleros</p>
+            </>
+          )}
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">

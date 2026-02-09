@@ -285,6 +285,53 @@ pub async fn get_logo_data(
     }
 }
 
+/// Get public logo data (no authentication required) - for login screen
+#[tauri::command]
+pub async fn get_public_logo_data(
+    state: State<'_, AppState>,
+) -> Result<Option<String>> {
+    let conn = state.db.lock().unwrap();
+
+    // Try to get logo from any user preferences (preferably from an admin)
+    let logo_path: Option<String> = conn
+        .query_row(
+            "SELECT logo_path FROM user_preferences
+             WHERE logo_path IS NOT NULL
+             ORDER BY updated_at DESC
+             LIMIT 1",
+            [],
+            |row| row.get(0),
+        )
+        .ok();
+
+    match logo_path {
+        Some(ref path_str) => {
+            let path = Path::new(path_str);
+            if !path.exists() {
+                return Ok(None);
+            }
+            let data = std::fs::read(path)
+                .map_err(|e| crate::error::AppError::Internal(format!("Failed to read logo: {}", e)))?;
+
+            let ext = path.extension()
+                .and_then(|e| e.to_str())
+                .unwrap_or("png")
+                .to_lowercase();
+            let mime = get_mime_type(&ext);
+
+            let mut b64 = String::from("data:");
+            b64.push_str(mime);
+            b64.push_str(";base64,");
+
+            let encoded = base64_encode(&data);
+            write!(&mut b64, "{}", encoded).unwrap();
+
+            Ok(Some(b64))
+        }
+        None => Ok(None),
+    }
+}
+
 fn base64_encode(data: &[u8]) -> String {
     const CHARS: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     let mut result = String::with_capacity((data.len() + 2) / 3 * 4);

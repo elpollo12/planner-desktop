@@ -358,6 +358,9 @@ export const preferencesApi = {
 
   getLogoData: (sessionToken: string) =>
     invoke<string | null>('get_logo_data', { sessionToken }),
+
+  getPublicLogoData: () =>
+    invoke<string | null>('get_public_logo_data'),
 };
 
 // ============================================================================
