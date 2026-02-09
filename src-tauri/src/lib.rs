@@ -129,6 +129,7 @@ pub fn run() {
             commands::preferences::upload_logo,
             commands::preferences::remove_logo,
             commands::preferences::get_logo_data,
+            commands::preferences::get_public_logo_data,
 
             // Sync commands (Turso cloud - credentials via environment variables)
             commands::sync::get_sync_status,
