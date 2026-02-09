@@ -48,6 +48,7 @@ pub struct Report {
     pub field_district: Option<String>,
     pub municipality: Option<String>,
     pub rig_number: Option<String>,
+    pub company: Option<String>,
     pub supervisor_24h: Option<String>,
     pub status: String,
     pub created_by: Option<String>,
@@ -74,6 +75,7 @@ pub struct CreateReportRequest {
     pub field_district: Option<String>,
     pub municipality: Option<String>,
     pub rig_number: Option<String>,
+    pub company: Option<String>,
     pub supervisor_24h: Option<String>,
 }
 
@@ -90,6 +92,7 @@ pub struct UpdateReportRequest {
     pub field_district: Option<String>,
     pub municipality: Option<String>,
     pub rig_number: Option<String>,
+    pub company: Option<String>,
     pub supervisor_24h: Option<String>,
 }
 
@@ -117,6 +120,7 @@ impl Report {
             field_district: row.get(8)?,
             municipality: row.get(9)?,
             rig_number: row.get(10)?,
+            company: row.get(11)?,
             supervisor_24h: row.get(12)?,
             status: row.get(13)?,
             created_by: row.get(14)?,
@@ -141,7 +145,7 @@ impl Report {
         let now = chrono::Utc::now().to_rfc3339();
 
         conn.execute(
-            "INSERT INTO reports (id, report_number, report_date, well_number, api_number, contract, contractor, operator, field_district, municipality, rig_number, supervisor_24h, status, created_by, created_at, updated_at, synced)
+            "INSERT INTO reports (id, report_number, report_date, well_number, api_number, contract, contractor, operator, field_district, municipality, rig_number, company, supervisor_24h, status, created_by, created_at, updated_at, synced)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18)",
             params![
                 &id,
@@ -155,6 +159,7 @@ impl Report {
                 &request.field_district,
                 &request.municipality,
                 &request.rig_number,
+                &request.company,
                 &request.supervisor_24h,
                 "draft",
                 &created_by,
@@ -170,7 +175,7 @@ impl Report {
     /// Get report by ID
     pub fn get_by_id(conn: &Connection, report_id: &str) -> Result<Report, AppError> {
         let report = conn.query_row(
-            "SELECT id, report_number, report_date, well_number, api_number, contract, contractor, operator, field_district, municipality, rig_number, supervisor_24h, status, created_by, approved_by, submitted_at, approved_at, rejected_at, rejection_reason, created_at, updated_at, synced
+            "SELECT id, report_number, report_date, well_number, api_number, contract, contractor, operator, field_district, municipality, rig_number, company, supervisor_24h, status, created_by, approved_by, submitted_at, approved_at, rejected_at, rejection_reason, created_at, updated_at, synced
              FROM reports WHERE id = ?1",
             params![report_id],
             Report::from_row,
@@ -188,7 +193,7 @@ impl Report {
         accessible_rig_names: Option<&[String]>,
     ) -> Result<Vec<Report>, AppError> {
         let mut query = String::from(
-            "SELECT id, report_number, report_date, well_number, api_number, contract, contractor, operator, field_district, municipality, rig_number, supervisor_24h, status, created_by, approved_by, submitted_at, approved_at, rejected_at, rejection_reason, created_at, updated_at, synced FROM reports WHERE 1=1"
+            "SELECT id, report_number, report_date, well_number, api_number, contract, contractor, operator, field_district, municipality, rig_number, company, supervisor_24h, status, created_by, approved_by, submitted_at, approved_at, rejected_at, rejection_reason, created_at, updated_at, synced FROM reports WHERE 1=1"
         );
         let mut params_vec: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
 
@@ -302,6 +307,10 @@ impl Report {
         if let Some(ref rig_number) = request.rig_number {
             updates.push("rig_number = ?");
             params_vec.push(Box::new(rig_number.clone()));
+        }
+        if let Some(ref company) = request.company {
+            updates.push("company = ?");
+            params_vec.push(Box::new(company.clone()));
         }
         if let Some(ref supervisor_24h) = request.supervisor_24h {
             updates.push("supervisor_24h = ?");
