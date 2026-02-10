@@ -12,6 +12,7 @@ import { toast } from '../lib/toast';
 import { backgroundPush } from '../lib/syncHelper';
 import { syncEvents } from '../lib/syncEvents';
 import type { Report, ReportStatus } from '../types/report';
+import { RigWithArea } from '@/types';
 
 interface PaginatedReportsResponse {
   reports: Report[];
@@ -31,7 +32,7 @@ export default function ReportList() {
   const [loading, setLoading] = useState(true);
 
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(5);
+  const [pageSize, setPageSize] = useState(10);
   const [totalReports, setTotalReports] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
 
