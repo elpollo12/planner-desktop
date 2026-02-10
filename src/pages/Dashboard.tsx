@@ -31,7 +31,7 @@ export default function Dashboard() {
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {stats.map((stat) => (
-          <Card key={stat.label} className="!p-0 overflow-hidden">
+          <Card key={stat.label} className="p-0! overflow-hidden">
             <div className={`h-2 ${stat.color}`} />
             <div className="p-6">
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">{stat.label}</p>
