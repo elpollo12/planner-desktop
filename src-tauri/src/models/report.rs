@@ -185,22 +185,38 @@ impl Report {
     }
 
     /// List reports with filters and permission-aware filtering
-    pub fn list(
+        pub fn list(
         conn: &Connection,
         filters: &ReportFilters,
         user_id: Option<&str>,
         user_role: &UserRole,
         accessible_rig_names: Option<&[String]>,
-    ) -> Result<Vec<Report>, AppError> {
+        page: Option<i64>,
+        page_size: Option<i64>,
+    ) -> Result<(Vec<Report>, i64), AppError> {
+        // Pagination defaults
+        let page = page.unwrap_or(1).max(1);
+        let page_size = page_size.unwrap_or(20).min(100);
+        let offset = (page - 1) * page_size;
+
+        // Base query for selecting reports
         let mut query = String::from(
             "SELECT id, report_number, report_date, well_number, api_number, contract, contractor, operator, field_district, municipality, rig_number, company, supervisor_24h, status, created_by, approved_by, submitted_at, approved_at, rejected_at, rejection_reason, created_at, updated_at, synced FROM reports WHERE 1=1"
         );
+        
+        // Query for counting total
+        let mut count_query = String::from(
+            "SELECT COUNT(*) FROM reports WHERE 1=1"
+        );
+        
         let mut params_vec: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
 
         // Permission-based filtering: operators only see their own reports
         if *user_role == UserRole::Operator {
             if let Some(uid) = user_id {
-                query.push_str(" AND created_by = ?");
+                let clause = " AND created_by = ?";
+                query.push_str(clause);
+                count_query.push_str(clause);
                 params_vec.push(Box::new(uid.to_string()));
             }
         }
@@ -209,52 +225,69 @@ impl Report {
         if let Some(rig_names) = accessible_rig_names {
             if rig_names.is_empty() {
                 // User has no rig access - return empty
-                return Ok(Vec::new());
+                return Ok((Vec::new(), 0));
             }
             // Build IN clause for rig names
             let placeholders: Vec<&str> = rig_names.iter().map(|_| "?").collect();
-            query.push_str(&format!(" AND rig_number IN ({})", placeholders.join(",")));
+            let clause = format!(" AND rig_number IN ({})", placeholders.join(","));
+            query.push_str(&clause);
+            count_query.push_str(&clause);
             for name in rig_names {
                 params_vec.push(Box::new(name.clone()));
             }
         }
 
-        // Apply filters
+        // Apply filters (same to both queries)
         if let Some(ref date_from) = filters.date_from {
-            query.push_str(" AND report_date >= ?");
+            let clause = " AND report_date >= ?";
+            query.push_str(clause);
+            count_query.push_str(clause);
             params_vec.push(Box::new(date_from.clone()));
         }
 
         if let Some(ref date_to) = filters.date_to {
-            query.push_str(" AND report_date <= ?");
+            let clause = " AND report_date <= ?";
+            query.push_str(clause);
+            count_query.push_str(clause);
             params_vec.push(Box::new(date_to.clone()));
         }
 
         if let Some(ref status) = filters.status {
-            query.push_str(" AND status = ?");
+            let clause = " AND status = ?";
+            query.push_str(clause);
+            count_query.push_str(clause);
             params_vec.push(Box::new(status.clone()));
         }
 
         if let Some(ref created_by) = filters.created_by {
-            query.push_str(" AND created_by = ?");
+            let clause = " AND created_by = ?";
+            query.push_str(clause);
+            count_query.push_str(clause);
             params_vec.push(Box::new(created_by.clone()));
         }
 
         if let Some(ref well_number) = filters.well_number {
-            query.push_str(" AND well_number = ?");
+            let clause = " AND well_number = ?";
+            query.push_str(clause);
+            count_query.push_str(clause);
             params_vec.push(Box::new(well_number.clone()));
         }
 
-        query.push_str(" ORDER BY report_date DESC, created_at DESC");
-
+        // Get total count first
         let params_refs: Vec<&dyn rusqlite::ToSql> = params_vec.iter().map(|p| p.as_ref()).collect();
+        let total: i64 = conn.query_row(&count_query, params_refs.as_slice(), |row| row.get(0))?;
 
+        // Add ORDER BY + LIMIT + OFFSET to main query
+        query.push_str(" ORDER BY report_date DESC, created_at DESC");
+        query.push_str(&format!(" LIMIT {} OFFSET {}", page_size, offset));
+
+        // Execute main query
         let mut stmt = conn.prepare(&query)?;
         let reports = stmt
             .query_map(params_refs.as_slice(), Report::from_row)?
             .collect::<Result<Vec<_>, _>>()?;
 
-        Ok(reports)
+        Ok((reports, total))
     }
 
     /// Update report

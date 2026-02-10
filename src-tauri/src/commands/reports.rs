@@ -2,7 +2,16 @@ use crate::auth::{check_permission, get_session};
 use crate::models::report::{CreateReportRequest, Report, ReportFilters, UpdateReportRequest};
 use crate::models::user::{User, UserRole};
 use crate::state::AppState;
+use serde::Serialize;
 use tauri::State;
+#[derive(Debug, Serialize)]
+pub struct PaginatedReportsResponse {
+    pub reports: Vec<Report>,
+    pub total: i64,
+    pub page: i64,
+    pub page_size: i64,
+    pub total_pages: i64,
+}
 
 #[tauri::command]
 pub async fn create_report(
@@ -27,8 +36,10 @@ pub async fn create_report(
 pub async fn list_reports(
     session_token: String,
     filters: ReportFilters,
+    page: Option<i64>,
+    page_size: Option<i64>,
     state: State<'_, AppState>,
-) -> Result<Vec<Report>, String> {
+) -> Result<PaginatedReportsResponse, String> {
     let session = get_session(&session_token, &state).map_err(|e| e.to_string())?;
     let user_role = UserRole::from_str(&session.role).map_err(|e| e.to_string())?;
 
@@ -41,16 +52,34 @@ pub async fn list_reports(
     let accessible_rig_names = User::get_accessible_rig_names(&conn, &session.user_id)
         .map_err(|e| e.to_string())?;
 
-    let reports = Report::list(
+    // Call list with pagination
+    let (reports, total) = Report::list(
         &conn,
         &filters,
         Some(&session.user_id),
         &user_role,
         accessible_rig_names.as_deref(),
+        page,
+        page_size,
     )
     .map_err(|e| e.to_string())?;
 
-    Ok(reports)
+    // Calculate pagination metadata
+    let page = page.unwrap_or(1).max(1);
+    let page_size = page_size.unwrap_or(20).min(100);
+    let total_pages = if total == 0 {
+        0
+    } else {
+        (total as f64 / page_size as f64).ceil() as i64
+    };
+
+    Ok(PaginatedReportsResponse {
+        reports,
+        total,
+        page,
+        page_size,
+        total_pages,
+    })
 }
 
 #[tauri::command]
