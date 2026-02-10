@@ -19,6 +19,7 @@ export interface CreateAreaInput {
   name: string;
   country: string;
   state: string;
+  active: boolean;
 }
 
 export interface UpdateAreaInput {
@@ -52,6 +53,7 @@ export interface CreateRigInput {
   operator: string;
   power: string;
   areaId?: string;
+  active?: boolean;
 }
 
 export interface UpdateRigInput {
