@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useFormContext, useFieldArray } from 'react-hook-form';
-import { Input, Select, Button } from '../ui';
+import { Input, Select, Button } from '../../../ui';
 import { Plus, Trash2 } from 'lucide-react';
-import type { CompleteReportData } from '../../schemas';
-import { SHIFT_LABELS } from '../../types/report';
+import type { CompleteReportData } from '../../../../schemas';
+import { SHIFT_LABELS } from '../../../../types/report';
 
 const CREW_POSITIONS = [
   'Perforador',

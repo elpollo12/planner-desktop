@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useFormContext, useFieldArray } from 'react-hook-form';
-import { Button, Input, Select } from '../ui';
+import { Button, Input, Select } from '../../../ui';
 import { Plus, Trash2, AlertCircle } from 'lucide-react';
-import type { CompleteReportData } from '../../schemas';
-import { useAuthStore } from '../../store/authStore';
-import { operationCodesApi } from '../../lib/api';
-import type { OperationCode } from '../../types/report';
+import type { CompleteReportData } from '../../../../schemas';
+import { useAuthStore } from '../../../../store/authStore';
+import { operationCodesApi } from '../../../../lib/api';
+import type { OperationCode } from '../../../../types/report';
 
 export function TimeDistributionSection() {
   const { sessionToken } = useAuthStore();
@@ -167,7 +167,7 @@ export function TimeDistributionSection() {
                       <Select
                         {...register(`timeDistribution.distributions.${index}.operationCodeId`)}
                         error={errors.timeDistribution?.distributions?.[index]?.operationCodeId?.message}
-                        className="w-full min-w-[250px]"
+                        className="w-full min-w-62.5"
                       >
                         <option value="">Seleccionar operación...</option>
                         {operationCodes.map((code) => (
@@ -187,7 +187,7 @@ export function TimeDistributionSection() {
                           valueAsNumber: true,
                         })}
                         error={errors.timeDistribution?.distributions?.[index]?.hoursShift1?.message}
-                        className="w-full max-w-[100px] mx-auto text-center"
+                        className="w-full max-w-25 mx-auto text-center"
                       />
                     </td>
                     <td className="px-4 py-3">
@@ -200,7 +200,7 @@ export function TimeDistributionSection() {
                           valueAsNumber: true,
                         })}
                         error={errors.timeDistribution?.distributions?.[index]?.hoursShift2?.message}
-                        className="w-full max-w-[100px] mx-auto text-center"
+                        className="w-full max-w-25 mx-auto text-center"
                       />
                     </td>
                     <td className="px-4 py-3">
@@ -213,7 +213,7 @@ export function TimeDistributionSection() {
                           valueAsNumber: true,
                         })}
                         error={errors.timeDistribution?.distributions?.[index]?.hoursShift3?.message}
-                        className="w-full max-w-[100px] mx-auto text-center"
+                        className="w-full max-w-25 mx-auto text-center"
                       />
                     </td>
                     <td className="px-4 py-3 text-center">

@@ -1,8 +1,8 @@
 import { useFormContext, useFieldArray } from 'react-hook-form';
-import { Button, Input, Select } from '../ui';
+import { Button, Input, Select } from '../../../ui';
 import { Plus, Trash2 } from 'lucide-react';
-import type { CompleteReportData } from '../../schemas';
-import { SHIFT_LABELS } from '../../types/report';
+import type { CompleteReportData } from '../../../../schemas';
+import { SHIFT_LABELS } from '../../../../types/report';
 
 export function MudRecordSection() {
   const {
@@ -208,7 +208,7 @@ export function MudRecordSection() {
                     <td className="px-4 py-3">
                       <Select
                         {...register(`mudRecords.additives.${index}.shift`)}
-                        className="min-w-[150px]"
+                        className="min-w-37.5"
                       >
                         <option value="">Seleccionar...</option>
                         <option value="morning">{SHIFT_LABELS.morning}</option>
@@ -220,14 +220,14 @@ export function MudRecordSection() {
                       <Input
                         {...register(`mudRecords.additives.${index}.additiveType`)}
                         placeholder="Ej: Bentonita, Barita, CMC"
-                        className="min-w-[200px]"
+                        className="min-w-50"
                       />
                     </td>
                     <td className="px-4 py-3">
                       <Input
                         {...register(`mudRecords.additives.${index}.quantity`)}
                         placeholder="Ej: 50 kg, 100 lb"
-                        className="min-w-[150px]"
+                        className="min-w-37.5"
                       />
                     </td>
                     <td className="px-4 py-3 text-center">

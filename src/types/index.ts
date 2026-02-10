@@ -40,6 +40,9 @@ export interface CreateUserRequest {
   assignedRigIds?: string[];
 }
 
+//Tabs
+export * from './reportForm';
+
 // Report types
 export interface Report {
   id: string;

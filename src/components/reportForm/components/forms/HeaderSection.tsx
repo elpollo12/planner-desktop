@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useFormContext } from 'react-hook-form';
-import { Input, Select } from '../ui';
-import type { CompleteReportData } from '../../schemas';
+import { Input, Select } from '../../../ui';
+import type { CompleteReportData } from '../../../../schemas';
 import { useOperatorsStore } from '@/store/operatorsStore';
 import { useAuthStore } from '@/store/authStore';
 import { areasApi, rigsApi, usersApi } from '@/lib/api';
