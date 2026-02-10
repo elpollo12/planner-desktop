@@ -130,6 +130,7 @@ pub fn run() {
             commands::rigs::get_rig,
             commands::rigs::update_rig,
             commands::rigs::delete_rig,
+            commands::rigs::list_accessible_rigs,
 
             // User preferences commands
             commands::preferences::get_user_preferences,
@@ -159,6 +160,14 @@ pub fn run() {
             commands::operators::upload_operator_logo,
             commands::operators::remove_operator_logo,
             commands::operators::get_operator_logo_data,
+
+            // Debug commands
+            commands::debug::debug_list_all_rigs,
+            commands::debug::debug_get_sync_info,
+            commands::debug::debug_query_turso_rigs,
+            commands::debug::debug_sync_state,
+            commands::debug::debug_test_sync_pull,
+            commands::debug::debug_simulate_full_sync,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

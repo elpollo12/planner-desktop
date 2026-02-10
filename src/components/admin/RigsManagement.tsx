@@ -4,6 +4,8 @@ import { Plus, Pencil, Trash2, Search, Filter } from 'lucide-react';
 import { rigsApi, areasApi, operatorsApi } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 import { useModal } from '@/store/modalStore';
+import { backgroundPush } from '@/lib/syncHelper';
+import { syncEvents } from '@/lib/syncEvents';
 import type { RigWithArea, Area } from '@/types/rig';
 import type { Operator } from '@/types/operator';
 import RigForm from './RigForm';
@@ -28,6 +30,16 @@ export default function RigsManagement() {
   useEffect(() => {
     loadData();
   }, [includeInactive]);
+
+  // Listen for sync events and reload rigs when new data arrives
+  useEffect(() => {
+    const unsubscribe = syncEvents.subscribe(() => {
+      console.log('[RigsManagement] Sync event received, reloading rigs...');
+      loadData();
+    });
+
+    return unsubscribe;
+  }, []);
 
   const loadData = async () => {
     setLoading(true);
@@ -58,6 +70,12 @@ export default function RigsManagement() {
           try {
             await rigsApi.create(user!.id, data);
             toast.success('Taladro creado exitosamente');
+
+            // Push changes to cloud in background
+            if (sessionToken) {
+              backgroundPush(sessionToken);
+            }
+
             closeModal();
             loadData();
           } catch (error) {
@@ -85,6 +103,12 @@ export default function RigsManagement() {
           try {
             await rigsApi.update(rig.id, user!.id, data);
             toast.success('Taladro actualizado exitosamente');
+
+            // Push changes to cloud in background
+            if (sessionToken) {
+              backgroundPush(sessionToken);
+            }
+
             closeModal();
             loadData();
           } catch (error) {
@@ -128,6 +152,12 @@ export default function RigsManagement() {
           try {
             await rigsApi.delete(rig.id);
             toast.success('Taladro eliminado exitosamente');
+
+            // Push deletion to cloud in background
+            if (sessionToken) {
+              backgroundPush(sessionToken);
+            }
+
             loadData();
           } catch (error) {
             console.error('Error eliminando taladro:', error);

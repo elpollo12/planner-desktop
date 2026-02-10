@@ -55,9 +55,10 @@ export const createRigSchema = z.object({
     .min(1, 'La potencia es requerida')
     .max(50, 'La potencia no puede exceder 50 caracteres')
     .trim(),
-  areaId: z.string()
-    .uuid('Debe seleccionar un área válida')
-    .optional(),
+  areaId: z.union([
+    z.string().uuid('Debe seleccionar un área válida'),
+    z.literal(''),
+  ]).optional(),
 });
 
 export const updateRigSchema = z.object({

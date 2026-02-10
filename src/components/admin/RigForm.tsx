@@ -29,6 +29,15 @@ export default function RigForm({ onSubmit, rig, areas, operators }: RigFormProp
     },
   });
 
+  const handleFormSubmit = (data: CreateRigInput) => {
+    // Convert empty string to undefined for areaId
+    const submitData = {
+      ...data,
+      areaId: data.areaId === '' ? undefined : data.areaId,
+    };
+    return onSubmit(submitData);
+  };
+
   const areaOptions = [
     { value: '', label: 'Sin área asignada' },
     ...areas
@@ -50,7 +59,7 @@ export default function RigForm({ onSubmit, rig, areas, operators }: RigFormProp
   ];
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
       <div>
         <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
           Nombre del Taladro <span className="text-red-500">*</span>

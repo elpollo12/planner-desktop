@@ -81,8 +81,18 @@ impl Operator {
     }
 
     /// Create a new operator
+    /// Uses a deterministic UUID (v5) based on the operator name to prevent duplicates across clients
     pub fn create(conn: &Connection, input: &CreateOperatorInput) -> rusqlite::Result<Self> {
-        let id = Uuid::new_v4().to_string();
+        // Use UUID v5 (deterministic) based on the name
+        // This ensures all clients creating "Shell" generate the same UUID
+        let namespace = Uuid::parse_str("6ba7b810-9dad-11d1-80b4-00c04fd430c8").unwrap(); // DNS namespace
+        let id = Uuid::new_v5(&namespace, input.name.trim().as_bytes()).to_string();
+
+        // Check if operator already exists (could be from another client after sync)
+        if let Some(existing) = Self::get_by_id(conn, &id)? {
+            return Ok(existing);
+        }
+
         let now = chrono::Utc::now().to_rfc3339();
 
         conn.execute(

@@ -250,8 +250,9 @@ pub async fn sync_full(
 
     // === PULL ===
     // Step 4: Pull from Turso (async, no lock)
+    // For full sync, use None to pull ALL data, not just incremental updates
     let (pulled_data, pull_result) =
-        engine::pull_data_from_turso(&client, cfg.last_pull_at.as_deref()).await?;
+        engine::pull_data_from_turso(&client, None).await?;
 
     // Step 5: Write to local (sync, lock held briefly)
     let mut pull_errors: Vec<String> = Vec::new();
