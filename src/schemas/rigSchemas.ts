@@ -17,6 +17,7 @@ export const createAreaSchema = z.object({
     .min(1, 'El estado/provincia es requerido')
     .max(50, 'El estado no puede exceder 50 caracteres')
     .trim(),
+  active: z.boolean(),
 });
 
 export const updateAreaSchema = z.object({
@@ -55,10 +56,10 @@ export const createRigSchema = z.object({
     .min(1, 'La potencia es requerida')
     .max(50, 'La potencia no puede exceder 50 caracteres')
     .trim(),
-  areaId: z.union([
-    z.string().uuid('Debe seleccionar un área válida'),
-    z.literal(''),
-  ]).optional(),
+  areaId: z.string()
+    .uuid('Debe seleccionar un área válida')
+    .optional(),
+  active: z.boolean().default(true),
 });
 
 export const updateRigSchema = z.object({

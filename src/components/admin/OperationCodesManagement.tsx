@@ -36,9 +36,7 @@ export function OperationCodesManagement() {
 
     setLoading(true);
     try {
-      console.log('[OperationCodes] Loading codes with token:', sessionToken?.substring(0, 8) + '...');
       const data = await operationCodesApi.list(sessionToken, false); // Include inactive
-      console.log('[OperationCodes] Loaded codes:', data);
       setCodes(data);
     } catch (error) {
       console.error('[OperationCodes] Error loading codes:', error);
