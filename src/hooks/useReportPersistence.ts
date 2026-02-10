@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { unstable_batchedUpdates } from 'react-dom';
 import { useAuthStore } from '../store/';
 import { toast } from '../lib/toast';
 import { transformFormToReportData } from '../lib/reportHelpers';
@@ -47,23 +48,26 @@ export function useReportPersistence({
 
   // Cargar reporte existente
   const loadExistingReport = useCallback(async (reportIdToLoad: string) => {
-    if (!sessionToken) return;
+  if (!sessionToken) return;
 
-    setIsLoadingReport(true);
-    try {
-      const { report, formData: loadedFormData } = await loadReport(sessionToken, reportIdToLoad);
-      
+  setIsLoadingReport(true);
+  try {
+    const { report, formData: loadedFormData } = await loadReport(sessionToken, reportIdToLoad);
+    
+    // ✅ Agrupar updates en un solo re-render
+    unstable_batchedUpdates(() => {
       setExistingReport(report);
       methods.reset(loadedFormData);
-      
-    } catch (error) {
-      console.error('Error loading report:', error);
-      toast.error('Error al cargar el reporte');
-      navigate('/reports');
-    } finally {
-      setIsLoadingReport(false);
-    }
-  }, [sessionToken, methods, setExistingReport, navigate, setIsLoadingReport]);
+    });
+    
+  } catch (error) {
+    console.error('Error loading report:', error);
+    toast.error('Error al cargar el reporte');
+    navigate('/reports');
+  } finally {
+    setIsLoadingReport(false);
+  }
+}, [sessionToken, methods, setExistingReport, navigate, setIsLoadingReport]);
 
   // Cargar datos iniciales (al montar el componente)
   useEffect(() => {

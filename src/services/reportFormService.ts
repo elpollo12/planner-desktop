@@ -13,47 +13,11 @@ import { DEFAULT_VALUES } from '../components/reportForm/config/reportFormConfig
 import type { CompleteReportData } from '../schemas';
 import type { Report } from '../types/';
 import type { TabId } from '../types/';
+import { hasSectionData } from '../lib/reportFormUtils';
 
 interface LoadReportResult {
   report: Partial<Report>;
   formData: Partial<CompleteReportData>;
-}
-
-/**
- * Check if a section has data
- */
-function hasSectionData(sectionId: TabId, formData: CompleteReportData): boolean {
-  switch (sectionId) {
-    case 'drillString':
-      return !!(formData.drillString && Object.keys(formData.drillString).length > 0);
-    
-    case 'crew':
-      return !!(formData.crew?.shifts?.some(s => s.members.length > 0));
-    
-    case 'bits':
-      return !!(formData.bitRecords?.records && formData.bitRecords.records.length > 0);
-    
-    case 'time':
-      return !!(formData.timeDistribution?.distributions && formData.timeDistribution.distributions.length > 0);
-    
-    case 'mud':
-      return !!(
-        (formData.mudRecords?.records && formData.mudRecords.records.length > 0) ||
-        (formData.mudRecords?.additives && formData.mudRecords.additives.length > 0)
-      );
-    
-    case 'lithology':
-      return !!(
-        (formData.lithology?.drillingParameters && formData.lithology.drillingParameters.length > 0) ||
-        (formData.lithology?.deviationHistory && formData.lithology.deviationHistory.length > 0)
-      );
-    
-    case 'observations':
-      return !!(formData.observations?.operations && formData.observations.operations.length > 0);
-    
-    default:
-      return false;
-  }
 }
 
 /**

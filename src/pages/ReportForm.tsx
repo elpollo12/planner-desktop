@@ -89,6 +89,8 @@ export default function ReportForm() {
     [hasSectionData]
   );
 
+  console.log('ReportForm rendered');
+
   // Header actions for MainLayout
   const headerActions = useMemo(() => {
     if (formState.wizardStep !== 'sections') return null;
@@ -205,9 +207,10 @@ export default function ReportForm() {
                   onCancel={handleCancel}
                   isSaving={formState.loading.saving}
                   isSubmitting={formState.loading.submitting}
-                  canEdit={canEdit} activeTab={'crew'} onTabChange={function (tab: TabId): void {
-                    throw new Error('Function not implemented.');
-                  } }                />
+                  canEdit={canEdit}
+                  activeTab={formState.activeTab}
+                  onTabChange={actions.setActiveTab}
+                />
               </>
             )}
           </div>
