@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Rig {
     pub id: String,
     pub name: String,
@@ -15,6 +16,7 @@ pub struct Rig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct RigWithArea {
     pub id: String,
     pub name: String,
@@ -30,6 +32,7 @@ pub struct RigWithArea {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateRigInput {
     pub name: String,
     pub operator: String,
@@ -38,6 +41,7 @@ pub struct CreateRigInput {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UpdateRigInput {
     pub name: Option<String>,
     pub operator: Option<String>,

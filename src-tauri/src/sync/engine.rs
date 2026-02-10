@@ -555,6 +555,10 @@ pub fn write_pulled_data(
     conn: &Connection,
     table_results: &[(usize, Vec<Vec<TursoValue>>)],
 ) -> Result<u32, String> {
+    // Disable foreign key constraints temporarily to allow syncing without reference errors
+    conn.execute("PRAGMA foreign_keys = OFF", [])
+        .map_err(|e| format!("Failed to disable foreign keys: {}", e))?;
+
     let mut total: u32 = 0;
 
     for (idx, rows) in table_results {
@@ -596,6 +600,10 @@ pub fn write_pulled_data(
             total += 1;
         }
     }
+
+    // Re-enable foreign key constraints
+    conn.execute("PRAGMA foreign_keys = ON", [])
+        .map_err(|e| format!("Failed to re-enable foreign keys: {}", e))?;
 
     Ok(total)
 }

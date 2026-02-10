@@ -34,6 +34,14 @@ export default function RigForm({ onSubmit, rig, areas, operators }: RigFormProp
 
   // Observar el valor de active para el Switch
   const activeValue = watch('active');
+  const handleFormSubmit = (data: CreateRigInput) => {
+    // Convert empty string to undefined for areaId
+    const submitData = {
+      ...data,
+      areaId: data.areaId === '' ? undefined : data.areaId,
+    };
+    return onSubmit(submitData);
+  };
 
   const areaOptions = [
     { value: '', label: 'Sin área asignada' },

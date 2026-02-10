@@ -1,13 +1,17 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { syncApi } from '../lib/api';
+import { syncEvents } from '../lib/syncEvents';
 
 /**
  * Hook that automatically syncs with Turso cloud at the configured interval.
  * Runs in the background while the app is open.
+ *
+ * All authenticated users will automatically pull latest data from cloud.
+ * This ensures reports from other clients appear automatically.
  */
 export function useAutoSync() {
-  const { sessionToken, isAuthenticated, user } = useAuthStore();
+  const { sessionToken, isAuthenticated } = useAuthStore();
   const intervalRef = useRef<number | null>(null);
   const lastSyncRef = useRef<number>(0);
 
@@ -31,14 +35,21 @@ export function useAutoSync() {
         return;
       }
 
-      console.log('[AutoSync] Starting automatic sync...');
-      const result = await syncApi.fullSync(sessionToken);
+      console.log('[AutoSync] Starting automatic pull from cloud...');
+      // Use pull instead of fullSync - all users need to get latest data
+      // Push happens automatically after create/update/delete operations
+      const result = await syncApi.pull(sessionToken);
       lastSyncRef.current = now;
 
       if (result.success) {
-        console.log(`[AutoSync] Success: ${result.recordsPushed} pushed, ${result.recordsPulled} pulled`);
+        console.log(`[AutoSync] Success: ${result.recordsPulled} records pulled`);
+
+        // Notify listeners that new data is available
+        if (result.recordsPulled > 0) {
+          syncEvents.emit();
+        }
       } else {
-        console.warn('[AutoSync] Sync completed with errors:', result.errors);
+        console.warn('[AutoSync] Pull completed with errors:', result.errors);
       }
     } catch (error) {
       console.error('[AutoSync] Error:', error);
@@ -46,8 +57,9 @@ export function useAutoSync() {
   }, [sessionToken]);
 
   useEffect(() => {
-    // Only run for authenticated admin users
-    if (!isAuthenticated || !sessionToken || user?.role !== 'admin') {
+    // Run for all authenticated users (not just admins)
+    // This ensures everyone sees reports from other clients automatically
+    if (!isAuthenticated || !sessionToken) {
       return;
     }
 
@@ -68,5 +80,5 @@ export function useAutoSync() {
         clearInterval(intervalRef.current);
       }
     };
-  }, [isAuthenticated, sessionToken, user?.role, doSync]);
+  }, [isAuthenticated, sessionToken, doSync]);
 }
