@@ -31,6 +31,14 @@ import type {
   UpdateRigInput,
 } from '../types/rig';
 
+export interface PaginatedReportsResponse {
+  reports: Report[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
 // ============================================================================
 // Authentication Commands
 // ============================================================================
@@ -75,8 +83,19 @@ export const reportsApi = {
   create: (sessionToken: string, reportData: CreateReportInput) =>
     invoke<Report>('create_report', { sessionToken, reportData }),
 
-  list: (sessionToken: string, filters: ReportFilters) =>
-    invoke<Report[]>('list_reports', { sessionToken, filters }),
+  list: (
+    sessionToken: string,
+    filters: ReportFilters,
+    page?: number,      // ← NUEVO
+    pageSize?: number   // ← NUEVO
+  ) =>
+    invoke<PaginatedReportsResponse>('list_reports', {
+      sessionToken,
+      filters,
+      page,      // ← NUEVO
+      pageSize   // ← NUEVO
+    }),
+
 
   get: (sessionToken: string, reportId: string) =>
     invoke<Report>('get_report', { sessionToken, reportId }),
@@ -205,11 +224,11 @@ export const timeDistributionApi = {
       hours_shift2: distribution.hoursShift2,
       hours_shift3: distribution.hoursShift3,
     }));
-    
-    return invoke('save_time_distributions', { 
-      sessionToken, 
-      reportId, 
-      data: transformedData 
+
+    return invoke('save_time_distributions', {
+      sessionToken,
+      reportId,
+      data: transformedData
     });
   },
 
