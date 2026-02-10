@@ -180,16 +180,21 @@ export default function ReportForm() {
 
   // Watch form data
   const formData = watch();
-  const headerData = watch('header');
-
+  const headerData = useMemo(() => formData.header, [formData.header]);
   // Auto-save hook (only for new reports in sections step)
+  const autoSaveEnabled = useMemo(
+    () => !isEditMode && isDirty && wizardStep === 'sections',
+    [isEditMode, isDirty, wizardStep]
+  );
+
   const {
     clearSaved: clearAutoSave,
   } = useAutoSave({
     data: formData,
     storageKey: 'report-draft',
     debounceMs: 2000,
-    enabled: !isEditMode && isDirty && wizardStep === 'sections',
+    enabled: autoSaveEnabled,
+  // DEBUG: Track renders
   });
 
   // ============================================================================
@@ -280,23 +285,30 @@ export default function ReportForm() {
       if (isEditMode && id && sessionToken) {
         await loadExistingReport(id);
         setWizardStep('sections');
-      } else if (!isEditMode) {
-        // Cargar plantilla del último reporte para auto-completar
-        const lastReportTemplate = loadLastReportTemplate();
-        if (lastReportTemplate) {
-          const newHeader = {
-            ...DEFAULT_VALUES.header,
-            ...lastReportTemplate,
-            reportDate: new Date().toISOString().split('T')[0], // Siempre fecha actual
-          };
-          methods.reset({ ...DEFAULT_VALUES, header: newHeader });
-          toast.info('Datos del último reporte cargados');
+      } else if (!isEditMode && sessionToken && user) {
+        const lastCompleteReport = await loadLastCompleteReport();
+        
+        if (lastCompleteReport) {
+          methods.reset(lastCompleteReport);
+                    toast.success('Datos del último reporte cargados (Reporte #' + (lastCompleteReport.header?.reportNumber || 'N/A') + ')');
+
+        } else {
+          const lastReportTemplate = loadLastReportTemplate();
+          if (lastReportTemplate) {
+            const newHeader = {
+              ...DEFAULT_VALUES.header,
+              ...lastReportTemplate,
+              reportDate: new Date().toISOString().split('T')[0],
+            };
+            methods.reset({ ...DEFAULT_VALUES, header: newHeader });
+            toast.info('Encabezado del último reporte cargado');
+          }
         }
       }
     };
 
     loadData();
-  }, [isEditMode, id, sessionToken]);
+  }, [isEditMode, id, sessionToken, user]);
 
   /**
    * Validate edit permissions
@@ -434,6 +446,108 @@ export default function ReportForm() {
       navigate('/reports');
     } finally {
       setIsLoadingReport(false);
+    }
+  };
+
+  /**
+   * Load the last complete report from the current user
+   * This will be used to pre-fill a new report with data from the last one
+   */
+  const loadLastCompleteReport = async (): Promise<Partial<CompleteReportData> | null> => {
+    if (!sessionToken || !user) return null;
+
+    try {
+      // Get all reports from the current user
+      const reports = await reportsApi.list(sessionToken, {
+        dateFrom: undefined,
+        dateTo: undefined,
+        status: undefined,
+        createdBy: user.id,
+        wellNumber: undefined,
+      });
+
+      if (reports.length === 0) {
+        return null;
+      }
+
+      // Sort by date descending and get the most recent one
+      const sortedReports = [...reports].sort((a, b) => 
+        new Date(b.reportDate).getTime() - new Date(a.reportDate).getTime()
+      );
+      const lastReport = sortedReports[0];
+
+
+      // Load all sections from the last report
+      const [
+        drillString,
+        crewShifts,
+        bitRecords,
+        timeDistributions,
+        mudRecords,
+        mudAdditives,
+        drillingParams,
+        deviationHistory,
+        operationsLog,
+      ] = await Promise.all([
+        drillStringApi.get(sessionToken, lastReport.id).catch(() => null),
+        crewApi.listShifts(sessionToken, lastReport.id).catch(() => []),
+        bitRecordsApi.list(sessionToken, lastReport.id).catch(() => []),
+        timeDistributionApi.list(sessionToken, lastReport.id).catch(() => []),
+        mudApi.listRecords(sessionToken, lastReport.id).catch(() => []),
+        mudApi.listAdditives(sessionToken, lastReport.id).catch(() => []),
+        drillingParamsApi.list(sessionToken, lastReport.id).catch(() => []),
+        deviationApi.list(sessionToken, lastReport.id).catch(() => []),
+        operationsLogApi.list(sessionToken, lastReport.id).catch(() => []),
+      ]);
+
+      // Build the complete form data with incremented report number and current date
+      const formData: Partial<CompleteReportData> = {
+        header: {
+          reportNumber: lastReport.reportNumber + 1, // Increment report number
+          reportDate: new Date().toISOString().split('T')[0], // Current date
+          wellNumber: lastReport.wellNumber ?? '',
+          apiNumber: lastReport.apiNumber ?? '',
+          contract: lastReport.contract ?? '',
+          contractor: lastReport.contractor ?? '',
+          operator: lastReport.operator ?? '',
+          fieldDistrict: lastReport.fieldDistrict ?? '',
+          municipality: lastReport.municipality ?? '',
+          rigNumber: lastReport.rigNumber ?? '',
+          supervisor24h: lastReport.supervisor24h ?? '',
+        },
+        drillString: drillString || {},
+        crew: {
+          shifts: crewShifts.length > 0 ? crewShifts : DEFAULT_VALUES.crew!.shifts,
+        },
+        bitRecords: {
+          records: bitRecords,
+        },
+        timeDistribution: {
+          distributions: (timeDistributions as any[]).map(td => ({
+            operationCodeId: td.operationCodeId,
+            hoursShift1: td.hoursShift1,
+            hoursShift2: td.hoursShift2,
+            hoursShift3: td.hoursShift3,
+          })),
+        },
+        mudRecords: {
+          records: (mudRecords as any[]) || [],
+          additives: (mudAdditives as any[]) || [],
+        },
+        lithology: {
+          drillingParameters: (drillingParams as any[]) || [],
+          deviationHistory: (deviationHistory as any[]) || [],
+        },
+        observations: {
+          operations: (operationsLog as any[]) || [],
+        },
+      };
+
+      return formData;
+
+    } catch (error) {
+      console.error('Error loading last complete report:', error);
+      return null;
     }
   };
 
@@ -606,22 +720,23 @@ export default function ReportForm() {
    * Strategy: DELETE ALL + INSERT ALL to avoid duplicates
    */
   const saveCrew = async (reportId: string) => {
-    if (!sessionToken || !formData.crew?.shifts) return;
+    if (!sessionToken) return;
     
-    // PASO 1: Eliminar todos los shifts existentes (evita duplicación)
+    // PASO 1: Eliminar todos los shifts existentes (siempre en edit mode)
     if (isEditMode) {
       try {
         await crewApi.deleteAllShifts(sessionToken, reportId);
-        console.log('✓ Deleted all existing crew shifts');
       } catch (error) {
-        console.warn('Could not delete existing shifts (might be new report):', error);
+        console.warn('Could not delete existing shifts:', error);
       }
     }
     
-    // PASO 2: Insertar todos los shifts del formulario
-    for (const shift of formData.crew.shifts) {
-      if (shift.members.length > 0) {
-        await crewApi.createShift(sessionToken, reportId, shift);
+    // PASO 2: Insertar todos los shifts del formulario (solo si hay datos)
+    if (formData.crew?.shifts) {
+      for (const shift of formData.crew.shifts) {
+        if (shift.members.length > 0) {
+          await crewApi.createShift(sessionToken, reportId, shift);
+        }
       }
     }
   };
@@ -631,21 +746,22 @@ export default function ReportForm() {
    * Strategy: DELETE ALL + INSERT ALL to avoid duplicates
    */
   const saveBits = async (reportId: string) => {
-    if (!sessionToken || !formData.bitRecords?.records) return;
+    if (!sessionToken) return;
     
     // PASO 1: Eliminar todos los records existentes
     if (isEditMode) {
       try {
         await bitRecordsApi.deleteAll(sessionToken, reportId);
-        console.log('✓ Deleted all existing bit records');
       } catch (error) {
         console.warn('Could not delete existing bit records:', error);
       }
     }
     
-    // PASO 2: Insertar todos los records del formulario
-    for (const record of formData.bitRecords.records) {
-      await bitRecordsApi.create(sessionToken, reportId, record);
+    // PASO 2: Insertar todos los records del formulario (solo si hay datos)
+    if (formData.bitRecords?.records && formData.bitRecords.records.length > 0) {
+      for (const record of formData.bitRecords.records) {
+        await bitRecordsApi.create(sessionToken, reportId, record);
+      }
     }
   };
 
@@ -654,24 +770,25 @@ export default function ReportForm() {
    * Strategy: DELETE ALL + INSERT ALL to avoid duplicates
    */
   const saveTime = async (reportId: string) => {
-    if (!sessionToken || !formData.timeDistribution?.distributions) return;
+    if (!sessionToken) return;
     
-    // PASO 1: Eliminar todos los distributions existentes
+    // PASO 1: Eliminar todos los distributions existentes (siempre en edit mode)
     if (isEditMode) {
       try {
         await timeDistributionApi.deleteAll(sessionToken, reportId);
-        console.log('✓ Deleted all existing time distributions');
       } catch (error) {
         console.warn('Could not delete existing time distributions:', error);
       }
     }
     
-    // PASO 2: Insertar todos los distributions del formulario
-    await timeDistributionApi.saveBulk(
-      sessionToken,
-      reportId,
-      formData.timeDistribution.distributions
-    );
+    // PASO 2: Insertar todos los distributions del formulario (solo si hay datos)
+    if (formData.timeDistribution?.distributions && formData.timeDistribution.distributions.length > 0) {
+      await timeDistributionApi.saveBulk(
+        sessionToken,
+        reportId,
+        formData.timeDistribution.distributions
+      );
+    }
   };
 
   /**
@@ -679,28 +796,27 @@ export default function ReportForm() {
    * Strategy: DELETE ALL + INSERT ALL to avoid duplicates
    */
   const saveMud = async (reportId: string) => {
-    if (!sessionToken || !formData.mudRecords) return;
+    if (!sessionToken) return;
     
-    // PASO 1: Eliminar todos los records y additives existentes
+    // PASO 1: Eliminar todos los records y additives existentes (siempre en edit mode)
     if (isEditMode) {
       try {
         await mudApi.deleteAllRecords(sessionToken, reportId);
         await mudApi.deleteAllAdditives(sessionToken, reportId);
-        console.log('✓ Deleted all existing mud records and additives');
       } catch (error) {
         console.warn('Could not delete existing mud data:', error);
       }
     }
     
-    // PASO 2: Insertar todos los records del formulario
-    if (formData.mudRecords.records && formData.mudRecords.records.length > 0) {
+    // PASO 2: Insertar todos los records del formulario (solo si hay datos)
+    if (formData.mudRecords?.records && formData.mudRecords.records.length > 0) {
       for (const record of formData.mudRecords.records) {
         await mudApi.createRecord(sessionToken, reportId, record);
       }
     }
     
-    // PASO 3: Insertar todos los additives del formulario
-    if (formData.mudRecords.additives && formData.mudRecords.additives.length > 0) {
+    // PASO 3: Insertar todos los additives del formulario (solo si hay datos)
+    if (formData.mudRecords?.additives && formData.mudRecords.additives.length > 0) {
       for (const additive of formData.mudRecords.additives) {
         await mudApi.createAdditive(sessionToken, reportId, additive);
       }
@@ -712,28 +828,27 @@ export default function ReportForm() {
    * Strategy: DELETE ALL + INSERT ALL to avoid duplicates
    */
   const saveLithology = async (reportId: string) => {
-    if (!sessionToken || !formData.lithology) return;
+    if (!sessionToken) return;
     
-    // PASO 1: Eliminar todos los params y deviations existentes
+    // PASO 1: Eliminar todos los params y deviations existentes (siempre en edit mode)
     if (isEditMode) {
       try {
         await drillingParamsApi.deleteAll(sessionToken, reportId);
         await deviationApi.deleteAll(sessionToken, reportId);
-        console.log('✓ Deleted all existing lithology data');
       } catch (error) {
         console.warn('Could not delete existing lithology data:', error);
       }
     }
     
-    // PASO 2: Insertar todos los drilling parameters del formulario
-    if (formData.lithology.drillingParameters && formData.lithology.drillingParameters.length > 0) {
+    // PASO 2: Insertar todos los drilling parameters del formulario (solo si hay datos)
+    if (formData.lithology?.drillingParameters && formData.lithology.drillingParameters.length > 0) {
       for (const param of formData.lithology.drillingParameters) {
         await drillingParamsApi.create(sessionToken, reportId, param);
       }
     }
     
-    // PASO 3: Insertar todos los deviation history del formulario
-    if (formData.lithology.deviationHistory && formData.lithology.deviationHistory.length > 0) {
+    // PASO 3: Insertar todos los deviation history del formulario (solo si hay datos)
+    if (formData.lithology?.deviationHistory && formData.lithology.deviationHistory.length > 0) {
       for (const deviation of formData.lithology.deviationHistory) {
         await deviationApi.create(sessionToken, reportId, deviation);
       }
@@ -745,21 +860,22 @@ export default function ReportForm() {
    * Strategy: DELETE ALL + INSERT ALL to avoid duplicates
    */
   const saveObservations = async (reportId: string) => {
-    if (!sessionToken || !formData.observations?.operations) return;
+    if (!sessionToken) return;
     
-    // PASO 1: Eliminar todos los operations existentes
+    // PASO 1: Eliminar todos los operations existentes (siempre en edit mode)
     if (isEditMode) {
       try {
         await operationsLogApi.deleteAll(sessionToken, reportId);
-        console.log('✓ Deleted all existing operations');
       } catch (error) {
         console.warn('Could not delete existing operations:', error);
       }
     }
     
-    // PASO 2: Insertar todos los operations del formulario
-    for (const operation of formData.observations.operations) {
-      await operationsLogApi.create(sessionToken, reportId, operation);
+    // PASO 2: Insertar todos los operations del formulario (solo si hay datos)
+    if (formData.observations?.operations && formData.observations.operations.length > 0) {
+      for (const operation of formData.observations.operations) {
+        await operationsLogApi.create(sessionToken, reportId, operation);
+      }
     }
   };
 
@@ -767,63 +883,89 @@ export default function ReportForm() {
    * Save ALL sections that have data
    * This is the MAIN function to use instead of saveActiveSection
    */
-  const saveAllSectionsWithData = async (reportId: string) => {
+    const saveAllSectionsWithData = async (reportId: string) => {
     if (!sessionToken) return;
 
-    const sectionsToSave: Array<{ id: TabId; name: string; saveFn: () => Promise<void> }> = [];
+    const sectionsToProcess: Array<{ id: TabId; name: string; saveFn: () => Promise<void>; hasData: boolean }> = [];
 
-    // Detect which sections have data
-    if (hasSectionData('drillString')) {
-      sectionsToSave.push({ id: 'drillString', name: 'Sarta de Perforación', saveFn: () => saveDrillString(reportId) });
-    }
-    if (hasSectionData('crew')) {
-      sectionsToSave.push({ id: 'crew', name: 'Cuadrilla', saveFn: () => saveCrew(reportId) });
-    }
-    if (hasSectionData('bits')) {
-      sectionsToSave.push({ id: 'bits', name: 'Mechas', saveFn: () => saveBits(reportId) });
-    }
-    if (hasSectionData('time')) {
-      sectionsToSave.push({ id: 'time', name: 'Distribución de Tiempo', saveFn: () => saveTime(reportId) });
-    }
-    if (hasSectionData('mud')) {
-      sectionsToSave.push({ id: 'mud', name: 'Lodo', saveFn: () => saveMud(reportId) });
-    }
-    if (hasSectionData('lithology')) {
-      sectionsToSave.push({ id: 'lithology', name: 'Litología', saveFn: () => saveLithology(reportId) });
-    }
-    if (hasSectionData('observations')) {
-      sectionsToSave.push({ id: 'observations', name: 'Observaciones', saveFn: () => saveObservations(reportId) });
-    }
+    // Detect which sections have data AND which are empty (for deletion in edit mode)
+    sectionsToProcess.push({ 
+      id: 'drillString', 
+      name: 'Sarta de Perforación', 
+      saveFn: () => saveDrillString(reportId),
+      hasData: hasSectionData('drillString')
+    });
+    sectionsToProcess.push({ 
+      id: 'crew', 
+      name: 'Cuadrilla', 
+      saveFn: () => saveCrew(reportId),
+      hasData: hasSectionData('crew')
+    });
+    sectionsToProcess.push({ 
+      id: 'bits', 
+      name: 'Mechas', 
+      saveFn: () => saveBits(reportId),
+      hasData: hasSectionData('bits')
+    });
+    sectionsToProcess.push({ 
+      id: 'time', 
+      name: 'Distribución de Tiempo', 
+      saveFn: () => saveTime(reportId),
+      hasData: hasSectionData('time')
+    });
+    sectionsToProcess.push({ 
+      id: 'mud', 
+      name: 'Lodo', 
+      saveFn: () => saveMud(reportId),
+      hasData: hasSectionData('mud')
+    });
+    sectionsToProcess.push({ 
+      id: 'lithology', 
+      name: 'Litología', 
+      saveFn: () => saveLithology(reportId),
+      hasData: hasSectionData('lithology')
+    });
+    sectionsToProcess.push({ 
+      id: 'observations', 
+      name: 'Observaciones', 
+      saveFn: () => saveObservations(reportId),
+      hasData: hasSectionData('observations')
+    });
 
-    // If no sections have data, return early
-    if (sectionsToSave.length === 0) {
-      console.log('No sections with data to save');
-      return;
-    }
-
-    // Save all sections with data
-    console.log(`Saving ${sectionsToSave.length} sections:`, sectionsToSave.map(s => s.name).join(', '));
-    
+    // Process all sections
     const errors: Array<{ section: string; error: any }> = [];
+    let savedCount = 0;
+    let deletedCount = 0;
 
-    for (const section of sectionsToSave) {
+    for (const section of sectionsToProcess) {
       try {
-        await section.saveFn();
-        console.log(`✓ Saved: ${section.name}`);
+        if (section.hasData) {
+          // Section has data: save it (will delete old + insert new)
+          await section.saveFn();
+          savedCount++;
+        } else if (isEditMode) {
+          // Section is empty in edit mode: just delete (cleanup)
+          await section.saveFn(); // The saveFn already handles DELETE ALL
+          deletedCount++;
+        }
+        // If new report and empty: do nothing (no data to save)
       } catch (error) {
-        console.error(`✗ Error saving ${section.name}:`, error);
+        console.error(`✗ Error processing ${section.name}:`, error);
         errors.push({ section: section.name, error });
       }
     }
 
     // Report results
     if (errors.length === 0) {
-      toast.success(`${sectionsToSave.length} sección${sectionsToSave.length > 1 ? 'es' : ''} guardada${sectionsToSave.length > 1 ? 's' : ''} exitosamente`);
-    } else if (errors.length < sectionsToSave.length) {
-      toast.warning(`${sectionsToSave.length - errors.length} de ${sectionsToSave.length} secciones guardadas. ${errors.length} fallaron.`);
+      if (savedCount > 0 || deletedCount > 0) {
+        const messages = [];
+        if (savedCount > 0) messages.push(`${savedCount} guardada${savedCount > 1 ? 's' : ''}`);
+        if (deletedCount > 0) messages.push(`${deletedCount} limpiada${deletedCount > 1 ? 's' : ''}`);
+        toast.success(`Secciones: ${messages.join(', ')}`);
+      }
     } else {
-      toast.error('Error al guardar las secciones');
-      throw new Error(`Failed to save sections: ${errors.map(e => e.section).join(', ')}`);
+      toast.error(`Error al procesar ${errors.length} sección${errors.length > 1 ? 'es' : ''}`);
+      throw new Error(`Failed to process sections: ${errors.map(e => e.section).join(', ')}`);
     }
   };
 
