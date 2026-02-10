@@ -19,7 +19,6 @@ export default function RigForm({ onSubmit, rig, areas, operators }: RigFormProp
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-    setValue,
     watch,
   } = useForm<CreateRigInput>({
     resolver: zodResolver(createRigSchema),
@@ -64,7 +63,7 @@ export default function RigForm({ onSubmit, rig, areas, operators }: RigFormProp
   ];
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+    <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
       <div className="space-y-4">
         <div>
           <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">

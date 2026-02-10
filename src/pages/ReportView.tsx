@@ -18,6 +18,7 @@ import {
 import { exportReportToPDF } from '../lib/pdfExport';
 import { exportSingleReportToExcel } from '../lib/excelExport';
 import { toast } from '../lib/toast';
+import { formatDateDMY } from '../lib/dateUtils';
 import type { 
   Report, 
   CrewShift, 
@@ -218,7 +219,7 @@ export default function ReportView() {
   return (
     <MainLayout
       title={`Reporte DDR #${report.reportNumber}`}
-      subtitle={`Fecha: ${new Date(report.reportDate).toLocaleDateString()}`}
+      subtitle={`Fecha: ${formatDateDMY(report.reportDate)}`}
       headerActions={
         <div className="flex gap-2">
           <Button

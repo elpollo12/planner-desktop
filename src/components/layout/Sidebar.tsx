@@ -1,10 +1,9 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
-import { usePreferencesStore } from '../../store/preferencesStore';
+import { useAppSettingsStore } from '../../store/appSettingsStore';
 import { Button } from '../ui';
 import {
   LayoutDashboard,
-  Plus,
   List,
   LogOut,
   Shield,
@@ -17,7 +16,7 @@ interface SidebarProps {
 export function Sidebar({ className = '' }: SidebarProps) {
   const location = useLocation();
   const { user, logout } = useAuthStore();
-  const { logoDataUrl } = usePreferencesStore();
+  const { settings } = useAppSettingsStore();
 
   const navigation = [
     {
@@ -30,12 +29,6 @@ export function Sidebar({ className = '' }: SidebarProps) {
       name: 'Reportes',
       href: '/reports',
       icon: List,
-      show: true,
-    },
-    {
-      name: 'Nuevo Reporte',
-      href: '/reports/new',
-      icon: Plus,
       show: true,
     },
     {
@@ -71,11 +64,11 @@ export function Sidebar({ className = '' }: SidebarProps) {
     >
       {/* Logo/Brand — height matches Header component (py-4) */}
       <div className="h-[60px] px-6 border-b border-gray-200 dark:border-gray-700 flex items-center">
-        {logoDataUrl ? (
+        {settings?.logoPath ? (
           <div className="flex items-center justify-center w-full">
             <img
-              src={logoDataUrl}
-              alt="Logo"
+              src={settings.logoPath}
+              alt="Logo de la empresa"
               className="max-h-12 w-auto object-contain"
             />
           </div>

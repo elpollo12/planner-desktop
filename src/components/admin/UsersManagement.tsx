@@ -369,113 +369,172 @@ export function UsersManagement() {
           </thead>
           <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
             {users.map((user) => (
-              <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                {editingId === user.id ? (
-                  <>
-                    <td className="px-6 py-4">
-                      <span className="text-sm text-gray-900 dark:text-gray-100">{user.username}</span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <Input
-                        value={formData.fullName}
-                        onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                      />
-                    </td>
-                    <td className="px-6 py-4">
-                      <Input
-                        type="text"
-                        value={formData.ci}
-                        onChange={(e) => setFormData({ ...formData, ci: e.target.value })}
-                      />
-                    </td>
-                    <td className="px-6 py-4">
-                      <Select
-                        value={formData.role}
-                        onChange={(e) => setFormData({ ...formData, role: e.target.value as UserRole })}
-                      >
-                        <option value="operator">Operador</option>
-                        <option value="supervisor">Supervisor</option>
-                        <option value="admin">Administrador</option>
-                      </Select>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="space-y-2">
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={formData.hasAllRigs}
-                            onChange={(e) => setFormData({ ...formData, hasAllRigs: e.target.checked })}
-                            className="w-4 h-4 rounded"
-                          />
-                          <span className="text-xs">Todos</span>
-                        </label>
-                        {!formData.hasAllRigs && (
+              <>
+                <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                  {editingId === user.id ? (
+                    <>
+                      <td className="px-6 py-4">
+                        <span className="text-sm text-gray-900 dark:text-gray-100">{user.username}</span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <Input
+                          value={formData.fullName}
+                          onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                        />
+                      </td>
+                      <td className="px-6 py-4">
+                        <Input
+                          type="text"
+                          value={formData.ci}
+                          onChange={(e) => setFormData({ ...formData, ci: e.target.value })}
+                        />
+                      </td>
+                      <td className="px-6 py-4">
+                        <Select
+                          value={formData.role}
+                          onChange={(e) => setFormData({ ...formData, role: e.target.value as UserRole })}
+                        >
+                          <option value="operator">Operador</option>
+                          <option value="supervisor">Supervisor</option>
+                          <option value="admin">Administrador</option>
+                        </Select>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="space-y-2">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={formData.hasAllRigs}
+                              onChange={(e) => setFormData({ ...formData, hasAllRigs: e.target.checked })}
+                              className="w-4 h-4 rounded"
+                            />
+                            <span className="text-xs">Todos</span>
+                          </label>
+                          {!formData.hasAllRigs && (
+                            <span className="text-xs text-blue-600">
+                              {formData.assignedRigIds.length} seleccionados
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <div className="flex items-center justify-center gap-2">
                           <button
-                            onClick={() => {
-                              // Show a modal or expand to show rig selection
-                              // For simplicity, using alert for now
-                              alert(`Seleccionados: ${formData.assignedRigIds.length} taladros.\nUsa el formulario de creación para cambiar la selección completa.`);
-                            }}
-                            className="text-xs text-blue-600 hover:underline"
+                            onClick={() => handleUpdate(user.id)}
+                            className="text-green-600 hover:text-green-800"
                           >
-                            {formData.assignedRigIds.length} seleccionados
+                            <Save size={18} />
                           </button>
+                          <button
+                            onClick={cancelEdit}
+                            className="text-gray-600 hover:text-gray-800"
+                          >
+                            <X size={18} />
+                          </button>
+                        </div>
+                      </td>
+                    </>
+                  ) : (
+                    <>
+                      <td className="px-6 py-4">
+                        <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{user.username}</span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-sm text-gray-900 dark:text-gray-100">{user.fullName || '-'}</span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-sm text-gray-900 dark:text-gray-100">{user.ci || '-'}</span>
+                      </td>
+                      <td className="px-6 py-4">
+                        {getRoleBadge(user.role)}
+                      </td>
+                      <td className="px-6 py-4">
+                        {getRigAccessBadge(user)}
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <button
+                            onClick={() => startEdit(user)}
+                            className="text-blue-600 hover:text-blue-800"
+                          >
+                            <Edit size={18} />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(user.id)}
+                            className="text-red-600 hover:text-red-800"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
+                      </td>
+                    </>
+                  )}
+                </tr>
+                {/* Expanded row for rig selection when editing */}
+                {editingId === user.id && !formData.hasAllRigs && (
+                  <tr key={`${user.id}-rigs`} className="bg-gray-50 dark:bg-gray-800">
+                    <td colSpan={6} className="px-6 py-4">
+                      <div className="border border-gray-200 dark:border-gray-600 rounded-lg p-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                            Seleccionar Taladros
+                          </label>
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={selectAllRigs}
+                              className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400"
+                            >
+                              Seleccionar todos
+                            </button>
+                            <span className="text-gray-400">|</span>
+                            <button
+                              type="button"
+                              onClick={deselectAllRigs}
+                              className="text-xs text-gray-600 hover:text-gray-800 dark:text-gray-400"
+                            >
+                              Deseleccionar todos
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 max-h-48 overflow-y-auto">
+                          {rigs.map((rig) => (
+                            <label
+                              key={rig.id}
+                              className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors ${
+                                formData.assignedRigIds.includes(rig.id)
+                                  ? 'bg-primary-50 dark:bg-primary-900/20 border border-primary-300 dark:border-primary-700'
+                                  : 'bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600'
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={formData.assignedRigIds.includes(rig.id)}
+                                onChange={() => toggleRigSelection(rig.id)}
+                                className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                              />
+                              <span className="text-sm text-gray-900 dark:text-gray-100 truncate">
+                                {rig.name}
+                              </span>
+                            </label>
+                          ))}
+                        </div>
+
+                        {rigs.length === 0 && (
+                          <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
+                            No hay taladros registrados. Ve a la pestaña de Taladros para crear uno.
+                          </p>
                         )}
+
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                          {formData.assignedRigIds.length} taladro(s) seleccionado(s)
+                        </p>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        <button
-                          onClick={() => handleUpdate(user.id)}
-                          className="text-green-600 hover:text-green-800"
-                        >
-                          <Save size={18} />
-                        </button>
-                        <button
-                          onClick={cancelEdit}
-                          className="text-gray-600 hover:text-gray-800"
-                        >
-                          <X size={18} />
-                        </button>
-                      </div>
-                    </td>
-                  </>
-                ) : (
-                  <>
-                    <td className="px-6 py-4">
-                      <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{user.username}</span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="text-sm text-gray-900 dark:text-gray-100">{user.fullName || '-'}</span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="text-sm text-gray-900 dark:text-gray-100">{user.ci || '-'}</span>
-                    </td>
-                    <td className="px-6 py-4">
-                      {getRoleBadge(user.role)}
-                    </td>
-                    <td className="px-6 py-4">
-                      {getRigAccessBadge(user)}
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        <button
-                          onClick={() => startEdit(user)}
-                          className="text-blue-600 hover:text-blue-800"
-                        >
-                          <Edit size={18} />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(user.id)}
-                          className="text-red-600 hover:text-red-800"
-                        >
-                          <Trash2 size={18} />
-                        </button>
-                      </div>
-                    </td>
-                  </>
+                  </tr>
                 )}
-              </tr>
+              </>
             ))}
           </tbody>
         </table>

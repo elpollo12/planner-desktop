@@ -22,6 +22,7 @@ export * from './rig';
 export * from './preferences';
 export * from './sync';
 export * from './operator';
+export * from './appSettings';
 export { type UserRole, type CreateUserInput, type UpdateUserInput } from './user';
 
 export interface LoginResponse {

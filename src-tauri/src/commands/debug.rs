@@ -441,3 +441,51 @@ pub async fn debug_simulate_full_sync(state: State<'_, AppState>) -> Result<Full
         detailed_log: log,
     })
 }
+
+#[derive(Serialize)]
+pub struct UserDebugInfo {
+    pub id: String,
+    pub username: String,
+    pub full_name: String,
+    pub role: String,
+    pub active: bool,
+}
+
+#[tauri::command]
+pub async fn debug_list_all_users(state: State<'_, AppState>) -> Result<Vec<UserDebugInfo>> {
+    let conn = state.db.lock().unwrap();
+
+    let mut stmt = conn.prepare(
+        "SELECT id, username, full_name, role, active FROM users ORDER BY username ASC"
+    )?;
+
+    let users = stmt
+        .query_map([], |row| {
+            Ok(UserDebugInfo {
+                id: row.get(0)?,
+                username: row.get(1)?,
+                full_name: row.get(2)?,
+                role: row.get(3)?,
+                active: row.get(4)?,
+            })
+        })?
+        .collect::<std::result::Result<Vec<_>, _>>()?;
+
+    Ok(users)
+}
+
+#[tauri::command]
+pub async fn debug_delete_user_by_username(
+    username: String,
+    state: State<'_, AppState>,
+) -> Result<String> {
+    let conn = state.db.lock().unwrap();
+
+    let deleted = conn.execute("DELETE FROM users WHERE username = ?1", [&username])?;
+
+    if deleted > 0 {
+        Ok(format!("Usuario '{}' eliminado exitosamente", username))
+    } else {
+        Ok(format!("No se encontró usuario con username '{}'", username))
+    }
+}
