@@ -6,9 +6,11 @@ import { Plus, Search, Eye, Edit, Trash2, CheckCircle, Clock, XCircle, FileSprea
 import { useAuthStore } from '../store/authStore';
 import { useModal } from '../store/modalStore';
 import ConfirmDeleteModal from '../components/modals/ConfirmDeleteReport';
-import { reportsApi } from '../lib/api';
+import { reportsApi, rigsApi } from '../lib/api';
 import { exportReportsToExcel } from '../lib/excelExport';
 import { toast } from '../lib/toast';
+import { backgroundPush } from '../lib/syncHelper';
+import { syncEvents } from '../lib/syncEvents';
 import type { Report, ReportStatus } from '../types/report';
 
 interface PaginatedReportsResponse {
@@ -25,6 +27,7 @@ export default function ReportList() {
   const { openModal } = useModal();
 
   const [reports, setReports] = useState<Report[]>([]);
+  const [rigs, setRigs] = useState<RigWithArea[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [currentPage, setCurrentPage] = useState(1);
@@ -35,17 +38,31 @@ export default function ReportList() {
   const [filters, setFilters] = useState({
     status: '' as ReportStatus | '',
     wellNumber: '',
+    rigNumber: '',
     dateFrom: '',
     dateTo: '',
   });
-
+  
+  // Load reports and rigs
   useEffect(() => {
     if (sessionToken) {
       loadReports();
+      loadRigs();
     } else {
       setLoading(false);
     }
   }, [sessionToken, currentPage, pageSize]);
+
+  // Listen for sync events and reload reports when new data arrives
+  useEffect(() => {
+    const unsubscribe = syncEvents.subscribe(() => {
+      console.log('[ReportList] Sync event received, reloading reports...');
+      loadReports();
+      loadRigs();
+    });
+
+    return unsubscribe;
+  }, []);
 
   const loadReports = async () => {
     if (!sessionToken) {
@@ -58,6 +75,7 @@ export default function ReportList() {
       const apiFilters = {
         status: filters.status || undefined,
         wellNumber: filters.wellNumber || undefined,
+        rigNumber: filters.rigNumber || undefined,
         dateFrom: filters.dateFrom || undefined,
         dateTo: filters.dateTo || undefined,
       };
@@ -81,6 +99,18 @@ export default function ReportList() {
     }
   };
 
+  const loadRigs = async () => {
+    if (!sessionToken) return;
+
+    try {
+      // Use permission-aware API to only show rigs the user has access to
+      const data = await rigsApi.listAccessible(sessionToken, false); // only active rigs
+      setRigs(data);
+    } catch (error) {
+      console.error('Error loading rigs:', error);
+    }
+  };
+
   const handleFilter = () => {
     setCurrentPage(1); // NUEVO: Resetear a página 1 al filtrar
     loadReports();
@@ -90,6 +120,7 @@ export default function ReportList() {
     setFilters({
       status: '',
       wellNumber: '',
+      rigNumber: '',
       dateFrom: '',
       dateTo: '',
     });
@@ -121,6 +152,7 @@ export default function ReportList() {
   };
 
   const handleDelete = (report: Report) => {
+
     const onConfirm = async () => {
       if (!sessionToken) return;
 
@@ -132,7 +164,11 @@ export default function ReportList() {
         if (reports.length === 1 && currentPage > 1) {
           setCurrentPage(currentPage - 1);
         } else {
-          loadReports();
+  
+        // Push deletion to cloud in background
+        backgroundPush(sessionToken);
+
+        loadReports();
         }
       } catch (error) {
         console.error('Error deleting report:', error);
@@ -339,7 +375,7 @@ export default function ReportList() {
               Filtros
             </h3>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
               <Select
                 label="Estado"
                 value={filters.status}
@@ -353,11 +389,24 @@ export default function ReportList() {
               </Select>
 
               <Input
-                label="Número de Pozo"
+                label="Pozo"
                 value={filters.wellNumber}
                 onChange={(e) => setFilters({ ...filters, wellNumber: e.target.value })}
                 placeholder="Ej: Well-123"
               />
+
+              <Select
+                label="Taladro"
+                value={filters.rigNumber}
+                onChange={(e) => setFilters({ ...filters, rigNumber: e.target.value })}
+              >
+                <option value="">Todos</option>
+                {rigs.map((rig) => (
+                  <option key={rig.id} value={rig.name}>
+                    {rig.name}
+                  </option>
+                ))}
+              </Select>
 
               <Input
                 label="Fecha Desde"
@@ -424,6 +473,9 @@ export default function ReportList() {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                         Pozo
                       </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Taladro
+                    </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                         Estado
                       </th>
@@ -450,6 +502,11 @@ export default function ReportList() {
                             {report.wellNumber || '-'}
                           </span>
                         </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-sm text-gray-900 dark:text-gray-100">
+                          {report.rigNumber || '-'}
+                        </span>
+                      </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           {getStatusBadge(report.status)}
                         </td>

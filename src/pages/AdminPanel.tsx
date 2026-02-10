@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { MainLayout } from '../components/layout';
 import { Card } from '../components/ui';
-import { Users, Bookmark, BarChart3, Activity, MapPin, Palette, Cloud, Building2 } from 'lucide-react';
+import { Users, Bookmark, BarChart3, Activity, MapPin, Palette, Cloud, Building2, Wrench } from 'lucide-react';
 import { OilRigIcon } from '../components/ui/icons/OilRigIcon';
 import { useAuthStore } from '../store/authStore';
 import { Navigate } from 'react-router-dom';
@@ -13,8 +13,9 @@ import RigsManagement from '../components/admin/RigsManagement';
 import AppearanceSettings from '../components/admin/AppearanceSettings';
 import SyncSettings from '../components/admin/SyncSettings';
 import OperatorsManagement from '../components/admin/OperatorsManagement';
+import RigsDiagnostic from '../components/admin/RigsDiagnostic';
 
-type AdminTab = 'users' | 'codes' | 'stats' | 'areas' | 'rigs' | 'operators' | 'appearance' | 'sync';
+type AdminTab = 'users' | 'codes' | 'stats' | 'areas' | 'rigs' | 'operators' | 'appearance' | 'sync' | 'diagnostic';
 
 export default function AdminPanel() {
   const { user } = useAuthStore();
@@ -34,6 +35,7 @@ export default function AdminPanel() {
     { id: 'stats' as AdminTab, label: 'Estadísticas', icon: BarChart3 },
     { id: 'appearance' as AdminTab, label: 'Apariencia', icon: Palette },
     { id: 'sync' as AdminTab, label: 'Sincronización', icon: Cloud },
+    { id: 'diagnostic' as AdminTab, label: 'Diagnóstico', icon: Wrench },
   ];
 
   return (
@@ -41,7 +43,7 @@ export default function AdminPanel() {
       title="Panel de Administración"
       subtitle="Gestión del sistema"
     >
-      {activeTab !== 'stats' && (
+      {activeTab !== 'stats' && activeTab !== 'diagnostic' && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
           <Card className="p-6">
             <div className="flex items-center justify-between">
@@ -125,6 +127,7 @@ export default function AdminPanel() {
             {activeTab === 'stats' && <Statistics />}
             {activeTab === 'appearance' && <AppearanceSettings />}
             {activeTab === 'sync' && <SyncSettings />}
+            {activeTab === 'diagnostic' && <RigsDiagnostic />}
           </div>
         </Card>
       </div>

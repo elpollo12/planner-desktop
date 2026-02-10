@@ -104,6 +104,7 @@ pub struct ReportFilters {
     pub status: Option<String>,
     pub created_by: Option<String>,
     pub well_number: Option<String>,
+    pub rig_number: Option<String>,
 }
 
 impl Report {
@@ -266,11 +267,16 @@ impl Report {
             params_vec.push(Box::new(created_by.clone()));
         }
 
+        // Case-insensitive partial search for well number
         if let Some(ref well_number) = filters.well_number {
-            let clause = " AND well_number = ?";
-            query.push_str(clause);
-            count_query.push_str(clause);
-            params_vec.push(Box::new(well_number.clone()));
+            query.push_str(" AND LOWER(well_number) LIKE LOWER(?)");
+            params_vec.push(Box::new(format!("%{}%", well_number)));
+        }
+
+        // Case-insensitive partial search for rig number
+        if let Some(ref rig_number) = filters.rig_number {
+            query.push_str(" AND LOWER(rig_number) LIKE LOWER(?)");
+            params_vec.push(Box::new(format!("%{}%", rig_number)));
         }
 
         // Get total count first

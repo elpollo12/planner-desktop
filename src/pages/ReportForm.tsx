@@ -30,6 +30,7 @@ import {
 import { transformFormToReportData } from '../lib/reportHelpers';
 import { toast } from '../lib/toast';
 import { loadLastReportTemplate, saveLastReportTemplate } from '../lib/lastReportData';
+import { backgroundPush } from '../lib/syncHelper';
 import type { Report } from '../types/report';
 
 // Import form sections
@@ -600,6 +601,9 @@ export default function ReportForm() {
 
       clearAutoSave();
 
+      // Push changes to cloud in background
+      backgroundPush(sessionToken);
+
       navigate('/reports');
 
     } catch (error) {
@@ -653,6 +657,9 @@ export default function ReportForm() {
       await reportsApi.submit(sessionToken, currentReportId);
 
       clearAutoSave();
+
+      // Push changes to cloud in background
+      backgroundPush(sessionToken);
 
       toast.success('Reporte enviado exitosamente');
       navigate('/reports');

@@ -6,6 +6,7 @@ import { useAuthStore } from './store/authStore';
 import { usePreferencesStore } from './store/preferencesStore';
 import { useThemeApplicator } from './hooks/useThemeApplicator';
 import { useAutoSync } from './hooks/useAutoSync';
+import { backgroundPull } from './lib/syncHelper';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import ReportForm from './pages/ReportForm';
@@ -36,10 +37,15 @@ function App() {
   // Auto-sync with Turso cloud (for admin users)
   useAutoSync();
 
-  // Validate session on startup
+  // Validate session on startup and pull latest data from cloud
   useEffect(() => {
     if (sessionToken) {
-      getCurrentUser().finally(() => setValidating(false));
+      getCurrentUser()
+        .then(() => {
+          // After successful auth, pull latest data from cloud
+          backgroundPull(sessionToken);
+        })
+        .finally(() => setValidating(false));
     } else {
       setValidating(false);
     }

@@ -340,6 +340,14 @@ export const rigsApi = {
     invoke<RigWithArea[]>('list_rigs', { includeInactive }),
 
   /**
+   * Listar taladros accesibles por el usuario actual (basado en permisos)
+   * @param sessionToken - Token de sesión del usuario
+   * @param includeInactive - Si se deben incluir taladros inactivos
+   */
+  listAccessible: (sessionToken: string, includeInactive: boolean = false) =>
+    invoke<RigWithArea[]>('list_accessible_rigs', { sessionToken, includeInactive }),
+
+  /**
    * Obtener un taladro por ID con información del área
    */
   get: (id: string) =>

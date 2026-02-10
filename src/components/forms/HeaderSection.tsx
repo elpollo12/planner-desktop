@@ -4,7 +4,7 @@ import { Input, Select } from '../ui';
 import type { CompleteReportData } from '../../schemas';
 import { useOperatorsStore } from '@/store/operatorsStore';
 import { useAuthStore } from '@/store/authStore';
-import { areasApi, rigsApi, usersApi } from '@/lib/api';
+import { areasApi, rigsApi } from '@/lib/api';
 import type { Area, Rig } from '@/types/rig';
 
 export function HeaderSection() {
@@ -13,10 +13,9 @@ export function HeaderSection() {
     formState: { errors },
   } = useFormContext<CompleteReportData>();
 
-  const { sessionToken, user } = useAuthStore();
+  const { sessionToken } = useAuthStore();
   const { operators, loadOperators } = useOperatorsStore();
   const [areas, setAreas] = useState<Area[]>([]);
-  const [rigs, setRigs] = useState<Rig[]>([]);
   const [accessibleRigs, setAccessibleRigs] = useState<Rig[]>([]);
 
   // Load operators, areas and rigs on mount
@@ -26,38 +25,14 @@ export function HeaderSection() {
     }
     // Load areas
     areasApi.list(false).then(setAreas).catch(console.error);
-    // Load all rigs
-    rigsApi.list(false).then(setRigs).catch(console.error);
-  }, [sessionToken, operators.length, loadOperators]);
 
-  // Filter rigs based on user access
-  useEffect(() => {
-    const loadAccessibleRigs = async () => {
-      if (!sessionToken || !user) return;
-
-      try {
-        // Get user with rig assignments
-        const userData: any = await usersApi.get(sessionToken, user.id);
-
-        // Admin or hasAllRigs = all rigs
-        if (user.role === 'admin' || userData.hasAllRigs) {
-          setAccessibleRigs(rigs);
-        } else {
-          // Filter rigs by assigned IDs
-          const assignedIds = userData.assignedRigIds || [];
-          const filtered = rigs.filter(rig => assignedIds.includes(rig.id));
-          setAccessibleRigs(filtered);
-        }
-      } catch (error) {
-        console.error('Error loading accessible rigs:', error);
-        setAccessibleRigs([]);
-      }
-    };
-
-    if (rigs.length > 0 && user) {
-      loadAccessibleRigs();
+    // Load accessible rigs (backend handles permission filtering)
+    if (sessionToken) {
+      rigsApi.listAccessible(sessionToken, false)
+        .then(setAccessibleRigs)
+        .catch(console.error);
     }
-  }, [rigs, sessionToken, user]);
+  }, [sessionToken, operators.length, loadOperators]);
 
   const operatorOptions = [
     { value: '', label: 'Selecciona un operador' },
