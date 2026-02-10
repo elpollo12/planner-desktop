@@ -46,30 +46,98 @@ export function useReportPersistence({
   const { sessionToken, user } = useAuthStore();
   const [isLoading, setIsLoading] = useState(false);
 
-  // Cargar reporte existente
+  // ============================================
+  // FUNCIÓN COMÚN PARA GUARDAR/ENVIAR
+  // ============================================
+  const saveReportCommon = useCallback(async (
+    data: CompleteReportData,
+    shouldSubmit: boolean
+  ): Promise<void> => {
+    if (!sessionToken) {
+      toast.error('No hay sesión activa');
+      return;
+    }
+
+    if (!data.header?.reportNumber || !data.header?.reportDate) {
+      toast.error('Completa el encabezado antes de ' + (shouldSubmit ? 'enviar' : 'guardar'));
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      let currentReportId = reportId;
+      const reportData = transformFormToReportData(data);
+
+      // Crear o actualizar
+      if (currentReportId) {
+        await reportsApi.update(sessionToken, currentReportId, reportData);
+      } else {
+        const newReport = await reportsApi.create(sessionToken, reportData);
+        currentReportId = newReport.id;
+        setReportId(currentReportId);
+        saveLastReportTemplate(data.header);
+      }
+
+      // Guardar secciones
+      await saveAllSectionsWithData(sessionToken, currentReportId, data, isEditMode);
+
+      // Enviar si es submit
+      if (shouldSubmit) {
+        await reportsApi.submit(sessionToken, currentReportId);
+        toast.success('Reporte enviado correctamente');
+      } else {
+        toast.success(currentReportId !== reportId ? 'Reporte guardado como borrador' : 'Reporte actualizado');
+      }
+
+      navigate('/reports');
+
+    } catch (error) {
+      console.error('Error saving report:', error);
+      toast.error(`Error al ${shouldSubmit ? 'enviar' : 'guardar'}: ${error}`);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [sessionToken, reportId, setReportId, isEditMode, navigate]);
+
+  // ============================================
+  // CARGAR REPORTE EXISTENTE
+  // ============================================
   const loadExistingReport = useCallback(async (reportIdToLoad: string) => {
-  if (!sessionToken) return;
+    if (!sessionToken) return;
 
-  setIsLoadingReport(true);
-  try {
-    const { report, formData: loadedFormData } = await loadReport(sessionToken, reportIdToLoad);
-    
-    // ✅ Agrupar updates en un solo re-render
-    unstable_batchedUpdates(() => {
-      setExistingReport(report);
-      methods.reset(loadedFormData);
-    });
-    
-  } catch (error) {
-    console.error('Error loading report:', error);
-    toast.error('Error al cargar el reporte');
-    navigate('/reports');
-  } finally {
-    setIsLoadingReport(false);
-  }
-}, [sessionToken, methods, setExistingReport, navigate, setIsLoadingReport]);
+    setIsLoadingReport(true);
+    try {
+      const { report, formData: loadedFormData } = await loadReport(sessionToken, reportIdToLoad);
+      
+      // ✅ Agrupar updates en un solo re-render
+      unstable_batchedUpdates(() => {
+        setExistingReport(report);
+        methods.reset(loadedFormData);
+      });
+      
+    } catch (error) {
+      console.error('Error loading report:', error);
+      toast.error('Error al cargar el reporte');
+      navigate('/reports');
+    } finally {
+      setIsLoadingReport(false);
+    }
+  }, [sessionToken, methods, setExistingReport, navigate, setIsLoadingReport]);
 
-  // Cargar datos iniciales (al montar el componente)
+  // ============================================
+  // FUNCIONES PÚBLICAS
+  // ============================================
+  const handleSaveDraft = useCallback(async () => {
+    await saveReportCommon(formData, false);
+  }, [saveReportCommon, formData]);
+
+  const handleSubmitReport = useCallback(async (data: CompleteReportData) => {
+    await saveReportCommon(data, true);
+  }, [saveReportCommon]);
+
+  // ============================================
+  // CARGAR DATOS INICIALES
+  // ============================================
   useEffect(() => {
     const loadInitialData = async () => {
       if (!sessionToken || !user) return;
@@ -101,117 +169,6 @@ export function useReportPersistence({
 
     loadInitialData();
   }, [isEditMode, reportId, sessionToken, user, loadExistingReport, methods]);
-
-  // Guardar como borrador
-  const handleSaveDraft = useCallback(async () => {
-    if (!sessionToken) {
-      toast.error('No hay sesión activa');
-      return;
-    }
-
-    if (!formData.header?.reportNumber || !formData.header?.reportDate) {
-      toast.error('Completa el encabezado antes de guardar');
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      let currentReportId = reportId;
-
-      const reportData = transformFormToReportData(formData);
-
-      if (currentReportId) {
-        // Actualizar reporte existente
-        await reportsApi.update(sessionToken, currentReportId, reportData);
-        toast.success('Reporte actualizado');
-      } else {
-        // Crear nuevo reporte
-        const newReport = await reportsApi.create(sessionToken, reportData);
-        currentReportId = newReport.id;
-        setReportId(currentReportId);
-
-        // Guardar como plantilla para el próximo
-        saveLastReportTemplate({
-          reportNumber: formData.header.reportNumber,
-          wellNumber: formData.header.wellNumber,
-          apiNumber: formData.header.apiNumber,
-          contract: formData.header.contract,
-          contractor: formData.header.contractor,
-          operator: formData.header.operator,
-          fieldDistrict: formData.header.fieldDistrict,
-          municipality: formData.header.municipality,
-          rigNumber: formData.header.rigNumber,
-          supervisor24h: formData.header.supervisor24h,
-        });
-
-        toast.success('Reporte guardado como borrador');
-      }
-
-      // Guardar todas las secciones
-      await saveAllSectionsWithData(sessionToken, currentReportId, formData, isEditMode);
-
-      navigate('/reports');
-
-    } catch (error) {
-      console.error('Error saving draft:', error);
-      toast.error(`Error al guardar: ${error}`);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [sessionToken, formData, reportId, setReportId, isEditMode, navigate]);
-
-  // Enviar reporte
-  const handleSubmitReport = useCallback(async (data: CompleteReportData) => {
-    if (!sessionToken) {
-      toast.error('No hay sesión activa');
-      return;
-    }
-
-    if (!data.header?.reportNumber || !data.header?.reportDate) {
-      toast.error('Completa el encabezado antes de enviar');
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      let currentReportId = reportId;
-
-      const reportData = transformFormToReportData(data);
-
-      if (currentReportId) {
-        await reportsApi.update(sessionToken, currentReportId, reportData);
-      } else {
-        const newReport = await reportsApi.create(sessionToken, reportData);
-        currentReportId = newReport.id;
-        setReportId(currentReportId);
-
-        saveLastReportTemplate({
-          reportNumber: data.header.reportNumber,
-          wellNumber: data.header.wellNumber,
-          apiNumber: data.header.apiNumber,
-          contract: data.header.contract,
-          contractor: data.header.contractor,
-          operator: data.header.operator,
-          fieldDistrict: data.header.fieldDistrict,
-          municipality: data.header.municipality,
-          rigNumber: data.header.rigNumber,
-          supervisor24h: data.header.supervisor24h,
-        });
-      }
-
-      await saveAllSectionsWithData(sessionToken, currentReportId, data, isEditMode);
-      await reportsApi.submit(sessionToken, currentReportId);
-
-      toast.success('Reporte enviado exitosamente');
-      navigate('/reports');
-
-    } catch (error) {
-      console.error('Error submitting report:', error);
-      toast.error(`Error al enviar el reporte: ${error}`);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [sessionToken, reportId, setReportId, isEditMode, navigate]);
 
   return {
     isLoading,
