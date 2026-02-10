@@ -515,7 +515,7 @@ export default function ReportList() {
                         <td className="px-6 py-4 whitespace-nowrap text-center">
                           <div className="flex items-center justify-center gap-2">
                             <button
-                              onClick={() => navigate(`/reports/${report.id}`)}
+                              onClick={() => navigate(`/reports/view/${report.id}`)}
                               className="p-1 text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
                               title="Ver detalle"
                             >

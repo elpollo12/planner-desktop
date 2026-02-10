@@ -17,7 +17,7 @@ const SYNC_TABLES: &[TableDef] = &[
         name: "users",
         columns: &[
             "id", "username", "password_hash", "full_name", "ci", "role",
-            "position", "active", "last_login", "created_by", "updated_by",
+            "position", "active", "has_all_rigs", "last_login", "created_by", "updated_by",
             "created_at", "updated_at",
         ],
         id_col: "id",
@@ -54,6 +54,15 @@ const SYNC_TABLES: &[TableDef] = &[
         columns: &[
             "id", "name", "operator", "power", "area_id", "active",
             "created_by", "updated_by", "created_at", "updated_at",
+        ],
+        id_col: "id",
+        has_updated_at: true,
+    },
+    TableDef {
+        name: "user_rigs",
+        columns: &[
+            "id", "user_id", "rig_id", "assigned_by", "assigned_at",
+            "created_at", "updated_at",
         ],
         id_col: "id",
         has_updated_at: true,
