@@ -290,8 +290,7 @@ export default function ReportForm() {
         
         if (lastCompleteReport) {
           methods.reset(lastCompleteReport);
-                    toast.success('Datos del último reporte cargados (Reporte #' + (lastCompleteReport.header?.reportNumber || 'N/A') + ')');
-
+            toast.success('Datos del último reporte cargados');
         } else {
           const lastReportTemplate = loadLastReportTemplate();
           if (lastReportTemplate) {
