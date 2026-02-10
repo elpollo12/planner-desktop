@@ -1,4 +1,5 @@
 import * as XLSX from 'xlsx';
+import { formatDateDMY } from './dateUtils';
 import type { Report } from '../types/report';
 
 /**
@@ -13,7 +14,7 @@ export function exportReportsToExcel(reports: Report[], filename: string = 'repo
     // Prepare data with safe fallbacks
     const data = reports.map(report => ({
       'Número Reporte': report.reportNumber || 'N/A',
-      'Fecha': report.reportDate ? new Date(report.reportDate).toLocaleDateString() : '-',
+      'Fecha': formatDateDMY(report.reportDate),
       'Pozo': report.wellNumber || '-',
       'API': report.apiNumber || '-',
       'Contrato': report.contract || '-',
@@ -66,7 +67,7 @@ export function exportSingleReportToExcel(data: any, filename: string): void {
       ['REPORTE DIARIO DE OPERACIONES'],
       [],
       ['Número de Reporte:', report.reportNumber || 'N/A'],
-      ['Fecha:', report.reportDate ? new Date(report.reportDate).toLocaleDateString() : '-'],
+      ['Fecha:', formatDateDMY(report.reportDate)],
       ['Estado:', getStatusLabel(report.status)],
       [],
       ['INFORMACIÓN GENERAL'],

@@ -18,6 +18,7 @@ import {
 import { exportReportToPDF } from '../lib/pdfExport';
 import { exportSingleReportToExcel } from '../lib/excelExport';
 import { toast } from '../lib/toast';
+import { formatDateDMY } from '../lib/dateUtils';
 import type { 
   Report, 
   CrewShift, 
@@ -218,7 +219,7 @@ export default function ReportView() {
   return (
     <MainLayout
       title={`Reporte DDR #${report.reportNumber}`}
-      subtitle={`Fecha: ${new Date(report.reportDate).toLocaleDateString()}`}
+      subtitle={`Fecha: ${formatDateDMY(report.reportDate)}`}
       headerActions={
         <div className="flex gap-2">
           <Button
@@ -309,40 +310,40 @@ export default function ReportView() {
             <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Datos Generales</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               <div>
-                <p className="text-sm text-gray-600">Número de Pozo</p>
-                <p className="text-base font-medium text-gray-900">{report.wellNumber || '-'}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Número de Pozo</p>
+                <p className="text-base font-medium text-gray-900 dark:text-gray-100">{report.wellNumber || '-'}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-600">Número API</p>
-                <p className="text-base font-medium text-gray-900">{report.apiNumber || '-'}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Número API</p>
+                <p className="text-base font-medium text-gray-900 dark:text-gray-100">{report.apiNumber || '-'}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-600">Contrato</p>
-                <p className="text-base font-medium text-gray-900">{report.contract || '-'}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Contrato</p>
+                <p className="text-base font-medium text-gray-900 dark:text-gray-100">{report.contract || '-'}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-600">Contratista</p>
-                <p className="text-base font-medium text-gray-900">{report.contractor || '-'}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Contratista</p>
+                <p className="text-base font-medium text-gray-900 dark:text-gray-100">{report.contractor || '-'}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-600">Operador</p>
-                <p className="text-base font-medium text-gray-900">{report.operator || '-'}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Operador</p>
+                <p className="text-base font-medium text-gray-900 dark:text-gray-100">{report.operator || '-'}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-600">Campo/Distrito</p>
-                <p className="text-base font-medium text-gray-900">{report.fieldDistrict || '-'}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Campo/Distrito</p>
+                <p className="text-base font-medium text-gray-900 dark:text-gray-100">{report.fieldDistrict || '-'}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-600">Municipio</p>
-                <p className="text-base font-medium text-gray-900">{report.municipality || '-'}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Municipio</p>
+                <p className="text-base font-medium text-gray-900 dark:text-gray-100">{report.municipality || '-'}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-600">Taladro #</p>
-                <p className="text-base font-medium text-gray-900">{report.rigNumber || '-'}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Taladro #</p>
+                <p className="text-base font-medium text-gray-900 dark:text-gray-100">{report.rigNumber || '-'}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-600">Supervisor 24h</p>
-                <p className="text-base font-medium text-gray-900">{report.supervisor24h || '-'}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Supervisor 24h</p>
+                <p className="text-base font-medium text-gray-900 dark:text-gray-100">{report.supervisor24h || '-'}</p>
               </div>
             </div>
           </div>
@@ -355,7 +356,7 @@ export default function ReportView() {
               <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Cuadrilla por Turno</h3>
               {crewShifts.map((shift, idx) => (
                 <div key={idx} className="mb-6 last:mb-0">
-                  <h4 className="font-medium text-gray-900 mb-3">
+                  <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-3">
                     {SHIFT_LABELS[shift.shift]} ({shift.shiftStart} - {shift.shiftEnd})
                   </h4>
                   {shift.members && shift.members.length > 0 ? (
@@ -438,20 +439,20 @@ export default function ReportView() {
                     <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-3">Mecha #{idx + 1}</h4>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                       <div>
-                        <p className="text-gray-600">Tamaño</p>
-                        <p className="text-gray-900">{bit.size || '-'}</p>
+                        <p className="text-gray-600 dark:text-gray-400">Tamaño</p>
+                        <p className="text-gray-900 dark:text-gray-100">{bit.size || '-'}</p>
                       </div>
                       <div>
-                        <p className="text-gray-600">Marca</p>
-                        <p className="text-gray-900">{bit.brand || '-'}</p>
+                        <p className="text-gray-600 dark:text-gray-400">Marca</p>
+                        <p className="text-gray-900 dark:text-gray-100">{bit.brand || '-'}</p>
                       </div>
                       <div>
-                        <p className="text-gray-600">Tipo</p>
-                        <p className="text-gray-900">{bit.bitType || '-'}</p>
+                        <p className="text-gray-600 dark:text-gray-400">Tipo</p>
+                        <p className="text-gray-900 dark:text-gray-100">{bit.bitType || '-'}</p>
                       </div>
                       <div>
-                        <p className="text-gray-600">Serial</p>
-                        <p className="text-gray-900">{bit.serialNumber || '-'}</p>
+                        <p className="text-gray-600 dark:text-gray-400">Serial</p>
+                        <p className="text-gray-900 dark:text-gray-100">{bit.serialNumber || '-'}</p>
                       </div>
                     </div>
                   </div>
@@ -475,26 +476,26 @@ export default function ReportView() {
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                       {mud.weight && (
                         <div>
-                          <p className="text-gray-600">Peso (ppg)</p>
-                          <p className="text-gray-900">{mud.weight}</p>
+                          <p className="text-gray-600 dark:text-gray-400">Peso (ppg)</p>
+                          <p className="text-gray-900 dark:text-gray-100">{mud.weight}</p>
                         </div>
                       )}
                       {mud.viscosity && (
                         <div>
-                          <p className="text-gray-600">Viscosidad (seg)</p>
-                          <p className="text-gray-900">{mud.viscosity}</p>
+                          <p className="text-gray-600 dark:text-gray-400">Viscosidad (seg)</p>
+                          <p className="text-gray-900 dark:text-gray-100">{mud.viscosity}</p>
                         </div>
                       )}
                       {mud.pvp && (
                         <div>
-                          <p className="text-gray-600">PVP (cps)</p>
-                          <p className="text-gray-900">{mud.pvp}</p>
+                          <p className="text-gray-600 dark:text-gray-400">PVP (cps)</p>
+                          <p className="text-gray-900 dark:text-gray-100">{mud.pvp}</p>
                         </div>
                       )}
                       {mud.ph && (
                         <div>
-                          <p className="text-gray-600">pH</p>
-                          <p className="text-gray-900">{mud.ph}</p>
+                          <p className="text-gray-600 dark:text-gray-400">pH</p>
+                          <p className="text-gray-900 dark:text-gray-100">{mud.ph}</p>
                         </div>
                       )}
                     </div>

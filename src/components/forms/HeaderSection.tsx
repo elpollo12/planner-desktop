@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useFormContext } from 'react-hook-form';
-import { Input, Select } from '../ui';
+import { useFormContext, Controller } from 'react-hook-form';
+import { Input, DateInput, Select } from '../ui';
 import type { CompleteReportData } from '../../schemas';
 import { useOperatorsStore } from '@/store/operatorsStore';
 import { useAuthStore } from '@/store/authStore';
@@ -10,6 +10,7 @@ import type { Area, Rig } from '@/types/rig';
 export function HeaderSection() {
   const {
     register,
+    control,
     formState: { errors },
   } = useFormContext<CompleteReportData>();
 
@@ -83,12 +84,18 @@ export function HeaderSection() {
         />
 
         {/* Report Date */}
-        <Input
-          label="Fecha del Reporte"
-          type="date"
-          {...register('header.reportDate')}
-          error={errors.header?.reportDate?.message}
-          required
+        <Controller
+          name="header.reportDate"
+          control={control}
+          render={({ field }) => (
+            <DateInput
+              label="Fecha del Reporte"
+              value={field.value}
+              onChange={field.onChange}
+              error={errors.header?.reportDate?.message}
+              required
+            />
+          )}
         />
 
         {/* Well Name */}

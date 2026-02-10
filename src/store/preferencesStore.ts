@@ -5,13 +5,11 @@ import type { UserPreferences, SavePreferencesInput } from '../types/preferences
 
 interface PreferencesState {
   preferences: UserPreferences | null;
-  logoDataUrl: string | null;
   isLoading: boolean;
 
   loadPreferences: (sessionToken: string) => Promise<void>;
   savePreferences: (sessionToken: string, input: SavePreferencesInput) => Promise<void>;
-  uploadLogo: (sessionToken: string, file: File) => Promise<string>;
-  removeLogo: (sessionToken: string) => Promise<void>;
+  toggleTheme: (sessionToken: string) => Promise<void>;
   clearPreferences: () => void;
 }
 
@@ -19,7 +17,6 @@ export const usePreferencesStore = create<PreferencesState>()(
   persist(
     (set) => ({
       preferences: null,
-      logoDataUrl: null,
       isLoading: false,
 
       loadPreferences: async (sessionToken: string) => {
@@ -28,18 +25,7 @@ export const usePreferencesStore = create<PreferencesState>()(
           const prefs = await invoke<UserPreferences | null>('get_user_preferences', {
             sessionToken,
           });
-
-          // Load logo as base64 data URL if a logo path exists
-          let logoDataUrl: string | null = null;
-          if (prefs?.logoPath) {
-            try {
-              logoDataUrl = await invoke<string | null>('get_logo_data', { sessionToken });
-            } catch {
-              console.error('Error loading logo data');
-            }
-          }
-
-          set({ preferences: prefs, logoDataUrl, isLoading: false });
+          set({ preferences: prefs, isLoading: false });
         } catch (error) {
           console.error('Error loading preferences:', error);
           set({ isLoading: false });
@@ -61,44 +47,28 @@ export const usePreferencesStore = create<PreferencesState>()(
         }
       },
 
-      uploadLogo: async (sessionToken: string, file: File) => {
-        const buffer = await file.arrayBuffer();
-        const fileData = Array.from(new Uint8Array(buffer));
-        const logoPath = await invoke<string>('upload_logo', {
-          sessionToken,
-          fileData,
-          fileName: file.name,
-        });
+      toggleTheme: async (sessionToken: string) => {
+        const currentPrefs = usePreferencesStore.getState().preferences;
+        // If no preferences exist, assume light mode (default) and switch to dark
+        const currentMode = currentPrefs?.themeMode ?? 'light';
+        const newThemeMode = currentMode === 'dark' ? 'light' : 'dark';
 
-        // Immediately load the logo as data URL
-        let logoDataUrl: string | null = null;
         try {
-          logoDataUrl = await invoke<string | null>('get_logo_data', { sessionToken });
-        } catch {
-          console.error('Error loading logo data after upload');
+          const prefs = await invoke<UserPreferences>('save_user_preferences', {
+            sessionToken,
+            input: {
+              themeMode: newThemeMode,
+            },
+          });
+          set({ preferences: prefs });
+        } catch (error) {
+          console.error('Error toggling theme:', error);
+          throw error;
         }
-
-        set((state) => ({
-          preferences: state.preferences
-            ? { ...state.preferences, logoPath }
-            : null,
-          logoDataUrl,
-        }));
-        return logoPath;
-      },
-
-      removeLogo: async (sessionToken: string) => {
-        await invoke<void>('remove_logo', { sessionToken });
-        set((state) => ({
-          preferences: state.preferences
-            ? { ...state.preferences, logoPath: null }
-            : null,
-          logoDataUrl: null,
-        }));
       },
 
       clearPreferences: () => {
-        set({ preferences: null, logoDataUrl: null });
+        set({ preferences: null });
       },
     }),
     {

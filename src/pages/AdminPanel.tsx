@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { MainLayout } from '../components/layout';
 import { Card } from '../components/ui';
 import { Users, Bookmark, BarChart3, Activity, MapPin, Palette, Cloud, Building2, Wrench } from 'lucide-react';
@@ -14,17 +14,67 @@ import AppearanceSettings from '../components/admin/AppearanceSettings';
 import SyncSettings from '../components/admin/SyncSettings';
 import OperatorsManagement from '../components/admin/OperatorsManagement';
 import RigsDiagnostic from '../components/admin/RigsDiagnostic';
+import { usersApi, areasApi, rigsApi, reportsApi } from '../lib/api';
 
 type AdminTab = 'users' | 'codes' | 'stats' | 'areas' | 'rigs' | 'operators' | 'appearance' | 'sync' | 'diagnostic';
 
+interface AdminStats {
+  totalUsers: number;
+  activeAreas: number;
+  activeRigs: number;
+  activityToday: number;
+}
+
 export default function AdminPanel() {
-  const { user } = useAuthStore();
+  const { user, sessionToken } = useAuthStore();
   const [activeTab, setActiveTab] = useState<AdminTab>('users');
+  const [stats, setStats] = useState<AdminStats>({
+    totalUsers: 0,
+    activeAreas: 0,
+    activeRigs: 0,
+    activityToday: 0,
+  });
+  const [loadingStats, setLoadingStats] = useState(true);
 
   // Only admins can access
   if (!user || user.role !== 'admin') {
     return <Navigate to="/dashboard" replace />;
   }
+
+  useEffect(() => {
+    if (sessionToken) {
+      loadAdminStats();
+    }
+  }, [sessionToken]);
+
+  const loadAdminStats = async () => {
+    if (!sessionToken) return;
+
+    setLoadingStats(true);
+    try {
+      // Load all data in parallel
+      const [users, areas, rigs, reportsResponse] = await Promise.all([
+        usersApi.list(sessionToken),
+        areasApi.list(true), // include inactive to count all
+        rigsApi.list(true), // include inactive to count all
+        reportsApi.list(sessionToken, {
+          dateFrom: new Date().toISOString().split('T')[0],
+          dateTo: new Date().toISOString().split('T')[0],
+        }, 1, 1000),
+      ]);
+
+      setStats({
+        totalUsers: users.length,
+        activeAreas: areas.filter(a => a.active).length,
+        activeRigs: rigs.filter(r => r.active).length,
+        activityToday: reportsResponse.reports.length,
+      });
+    } catch (error) {
+      console.error('Error loading admin stats:', error);
+    } finally {
+      setLoadingStats(false);
+    }
+  };
 
   const tabs = [
     { id: 'users' as AdminTab, label: 'Usuarios', icon: Users },
@@ -49,7 +99,9 @@ export default function AdminPanel() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600 dark:text-gray-400">Total Usuarios</p>
-                <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">-</p>
+                <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+                  {loadingStats ? '...' : stats.totalUsers}
+                </p>
               </div>
               <Users className="text-blue-500" size={32} />
             </div>
@@ -59,7 +111,9 @@ export default function AdminPanel() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600 dark:text-gray-400">Áreas Activas</p>
-                <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">-</p>
+                <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+                  {loadingStats ? '...' : stats.activeAreas}
+                </p>
               </div>
               <MapPin className="text-green-500" size={32} />
             </div>
@@ -69,7 +123,9 @@ export default function AdminPanel() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600 dark:text-gray-400">Taladros Activos</p>
-                <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">-</p>
+                <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+                  {loadingStats ? '...' : stats.activeRigs}
+                </p>
               </div>
               <OilRigIcon className="text-orange-500" size={32} />
             </div>
@@ -78,13 +134,15 @@ export default function AdminPanel() {
           <Card className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Actividad Hoy</p>
-                <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">-</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Reportes Creados Hoy</p>
+                <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+                  {loadingStats ? '...' : stats.activityToday}
+                </p>
               </div>
               <Activity className="text-purple-500" size={32} />
             </div>
           </Card>
-        </div> 
+        </div>
       )}
       <div className="space-y-6">
         {/* Tabs */}

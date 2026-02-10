@@ -1,7 +1,8 @@
 import { useEffect } from 'react';
 import { usePreferencesStore } from '../store/preferencesStore';
+import { useAppSettingsStore } from '../store/appSettingsStore';
 import { generatePalette, getContrastColor } from '../lib/colorUtils';
-import { DEFAULT_PREFERENCES } from '../types/preferences';
+import { DEFAULT_APP_SETTINGS } from '../types/appSettings';
 
 function applyPalette(prefix: string, palette: Record<string, string>) {
   const root = document.documentElement;
@@ -30,18 +31,28 @@ export function applyThemeToDOM(prefs: {
 }
 
 export function resetThemeToDefaults() {
-  applyThemeToDOM(DEFAULT_PREFERENCES);
+  applyThemeToDOM({
+    primaryColor: DEFAULT_APP_SETTINGS.primaryColor,
+    secondaryColor: DEFAULT_APP_SETTINGS.secondaryColor,
+    themeMode: 'light',
+  });
 }
 
 export function useThemeApplicator() {
   const preferences = usePreferencesStore((s) => s.preferences);
+  const appSettings = useAppSettingsStore((s) => s.settings);
 
   useEffect(() => {
-    const prefs = preferences ?? DEFAULT_PREFERENCES;
+    // Colors come from app settings (corporate branding)
+    // Theme mode comes from user preferences
+    const primaryColor = appSettings?.primaryColor ?? DEFAULT_APP_SETTINGS.primaryColor;
+    const secondaryColor = appSettings?.secondaryColor ?? DEFAULT_APP_SETTINGS.secondaryColor;
+    const themeMode = preferences?.themeMode ?? 'light';
+
     applyThemeToDOM({
-      primaryColor: prefs.primaryColor,
-      secondaryColor: prefs.secondaryColor,
-      themeMode: prefs.themeMode,
+      primaryColor,
+      secondaryColor,
+      themeMode,
     });
-  }, [preferences]);
+  }, [preferences, appSettings]);
 }

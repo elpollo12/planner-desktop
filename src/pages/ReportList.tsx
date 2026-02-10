@@ -11,6 +11,7 @@ import { exportReportsToExcel } from '../lib/excelExport';
 import { toast } from '../lib/toast';
 import { backgroundPush } from '../lib/syncHelper';
 import { syncEvents } from '../lib/syncEvents';
+import { formatDateDMY } from '../lib/dateUtils';
 import type { Report, ReportStatus } from '../types/report';
 import { RigWithArea } from '@/types';
 
@@ -181,7 +182,7 @@ export default function ReportList() {
     openModal(
       <ConfirmDeleteModal
         message="¿Estás seguro de que deseas eliminar este reporte?"
-        itemName={`Reporte #${report.reportNumber} - ${new Date(report.reportDate).toLocaleDateString()}`}
+        itemName={`Reporte #${report.reportNumber} - ${formatDateDMY(report.reportDate)}`}
         onConfirm={onConfirm}
       />,
       {
@@ -495,7 +496,7 @@ export default function ReportList() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className="text-sm text-gray-900 dark:text-gray-100">
-                            {new Date(report.reportDate).toLocaleDateString()}
+                            {formatDateDMY(report.reportDate)}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -514,7 +515,7 @@ export default function ReportList() {
                         <td className="px-6 py-4 whitespace-nowrap text-center">
                           <div className="flex items-center justify-center gap-2">
                             <button
-                              onClick={() => navigate(`/reports/${report.id}`)}
+                              onClick={() => navigate(`/reports/view/${report.id}`)}
                               className="p-1 text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
                               title="Ver detalle"
                             >
