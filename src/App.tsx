@@ -4,6 +4,7 @@ import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { useAuthStore } from './store/authStore';
 import { usePreferencesStore } from './store/preferencesStore';
+import { useAppSettingsStore } from './store/appSettingsStore';
 import { useThemeApplicator } from './hooks/useThemeApplicator';
 import { useAutoSync } from './hooks/useAutoSync';
 import { backgroundPull } from './lib/syncHelper';
@@ -29,6 +30,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 function App() {
   const { sessionToken, getCurrentUser, isAuthenticated } = useAuthStore();
   const { loadPreferences, clearPreferences } = usePreferencesStore();
+  const { loadSettings } = useAppSettingsStore();
   const [validating, setValidating] = useState(true);
 
   // Apply theme reactively whenever preferences change
@@ -36,6 +38,13 @@ function App() {
 
   // Auto-sync with Turso cloud (for admin users)
   useAutoSync();
+
+  // Load company settings on startup (public, no auth required)
+  useEffect(() => {
+    loadSettings().catch((error) => {
+      console.error('Error loading company settings:', error);
+    });
+  }, []);
 
   // Validate session on startup and pull latest data from cloud
   useEffect(() => {

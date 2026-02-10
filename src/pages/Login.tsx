@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
-import { preferencesApi } from '../lib/api';
+import { useAppSettingsStore } from '../store/appSettingsStore';
 import { Button, Input, Card } from '../components/ui';
 
 export default function Login() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [logoData, setLogoData] = useState<string | null>(null);
   const { login, isLoading, error, isAuthenticated, setError } = useAuthStore();
+  const { settings } = useAppSettingsStore();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -16,19 +16,6 @@ export default function Login() {
       navigate('/dashboard');
     }
   }, [isAuthenticated, navigate]);
-
-  // Load public logo data
-  useEffect(() => {
-    const loadLogo = async () => {
-      try {
-        const data = await preferencesApi.getPublicLogoData();
-        setLogoData(data);
-      } catch (err) {
-        console.error('Failed to load logo:', err);
-      }
-    };
-    loadLogo();
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -57,11 +44,11 @@ export default function Login() {
 
       <Card className="sm:min-w-1/2 md:min-w-1/3 max-w-md relative z-10 shadow-2xl">
         <div className="text-center mb-6">
-          {logoData ? (
+          {settings?.logoPath ? (
             <div className="flex justify-center mb-4">
               <img
-                src={logoData}
-                alt="Logo de la aplicación"
+                src={settings.logoPath}
+                alt="Logo de la empresa"
                 className="h-20 w-auto object-contain"
               />
             </div>
@@ -70,7 +57,7 @@ export default function Login() {
               <h1 className="text-3xl font-bold text-primary-500 mb-2">
                 Sistema de Reportes DDR
               </h1>
-              <p className="text-gray-600">Gestión de Taladros Petroleros</p>
+              <p className="text-gray-600 dark:text-gray-400">Gestión de Taladros Petroleros</p>
             </>
           )}
         </div>

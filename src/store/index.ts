@@ -2,3 +2,4 @@ export { useAuthStore } from './authStore';
 export { useReportStore } from './reportStore';
 export { useModalStore } from './modalStore';
 export { usePreferencesStore } from './preferencesStore';
+export { useAppSettingsStore } from './appSettingsStore';

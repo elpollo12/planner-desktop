@@ -31,6 +31,7 @@ import { transformFormToReportData } from '../lib/reportHelpers';
 import { toast } from '../lib/toast';
 import { loadLastReportTemplate, saveLastReportTemplate } from '../lib/lastReportData';
 import { backgroundPush } from '../lib/syncHelper';
+import { formatDateDMY } from '../lib/dateUtils';
 import type { Report } from '../types/report';
 
 // Import form sections
@@ -458,20 +459,20 @@ export default function ReportForm() {
 
     try {
       // Get all reports from the current user
-      const reports = await reportsApi.list(sessionToken, {
+      const reportsResponse = await reportsApi.list(sessionToken, {
         dateFrom: undefined,
         dateTo: undefined,
         status: undefined,
         createdBy: user.id,
         wellNumber: undefined,
-      });
+      }, 1, 100);
 
-      if (reports.length === 0) {
+      if (reportsResponse.reports.length === 0) {
         return null;
       }
 
       // Sort by date descending and get the most recent one
-      const sortedReports = [...reports].sort((a, b) => 
+      const sortedReports = [...reportsResponse.reports].sort((a, b) =>
         new Date(b.reportDate).getTime() - new Date(a.reportDate).getTime()
       );
       const lastReport = sortedReports[0];
@@ -1036,7 +1037,7 @@ export default function ReportForm() {
             <div>
               <span className="text-gray-600 dark:text-gray-400">Fecha:</span>
               <span className="ml-2 font-medium text-gray-900 dark:text-gray-100">
-                {new Date(headerData.reportDate).toLocaleDateString()}
+                {formatDateDMY(headerData.reportDate)}
               </span>
             </div>
             {headerData.wellNumber && (

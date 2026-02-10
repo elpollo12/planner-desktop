@@ -1,14 +1,15 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import type { 
-  Report, 
-  CrewShift, 
-  BitRecord, 
-  TimeDistribution, 
-  MudRecord, 
+import { formatDateDMY, getTodayDMY } from './dateUtils';
+import type {
+  Report,
+  CrewShift,
+  BitRecord,
+  TimeDistribution,
+  MudRecord,
   DrillingParameters,
   DeviationHistory,
-  OperationsLog 
+  OperationsLog
 } from '../types/report';
 
 interface ReportData {
@@ -75,7 +76,7 @@ export async function exportReportToPDF(data: ReportData): Promise<void> {
     doc.setFontSize(12);
     doc.setFont('helvetica', 'normal');
     doc.text(
-      `Reporte #${report.reportNumber || 'N/A'} | ${new Date(report.reportDate).toLocaleDateString()}`, 
+      `Reporte #${report.reportNumber || 'N/A'} | ${formatDateDMY(report.reportDate)}`, 
       pageWidth / 2, 
       25, 
       { align: 'center' }
@@ -304,7 +305,7 @@ export async function exportReportToPDF(data: ReportData): Promise<void> {
       doc.setFontSize(8);
       doc.setTextColor(100, 100, 100);
       doc.text(
-        `Página ${i} de ${pageCount} | Generado: ${new Date().toLocaleString()}`,
+        `Página ${i} de ${pageCount} | Generado: ${getTodayDMY()}`,
         pageWidth / 2,
         pageHeight - 10,
         { align: 'center' }

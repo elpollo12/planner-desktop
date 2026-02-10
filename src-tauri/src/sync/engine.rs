@@ -5,6 +5,15 @@ use serde::{Deserialize, Serialize};
 /// Tables to sync, in dependency order (parents first)
 const SYNC_TABLES: &[TableDef] = &[
     TableDef {
+        name: "app_settings",
+        columns: &[
+            "id", "primary_color", "secondary_color", "logo_path",
+            "created_at", "updated_at",
+        ],
+        id_col: "id",
+        has_updated_at: true,
+    },
+    TableDef {
         name: "users",
         columns: &[
             "id", "username", "password_hash", "full_name", "ci", "role",
@@ -54,7 +63,7 @@ const SYNC_TABLES: &[TableDef] = &[
         columns: &[
             "id", "report_number", "report_date", "well_number", "api_number",
             "contract", "contractor", "operator", "field_district", "municipality",
-            "rig_number", "supervisor_24h", "status", "created_by",
+            "rig_number", "company", "supervisor_24h", "status", "created_by",
             "approved_by", "submitted_at", "approved_at", "rejected_at",
             "rejection_reason", "created_at", "updated_at", "synced",
         ],
@@ -158,8 +167,7 @@ const SYNC_TABLES: &[TableDef] = &[
     TableDef {
         name: "user_preferences",
         columns: &[
-            "id", "user_id", "primary_color", "secondary_color", "theme_mode",
-            "logo_path", "created_at", "updated_at",
+            "id", "user_id", "theme_mode", "created_at", "updated_at",
         ],
         id_col: "id",
         has_updated_at: true,
@@ -192,6 +200,15 @@ pub struct SyncResult {
 
 /// SQL to create all tables on Turso (matching local schema)
 const REMOTE_SCHEMA: &str = r#"
+CREATE TABLE IF NOT EXISTS app_settings (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  primary_color TEXT NOT NULL DEFAULT '#1e3a5f',
+  secondary_color TEXT NOT NULL DEFAULT '#f97316',
+  logo_path TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,
   username TEXT UNIQUE NOT NULL,
@@ -421,10 +438,7 @@ CREATE TABLE IF NOT EXISTS operations_log (
 CREATE TABLE IF NOT EXISTS user_preferences (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL UNIQUE,
-  primary_color TEXT DEFAULT '#1e3a5f',
-  secondary_color TEXT DEFAULT '#f97316',
-  theme_mode TEXT DEFAULT 'light',
-  logo_path TEXT,
+  theme_mode TEXT NOT NULL DEFAULT 'light' CHECK(theme_mode IN ('light', 'dark')),
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 )
@@ -592,6 +606,18 @@ pub fn write_pulled_data(
             let params_refs: Vec<&dyn rusqlite::ToSql> =
                 params.iter().map(|p| p.as_ref()).collect();
 
+            // Special handling for users table due to multiple UNIQUE constraints
+            if table_def.name == "users" {
+                // Try to delete existing user with same username but different id
+                // Username is at index 1 in the columns
+                if let Some(username_param) = params.get(1) {
+                    let _ = conn.execute(
+                        "DELETE FROM users WHERE username = ?1 AND id != ?2",
+                        rusqlite::params![username_param, params.get(0)],
+                    );
+                }
+            }
+
             conn.execute(&upsert_sql, params_refs.as_slice())
                 .map_err(|e| {
                     format!("Failed to upsert into '{}': {}", table_def.name, e)
@@ -681,10 +707,25 @@ async fn push_rows_to_turso(
     let mut count: u32 = 0;
 
     for chunk in rows.chunks(batch_size) {
-        let batch: Vec<(String, Vec<TursoValue>)> = chunk
-            .iter()
-            .map(|row| (upsert_sql.clone(), row.clone()))
-            .collect();
+        let mut batch: Vec<(String, Vec<TursoValue>)> = Vec::new();
+
+        // Special handling for users table due to multiple UNIQUE constraints
+        if table_def.name == "users" {
+            for row in chunk {
+                // Add DELETE statement for conflicting username
+                if row.len() >= 2 {
+                    let delete_sql = "DELETE FROM users WHERE username = ?1 AND id != ?2".to_string();
+                    let delete_params = vec![row[1].clone(), row[0].clone()];
+                    batch.push((delete_sql, delete_params));
+                }
+                // Add UPSERT statement
+                batch.push((upsert_sql.clone(), row.clone()));
+            }
+        } else {
+            for row in chunk {
+                batch.push((upsert_sql.clone(), row.clone()));
+            }
+        }
 
         client.execute_batch(batch).await?;
         count += chunk.len() as u32;

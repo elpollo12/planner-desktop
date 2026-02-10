@@ -135,10 +135,13 @@ pub fn run() {
             // User preferences commands
             commands::preferences::get_user_preferences,
             commands::preferences::save_user_preferences,
-            commands::preferences::upload_logo,
-            commands::preferences::remove_logo,
-            commands::preferences::get_logo_data,
-            commands::preferences::get_public_logo_data,
+
+            // App settings commands (company branding)
+            commands::app_settings::get_app_settings,
+            commands::app_settings::save_app_settings,
+            commands::app_settings::upload_company_logo,
+            commands::app_settings::remove_company_logo,
+            commands::app_settings::get_company_logo_data,
 
             // Sync commands (Turso cloud - credentials via environment variables)
             commands::sync::get_sync_status,
@@ -168,6 +171,8 @@ pub fn run() {
             commands::debug::debug_sync_state,
             commands::debug::debug_test_sync_pull,
             commands::debug::debug_simulate_full_sync,
+            commands::debug::debug_list_all_users,
+            commands::debug::debug_delete_user_by_username,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

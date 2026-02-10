@@ -1,14 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
 import { toast } from 'react-toastify';
-import { Sun, Moon, Upload, Trash2, RotateCcw } from 'lucide-react';
+import { Upload, Trash2, RotateCcw } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
+import { useAppSettingsStore } from '@/store/appSettingsStore';
 import { usePreferencesStore } from '@/store/preferencesStore';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { generatePalette, isValidHexColor } from '@/lib/colorUtils';
-import { DEFAULT_PREFERENCES } from '@/types/preferences';
-import type { ThemeMode } from '@/types/preferences';
+import { DEFAULT_APP_SETTINGS } from '@/types/appSettings';
 import { applyThemeToDOM } from '@/hooks/useThemeApplicator';
 
 const PRIMARY_PRESETS = [
@@ -21,42 +21,41 @@ const SECONDARY_PRESETS = [
 
 export default function AppearanceSettings() {
   const { sessionToken } = useAuthStore();
-  const { preferences, logoDataUrl, savePreferences, uploadLogo, removeLogo, isLoading } = usePreferencesStore();
+  const { settings, saveSettings, uploadLogo, removeLogo, isLoading } = useAppSettingsStore();
+  const { preferences } = usePreferencesStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isInitializedRef = useRef(false);
   const userHasInteractedRef = useRef(false);
 
-  // Initialize state from preferences (if available) or defaults
-  const initialPrimary = preferences?.primaryColor ?? DEFAULT_PREFERENCES.primaryColor;
-  const initialSecondary = preferences?.secondaryColor ?? DEFAULT_PREFERENCES.secondaryColor;
-  const initialTheme = preferences?.themeMode ?? DEFAULT_PREFERENCES.themeMode;
+  // Initialize state from settings (if available) or defaults
+  const initialPrimary = settings?.primaryColor ?? DEFAULT_APP_SETTINGS.primaryColor;
+  const initialSecondary = settings?.secondaryColor ?? DEFAULT_APP_SETTINGS.secondaryColor;
 
   const [primaryColor, setPrimaryColor] = useState(initialPrimary);
   const [secondaryColor, setSecondaryColor] = useState(initialSecondary);
-  const [themeMode, setThemeMode] = useState<ThemeMode>(initialTheme);
   const [primaryHex, setPrimaryHex] = useState(initialPrimary);
   const [secondaryHex, setSecondaryHex] = useState(initialSecondary);
   const [saving, setSaving] = useState(false);
 
-  // Sync state when preferences load/change (but only if not initialized yet)
+  // Sync state when settings load/change (but only if not initialized yet)
   useEffect(() => {
-    if (preferences && !isInitializedRef.current) {
-      setPrimaryColor(preferences.primaryColor);
-      setSecondaryColor(preferences.secondaryColor);
-      setThemeMode(preferences.themeMode);
-      setPrimaryHex(preferences.primaryColor);
-      setSecondaryHex(preferences.secondaryColor);
+    if (settings && !isInitializedRef.current) {
+      setPrimaryColor(settings.primaryColor);
+      setSecondaryColor(settings.secondaryColor);
+      setPrimaryHex(settings.primaryColor);
+      setSecondaryHex(settings.secondaryColor);
       isInitializedRef.current = true;
     }
-  }, [preferences]);
+  }, [settings]);
 
   // Live preview: ONLY apply theme when user makes changes (not on mount)
   // The global theme is already applied by useThemeApplicator in App.tsx
   useEffect(() => {
     if (userHasInteractedRef.current) {
+      const themeMode = preferences?.themeMode ?? 'light';
       applyThemeToDOM({ primaryColor, secondaryColor, themeMode });
     }
-  }, [primaryColor, secondaryColor, themeMode]);
+  }, [primaryColor, secondaryColor, preferences]);
 
   const handlePrimaryColorChange = (color: string) => {
     userHasInteractedRef.current = true;
@@ -90,14 +89,13 @@ export default function AppearanceSettings() {
     if (!sessionToken) return;
     setSaving(true);
     try {
-      await savePreferences(sessionToken, {
+      await saveSettings(sessionToken, {
         primaryColor,
         secondaryColor,
-        themeMode,
       });
-      toast.success('Apariencia guardada exitosamente');
+      toast.success('Configuración de la empresa guardada exitosamente');
     } catch {
-      toast.error('Error al guardar la apariencia');
+      toast.error('Error al guardar la configuración');
     } finally {
       setSaving(false);
     }
@@ -108,12 +106,14 @@ export default function AppearanceSettings() {
     if (!file || !sessionToken) return;
 
     if (file.size > 2 * 1024 * 1024) {
-      toast.error('El archivo excede el limite de 2MB');
+      toast.error('El archivo excede el límite de 2MB');
       return;
     }
 
     try {
-      await uploadLogo(sessionToken, file);
+      const buffer = await file.arrayBuffer();
+      const fileData = Array.from(new Uint8Array(buffer));
+      await uploadLogo(sessionToken, fileData, file.name);
       toast.success('Logo subido exitosamente');
     } catch {
       toast.error('Error al subir el logo');
@@ -135,11 +135,11 @@ export default function AppearanceSettings() {
 
   const handleResetPrimary = () => {
     userHasInteractedRef.current = true;
-    handlePrimaryColorChange(DEFAULT_PREFERENCES.primaryColor);
+    handlePrimaryColorChange(DEFAULT_APP_SETTINGS.primaryColor);
   };
   const handleResetSecondary = () => {
     userHasInteractedRef.current = true;
-    handleSecondaryColorChange(DEFAULT_PREFERENCES.secondaryColor);
+    handleSecondaryColorChange(DEFAULT_APP_SETTINGS.secondaryColor);
   };
 
   const primaryPalette = generatePalette(primaryColor);
@@ -148,9 +148,9 @@ export default function AppearanceSettings() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Apariencia</h2>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Apariencia Corporativa</h2>
         <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-          Personaliza los colores, logo y modo de tema de la aplicación
+          Define los colores y logo de la empresa. Estos cambios se aplicarán a todos los usuarios.
         </p>
       </div>
 
@@ -268,14 +268,14 @@ export default function AppearanceSettings() {
 
       {/* Logo */}
       <Card className="p-6">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Logo</h3>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Logo de la Empresa</h3>
         <div className="flex items-center gap-6">
           {/* Preview */}
           <div className="w-24 h-24 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center bg-gray-50 dark:bg-gray-700 overflow-hidden">
-            {logoDataUrl ? (
+            {settings?.logoPath ? (
               <img
-                src={logoDataUrl}
-                alt="Logo"
+                src={settings.logoPath}
+                alt="Logo de la empresa"
                 className="w-full h-full object-contain"
               />
             ) : (
@@ -300,7 +300,7 @@ export default function AppearanceSettings() {
                 <Upload size={16} />
                 Subir Logo
               </Button>
-              {preferences?.logoPath && (
+              {settings?.logoPath && (
                 <Button variant="danger" size="sm" onClick={handleRemoveLogo}>
                   <Trash2 size={16} />
                   Eliminar
@@ -308,45 +308,17 @@ export default function AppearanceSettings() {
               )}
             </div>
             <p className="text-xs text-gray-500">
-              PNG, JPG, SVG o WEBP. Max 2MB.
+              PNG, JPG, SVG o WEBP. Max 2MB. Este logo se mostrará en el sidebar para todos los usuarios.
             </p>
           </div>
         </div>
       </Card>
 
-      {/* Theme Mode */}
-      <Card className="p-6">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Modo de Tema</h3>
-        <div className="flex gap-3">
-          <button
-            onClick={() => {
-              userHasInteractedRef.current = true;
-              setThemeMode('light');
-            }}
-            className={`flex items-center gap-2 px-5 py-3 rounded-lg border-2 transition-all cursor-pointer ${
-              themeMode === 'light'
-                ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300'
-                : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-500'
-            }`}
-          >
-            <Sun size={20} />
-            <span className="font-medium">Claro</span>
-          </button>
-          <button
-            onClick={() => {
-              userHasInteractedRef.current = true;
-              setThemeMode('dark');
-            }}
-            className={`flex items-center gap-2 px-5 py-3 rounded-lg border-2 transition-all cursor-pointer ${
-              themeMode === 'dark'
-                ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300'
-                : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-500'
-            }`}
-          >
-            <Moon size={20} />
-            <span className="font-medium">Oscuro</span>
-          </button>
-        </div>
+      {/* Info Box */}
+      <Card className="p-4 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
+        <p className="text-sm text-blue-800 dark:text-blue-200">
+          <strong>Nota:</strong> Los usuarios pueden alternar entre modo claro y oscuro usando el botón en el encabezado. Los colores y el logo que configures aquí se aplicarán en ambos modos.
+        </p>
       </Card>
 
       {/* Save Button */}

@@ -39,10 +39,12 @@ export function Statistics() {
 
     setLoading(true);
     try {
-      const [reports, users] = await Promise.all([
-        reportsApi.list(sessionToken, {}),
+      const [reportsResponse, users] = await Promise.all([
+        reportsApi.list(sessionToken, {}, 1, 1000),
         usersApi.list(sessionToken),
       ]);
+
+      const reports = reportsResponse.reports;
 
       // Calculate stats
       const reportsByStatus = {
