@@ -5,7 +5,7 @@ import { areasApi } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 import { useModal } from '@/store/modalStore';
 import type { Area } from '@/types/rig';
-import AreaForm from './AreaForm';
+import AreaForm from './forms/AreaForm';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Table } from '@/components/ui/Table';

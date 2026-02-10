@@ -8,7 +8,7 @@ import { backgroundPush } from '@/lib/syncHelper';
 import { syncEvents } from '@/lib/syncEvents';
 import type { RigWithArea, Area } from '@/types/rig';
 import type { Operator } from '@/types/operator';
-import RigForm from './RigForm';
+import RigForm from './forms/RigForm';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
