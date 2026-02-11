@@ -55,6 +55,7 @@ pub struct User {
     pub position: Option<String>,
     pub active: bool,
     pub has_all_rigs: bool,
+    pub supervisor_id: Option<String>,
     pub last_login: Option<String>,
     pub created_by: Option<String>,
     pub updated_by: Option<String>,
@@ -84,6 +85,7 @@ pub struct CreateUserRequest {
     pub has_all_rigs: bool,
     #[serde(default)]
     pub assigned_rig_ids: Vec<String>,
+    pub supervisor_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -96,6 +98,7 @@ pub struct UpdateUserRequest {
     pub active: Option<bool>,
     pub has_all_rigs: Option<bool>,
     pub assigned_rig_ids: Option<Vec<String>>,
+    pub supervisor_id: Option<Option<String>>,
 }
 
 impl User {
@@ -110,11 +113,12 @@ impl User {
             position: row.get(6)?,
             active: row.get::<_, i32>(7)? == 1,
             has_all_rigs: row.get::<_, i32>(8).unwrap_or(0) == 1,
-            last_login: row.get(9)?,
-            created_by: row.get(10)?,
-            updated_by: row.get(11)?,
-            created_at: row.get(12)?,
-            updated_at: row.get(13)?,
+            supervisor_id: row.get(9)?,
+            last_login: row.get(10)?,
+            created_by: row.get(11)?,
+            updated_by: row.get(12)?,
+            created_at: row.get(13)?,
+            updated_at: row.get(14)?,
         })
     }
 
@@ -132,8 +136,8 @@ impl User {
         UserRole::from_str(&request.role)?;
 
         conn.execute(
-            "INSERT INTO users (id, username, password_hash, full_name, ci, role, position, active, has_all_rigs, created_by, created_at, updated_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
+            "INSERT INTO users (id, username, password_hash, full_name, ci, role, position, active, has_all_rigs, supervisor_id, created_by, created_at, updated_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
             params![
                 &id,
                 &request.username,
@@ -144,6 +148,7 @@ impl User {
                 &request.position,
                 1,
                 if request.has_all_rigs { 1 } else { 0 },
+                &request.supervisor_id,
                 &created_by,
                 &now,
                 &now
@@ -161,7 +166,7 @@ impl User {
     /// Get user by ID
     pub fn get_by_id(conn: &Connection, user_id: &str) -> Result<User, AppError> {
         let user = conn.query_row(
-            "SELECT id, username, password_hash, full_name, ci, role, position, active, has_all_rigs, last_login, created_by, updated_by, created_at, updated_at
+            "SELECT id, username, password_hash, full_name, ci, role, position, active, has_all_rigs, supervisor_id, last_login, created_by, updated_by, created_at, updated_at
              FROM users WHERE id = ?1",
             params![user_id],
             User::from_row,
@@ -173,7 +178,7 @@ impl User {
     /// Get user by username
     pub fn get_by_username(conn: &Connection, username: &str) -> Result<User, AppError> {
         let user = conn.query_row(
-            "SELECT id, username, password_hash, full_name, ci, role, position, active, has_all_rigs, last_login, created_by, updated_by, created_at, updated_at
+            "SELECT id, username, password_hash, full_name, ci, role, position, active, has_all_rigs, supervisor_id, last_login, created_by, updated_by, created_at, updated_at
              FROM users WHERE username = ?1",
             params![username],
             User::from_row,
@@ -185,7 +190,7 @@ impl User {
     /// List all users
     pub fn list(conn: &Connection) -> Result<Vec<User>, AppError> {
         let mut stmt = conn.prepare(
-            "SELECT id, username, password_hash, full_name, ci, role, position, active, has_all_rigs, last_login, created_by, updated_by, created_at, updated_at
+            "SELECT id, username, password_hash, full_name, ci, role, position, active, has_all_rigs, supervisor_id, last_login, created_by, updated_by, created_at, updated_at
              FROM users ORDER BY created_at DESC"
         )?;
 
@@ -354,6 +359,10 @@ impl User {
         if let Some(has_all_rigs) = request.has_all_rigs {
             updates.push("has_all_rigs = ?");
             params_vec.push(Box::new(if has_all_rigs { 1 } else { 0 }));
+        }
+        if let Some(ref supervisor_id) = request.supervisor_id {
+            updates.push("supervisor_id = ?");
+            params_vec.push(Box::new(supervisor_id.clone()));
         }
 
         updates.push("updated_by = ?");

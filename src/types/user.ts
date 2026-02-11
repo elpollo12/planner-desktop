@@ -9,6 +9,7 @@ export interface User {
   position?: string;
   active: boolean;
   hasAllRigs: boolean;
+  supervisorId?: string;
   lastLogin?: string;
   createdAt: string;
   updatedAt: string;
@@ -43,6 +44,7 @@ export interface CreateUserInput {
   position?: string;
   hasAllRigs?: boolean;
   assignedRigIds?: string[];
+  supervisorId?: string;
 }
 
 export interface UpdateUserInput {
@@ -53,6 +55,7 @@ export interface UpdateUserInput {
   active?: boolean;
   hasAllRigs?: boolean;
   assignedRigIds?: string[];
+  supervisorId?: string | null;
 }
 
 // Permisos por rol

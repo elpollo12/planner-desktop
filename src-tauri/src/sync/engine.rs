@@ -17,7 +17,7 @@ const SYNC_TABLES: &[TableDef] = &[
         name: "users",
         columns: &[
             "id", "username", "password_hash", "full_name", "ci", "role",
-            "position", "active", "has_all_rigs", "last_login", "created_by", "updated_by",
+            "position", "active", "has_all_rigs", "supervisor_id", "last_login", "created_by", "updated_by",
             "created_at", "updated_at",
         ],
         id_col: "id",
@@ -74,7 +74,7 @@ const SYNC_TABLES: &[TableDef] = &[
             "contract", "contractor", "operator", "field_district", "municipality",
             "rig_number", "company", "supervisor_24h", "status", "created_by",
             "approved_by", "submitted_at", "approved_at", "rejected_at",
-            "rejection_reason", "created_at", "updated_at", "synced",
+            "rejection_reason", "created_at", "updated_at", "synced", "is_deleted",
         ],
         id_col: "id",
         has_updated_at: true,
@@ -315,7 +315,8 @@ CREATE TABLE IF NOT EXISTS reports (
   rejection_reason TEXT,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
-  synced INTEGER DEFAULT 0
+  synced INTEGER DEFAULT 0,
+  is_deleted INTEGER DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS drill_string (
@@ -481,6 +482,10 @@ const REMOTE_MIGRATIONS: &[&str] = &[
     "CREATE TABLE IF NOT EXISTS user_preferences (id TEXT PRIMARY KEY, user_id TEXT NOT NULL UNIQUE, theme_mode TEXT NOT NULL DEFAULT 'light', created_at TEXT NOT NULL DEFAULT '', updated_at TEXT NOT NULL DEFAULT '')",
     // V14: reports.company
     "ALTER TABLE reports ADD COLUMN company TEXT",
+    // V17: users.supervisor_id
+    "ALTER TABLE users ADD COLUMN supervisor_id TEXT",
+    // V18: reports.is_deleted (soft delete)
+    "ALTER TABLE reports ADD COLUMN is_deleted INTEGER DEFAULT 0",
 ];
 
 /// Initialize the remote Turso database with the same schema
