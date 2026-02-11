@@ -2,12 +2,12 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MainLayout } from '../components/layout';
 import { Button, Card, Input, Select } from '../components/ui';
-import { Plus, Search, Eye, Edit, Trash2, CheckCircle, Clock, XCircle, FileSpreadsheet, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Search, Eye, Edit, Trash2, CheckCircle, Clock, XCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useModal } from '../store/modalStore';
 import ConfirmDeleteModal from '../components/modals/ConfirmDeleteReport';
 import { reportsApi, rigsApi } from '../lib/api';
-import { exportReportsToExcel } from '../lib/excelExport';
+
 import { toast } from '../lib/toast';
 import { backgroundPush } from '../lib/syncHelper';
 import { syncEvents } from '../lib/syncEvents';
@@ -193,25 +193,6 @@ export default function ReportList() {
     );
   };
 
-  const handleExportToExcel = () => {
-    if (reports.length === 0) {
-      toast.warning('No hay reportes para exportar');
-      return;
-    }
-
-    try {
-      toast.info(`Exportando ${reports.length} reporte(s)...`, { autoClose: 1000 });
-
-      const filename = `reportes_${new Date().toISOString().split('T')[0]}.xlsx`;
-      exportReportsToExcel(reports, filename);
-
-      toast.success(`${reports.length} reporte(s) exportado(s) exitosamente`);
-    } catch (error) {
-      console.error('Error exporting to Excel:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
-      toast.error(`Error al exportar a Excel: ${errorMessage}`);
-    }
-  };
 
   const getStatusBadge = (status: ReportStatus) => {
     const badges = {
@@ -351,15 +332,7 @@ export default function ReportList() {
       subtitle="Lista de reportes diarios de operaciones"
       headerActions={
         <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={handleExportToExcel}
-            icon={<FileSpreadsheet size={16} />}
-            disabled={reports.length === 0}
-          >
-            Exportar Excel
-          </Button>
-          <Button
+<Button
             variant="primary"
             onClick={() => navigate('/reports/new')}
             icon={<Plus size={16} />}
