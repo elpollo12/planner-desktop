@@ -63,7 +63,7 @@ export function Sidebar({ className = '' }: SidebarProps) {
       className={`w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col ${className}`}
     >
       {/* Logo/Brand — height matches Header component (py-4) */}
-      <div className="h-[60px] px-6 border-b border-gray-200 dark:border-gray-700 flex items-center">
+      <div className="h-15 px-6 border-b border-gray-200 dark:border-gray-700 flex items-center">
         {settings?.logoPath ? (
           <div className="flex items-center justify-center w-full">
             <img

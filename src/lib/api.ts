@@ -216,7 +216,7 @@ export const mudApi = {
 // ============================================================================
 
 export const timeDistributionApi = {
-  saveBulk: (sessionToken: string, reportId: string, data: any[]) => {
+  saveBulk: async (sessionToken: string, reportId: string, data: any[]) => {
     // Transform camelCase to snake_case for Rust backend
     const transformedData = data.map(distribution => ({
       operation_code_id: distribution.operationCodeId,
@@ -225,11 +225,19 @@ export const timeDistributionApi = {
       hours_shift3: distribution.hoursShift3,
     }));
 
-    return invoke('save_time_distributions', {
+    console.log('🔧 timeDistributionApi.saveBulk - Calling Rust:', {
+      reportId,
+      transformedData
+    });
+
+    const result = await invoke('save_time_distributions', {
       sessionToken,
       reportId,
       data: transformedData
     });
+
+    console.log('✅ timeDistributionApi.saveBulk - Result from Rust:', result);
+    return result;
   },
 
   list: (sessionToken: string, reportId: string) =>

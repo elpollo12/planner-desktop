@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useFormContext, useFieldArray } from 'react-hook-form';
-import { Button, Input, Select } from '../ui';
+import { Button, Input } from '../ui';
 import { Plus, Trash2, AlertCircle } from 'lucide-react';
 import type { CompleteReportData } from '../../schemas';
 import { useAuthStore } from '../../store/authStore';
@@ -164,10 +164,9 @@ export function TimeDistributionSection() {
                 return (
                   <tr key={field.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                     <td className="px-4 py-3">
-                      <Select
+                      <select
                         {...register(`timeDistribution.distributions.${index}.operationCodeId`)}
-                        error={errors.timeDistribution?.distributions?.[index]?.operationCodeId?.message}
-                        className="w-full min-w-[250px]"
+                        className="w-full min-w-62.5 px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-sm"
                       >
                         <option value="">Seleccionar operación...</option>
                         {operationCodes.map((code) => (
@@ -175,7 +174,12 @@ export function TimeDistributionSection() {
                             {code.code} - {code.name}
                           </option>
                         ))}
-                      </Select>
+                      </select>
+                      {errors.timeDistribution?.distributions?.[index]?.operationCodeId?.message && (
+                        <p className="text-red-600 text-xs mt-1">
+                          {errors.timeDistribution?.distributions?.[index]?.operationCodeId?.message}
+                        </p>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <Input
@@ -187,7 +191,7 @@ export function TimeDistributionSection() {
                           valueAsNumber: true,
                         })}
                         error={errors.timeDistribution?.distributions?.[index]?.hoursShift1?.message}
-                        className="w-full max-w-[100px] mx-auto text-center"
+                        className="w-full max-w-25 mx-auto text-center"
                       />
                     </td>
                     <td className="px-4 py-3">
@@ -200,7 +204,7 @@ export function TimeDistributionSection() {
                           valueAsNumber: true,
                         })}
                         error={errors.timeDistribution?.distributions?.[index]?.hoursShift2?.message}
-                        className="w-full max-w-[100px] mx-auto text-center"
+                        className="w-full max-w-25 mx-auto text-center"
                       />
                     </td>
                     <td className="px-4 py-3">
@@ -213,7 +217,7 @@ export function TimeDistributionSection() {
                           valueAsNumber: true,
                         })}
                         error={errors.timeDistribution?.distributions?.[index]?.hoursShift3?.message}
-                        className="w-full max-w-[100px] mx-auto text-center"
+                        className="w-full max-w-25 mx-auto text-center"
                       />
                     </td>
                     <td className="px-4 py-3 text-center">

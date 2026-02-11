@@ -22,6 +22,7 @@ export function applyThemeToDOM(prefs: {
   // Set contrast color for text on primary backgrounds
   const root = document.documentElement;
   root.style.setProperty('--color-primary-contrast', getContrastColor(prefs.primaryColor));
+  root.style.setProperty('--color-secondary-contrast', getContrastColor(prefs.secondaryColor));
 
   if (prefs.themeMode === 'dark') {
     document.documentElement.classList.add('dark');

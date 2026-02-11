@@ -352,7 +352,7 @@ export default function UsersForm({ onSubmit, user, rigs, supervisors = [], isEd
                                     <button
                                         type="button"
                                         onClick={selectAllRigs}
-                                        className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 disabled:text-gray-400"
+                                        className="text-xs text-blue-600 cursor-pointer hover:text-blue-800 dark:text-blue-400 disabled:text-gray-400"
                                         disabled={isSubmitting}
                                     >
                                         Seleccionar todos
@@ -361,7 +361,7 @@ export default function UsersForm({ onSubmit, user, rigs, supervisors = [], isEd
                                     <button
                                         type="button"
                                         onClick={deselectAllRigs}
-                                        className="text-xs text-gray-600 hover:text-gray-800 dark:text-gray-400 disabled:text-gray-400"
+                                        className="text-xs text-gray-600 hover:text-gray-100 cursor-pointer dark:text-gray-400 disabled:text-gray-400"
                                         disabled={isSubmitting}
                                     >
                                         Deseleccionar todos

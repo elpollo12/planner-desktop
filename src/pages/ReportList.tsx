@@ -33,7 +33,7 @@ export default function ReportList() {
   const [loading, setLoading] = useState(true);
 
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(5);
   const [totalReports, setTotalReports] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
 
@@ -271,8 +271,8 @@ export default function ReportList() {
               onChange={(e) => handlePageSizeChange(Number(e.target.value))}
               className="text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
             >
+              <option value={5}>5 por página</option>
               <option value={10}>10 por página</option>
-              <option value={20}>20 por página</option>
               <option value={50}>50 por página</option>
               <option value={100}>100 por página</option>
             </select>

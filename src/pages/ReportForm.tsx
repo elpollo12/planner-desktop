@@ -716,7 +716,11 @@ export default function ReportForm() {
         return !!(formData.bitRecords?.records && formData.bitRecords.records.length > 0);
       
       case 'time':
-        return !!(formData.timeDistribution?.distributions && formData.timeDistribution.distributions.length > 0);
+        return !!(
+          formData.timeDistribution?.distributions && 
+          formData.timeDistribution.distributions.length > 0 &&
+          formData.timeDistribution.distributions.some(d => d.operationCodeId && d.operationCodeId.trim() !== '')
+        );
       
       case 'mud':
         return !!(
@@ -772,16 +776,25 @@ export default function ReportForm() {
         }
         
         if (shift.members && shift.members.length > 0) {
+          // Filtrar miembros válidos (al menos con posición)
+          const validMembers = shift.members.filter(member => 
+            member.position && member.position.trim() !== ''
+          );
+          
+          if (validMembers.length === 0) {
+            continue;
+          }
+          
           // Limpiar el objeto shift antes de enviarlo
           const cleanShift = {
             shift: shift.shift,
             shiftStart: shift.shiftStart,
             shiftEnd: shift.shiftEnd,
-            members: shift.members.map(member => ({
+            members: validMembers.map(member => ({
               position: member.position || '',
-              ci: member.ci,
-              name: member.name,
-              hours: member.hours
+              ci: member.ci || undefined,
+              name: member.name || undefined,
+              hours: member.hours || undefined
             }))
           };
           
@@ -833,19 +846,24 @@ export default function ReportForm() {
     
     // PASO 2: Insertar todos los distributions del formulario (solo si hay datos)
     if (formData.timeDistribution?.distributions && formData.timeDistribution.distributions.length > 0) {
-      // Limpiar y validar los datos antes de enviar
-      const cleanDistributions = formData.timeDistribution.distributions.map(dist => ({
-        operationCodeId: dist.operationCodeId,
-        hoursShift1: typeof dist.hoursShift1 === 'number' ? dist.hoursShift1 : 0,
-        hoursShift2: typeof dist.hoursShift2 === 'number' ? dist.hoursShift2 : 0,
-        hoursShift3: typeof dist.hoursShift3 === 'number' ? dist.hoursShift3 : 0,
-      }));
+      // Filtrar distribuciones con operationCodeId válido y limpiar datos
+      const validDistributions = formData.timeDistribution.distributions
+        .filter(dist => dist.operationCodeId && dist.operationCodeId.trim() !== '')
+        .map(dist => ({
+          operationCodeId: dist.operationCodeId,
+          hoursShift1: typeof dist.hoursShift1 === 'number' ? dist.hoursShift1 : 0,
+          hoursShift2: typeof dist.hoursShift2 === 'number' ? dist.hoursShift2 : 0,
+          hoursShift3: typeof dist.hoursShift3 === 'number' ? dist.hoursShift3 : 0,
+        }));
       
-      await timeDistributionApi.saveBulk(
-        sessionToken,
-        reportId,
-        cleanDistributions
-      );
+      // Solo guardar si hay distribuciones válidas
+      if (validDistributions.length > 0) {
+        await timeDistributionApi.saveBulk(
+          sessionToken,
+          reportId,
+          validDistributions
+        );
+      }
     }
   };
 
