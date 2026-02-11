@@ -132,6 +132,12 @@ pub fn run() {
             commands::rigs::delete_rig,
             commands::rigs::list_accessible_rigs,
 
+            // Rig personnel commands
+            commands::rig_personnel::create_rig_personnel,
+            commands::rig_personnel::list_rig_personnel,
+            commands::rig_personnel::update_rig_personnel,
+            commands::rig_personnel::delete_rig_personnel,
+
             // User preferences commands
             commands::preferences::get_user_preferences,
             commands::preferences::save_user_preferences,

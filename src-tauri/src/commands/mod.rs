@@ -17,6 +17,7 @@ pub mod sync;
 pub mod operators;
 pub mod debug;
 pub mod app_settings;
+pub mod rig_personnel;
 
 // Re-export all command handlers for Tauri
 // Allow unused imports as these are registered in main.rs
@@ -56,3 +57,5 @@ pub use operators::*;
 pub use debug::*;
 #[allow(unused_imports)]
 pub use app_settings::*;
+#[allow(unused_imports)]
+pub use rig_personnel::*;

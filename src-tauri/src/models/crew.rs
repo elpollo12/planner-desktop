@@ -21,10 +21,14 @@ pub struct CrewShift {
 pub struct CrewMember {
     pub id: String,
     pub crew_shift_id: String,
+    pub personnel_id: Option<String>,
     pub position: String,
     pub ci: Option<String>,
     pub name: Option<String>,
     pub hours: Option<f64>,
+    // Denormalized from rig_personnel via JOIN
+    pub personnel_name: Option<String>,
+    pub personnel_ci: Option<String>,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -32,9 +36,8 @@ pub struct CrewMember {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CrewMemberData {
+    pub personnel_id: Option<String>,
     pub position: String,
-    pub ci: Option<String>,
-    pub name: Option<String>,
     pub hours: Option<f64>,
 }
 
@@ -99,18 +102,17 @@ impl CrewShift {
             ],
         )?;
 
-        // Insert members
+        // Insert members with personnel_id reference
         for member_data in &data.members {
             let member_id = uuid::Uuid::new_v4().to_string();
             conn.execute(
-                "INSERT INTO crew_members (id, crew_shift_id, position, ci, name, hours, created_at, updated_at)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+                "INSERT INTO crew_members (id, crew_shift_id, personnel_id, position, hours, created_at, updated_at)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
                 params![
                     &member_id,
                     &shift_id,
+                    &member_data.personnel_id,
                     &member_data.position,
-                    &member_data.ci,
-                    &member_data.name,
                     &member_data.hours,
                     &now,
                     &now
@@ -165,27 +167,36 @@ impl CrewShift {
 }
 
 impl CrewMember {
-    fn from_row(row: &Row) -> Result<Self, rusqlite::Error> {
+    fn from_row_with_personnel(row: &Row) -> Result<Self, rusqlite::Error> {
         Ok(CrewMember {
             id: row.get(0)?,
             crew_shift_id: row.get(1)?,
-            position: row.get(2)?,
-            ci: row.get(3)?,
-            name: row.get(4)?,
-            hours: row.get(5)?,
-            created_at: row.get(6)?,
-            updated_at: row.get(7)?,
+            personnel_id: row.get(2)?,
+            position: row.get(3)?,
+            hours: row.get(4)?,
+            personnel_name: row.get(5)?,
+            personnel_ci: row.get(6)?,
+            // Legacy fallback columns
+            name: row.get(7)?,
+            ci: row.get(8)?,
+            created_at: row.get(9)?,
+            updated_at: row.get(10)?,
         })
     }
 
     pub fn list_by_shift(conn: &Connection, shift_id: &str) -> Result<Vec<CrewMember>, AppError> {
         let mut stmt = conn.prepare(
-            "SELECT id, crew_shift_id, position, ci, name, hours, created_at, updated_at
-             FROM crew_members WHERE crew_shift_id = ?1"
+            "SELECT cm.id, cm.crew_shift_id, cm.personnel_id, cm.position, cm.hours,
+                    rp.name AS personnel_name, rp.ci AS personnel_ci,
+                    cm.name, cm.ci,
+                    cm.created_at, cm.updated_at
+             FROM crew_members cm
+             LEFT JOIN rig_personnel rp ON cm.personnel_id = rp.id
+             WHERE cm.crew_shift_id = ?1"
         )?;
 
         let members = stmt
-            .query_map(params![shift_id], CrewMember::from_row)?
+            .query_map(params![shift_id], CrewMember::from_row_with_personnel)?
             .collect::<Result<Vec<_>, _>>()?;
 
         Ok(members)

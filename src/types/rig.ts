@@ -64,6 +64,31 @@ export interface UpdateRigInput {
   active?: boolean;
 }
 
+// Rig Personnel (Cuadrilla asociada al taladro)
+export interface RigPersonnel {
+  id: string;
+  rigId: string;
+  name: string;
+  ci?: string;
+  defaultPosition: string;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateRigPersonnelInput {
+  name: string;
+  ci?: string;
+  defaultPosition: string;
+}
+
+export interface UpdateRigPersonnelInput {
+  name?: string;
+  ci?: string;
+  defaultPosition?: string;
+  active?: boolean;
+}
+
 // UI Helper Types
 export interface AreaOption {
   value: string;

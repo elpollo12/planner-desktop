@@ -119,7 +119,7 @@ export default function RigsManagement() {
       />,
       {
         title: 'Editar Taladro',
-        size: 'md',
+        size: 'xl',
         showCloseButton: true,
       }
     );

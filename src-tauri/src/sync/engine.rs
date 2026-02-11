@@ -66,6 +66,16 @@ const SYNC_TABLES: &[TableDef] = &[
         parent_col: None,
     },
     TableDef {
+        name: "rig_personnel",
+        columns: &[
+            "id", "rig_id", "name", "ci", "default_position", "active",
+            "is_deleted", "created_at", "updated_at",
+        ],
+        id_col: "id",
+        has_updated_at: true,
+        parent_col: Some("rig_id"),
+    },
+    TableDef {
         name: "user_rigs",
         columns: &[
             "id", "user_id", "rig_id", "assigned_by", "assigned_at",
@@ -112,7 +122,7 @@ const SYNC_TABLES: &[TableDef] = &[
     TableDef {
         name: "crew_members",
         columns: &[
-            "id", "crew_shift_id", "position", "ci", "name", "hours",
+            "id", "crew_shift_id", "personnel_id", "position", "ci", "name", "hours",
             "created_at", "updated_at",
         ],
         id_col: "id",
@@ -428,6 +438,18 @@ CREATE TABLE IF NOT EXISTS rigs (
   is_deleted INTEGER DEFAULT 0
 );
 
+CREATE TABLE IF NOT EXISTS rig_personnel (
+  id TEXT PRIMARY KEY,
+  rig_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  ci TEXT,
+  default_position TEXT NOT NULL,
+  active INTEGER DEFAULT 1,
+  is_deleted INTEGER DEFAULT 0,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS user_rigs (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL,
@@ -494,6 +516,7 @@ CREATE TABLE IF NOT EXISTS crew_shifts (
 CREATE TABLE IF NOT EXISTS crew_members (
   id TEXT PRIMARY KEY,
   crew_shift_id TEXT,
+  personnel_id TEXT,
   position TEXT NOT NULL,
   ci TEXT,
   name TEXT,
@@ -639,6 +662,9 @@ const REMOTE_MIGRATIONS: &[&str] = &[
     "ALTER TABLE rigs ADD COLUMN is_deleted INTEGER DEFAULT 0",
     "ALTER TABLE operators ADD COLUMN is_deleted INTEGER DEFAULT 0",
     "ALTER TABLE operation_codes ADD COLUMN is_deleted INTEGER DEFAULT 0",
+    // V20: rig_personnel table + crew_members.personnel_id
+    "CREATE TABLE IF NOT EXISTS rig_personnel (id TEXT PRIMARY KEY, rig_id TEXT NOT NULL, name TEXT NOT NULL, ci TEXT, default_position TEXT NOT NULL, active INTEGER DEFAULT 1, is_deleted INTEGER DEFAULT 0, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)",
+    "ALTER TABLE crew_members ADD COLUMN personnel_id TEXT",
 ];
 
 /// Initialize the remote Turso database with the same schema
@@ -1161,4 +1187,244 @@ fn turso_row_to_rusqlite_params(row: &[TursoValue]) -> Vec<Box<dyn rusqlite::ToS
             }
         })
         .collect()
+}
+
+// =============================================================================
+// PURGE: Hard-delete soft-deleted records older than retention period
+// =============================================================================
+
+/// Purge soft-deleted records from local SQLite that are older than `retention_days`.
+/// Handles cascade deletion for child tables (report children, user_rigs).
+pub fn purge_local_soft_deleted(conn: &Connection, retention_days: i64) -> Result<u32, String> {
+    let threshold = chrono::Utc::now() - chrono::Duration::days(retention_days);
+    let threshold_str = threshold.to_rfc3339();
+
+    conn.execute("PRAGMA foreign_keys = OFF", [])
+        .map_err(|e| format!("Failed to disable FK: {}", e))?;
+
+    let mut total_purged: u32 = 0;
+
+    // 1. Purge deleted reports and their children
+    let report_ids: Vec<String> = {
+        let mut stmt = conn.prepare(
+            "SELECT id FROM reports WHERE is_deleted = 1 AND updated_at < ?1"
+        ).map_err(|e| format!("Prepare failed: {}", e))?;
+        let ids = stmt.query_map(rusqlite::params![&threshold_str], |row| row.get(0))
+            .map_err(|e| format!("Query failed: {}", e))?
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|e| format!("Row read failed: {}", e))?;
+        ids
+    };
+
+    if !report_ids.is_empty() {
+        let placeholders: String = report_ids.iter().enumerate()
+            .map(|(i, _)| format!("?{}", i + 1))
+            .collect::<Vec<_>>().join(", ");
+        let params: Vec<&dyn rusqlite::ToSql> = report_ids.iter()
+            .map(|id| id as &dyn rusqlite::ToSql).collect();
+
+        // Grandchild first: crew_members via crew_shifts
+        let sql = format!(
+            "DELETE FROM crew_members WHERE crew_shift_id IN (SELECT id FROM crew_shifts WHERE report_id IN ({}))",
+            placeholders
+        );
+        if let Ok(count) = conn.execute(&sql, params.as_slice()) {
+            total_purged += count as u32;
+        }
+
+        // All direct child tables with parent_col = "report_id"
+        for table_def in SYNC_TABLES.iter() {
+            if table_def.parent_col == Some("report_id") {
+                let sql = format!("DELETE FROM {} WHERE report_id IN ({})", table_def.name, placeholders);
+                if let Ok(count) = conn.execute(&sql, params.as_slice()) {
+                    total_purged += count as u32;
+                }
+            }
+        }
+
+        // The reports themselves
+        let sql = format!("DELETE FROM reports WHERE id IN ({})", placeholders);
+        if let Ok(count) = conn.execute(&sql, params.as_slice()) {
+            total_purged += count as u32;
+        }
+
+        println!("[Sync] Purged {} deleted report(s) and their children", report_ids.len());
+    }
+
+    // 2. Purge deleted users and their user_rigs
+    let user_ids: Vec<String> = {
+        let mut stmt = conn.prepare(
+            "SELECT id FROM users WHERE is_deleted = 1 AND updated_at < ?1"
+        ).map_err(|e| format!("Prepare failed: {}", e))?;
+        let ids = stmt.query_map(rusqlite::params![&threshold_str], |row| row.get(0))
+            .map_err(|e| format!("Query failed: {}", e))?
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|e| format!("Row read failed: {}", e))?;
+        ids
+    };
+
+    if !user_ids.is_empty() {
+        let placeholders: String = user_ids.iter().enumerate()
+            .map(|(i, _)| format!("?{}", i + 1))
+            .collect::<Vec<_>>().join(", ");
+        let params: Vec<&dyn rusqlite::ToSql> = user_ids.iter()
+            .map(|id| id as &dyn rusqlite::ToSql).collect();
+
+        let sql = format!("DELETE FROM user_rigs WHERE user_id IN ({})", placeholders);
+        let _ = conn.execute(&sql, params.as_slice());
+
+        let sql = format!("DELETE FROM users WHERE id IN ({})", placeholders);
+        if let Ok(count) = conn.execute(&sql, params.as_slice()) {
+            total_purged += count as u32;
+        }
+
+        println!("[Sync] Purged {} deleted user(s)", user_ids.len());
+    }
+
+    // 3. Purge deleted rigs and their user_rigs
+    let rig_ids: Vec<String> = {
+        let mut stmt = conn.prepare(
+            "SELECT id FROM rigs WHERE is_deleted = 1 AND updated_at < ?1"
+        ).map_err(|e| format!("Prepare failed: {}", e))?;
+        let ids = stmt.query_map(rusqlite::params![&threshold_str], |row| row.get(0))
+            .map_err(|e| format!("Query failed: {}", e))?
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|e| format!("Row read failed: {}", e))?;
+        ids
+    };
+
+    if !rig_ids.is_empty() {
+        let placeholders: String = rig_ids.iter().enumerate()
+            .map(|(i, _)| format!("?{}", i + 1))
+            .collect::<Vec<_>>().join(", ");
+        let params: Vec<&dyn rusqlite::ToSql> = rig_ids.iter()
+            .map(|id| id as &dyn rusqlite::ToSql).collect();
+
+        let sql = format!("DELETE FROM user_rigs WHERE rig_id IN ({})", placeholders);
+        let _ = conn.execute(&sql, params.as_slice());
+
+        let sql = format!("DELETE FROM rig_personnel WHERE rig_id IN ({})", placeholders);
+        let _ = conn.execute(&sql, params.as_slice());
+
+        let sql = format!("DELETE FROM rigs WHERE id IN ({})", placeholders);
+        if let Ok(count) = conn.execute(&sql, params.as_slice()) {
+            total_purged += count as u32;
+        }
+
+        println!("[Sync] Purged {} deleted rig(s)", rig_ids.len());
+    }
+
+    // 4. Purge simple tables (areas, operators, rig_personnel) - no children to worry about
+    for table_name in &["areas", "operators", "rig_personnel"] {
+        let sql = format!("DELETE FROM {} WHERE is_deleted = 1 AND updated_at < ?1", table_name);
+        if let Ok(count) = conn.execute(&sql, rusqlite::params![&threshold_str]) {
+            if count > 0 {
+                total_purged += count as u32;
+                println!("[Sync] Purged {} deleted record(s) from '{}'", count, table_name);
+            }
+        }
+    }
+
+    // 5. Purge operation_codes (no updated_at column, purge all deleted regardless of age)
+    if let Ok(count) = conn.execute("DELETE FROM operation_codes WHERE is_deleted = 1", []) {
+        if count > 0 {
+            total_purged += count as u32;
+            println!("[Sync] Purged {} deleted operation_code(s)", count);
+        }
+    }
+
+    conn.execute("PRAGMA foreign_keys = ON", [])
+        .map_err(|e| format!("Failed to re-enable FK: {}", e))?;
+
+    if total_purged > 0 {
+        println!("[Sync] Local purge complete: {} records permanently deleted", total_purged);
+    }
+
+    Ok(total_purged)
+}
+
+/// Purge soft-deleted records from Turso that are older than `retention_days`.
+/// Uses subqueries to cascade delete children of reports, users, and rigs.
+pub async fn purge_turso_soft_deleted(client: &TursoClient, retention_days: i64) -> Result<(), String> {
+    let threshold = chrono::Utc::now() - chrono::Duration::days(retention_days);
+    let threshold_str = threshold.to_rfc3339();
+
+    let _ = client.execute("PRAGMA foreign_keys = OFF;", vec![]).await;
+
+    let mut batch: Vec<(String, Vec<TursoValue>)> = Vec::new();
+
+    // 1. Report children (grandchild first)
+    batch.push((
+        "DELETE FROM crew_members WHERE crew_shift_id IN (SELECT id FROM crew_shifts WHERE report_id IN (SELECT id FROM reports WHERE is_deleted = 1 AND updated_at < ?1))".to_string(),
+        vec![TursoValue::Text(threshold_str.clone())],
+    ));
+
+    for table_def in SYNC_TABLES.iter() {
+        if table_def.parent_col == Some("report_id") {
+            batch.push((
+                format!(
+                    "DELETE FROM {} WHERE report_id IN (SELECT id FROM reports WHERE is_deleted = 1 AND updated_at < ?1)",
+                    table_def.name
+                ),
+                vec![TursoValue::Text(threshold_str.clone())],
+            ));
+        }
+    }
+
+    // Reports themselves
+    batch.push((
+        "DELETE FROM reports WHERE is_deleted = 1 AND updated_at < ?1".to_string(),
+        vec![TursoValue::Text(threshold_str.clone())],
+    ));
+
+    // 2. User children (user_rigs) + users
+    batch.push((
+        "DELETE FROM user_rigs WHERE user_id IN (SELECT id FROM users WHERE is_deleted = 1 AND updated_at < ?1)".to_string(),
+        vec![TursoValue::Text(threshold_str.clone())],
+    ));
+    batch.push((
+        "DELETE FROM users WHERE is_deleted = 1 AND updated_at < ?1".to_string(),
+        vec![TursoValue::Text(threshold_str.clone())],
+    ));
+
+    // 3. Rig children (user_rigs, rig_personnel) + rigs
+    batch.push((
+        "DELETE FROM user_rigs WHERE rig_id IN (SELECT id FROM rigs WHERE is_deleted = 1 AND updated_at < ?1)".to_string(),
+        vec![TursoValue::Text(threshold_str.clone())],
+    ));
+    batch.push((
+        "DELETE FROM rig_personnel WHERE rig_id IN (SELECT id FROM rigs WHERE is_deleted = 1 AND updated_at < ?1)".to_string(),
+        vec![TursoValue::Text(threshold_str.clone())],
+    ));
+    batch.push((
+        "DELETE FROM rigs WHERE is_deleted = 1 AND updated_at < ?1".to_string(),
+        vec![TursoValue::Text(threshold_str.clone())],
+    ));
+
+    // 4. Simple tables
+    batch.push((
+        "DELETE FROM areas WHERE is_deleted = 1 AND updated_at < ?1".to_string(),
+        vec![TursoValue::Text(threshold_str.clone())],
+    ));
+    batch.push((
+        "DELETE FROM operators WHERE is_deleted = 1 AND updated_at < ?1".to_string(),
+        vec![TursoValue::Text(threshold_str.clone())],
+    ));
+    batch.push((
+        "DELETE FROM rig_personnel WHERE is_deleted = 1 AND updated_at < ?1".to_string(),
+        vec![TursoValue::Text(threshold_str.clone())],
+    ));
+
+    // 5. operation_codes (no updated_at, purge all deleted)
+    batch.push((
+        "DELETE FROM operation_codes WHERE is_deleted = 1".to_string(),
+        vec![],
+    ));
+
+    client.execute_batch(batch).await?;
+
+    let _ = client.execute("PRAGMA foreign_keys = ON;", vec![]).await;
+
+    println!("[Sync] Turso purge complete (deleted records older than {} days removed)", retention_days);
+    Ok(())
 }

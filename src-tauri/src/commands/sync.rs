@@ -285,10 +285,30 @@ pub async fn sync_full(
         }
     }
 
+    // === PURGE soft-deleted records older than 7 days ===
+    let mut purge_errors: Vec<String> = Vec::new();
+
+    // Purge from Turso first (async, no lock needed)
+    if let Err(e) = engine::purge_turso_soft_deleted(&client, 7).await {
+        purge_errors.push(format!("Turso purge warning: {}", e));
+    }
+
+    // Purge from local DB (sync, lock held briefly)
+    {
+        let conn = state
+            .db
+            .lock()
+            .map_err(|e| format!("Failed to lock database: {}", e))?;
+        if let Err(e) = engine::purge_local_soft_deleted(&conn, 7) {
+            purge_errors.push(format!("Local purge warning: {}", e));
+        }
+    }
+
     // Combine results
     let mut all_errors = push_result.errors;
     all_errors.extend(pull_result.errors);
     all_errors.extend(pull_errors);
+    all_errors.extend(purge_errors);
 
     let result = SyncResult {
         success: all_errors.is_empty(),
