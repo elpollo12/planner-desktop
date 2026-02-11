@@ -127,21 +127,29 @@ export function Table<T>({
                     ${onRowClick ? 'cursor-pointer' : ''}
                   `}
                 >
-                  {columns.map((column) => (
-                    <td
-                      key={column.key}
-                      className={`px-6 py-4 text-sm text-gray-900 dark:text-gray-200 text-${column.align || 'left'} ${column.truncate ? 'truncate' : 'whitespace-nowrap'
-                        }`}
-                      style={{
-                        maxWidth: column.maxWidth
-                      }}
-                      title={column.truncate ? String(column.render ? '' : renderCellValue(getNestedValue(row, column.key))) : undefined}
-                    >
-                      {column.render
-                        ? column.render(row)
-                        : renderCellValue(getNestedValue(row, column.key))}
-                    </td>
-                  ))}
+                  {columns.map((column) => {
+                    // Calcular el título del tooltip solo para columnas truncadas sin render personalizado
+                    const cellValue = getNestedValue(row, column.key);
+                    const tooltipTitle = column.truncate && !column.render 
+                      ? String(renderCellValue(cellValue))
+                      : undefined;
+
+                    return (
+                      <td
+                        key={column.key}
+                        className={`px-6 py-4 text-sm text-gray-900 dark:text-gray-200 text-${column.align || 'left'} ${column.truncate ? 'truncate' : 'whitespace-nowrap'
+                          }`}
+                        style={{
+                          maxWidth: column.maxWidth
+                        }}
+                        title={tooltipTitle}
+                      >
+                        {column.render
+                          ? column.render(row)
+                          : renderCellValue(cellValue)}
+                      </td>
+                    );
+                  })}
                 </tr>
               ))
             )}
@@ -182,7 +190,7 @@ export function Table<T>({
                     key={pageNumber}
                     onClick={() => handlePageChange(pageNumber)}
                     className={`relative inline-flex items-center rounded-md px-4 py-2 text-sm font-semibold ${currentPage === pageNumber
-                        ? 'bg-primary-600 text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600'
+                        ? 'bg-primary-600 text-white focus-visible:outline focus-visible:outline-offset-2 focus-visible:outline-primary-600'
                         : 'text-gray-900 dark:text-gray-100 ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
                       }`}
                   >
@@ -202,7 +210,7 @@ export function Table<T>({
           </div>
           {/* Info y selector de tamaño de página */}
 
-          <div className="flex items-center justify-between ">
+          <div className="flex items-center justify-between mt-2 -mx-4">
             <div className="text-sm text-gray-700 dark:text-gray-300">
               Mostrando{' '}
               <span className="font-medium">
