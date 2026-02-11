@@ -1,3 +1,7 @@
 En la ruta C:\Users\marqu\Documents\Dev\planner-desktop> tengo un proyecto, analizalo para que tengas contexto.
 
-Luego revisa las siguientes rutas.
+Luego de que tengas el contexto, necesito que revises la siguientes rutas:
+components/reportForm
+services/reportFormServices.ts
+lib/reportFormUtils.ts
+lib/lastReportData.ts
