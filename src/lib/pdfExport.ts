@@ -107,11 +107,12 @@ export async function exportReportToPDF(data: ReportData): Promise<void> {
     doc.setFont('helvetica', 'normal');
 
     const info = [
-      ['Número de Pozo:', report.wellNumber || '-', 'Número API:', report.apiNumber || '-'],
-      ['Contrato:', report.contract || '-', 'Contratista:', report.contractor || '-'],
-      ['Operador:', report.operator || '-', 'Campo/Distrito:', report.fieldDistrict || '-'],
-      ['Municipio:', report.municipality || '-', 'Taladro #:', report.rigNumber || '-'],
-      ['Supervisor 24h:', report.supervisor24h || '-'],
+      ['Pozo:', report.wellNumber || '-'],
+      ['Campo/Distrito:', report.fieldDistrict || '-'],
+      ['Taladro #:', report.rigNumber || '-'],
+      ['Contratista:', report.contractor || '-'],
+      ['Número API:', report.apiNumber || '-', 'Contrato:', report.contract || '-',],
+      ['Supervisor 24h:', report.supervisor24h || '-', 'Operador:', report.operator || '-'],
     ];
 
     info.forEach(row => {
