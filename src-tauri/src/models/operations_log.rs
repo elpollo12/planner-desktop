@@ -5,6 +5,7 @@ use rusqlite::{params, Connection, Row};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct OperationLog {
     pub id: String,
     pub report_id: String,
@@ -19,6 +20,7 @@ pub struct OperationLog {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateOperationLogRequest {
     pub shift: Option<String>,
     pub time_from: Option<String>,

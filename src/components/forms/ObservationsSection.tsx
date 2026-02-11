@@ -80,15 +80,20 @@ export function ObservationsSection() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
-                <Select
-                  label="Turno"
-                  {...register(`observations.operations.${index}.shift`)}
-                >
-                  <option value="">Seleccionar...</option>
-                  <option value="morning">{SHIFT_LABELS.morning}</option>
-                  <option value="afternoon">{SHIFT_LABELS.afternoon}</option>
-                  <option value="night">{SHIFT_LABELS.night}</option>
-                </Select>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Turno
+                  </label>
+                  <select
+                    {...register(`observations.operations.${index}.shift`)}
+                    className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-sm"
+                  >
+                    <option value="">Seleccionar...</option>
+                    <option value="morning">{SHIFT_LABELS.morning}</option>
+                    <option value="afternoon">{SHIFT_LABELS.afternoon}</option>
+                    <option value="night">{SHIFT_LABELS.night}</option>
+                  </select>
+                </div>
 
                 <Input
                   label="Hora Inicio"

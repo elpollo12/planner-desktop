@@ -27,6 +27,7 @@ pub struct DrillingParameter {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateDrillingParameterRequest {
     pub shift: Option<String>,
     pub depth_from: Option<String>,

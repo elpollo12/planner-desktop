@@ -20,15 +20,9 @@ const CREW_POSITIONS = [
 
 type ShiftType = 'morning' | 'afternoon' | 'night';
 
-export function CrewSection() {
-  const [activeShift, setActiveShift] = useState<ShiftType>('morning');
-  
-  const {
-    register,
-    control,
-  } = useFormContext<CompleteReportData>();
-
-  const shiftIndex = activeShift === 'morning' ? 0 : activeShift === 'afternoon' ? 1 : 2;
+// Componente interno para cada turno
+function ShiftMembers({ shiftIndex }: { shiftIndex: number }) {
+  const { register, control } = useFormContext<CompleteReportData>();
 
   const { fields, append, remove } = useFieldArray({
     control,
@@ -44,56 +38,8 @@ export function CrewSection() {
     });
   };
 
-  const shifts: ShiftType[] = ['morning', 'afternoon', 'night'];
-
   return (
-    <div className="p-6">
-      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-6">
-        Cuadrilla por Turno
-      </h3>
-
-      {/* Shift Tabs */}
-      <div className="mb-6 border-b border-gray-200 dark:border-gray-700">
-        <nav className="flex gap-4">
-          {shifts.map((shift) => (
-            <button
-              key={shift}
-              type="button"
-              onClick={() => setActiveShift(shift)}
-              className={`
-                px-4 py-2 font-medium text-sm border-b-2 transition-colors
-                ${
-                  activeShift === shift
-                    ? ''
-                    : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-                }
-              `}
-              style={activeShift === shift ? {
-                color: 'var(--color-primary-500)',
-                borderBottomColor: 'var(--color-primary-500)',
-              } : undefined}
-            >
-              {SHIFT_LABELS[shift]}
-            </button>
-          ))}
-        </nav>
-      </div>
-
-      {/* Shift Times */}
-      <div className="grid grid-cols-2 gap-4 mb-6">
-        <Input
-          label="Hora Inicio"
-          type="time"
-          {...register(`crew.shifts.${shiftIndex}.shiftStart` as any)}
-        />
-        <Input
-          label="Hora Fin"
-          type="time"
-          {...register(`crew.shifts.${shiftIndex}.shiftEnd` as any)}
-        />
-      </div>
-
-      {/* Members Table */}
+    <>
       <div className="mb-4">
         <div className="flex items-center justify-between mb-3">
           <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
@@ -188,6 +134,67 @@ export function CrewSection() {
           </table>
         </div>
       </div>
+    </>
+  );
+}
+
+export function CrewSection() {
+  const [activeShift, setActiveShift] = useState<ShiftType>('morning');
+  
+  const { register } = useFormContext<CompleteReportData>();
+
+  const shiftIndex = activeShift === 'morning' ? 0 : activeShift === 'afternoon' ? 1 : 2;
+  const shifts: ShiftType[] = ['morning', 'afternoon', 'night'];
+
+  return (
+    <div className="p-6">
+      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-6">
+        Cuadrilla por Turno
+      </h3>
+
+      {/* Shift Tabs */}
+      <div className="mb-6 border-b border-gray-200 dark:border-gray-700">
+        <nav className="flex gap-4">
+          {shifts.map((shift) => (
+            <button
+              key={shift}
+              type="button"
+              onClick={() => setActiveShift(shift)}
+              className={`
+                px-4 py-2 font-medium text-sm border-b-2 transition-colors
+                ${
+                  activeShift === shift
+                    ? ''
+                    : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                }
+              `}
+              style={activeShift === shift ? {
+                color: 'var(--color-primary-500)',
+                borderBottomColor: 'var(--color-primary-500)',
+              } : undefined}
+            >
+              {SHIFT_LABELS[shift]}
+            </button>
+          ))}
+        </nav>
+      </div>
+
+      {/* Shift Times */}
+      <div className="grid grid-cols-2 gap-4 mb-6">
+        <Input
+          label="Hora Inicio"
+          type="time"
+          {...register(`crew.shifts.${shiftIndex}.shiftStart` as any)}
+        />
+        <Input
+          label="Hora Fin"
+          type="time"
+          {...register(`crew.shifts.${shiftIndex}.shiftEnd` as any)}
+        />
+      </div>
+
+      {/* Members Table - usar key para forzar remount al cambiar turno */}
+      <ShiftMembers key={`shift-${shiftIndex}`} shiftIndex={shiftIndex} />
 
       {/* Info Box */}
       <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg">

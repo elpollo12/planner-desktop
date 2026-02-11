@@ -164,10 +164,9 @@ export function TimeDistributionSection() {
                 return (
                   <tr key={field.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                     <td className="px-4 py-3">
-                      <Select
+                      <select
                         {...register(`timeDistribution.distributions.${index}.operationCodeId`)}
-                        error={errors.timeDistribution?.distributions?.[index]?.operationCodeId?.message}
-                        className="w-full min-w-[250px]"
+                        className="w-full min-w-[250px] px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-sm"
                       >
                         <option value="">Seleccionar operación...</option>
                         {operationCodes.map((code) => (
@@ -175,7 +174,12 @@ export function TimeDistributionSection() {
                             {code.code} - {code.name}
                           </option>
                         ))}
-                      </Select>
+                      </select>
+                      {errors.timeDistribution?.distributions?.[index]?.operationCodeId?.message && (
+                        <p className="text-red-600 text-xs mt-1">
+                          {errors.timeDistribution?.distributions?.[index]?.operationCodeId?.message}
+                        </p>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <Input
