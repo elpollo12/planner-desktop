@@ -5,7 +5,7 @@ import { Select } from '@/components/ui/Select';
 import type { UserRole, UserWithRigs } from '@/types/user';
 import type { Rig } from '@/types/rig';
 
-interface UserFormProps {
+interface UsersFormProps {
     onSubmit: (data: {
         username?: string;
         password?: string;
@@ -20,16 +20,16 @@ interface UserFormProps {
     isEditing?: boolean;
 }
 
-export default function UserForm({ onSubmit, user, rigs, isEditing = false }: UserFormProps) {
+export default function UsersForm({ onSubmit, user, rigs, isEditing = false }: UsersFormProps) {
     const [formData, setFormData] = useState({
-    username: '',
-    password: '',
-    fullName: '',
-    ci: '',
-    role: 'operator' as UserRole,
-    hasAllRigs: user ? !user.hasAllRigs : false,
-    assignedRigIds: [] as string[],
-});
+        username: '',
+        password: '',
+        fullName: '',
+        ci: '',
+        role: 'operator' as UserRole,
+        hasAllRigs: false,  // Siempre inicia en false para usuarios nuevos
+        assignedRigIds: [] as string[],
+    });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errors, setErrors] = useState<{
         username?: string;
@@ -44,13 +44,16 @@ export default function UserForm({ onSubmit, user, rigs, isEditing = false }: Us
     // Inicializar formulario
     useEffect(() => {
         if (user) {
+            // Si es admin, forzar hasAllRigs = true
+            const isAdmin = user.role === 'admin';
+            
             setFormData({
                 username: user.username || '',
                 password: '',
                 fullName: user.fullName || '',
                 ci: user.ci || '',
                 role: user.role,
-                hasAllRigs: user.hasAllRigs,
+                hasAllRigs: isAdmin ? true : user.hasAllRigs,
                 assignedRigIds: user.assignedRigIds || [],
             });
         } else {
@@ -102,7 +105,6 @@ export default function UserForm({ onSubmit, user, rigs, isEditing = false }: Us
             };
             await onSubmit(submitData);
         } catch (error) {
-            console.error('Error en el formulario:', error);
         } finally {
             setIsSubmitting(false);
         }
@@ -307,7 +309,10 @@ export default function UserForm({ onSubmit, user, rigs, isEditing = false }: Us
                     </div>
 
                     {/* Solo mostrar selector de taladros si NO tiene acceso a todos Y no es admin */}
-                    {formData.role !== 'admin' && !formData.hasAllRigs && (
+                    {(() => {
+                        const shouldShow = formData.role !== 'admin' && !formData.hasAllRigs;
+                        return shouldShow;
+                    })() && (
                         <>
                             <div className="flex items-center justify-between mb-3">
                                 <div className="flex gap-2">

@@ -6,7 +6,7 @@ import { useAuthStore } from '@/store/authStore';
 import { useModal } from '@/store/modalStore';
 import type { UserRole, UserWithRigs } from '@/types/user';
 import type { Rig } from '@/types/rig';
-import UserForm from './forms/UserForm';
+import UsersForm from './forms/UsersForm';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Table } from '@/components/ui/Table';
@@ -42,7 +42,6 @@ export function UsersManagement() {
       setUsers(usersData as UserWithRigs[]);
       setRigs(rigsData);
     } catch (error) {
-      console.error('Error cargando datos:', error);
       toast.error('Error al cargar los datos');
     } finally {
       setLoading(false);
@@ -52,7 +51,7 @@ export function UsersManagement() {
   // Abrir modal para crear
   const handleCreate = () => {
     openModal(
-      <UserForm 
+      <UsersForm 
         rigs={rigs}
         onSubmit={async (data) => {
           try {
@@ -69,7 +68,6 @@ export function UsersManagement() {
             closeModal();
             loadData();
           } catch (error: any) {
-            console.error('Error creando usuario:', error);
             toast.error(error.message || 'Error al crear el usuario');
           }
         }}
@@ -85,7 +83,7 @@ export function UsersManagement() {
   // Abrir modal para editar
   const handleEdit = (user: UserWithRigs) => {
     openModal(
-      <UserForm 
+      <UsersForm 
         user={user}
         rigs={rigs}
         isEditing={true}
@@ -102,7 +100,6 @@ export function UsersManagement() {
             closeModal();
             loadData();
           } catch (error: any) {
-            console.error('Error actualizando usuario:', error);
             toast.error(error.message || 'Error al actualizar el usuario');
           }
         }}
@@ -144,7 +141,6 @@ export function UsersManagement() {
             toast.success('Usuario eliminado exitosamente');
             loadData();
           } catch (error: any) {
-            console.error('Error eliminando usuario:', error);
             toast.error(error.message || 'Error al eliminar el usuario');
           }
         },
