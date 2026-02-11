@@ -3,6 +3,7 @@ import { toast } from 'react-toastify';
 import { Upload, Trash2, RotateCcw } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { useAppSettingsStore } from '@/store/appSettingsStore';
+import { backgroundPush } from '@/lib/syncHelper';
 import { usePreferencesStore } from '@/store/preferencesStore';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -94,6 +95,7 @@ export default function AppearanceSettings() {
         secondaryColor,
       });
       toast.success('Configuración de la empresa guardada exitosamente');
+      backgroundPush(sessionToken);
     } catch {
       toast.error('Error al guardar la configuración');
     } finally {
@@ -115,6 +117,7 @@ export default function AppearanceSettings() {
       const fileData = Array.from(new Uint8Array(buffer));
       await uploadLogo(sessionToken, fileData, file.name);
       toast.success('Logo subido exitosamente');
+      backgroundPush(sessionToken);
     } catch {
       toast.error('Error al subir el logo');
     }
@@ -128,6 +131,7 @@ export default function AppearanceSettings() {
     try {
       await removeLogo(sessionToken);
       toast.success('Logo eliminado');
+      backgroundPush(sessionToken);
     } catch {
       toast.error('Error al eliminar el logo');
     }

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { toast } from 'react-toastify';
 import { Plus, Pencil, Trash2, Search, Upload, X, Building2 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
+import { backgroundPush } from '@/lib/syncHelper';
 import { useOperatorsStore } from '@/store/operatorsStore';
 import { useModal } from '@/store/modalStore';
 import type { Operator, CreateOperatorInput, UpdateOperatorInput } from '@/types/operator';
@@ -195,6 +196,7 @@ export default function OperatorsManagement() {
             await createOperator(sessionToken!, data as CreateOperatorInput);
             toast.success('Operador creado exitosamente');
             closeModal();
+            backgroundPush(sessionToken!);
           } catch (error) {
             toast.error(error as string);
           }
@@ -221,6 +223,7 @@ export default function OperatorsManagement() {
               await updateOperator(sessionToken!, operator.id, data as UpdateOperatorInput);
               toast.success('Operador actualizado exitosamente');
               closeModal();
+              backgroundPush(sessionToken!);
             } catch (error) {
               toast.error(error as string);
             }
@@ -270,6 +273,7 @@ export default function OperatorsManagement() {
           try {
             await deleteOperator(sessionToken!, operator.id);
             toast.success('Operador eliminado exitosamente');
+            backgroundPush(sessionToken!);
           } catch (error) {
             toast.error(error as string);
           }
