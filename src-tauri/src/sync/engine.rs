@@ -797,7 +797,14 @@ pub fn write_pulled_data(
             .columns
             .iter()
             .filter(|c| **c != table_def.id_col)
-            .map(|c| format!("{} = excluded.{}", c, c))
+            .map(|c| {
+                // Preserve soft deletes: once deleted on any side, stay deleted
+                if *c == "is_deleted" {
+                    format!("is_deleted = MAX(COALESCE({}.is_deleted, 0), COALESCE(excluded.is_deleted, 0))", table_def.name)
+                } else {
+                    format!("{} = excluded.{}", c, c)
+                }
+            })
             .collect();
         let update_str = update_cols.join(", ");
 
@@ -906,7 +913,14 @@ async fn push_rows_to_turso(
         .columns
         .iter()
         .filter(|c| **c != table_def.id_col)
-        .map(|c| format!("{} = excluded.{}", c, c))
+        .map(|c| {
+            // Preserve soft deletes: once deleted on any side, stay deleted
+            if *c == "is_deleted" {
+                format!("is_deleted = MAX(COALESCE({}.is_deleted, 0), COALESCE(excluded.is_deleted, 0))", table_def.name)
+            } else {
+                format!("{} = excluded.{}", c, c)
+            }
+        })
         .collect();
     let update_str = update_cols.join(", ");
 
