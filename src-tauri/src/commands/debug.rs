@@ -449,6 +449,7 @@ pub struct UserDebugInfo {
     pub full_name: String,
     pub role: String,
     pub active: bool,
+    pub has_all_rigs: bool,
 }
 
 #[tauri::command]
@@ -456,7 +457,7 @@ pub async fn debug_list_all_users(state: State<'_, AppState>) -> Result<Vec<User
     let conn = state.db.lock().unwrap();
 
     let mut stmt = conn.prepare(
-        "SELECT id, username, full_name, role, active FROM users ORDER BY username ASC"
+        "SELECT id, username, full_name, role, active, has_all_rigs FROM users ORDER BY username ASC"
     )?;
 
     let users = stmt
@@ -466,7 +467,8 @@ pub async fn debug_list_all_users(state: State<'_, AppState>) -> Result<Vec<User
                 username: row.get(1)?,
                 full_name: row.get(2)?,
                 role: row.get(3)?,
-                active: row.get(4)?,
+                active: row.get::<_, i32>(4)? == 1,
+                has_all_rigs: row.get::<_, i32>(5)? == 1,
             })
         })?
         .collect::<std::result::Result<Vec<_>, _>>()?;

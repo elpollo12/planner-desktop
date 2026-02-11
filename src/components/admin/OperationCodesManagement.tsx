@@ -1,32 +1,30 @@
 import { useState, useEffect } from 'react';
-import { Button, Input } from '../ui';
-import { Plus, Edit, Trash2, Save, X, ToggleLeft, ToggleRight } from 'lucide-react';
-import { useAuthStore } from '../../store/authStore';
-import { operationCodesApi } from '../../lib/api';
-import type { OperationCode } from '../../types/report';
+import { toast } from 'react-toastify';
+import { Plus, Search, Edit, Trash2 } from 'lucide-react';
+import { operationCodesApi } from '@/lib/api';
+import { useAuthStore } from '@/store/authStore';
+import { useModal } from '@/store/modalStore';
+import type { OperationCode } from '@/types/report';
+import OperationCodeForm from './forms/OperationCodeForm';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { Table } from '@/components/ui/Table';
+import { Card } from '@/components/ui/Card';
 
 export function OperationCodesManagement() {
   const { sessionToken } = useAuthStore();
+  const { openModal, closeModal } = useModal();
   const [codes, setCodes] = useState<OperationCode[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [showCreateForm, setShowCreateForm] = useState(false);
-  
-  const [formData, setFormData] = useState({
-    code: '',
-    name: '',
-    category: '',
-    sortOrder: 0,
-    active: true,
-  });
+  const [includeInactive, setIncludeInactive] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
 
+  // Cargar códigos
   useEffect(() => {
     if (sessionToken) {
       loadCodes();
-    } else {
-      setLoading(false);
     }
-  }, [sessionToken]);
+  }, [sessionToken, includeInactive]);
 
   const loadCodes = async () => {
     if (!sessionToken) {
@@ -36,267 +34,280 @@ export function OperationCodesManagement() {
 
     setLoading(true);
     try {
-      const data = await operationCodesApi.list(sessionToken, false); // Include inactive
+      const data = await operationCodesApi.list(sessionToken, !includeInactive);
       setCodes(data);
     } catch (error) {
-      console.error('[OperationCodes] Error loading codes:', error);
-      alert(`Error al cargar códigos: ${error}`);
+      console.error('Error cargando códigos:', error);
+      toast.error('Error al cargar los códigos de operación');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCreate = async () => {
-    if (!sessionToken) return;
-
-    if (!formData.code || !formData.name) {
-      alert('Código y nombre son requeridos');
-      return;
-    }
-
-    try {
-      await operationCodesApi.create(sessionToken, formData);
-      alert('Código creado exitosamente');
-      setShowCreateForm(false);
-      setFormData({
-        code: '',
-        name: '',
-        category: '',
-        sortOrder: 0,
-        active: true,
-      });
-      loadCodes();
-    } catch (error) {
-      console.error('Error creating code:', error);
-      alert('Error al crear código');
-    }
+  // Abrir modal para crear
+  const handleCreate = () => {
+    openModal(
+      <OperationCodeForm 
+        onSubmit={async (data) => {
+          try {
+            await operationCodesApi.create(sessionToken!, data);
+            toast.success('Código creado exitosamente');
+            closeModal();
+            loadCodes();
+          } catch (error: any) {
+            console.error('Error creando código:', error);
+            toast.error(error.message || 'Error al crear el código');
+          }
+        }}
+      />,
+      {
+        title: 'Crear Nuevo Código',
+        size: 'md',
+        showCloseButton: true,
+      }
+    );
   };
 
-  const handleUpdate = async (codeId: string) => {
-    if (!sessionToken) return;
-
-    try {
-      await operationCodesApi.update(sessionToken, codeId, formData);
-      alert('Código actualizado exitosamente');
-      setEditingId(null);
-      loadCodes();
-    } catch (error) {
-      console.error('Error updating code:', error);
-      alert('Error al actualizar código');
-    }
+  // Abrir modal para editar
+  const handleEdit = (code: OperationCode) => {
+    openModal(
+      <OperationCodeForm 
+        code={code}
+        onSubmit={async (data) => {
+          try {
+            await operationCodesApi.update(sessionToken!, code.id, data);
+            toast.success('Código actualizado exitosamente');
+            closeModal();
+            loadCodes();
+          } catch (error: any) {
+            console.error('Error actualizando código:', error);
+            toast.error(error.message || 'Error al actualizar el código');
+          }
+        }}
+      />,
+      {
+        title: `Editar Código: ${code.code}`,
+        size: 'md',
+        showCloseButton: true,
+      }
+    );
   };
 
-  const handleDelete = async (codeId: string) => {
-    if (!sessionToken) return;
-
-    if (!confirm('¿Estás seguro de eliminar este código?')) return;
-
-    try {
-      await operationCodesApi.delete(sessionToken, codeId);
-      alert('Código eliminado exitosamente');
-      loadCodes();
-    } catch (error) {
-      console.error('Error deleting code:', error);
-      alert('Error al eliminar código');
-    }
+  // Eliminar código con confirmación
+  const handleDelete = (code: OperationCode) => {
+    openModal(
+      <div className="space-y-3">
+        <p className="text-gray-700">
+          ¿Estás seguro de eliminar el código <strong className="text-gray-900">"{code.code} - {code.name}"</strong>?
+        </p>
+        <p className="text-sm text-gray-500">
+          Esta acción no se puede deshacer. Los reportes que usen este código quedarán sin código asignado.
+        </p>
+      </div>,
+      {
+        title: 'Confirmar Eliminación',
+        size: 'sm',
+        showConfirmButton: true,
+        showCancelButton: true,
+        confirmText: 'Eliminar',
+        cancelText: 'Cancelar',
+        onConfirm: async () => {
+          try {
+            await operationCodesApi.delete(sessionToken!, code.id);
+            toast.success('Código eliminado exitosamente');
+            loadCodes();
+          } catch (error: any) {
+            console.error('Error eliminando código:', error);
+            toast.error(error.message || 'Error al eliminar el código');
+          }
+        },
+      }
+    );
   };
 
-  const startEdit = (code: OperationCode) => {
-    setEditingId(code.id);
-    setFormData({
-      code: code.code,
-      name: code.name,
-      category: code.category || '',
-      sortOrder: code.sortOrder,
-      active: code.active,
-    });
-  };
+  // Filtrar códigos
+  const filteredCodes = codes.filter((code) => {
+    const matchesSearch =
+      code.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      code.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (code.category && code.category.toLowerCase().includes(searchTerm.toLowerCase()));
 
-  const cancelEdit = () => {
-    setEditingId(null);
-  };
+    return matchesSearch;
+  });
 
-  if (loading) {
-    return <div className="text-center py-8 text-gray-500">Cargando códigos...</div>;
-  }
+  // Columnas de la tabla
+  const columns = [
+    { 
+      key: 'code', 
+      header: 'Código',
+      render: (code: OperationCode) => (
+        <div>
+          <span className="font-medium text-gray-900 dark:text-gray-100">{code.code}</span>
+        </div>
+      )
+    },
+    { 
+      key: 'name', 
+      header: 'Nombre',
+      render: (code: OperationCode) => (
+        <span className="text-gray-700 dark:text-gray-300">{code.name}</span>
+      )
+    },
+    { 
+      key: 'category', 
+      header: 'Categoría',
+      render: (code: OperationCode) => (
+        <span className="text-gray-600 dark:text-gray-400">{code.category || '-'}</span>
+      )
+    },
+    { 
+      key: 'sortOrder', 
+      header: 'Orden',
+      render: (code: OperationCode) => (
+        <span className="text-center block text-gray-700 dark:text-gray-300">{code.sortOrder}</span>
+      )
+    },
+    { 
+      key: 'status', 
+      header: 'Estado',
+      render: (code: OperationCode) => (
+        <span
+          className={`px-2 py-1 text-xs font-medium rounded-full ${
+            code.active
+              ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+              : 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300'
+          }`}
+        >
+          {code.active ? 'Activo' : 'Inactivo'}
+        </span>
+      )
+    },
+    { 
+      key: 'actions', 
+      header: 'Acciones',
+      render: (code: OperationCode) => (
+        <div className="flex gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => handleEdit(code)}
+            title="Editar"
+            className="h-8 w-8 p-0"
+          >
+            <Edit className="w-4 h-4" />
+          </Button>
+          <Button
+            variant="danger"
+            size="sm"
+            onClick={() => handleDelete(code)}
+            title="Eliminar"
+            className="h-8 w-8 p-0"
+          >
+            <Trash2 className="w-4 h-4" />
+          </Button>
+        </div>
+      )
+    },
+  ];
 
   return (
     <div className="space-y-6">
-      {/* Create Form */}
-      {showCreateForm ? (
-        <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-6 bg-gray-50 dark:bg-gray-800">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Crear Nuevo Código</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <Input
-              label="Código *"
-              value={formData.code}
-              onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-              placeholder="DR"
-            />
-            <Input
-              label="Nombre *"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              placeholder="Perforando"
-            />
-            <Input
-              label="Categoría"
-              value={formData.category}
-              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-              placeholder="Operación"
-            />
-            <Input
-              label="Orden"
-              type="number"
-              value={formData.sortOrder}
-              onChange={(e) => setFormData({ ...formData, sortOrder: parseInt(e.target.value) || 0 })}
-              placeholder="0"
-            />
-          </div>
-          <div className="flex gap-2">
-            <Button variant="primary" onClick={handleCreate} icon={<Save size={16} />}>
-              Crear Código
-            </Button>
-            <Button variant="outline" onClick={() => setShowCreateForm(false)} icon={<X size={16} />}>
-              Cancelar
-            </Button>
-          </div>
+      {/* Header */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Códigos de Operación</h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+            Administra los códigos de operación para reportes de taladros
+          </p>
         </div>
-      ) : (
-        <div className="flex justify-end">
-          <Button
-            variant="primary"
-            onClick={() => setShowCreateForm(true)}
-            icon={<Plus size={16} />}
-          >
-            Nuevo Código
-          </Button>
-        </div>
-      )}
-
-      {/* Codes Table */}
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 border border-gray-200 dark:border-gray-700 rounded-lg">
-          <thead className="bg-gray-50 dark:bg-gray-800">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Código</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Nombre</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Categoría</th>
-              <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Orden</th>
-              <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Estado</th>
-              <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Acciones</th>
-            </tr>
-          </thead>
-          <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-            {codes.map((code) => (
-              <tr key={code.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                {editingId === code.id ? (
-                  <>
-                    <td className="px-6 py-4">
-                      <Input
-                        value={formData.code}
-                        onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                      />
-                    </td>
-                    <td className="px-6 py-4">
-                      <Input
-                        value={formData.name}
-                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      />
-                    </td>
-                    <td className="px-6 py-4">
-                      <Input
-                        value={formData.category}
-                        onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                      />
-                    </td>
-                    <td className="px-6 py-4">
-                      <Input
-                        type="number"
-                        value={formData.sortOrder}
-                        onChange={(e) => setFormData({ ...formData, sortOrder: parseInt(e.target.value) || 0 })}
-                        className="text-center"
-                      />
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <button
-                        onClick={() => setFormData({ ...formData, active: !formData.active })}
-                        className={`${formData.active ? 'text-green-600' : 'text-gray-400'}`}
-                      >
-                        {formData.active ? <ToggleRight size={24} /> : <ToggleLeft size={24} />}
-                      </button>
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        <button
-                          onClick={() => handleUpdate(code.id)}
-                          className="text-green-600 hover:text-green-800"
-                        >
-                          <Save size={18} />
-                        </button>
-                        <button
-                          onClick={cancelEdit}
-                          className="text-gray-600 hover:text-gray-800"
-                        >
-                          <X size={18} />
-                        </button>
-                      </div>
-                    </td>
-                  </>
-                ) : (
-                  <>
-                    <td className="px-6 py-4">
-                      <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{code.code}</span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="text-sm text-gray-900 dark:text-gray-100">{code.name}</span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="text-sm text-gray-900 dark:text-gray-100">{code.category || '-'}</span>
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <span className="text-sm text-gray-900 dark:text-gray-100">{code.sortOrder}</span>
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      {code.active ? (
-                        <span className="inline-block px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                          Activo
-                        </span>
-                      ) : (
-                        <span className="inline-block px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                          Inactivo
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        <button
-                          onClick={() => startEdit(code)}
-                          className="text-blue-600 hover:text-blue-800"
-                        >
-                          <Edit size={18} />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(code.id)}
-                          className="text-red-600 hover:text-red-800"
-                        >
-                          <Trash2 size={18} />
-                        </button>
-                      </div>
-                    </td>
-                  </>
-                )}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <Button 
+          variant="primary" 
+          onClick={handleCreate}
+          icon={<Plus className="w-4 h-4" />}
+        >
+          Nuevo Código
+        </Button>
       </div>
 
-      {codes.length === 0 && (
-        <div className="text-center py-8 text-gray-500">
-          No hay códigos registrados
+      {/* Filtros */}
+      <Card>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Búsqueda */}
+          <div>
+            <label htmlFor="search" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Buscar
+            </label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <Input
+                id="search"
+                type="text"
+                placeholder="Buscar por código, nombre o categoría..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100"
+              />
+            </div>
+          </div>
+
+          <div></div> {/* Espacio vacío para mantener diseño */}
         </div>
-      )}
+
+        {/* Checkbox incluir inactivos */}
+        <div className="mt-4 flex items-center">
+          <input
+            type="checkbox"
+            id="includeInactive"
+            checked={includeInactive}
+            onChange={(e) => setIncludeInactive(e.target.checked)}
+            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600"
+          />
+          <label htmlFor="includeInactive" className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+            Incluir códigos inactivos
+          </label>
+        </div>
+      </Card>
+
+      {/* Tabla */}
+      <Card className="overflow-hidden">
+        {loading ? (
+          <div className="text-center py-12">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <p className="mt-2 text-gray-600 dark:text-gray-400">Cargando códigos...</p>
+          </div>
+        ) : filteredCodes.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-gray-500 dark:text-gray-400">
+              {searchTerm
+                ? 'No se encontraron códigos con los filtros aplicados'
+                : 'No hay códigos registrados'}
+            </p>
+            {!searchTerm && (
+              <Button 
+                variant="primary" 
+                onClick={handleCreate} 
+                className="mt-4"
+                icon={<Plus className="w-4 h-4" />}
+              >
+                Crear Primer Código
+              </Button>
+            )}
+          </div>
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <Table
+                columns={columns}
+                data={filteredCodes}
+                className="min-w-full"
+              />
+            </div>
+            <div className="mt-4 text-sm text-gray-600 dark:text-gray-400">
+              Mostrando {filteredCodes.length} de {codes.length} códigos
+            </div>
+          </>
+        )}
+      </Card>
     </div>
   );
 }

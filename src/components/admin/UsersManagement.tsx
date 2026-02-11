@@ -1,50 +1,33 @@
 import { useState, useEffect } from 'react';
-import { Button, Input, Select } from '../ui';
-import { Plus, Edit, Trash2, Save, X } from 'lucide-react';
-import { useAuthStore } from '../../store/authStore';
-import { usersApi, rigsApi } from '../../lib/api';
-import type { UserRole, UserWithRigs } from '../../types/user';
-import type { Rig } from '../../types/rig';
-
-interface UserFormData {
-  username: string;
-  password: string;
-  fullName: string;
-  ci: string;
-  role: UserRole;
-  hasAllRigs: boolean;
-  assignedRigIds: string[];
-}
-
-const initialFormData: UserFormData = {
-  username: '',
-  password: '',
-  fullName: '',
-  ci: '',
-  role: 'operator',
-  hasAllRigs: false,
-  assignedRigIds: [],
-};
+import { toast } from 'react-toastify';
+import { Edit, Plus, Search, Trash2 } from 'lucide-react';
+import { usersApi, rigsApi } from '@/lib/api';
+import { useAuthStore } from '@/store/authStore';
+import { useModal } from '@/store/modalStore';
+import type { UserRole, UserWithRigs } from '@/types/user';
+import type { Rig } from '@/types/rig';
+import UsersForm from './forms/UsersForm';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { Table } from '@/components/ui/Table';
+import { Card } from '@/components/ui/Card';
 
 export function UsersManagement() {
   const { sessionToken } = useAuthStore();
+  const { openModal, closeModal } = useModal();
   const [users, setUsers] = useState<UserWithRigs[]>([]);
   const [rigs, setRigs] = useState<Rig[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [showCreateForm, setShowCreateForm] = useState(false);
-  const [formData, setFormData] = useState<UserFormData>(initialFormData);
+  const [searchTerm, setSearchTerm] = useState('');
 
+  // Cargar usuarios y taladros
   useEffect(() => {
     if (sessionToken) {
-      loadUsers();
-      loadRigs();
-    } else {
-      setLoading(false);
+      loadData();
     }
   }, [sessionToken]);
 
-  const loadUsers = async () => {
+  const loadData = async () => {
     if (!sessionToken) {
       setLoading(false);
       return;
@@ -52,129 +35,130 @@ export function UsersManagement() {
 
     setLoading(true);
     try {
-      const data = await usersApi.list(sessionToken);
-      setUsers(data as UserWithRigs[]);
+      const [usersData, rigsData] = await Promise.all([
+        usersApi.list(sessionToken),
+        rigsApi.list(false),
+      ]);
+      setUsers(usersData as UserWithRigs[]);
+      setRigs(rigsData);
     } catch (error) {
-      console.error('[UsersManagement] Error loading users:', error);
-      alert(`Error al cargar usuarios: ${error}`);
+      toast.error('Error al cargar los datos');
     } finally {
       setLoading(false);
     }
   };
 
-  const loadRigs = async () => {
-    try {
-      const data = await rigsApi.list(false);
-      setRigs(data);
-    } catch (error) {
-      console.error('Error loading rigs:', error);
-    }
+  // Abrir modal para crear
+  const handleCreate = () => {
+    openModal(
+      <UsersForm 
+        rigs={rigs}
+        onSubmit={async (data) => {
+          try {
+            await usersApi.create(sessionToken!, {
+              username: data.username!,
+              password: data.password!,
+              fullName: data.fullName,
+              ci: data.ci || undefined,
+              role: data.role,
+              hasAllRigs: data.hasAllRigs,
+              assignedRigIds: data.hasAllRigs ? [] : data.assignedRigIds,
+            });
+            toast.success('Usuario creado exitosamente');
+            closeModal();
+            loadData();
+          } catch (error: any) {
+            toast.error(error.message || 'Error al crear el usuario');
+          }
+        }}
+      />,
+      {
+        title: 'Crear Nuevo Usuario',
+        size: 'lg',
+        showCloseButton: true,
+      }
+    );
   };
 
-  const handleCreate = async () => {
-    if (!sessionToken) return;
-
-    if (!formData.username || !formData.password) {
-      alert('Usuario y contraseña son requeridos');
-      return;
-    }
-
-    try {
-      await usersApi.create(sessionToken, {
-        username: formData.username,
-        password: formData.password,
-        fullName: formData.fullName,
-        ci: formData.ci || undefined,
-        role: formData.role,
-        hasAllRigs: formData.hasAllRigs,
-        assignedRigIds: formData.hasAllRigs ? [] : formData.assignedRigIds,
-      });
-      alert('Usuario creado exitosamente');
-      setShowCreateForm(false);
-      setFormData(initialFormData);
-      loadUsers();
-    } catch (error) {
-      console.error('Error creating user:', error);
-      alert('Error al crear usuario: ' + error);
-    }
+  // Abrir modal para editar
+  const handleEdit = (user: UserWithRigs) => {
+    openModal(
+      <UsersForm 
+        user={user}
+        rigs={rigs}
+        isEditing={true}
+        onSubmit={async (data) => {
+          try {
+            await usersApi.update(sessionToken!, user.id, {
+              fullName: data.fullName,
+              ci: data.ci || undefined,
+              role: data.role,
+              hasAllRigs: data.hasAllRigs,
+              assignedRigIds: data.hasAllRigs ? [] : data.assignedRigIds,
+            });
+            toast.success('Usuario actualizado exitosamente');
+            closeModal();
+            loadData();
+          } catch (error: any) {
+            toast.error(error.message || 'Error al actualizar el usuario');
+          }
+        }}
+      />,
+      {
+        title: `Editar Usuario: ${user.username}`,
+        size: 'lg',
+        showCloseButton: true,
+      }
+    );
   };
 
-  const handleUpdate = async (userId: string) => {
-    if (!sessionToken) return;
-
-    try {
-      await usersApi.update(sessionToken, userId, {
-        fullName: formData.fullName,
-        ci: formData.ci || undefined,
-        role: formData.role,
-        hasAllRigs: formData.hasAllRigs,
-        assignedRigIds: formData.hasAllRigs ? [] : formData.assignedRigIds,
-      });
-      alert('Usuario actualizado exitosamente');
-      setEditingId(null);
-      loadUsers();
-    } catch (error) {
-      console.error('Error updating user:', error);
-      alert('Error al actualizar usuario');
-    }
+  // Eliminar usuario con confirmación
+  const handleDelete = (user: UserWithRigs) => {
+    openModal(
+      <div className="space-y-3">
+        <p className="text-gray-700">
+          ¿Estás seguro de eliminar el usuario <strong className="text-gray-900">"{user.username}"</strong>?
+        </p>
+        {user.fullName && (
+          <p className="text-sm text-gray-600">
+            Nombre: {user.fullName}
+          </p>
+        )}
+        <p className="text-sm text-gray-500">
+          Esta acción no se puede deshacer. El usuario perderá acceso al sistema inmediatamente.
+        </p>
+      </div>,
+      {
+        title: 'Confirmar Eliminación',
+        size: 'sm',
+        showConfirmButton: true,
+        showCancelButton: true,
+        confirmText: 'Eliminar',
+        cancelText: 'Cancelar',
+        onConfirm: async () => {
+          try {
+            await usersApi.delete(sessionToken!, user.id);
+            toast.success('Usuario eliminado exitosamente');
+            loadData();
+          } catch (error: any) {
+            toast.error(error.message || 'Error al eliminar el usuario');
+          }
+        },
+      }
+    );
   };
 
-  const handleDelete = async (userId: string) => {
-    if (!sessionToken) return;
+  // Filtrar usuarios
+  const filteredUsers = users.filter((user) => {
+    const matchesSearch =
+      user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (user.fullName && user.fullName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (user.ci && user.ci.toLowerCase().includes(searchTerm.toLowerCase()));
 
-    if (!confirm('¿Estás seguro de eliminar este usuario?')) return;
+    return matchesSearch;
+  });
 
-    try {
-      await usersApi.delete(sessionToken, userId);
-      alert('Usuario eliminado exitosamente');
-      loadUsers();
-    } catch (error) {
-      console.error('Error deleting user:', error);
-      alert('Error al eliminar usuario');
-    }
-  };
-
-  const startEdit = (user: UserWithRigs) => {
-    setEditingId(user.id);
-    setFormData({
-      username: user.username,
-      password: '',
-      fullName: user.fullName || '',
-      ci: user.ci || '',
-      role: user.role,
-      hasAllRigs: user.hasAllRigs,
-      assignedRigIds: user.assignedRigIds || [],
-    });
-  };
-
-  const cancelEdit = () => {
-    setEditingId(null);
-    setFormData(initialFormData);
-  };
-
-  const toggleRigSelection = (rigId: string) => {
-    setFormData(prev => ({
-      ...prev,
-      assignedRigIds: prev.assignedRigIds.includes(rigId)
-        ? prev.assignedRigIds.filter(id => id !== rigId)
-        : [...prev.assignedRigIds, rigId],
-    }));
-  };
-
-  const selectAllRigs = () => {
-    setFormData(prev => ({
-      ...prev,
-      assignedRigIds: rigs.map(r => r.id),
-    }));
-  };
-
-  const deselectAllRigs = () => {
-    setFormData(prev => ({
-      ...prev,
-      assignedRigIds: [],
-    }));
-  };
-
+  // Funciones helper para mostrar datos
   const getRoleBadge = (role: UserRole) => {
     const badges = {
       admin: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
@@ -209,342 +193,153 @@ export function UsersManagement() {
     return <span className="text-xs text-blue-600 dark:text-blue-400">{count} taladro(s)</span>;
   };
 
-  // Rig selection component
-  const RigSelector = () => (
-    <div className="col-span-2 border border-gray-200 dark:border-gray-600 rounded-lg p-4">
-      <div className="flex items-center justify-between mb-3">
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-          Acceso a Taladros
-        </label>
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={formData.hasAllRigs}
-            onChange={(e) => setFormData({ ...formData, hasAllRigs: e.target.checked })}
-            className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-          />
-          <span className="text-sm text-gray-700 dark:text-gray-300">Acceso a todos los taladros</span>
-        </label>
-      </div>
-
-      {!formData.hasAllRigs && (
-        <>
-          <div className="flex gap-2 mb-3">
-            <button
-              type="button"
-              onClick={selectAllRigs}
-              className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400"
-            >
-              Seleccionar todos
-            </button>
-            <span className="text-gray-400">|</span>
-            <button
-              type="button"
-              onClick={deselectAllRigs}
-              className="text-xs text-gray-600 hover:text-gray-800 dark:text-gray-400"
-            >
-              Deseleccionar todos
-            </button>
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-48 overflow-y-auto">
-            {rigs.map((rig) => (
-              <label
-                key={rig.id}
-                className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors ${
-                  formData.assignedRigIds.includes(rig.id)
-                    ? 'bg-primary-50 dark:bg-primary-900/20 border border-primary-300 dark:border-primary-700'
-                    : 'bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600'
-                }`}
-              >
-                <input
-                  type="checkbox"
-                  checked={formData.assignedRigIds.includes(rig.id)}
-                  onChange={() => toggleRigSelection(rig.id)}
-                  className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                />
-                <span className="text-sm text-gray-900 dark:text-gray-100 truncate">
-                  {rig.name}
-                </span>
-              </label>
-            ))}
-          </div>
-
-          {rigs.length === 0 && (
-            <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
-              No hay taladros registrados
-            </p>
-          )}
-
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-            {formData.assignedRigIds.length} taladro(s) seleccionado(s)
-          </p>
-        </>
-      )}
-    </div>
-  );
-
-  if (loading) {
-    return <div className="text-center py-8 text-gray-500">Cargando usuarios...</div>;
-  }
+  // Columnas de la tabla
+  const columns = [
+    { 
+      key: 'username', 
+      header: 'Usuario',
+      render: (user: UserWithRigs) => (
+        <div>
+          <span className="font-medium text-gray-900 dark:text-gray-100">{user.username}</span>
+        </div>
+      )
+    },
+    { 
+      key: 'fullName', 
+      header: 'Nombre Completo',
+      render: (user: UserWithRigs) => (
+        <span className="text-gray-700 dark:text-gray-300">{user.fullName || '-'}</span>
+      )
+    },
+    { 
+      key: 'ci', 
+      header: 'Cédula',
+      render: (user: UserWithRigs) => (
+        <span className="text-gray-700 dark:text-gray-300">{user.ci || '-'}</span>
+      )
+    },
+    { 
+      key: 'role', 
+      header: 'Rol',
+      render: (user: UserWithRigs) => getRoleBadge(user.role)
+    },
+    { 
+      key: 'access', 
+      header: 'Acceso a Taladros',
+      render: (user: UserWithRigs) => getRigAccessBadge(user)
+    },
+    { 
+      key: 'actions', 
+      header: 'Acciones',
+      render: (user: UserWithRigs) => (
+        <div className="flex gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => handleEdit(user)}
+            title="Editar"
+            icon={<Edit className="w-4 h-4" />}
+            className=""
+          >
+          </Button>
+          <Button
+            variant="danger"
+            size="sm"
+            onClick={() => handleDelete(user)}
+            title="Eliminar"
+            icon={<Trash2 className="w-4 h-4"/>}
+            className=""
+          >
+          </Button>
+        </div>
+      )
+    },
+  ];
 
   return (
     <div className="space-y-6">
-      {/* Create Form */}
-      {showCreateForm ? (
-        <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-6 bg-gray-50 dark:bg-gray-800">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Crear Nuevo Usuario</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <Input
-              label="Usuario *"
-              value={formData.username}
-              onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-              placeholder="username"
-            />
-            <Input
-              label="Contraseña *"
-              type="password"
-              value={formData.password}
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              placeholder="********"
-            />
-            <Input
-              label="Nombre Completo"
-              value={formData.fullName}
-              onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-              placeholder="Juan Pérez"
-            />
-            <Input
-              label="Cédula (CI)"
-              type="text"
-              value={formData.ci}
-              onChange={(e) => setFormData({ ...formData, ci: e.target.value })}
-              placeholder="12345678"
-            />
-            <Select
-              label="Rol *"
-              value={formData.role}
-              onChange={(e) => setFormData({ ...formData, role: e.target.value as UserRole })}
-            >
-              <option value="operator">Operador</option>
-              <option value="supervisor">Supervisor</option>
-              <option value="admin">Administrador</option>
-            </Select>
-
-            <RigSelector />
-          </div>
-          <div className="flex gap-2">
-            <Button variant="primary" onClick={handleCreate} icon={<Save size={16} />}>
-              Crear Usuario
-            </Button>
-            <Button variant="outline" onClick={() => { setShowCreateForm(false); setFormData(initialFormData); }} icon={<X size={16} />}>
-              Cancelar
-            </Button>
-          </div>
+      {/* Header */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Gestión de Usuarios</h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+            Administra los usuarios y sus permisos en el sistema
+          </p>
         </div>
-      ) : (
-        <div className="flex justify-end">
-          <Button
-            variant="primary"
-            onClick={() => setShowCreateForm(true)}
-            icon={<Plus size={16} />}
-          >
-            Nuevo Usuario
-          </Button>
-        </div>
-      )}
-
-      {/* Users Table */}
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 border border-gray-200 dark:border-gray-700 rounded-lg">
-          <thead className="bg-gray-50 dark:bg-gray-800">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Usuario</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Nombre</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">CI</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Rol</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Acceso</th>
-              <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Acciones</th>
-            </tr>
-          </thead>
-          <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-            {users.map((user) => (
-              <>
-                <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                  {editingId === user.id ? (
-                    <>
-                      <td className="px-6 py-4">
-                        <span className="text-sm text-gray-900 dark:text-gray-100">{user.username}</span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <Input
-                          value={formData.fullName}
-                          onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                        />
-                      </td>
-                      <td className="px-6 py-4">
-                        <Input
-                          type="text"
-                          value={formData.ci}
-                          onChange={(e) => setFormData({ ...formData, ci: e.target.value })}
-                        />
-                      </td>
-                      <td className="px-6 py-4">
-                        <Select
-                          value={formData.role}
-                          onChange={(e) => setFormData({ ...formData, role: e.target.value as UserRole })}
-                        >
-                          <option value="operator">Operador</option>
-                          <option value="supervisor">Supervisor</option>
-                          <option value="admin">Administrador</option>
-                        </Select>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="space-y-2">
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={formData.hasAllRigs}
-                              onChange={(e) => setFormData({ ...formData, hasAllRigs: e.target.checked })}
-                              className="w-4 h-4 rounded"
-                            />
-                            <span className="text-xs">Todos</span>
-                          </label>
-                          {!formData.hasAllRigs && (
-                            <span className="text-xs text-blue-600">
-                              {formData.assignedRigIds.length} seleccionados
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        <div className="flex items-center justify-center gap-2">
-                          <button
-                            onClick={() => handleUpdate(user.id)}
-                            className="text-green-600 hover:text-green-800"
-                          >
-                            <Save size={18} />
-                          </button>
-                          <button
-                            onClick={cancelEdit}
-                            className="text-gray-600 hover:text-gray-800"
-                          >
-                            <X size={18} />
-                          </button>
-                        </div>
-                      </td>
-                    </>
-                  ) : (
-                    <>
-                      <td className="px-6 py-4">
-                        <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{user.username}</span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="text-sm text-gray-900 dark:text-gray-100">{user.fullName || '-'}</span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="text-sm text-gray-900 dark:text-gray-100">{user.ci || '-'}</span>
-                      </td>
-                      <td className="px-6 py-4">
-                        {getRoleBadge(user.role)}
-                      </td>
-                      <td className="px-6 py-4">
-                        {getRigAccessBadge(user)}
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        <div className="flex items-center justify-center gap-2">
-                          <button
-                            onClick={() => startEdit(user)}
-                            className="text-blue-600 hover:text-blue-800"
-                          >
-                            <Edit size={18} />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(user.id)}
-                            className="text-red-600 hover:text-red-800"
-                          >
-                            <Trash2 size={18} />
-                          </button>
-                        </div>
-                      </td>
-                    </>
-                  )}
-                </tr>
-                {/* Expanded row for rig selection when editing */}
-                {editingId === user.id && !formData.hasAllRigs && (
-                  <tr key={`${user.id}-rigs`} className="bg-gray-50 dark:bg-gray-800">
-                    <td colSpan={6} className="px-6 py-4">
-                      <div className="border border-gray-200 dark:border-gray-600 rounded-lg p-4">
-                        <div className="flex items-center justify-between mb-3">
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                            Seleccionar Taladros
-                          </label>
-                          <div className="flex gap-2">
-                            <button
-                              type="button"
-                              onClick={selectAllRigs}
-                              className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400"
-                            >
-                              Seleccionar todos
-                            </button>
-                            <span className="text-gray-400">|</span>
-                            <button
-                              type="button"
-                              onClick={deselectAllRigs}
-                              className="text-xs text-gray-600 hover:text-gray-800 dark:text-gray-400"
-                            >
-                              Deseleccionar todos
-                            </button>
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 max-h-48 overflow-y-auto">
-                          {rigs.map((rig) => (
-                            <label
-                              key={rig.id}
-                              className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors ${
-                                formData.assignedRigIds.includes(rig.id)
-                                  ? 'bg-primary-50 dark:bg-primary-900/20 border border-primary-300 dark:border-primary-700'
-                                  : 'bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600'
-                              }`}
-                            >
-                              <input
-                                type="checkbox"
-                                checked={formData.assignedRigIds.includes(rig.id)}
-                                onChange={() => toggleRigSelection(rig.id)}
-                                className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                              />
-                              <span className="text-sm text-gray-900 dark:text-gray-100 truncate">
-                                {rig.name}
-                              </span>
-                            </label>
-                          ))}
-                        </div>
-
-                        {rigs.length === 0 && (
-                          <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
-                            No hay taladros registrados. Ve a la pestaña de Taladros para crear uno.
-                          </p>
-                        )}
-
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                          {formData.assignedRigIds.length} taladro(s) seleccionado(s)
-                        </p>
-                      </div>
-                    </td>
-                  </tr>
-                )}
-              </>
-            ))}
-          </tbody>
-        </table>
+        <Button 
+          variant="primary" 
+          onClick={handleCreate}
+          icon={<Plus className="w-4 h-4" />}
+        >
+          Nuevo Usuario
+        </Button>
       </div>
 
-      {users.length === 0 && (
-        <div className="text-center py-8 text-gray-500">
-          No hay usuarios registrados
+      {/* Filtros */}
+      <Card>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Búsqueda */}
+          <div>
+            <label htmlFor="search" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Buscar
+            </label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <Input
+                id="search"
+                type="text"
+                placeholder="Buscar por usuario, nombre o cédula..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100"
+              />
+            </div>
+          </div>
+
+          <div></div> {/* Espacio vacío para mantener diseño */}
         </div>
-      )}
+      </Card>
+
+      {/* Tabla */}
+      <Card className="overflow-hidden">
+        {loading ? (
+          <div className="text-center py-12">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <p className="mt-2 text-gray-600 dark:text-gray-400">Cargando usuarios...</p>
+          </div>
+        ) : filteredUsers.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-gray-500 dark:text-gray-400">
+              {searchTerm
+                ? 'No se encontraron usuarios con los filtros aplicados'
+                : 'No hay usuarios registrados'}
+            </p>
+            {!searchTerm && (
+              <Button 
+                variant="primary" 
+                onClick={handleCreate} 
+                className="mt-4"
+                icon={<Plus className="w-4 h-4" />}
+              >
+                Crear Primer Usuario
+              </Button>
+            )}
+          </div>
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <Table
+                columns={columns}
+                data={filteredUsers}
+                className="min-w-full"
+              />
+            </div>
+            <div className="mt-4 text-sm text-gray-600 dark:text-gray-400">
+              Mostrando {filteredUsers.length} de {users.length} usuarios
+            </div>
+          </>
+        )}
+      </Card>
     </div>
   );
 }
