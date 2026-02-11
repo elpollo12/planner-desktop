@@ -190,54 +190,6 @@ function ShiftMembers({
   );
 }
 
-// Legacy sub-component for old reports without personnel
-function LegacyShiftMembers({ shiftIndex }: { shiftIndex: number }) {
-  const { control } = useFormContext<CompleteReportData>();
-
-  const { fields } = useFieldArray({
-    control,
-    name: `crew.shifts.${shiftIndex}.members` as any,
-  });
-
-  return (
-    <div className="mb-4">
-      <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-        Miembros de la Cuadrilla (datos legacy)
-      </h4>
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-          <thead className="bg-gray-50 dark:bg-gray-800">
-            <tr>
-              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Posición</th>
-              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">CI</th>
-              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nombre</th>
-              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Horas</th>
-            </tr>
-          </thead>
-          <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-            {fields.length === 0 ? (
-              <tr>
-                <td colSpan={4} className="px-3 py-4 text-center text-gray-500 text-sm">
-                  No hay miembros registrados.
-                </td>
-              </tr>
-            ) : (
-              fields.map((field: any) => (
-                <tr key={field.id}>
-                  <td className="px-3 py-2 text-sm">{field.position || '-'}</td>
-                  <td className="px-3 py-2 text-sm">{field.ci || '-'}</td>
-                  <td className="px-3 py-2 text-sm">{field.name || '-'}</td>
-                  <td className="px-3 py-2 text-sm">{field.hours ?? '-'}</td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
 export function CrewSection() {
   const [activeShift, setActiveShift] = useState<ShiftType>('morning');
   const { register, watch } = useFormContext<CompleteReportData>();
@@ -246,18 +198,6 @@ export function CrewSection() {
   const rigName = watch('header.rigNumber');
   const [personnel, setPersonnel] = useState<RigPersonnel[]>([]);
   const [loading, setLoading] = useState(false);
-  const [isLegacy, setIsLegacy] = useState(false);
-
-  // Detect if this is a legacy report (members have name/ci but no personnelId)
-  const crewData = watch('crew');
-  useEffect(() => {
-    if (crewData?.shifts) {
-      const hasLegacyMembers = crewData.shifts.some((s) =>
-        s.members?.some((m: any) => (m.name || m.ci) && !m.personnelId)
-      );
-      setIsLegacy(hasLegacyMembers);
-    }
-  }, []); // Only check on mount
 
   // Load rig personnel when rig changes
   useEffect(() => {
@@ -356,8 +296,6 @@ export function CrewSection() {
       {/* Members Table */}
       {loading ? (
         <div className="text-center py-8 text-gray-500">Cargando personal del taladro...</div>
-      ) : isLegacy ? (
-        <LegacyShiftMembers key={`legacy-shift-${shiftIndex}`} shiftIndex={shiftIndex} />
       ) : (
         <ShiftMembers
           key={`shift-${shiftIndex}`}

@@ -418,13 +418,13 @@ export default function ReportForm() {
                 shift: shift.shift,
                 shiftStart: shift.shiftStart,
                 shiftEnd: shift.shiftEnd,
-                members: shift.members.map(member => ({
-                  personnelId: member.personnelId,
-                  position: member.position || '',
-                  ci: member.ci,
-                  name: member.personnelName || member.name,
-                  hours: member.hours
-                }))
+                members: shift.members
+                  .filter(member => member.personnelId)
+                  .map(member => ({
+                    personnelId: member.personnelId,
+                    position: member.position || '',
+                    hours: member.hours
+                  }))
               }))
             : DEFAULT_VALUES.crew!.shifts,
         },
@@ -536,13 +536,13 @@ export default function ReportForm() {
                 shift: shift.shift,
                 shiftStart: shift.shiftStart,
                 shiftEnd: shift.shiftEnd,
-                members: shift.members.map(member => ({
-                  personnelId: member.personnelId,
-                  position: member.position || '',
-                  ci: member.ci,
-                  name: member.personnelName || member.name,
-                  hours: member.hours
-                }))
+                members: shift.members
+                  .filter(member => member.personnelId)
+                  .map(member => ({
+                    personnelId: member.personnelId,
+                    position: member.position || '',
+                    hours: member.hours
+                  }))
               }))
             : DEFAULT_VALUES.crew!.shifts,
         },
