@@ -21,7 +21,6 @@ export function exportReportsToExcel(reports: Report[], filename: string = 'repo
       'Contratista': report.contractor || '-',
       'Operador': report.operator || '-',
       'Campo/Distrito': report.fieldDistrict || '-',
-      'Municipio': report.municipality || '-',
       'Taladro': report.rigNumber || '-',
       'Supervisor': report.supervisor24h || '-',
       'Estado': getStatusLabel(report.status),
@@ -77,7 +76,6 @@ export function exportSingleReportToExcel(data: any, filename: string): void {
       ['Contratista:', report.contractor || '-'],
       ['Operador:', report.operator || '-'],
       ['Campo/Distrito:', report.fieldDistrict || '-'],
-      ['Municipio:', report.municipality || '-'],
       ['Taladro #:', report.rigNumber || '-'],
       ['Supervisor 24h:', report.supervisor24h || '-'],
     ];

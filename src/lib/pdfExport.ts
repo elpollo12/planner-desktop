@@ -29,6 +29,14 @@ const SHIFT_LABELS: Record<string, string> = {
   night: 'Noche',
 };
 
+// Helper para asegurar que el texto es válido para jsPDF
+const ensureValidText = (value: any): string => {
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number') return value.toString();
+  return String(value);
+};
+
 /**
  * Exporta un reporte completo a PDF
  * Compatible con jsPDF v2.x
@@ -108,15 +116,20 @@ export async function exportReportToPDF(data: ReportData): Promise<void> {
 
     info.forEach(row => {
       checkPageBreak(8);
-      doc.setFont('helvetica', 'bold');
-      doc.text(row[0], margin, yPos);
-      doc.setFont('helvetica', 'normal');
-      doc.text(row[1], margin + 45, yPos);
       
+      // Primera columna (siempre existe)
       doc.setFont('helvetica', 'bold');
-      doc.text(row[2], pageWidth / 2 + 5, yPos);
+      doc.text(ensureValidText(row[0]), margin, yPos);
       doc.setFont('helvetica', 'normal');
-      doc.text(row[3], pageWidth / 2 + 50, yPos);
+      doc.text(ensureValidText(row[1]), margin + 45, yPos);
+      
+      // Segunda columna (solo si existe)
+      if (row.length >= 4) {
+        doc.setFont('helvetica', 'bold');
+        doc.text(ensureValidText(row[2]), pageWidth / 2 + 5, yPos);
+        doc.setFont('helvetica', 'normal');
+        doc.text(ensureValidText(row[3]), pageWidth / 2 + 50, yPos);
+      }
       
       yPos += 7;
     });
