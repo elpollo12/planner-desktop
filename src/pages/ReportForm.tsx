@@ -413,7 +413,19 @@ export default function ReportForm() {
         },
         drillString: drillString || {},
         crew: {
-          shifts: crewShifts.length > 0 ? crewShifts : DEFAULT_VALUES.crew!.shifts,
+          shifts: crewShifts.length > 0 
+            ? crewShifts.map(shift => ({
+                shift: shift.shift,
+                shiftStart: shift.shiftStart,
+                shiftEnd: shift.shiftEnd,
+                members: shift.members.map(member => ({
+                  position: member.position || '',
+                  ci: member.ci,
+                  name: member.name,
+                  hours: member.hours
+                }))
+              }))
+            : DEFAULT_VALUES.crew!.shifts,
         },
         bitRecords: {
           records: bitRecords,
@@ -421,9 +433,9 @@ export default function ReportForm() {
         timeDistribution: {
           distributions: (timeDistributions as any[]).map(td => ({
             operationCodeId: td.operationCodeId,
-            hoursShift1: td.hoursShift1,
-            hoursShift2: td.hoursShift2,
-            hoursShift3: td.hoursShift3,
+            hoursShift1: typeof td.hoursShift1 === 'number' ? td.hoursShift1 : 0,
+            hoursShift2: typeof td.hoursShift2 === 'number' ? td.hoursShift2 : 0,
+            hoursShift3: typeof td.hoursShift3 === 'number' ? td.hoursShift3 : 0,
           })),
         },
         mudRecords: {
@@ -518,7 +530,19 @@ export default function ReportForm() {
         },
         drillString: drillString || {},
         crew: {
-          shifts: crewShifts.length > 0 ? crewShifts : DEFAULT_VALUES.crew!.shifts,
+          shifts: crewShifts.length > 0 
+            ? crewShifts.map(shift => ({
+                shift: shift.shift,
+                shiftStart: shift.shiftStart,
+                shiftEnd: shift.shiftEnd,
+                members: shift.members.map(member => ({
+                  position: member.position || '',
+                  ci: member.ci,
+                  name: member.name,
+                  hours: member.hours
+                }))
+              }))
+            : DEFAULT_VALUES.crew!.shifts,
         },
         bitRecords: {
           records: bitRecords,
@@ -526,9 +550,9 @@ export default function ReportForm() {
         timeDistribution: {
           distributions: (timeDistributions as any[]).map(td => ({
             operationCodeId: td.operationCodeId,
-            hoursShift1: td.hoursShift1,
-            hoursShift2: td.hoursShift2,
-            hoursShift3: td.hoursShift3,
+            hoursShift1: typeof td.hoursShift1 === 'number' ? td.hoursShift1 : 0,
+            hoursShift2: typeof td.hoursShift2 === 'number' ? td.hoursShift2 : 0,
+            hoursShift3: typeof td.hoursShift3 === 'number' ? td.hoursShift3 : 0,
           })),
         },
         mudRecords: {
@@ -741,8 +765,27 @@ export default function ReportForm() {
     // PASO 2: Insertar todos los shifts del formulario (solo si hay datos)
     if (formData.crew?.shifts) {
       for (const shift of formData.crew.shifts) {
-        if (shift.members.length > 0) {
-          await crewApi.createShift(sessionToken, reportId, shift);
+        // Validar que el shift tenga los campos requeridos
+        if (!shift.shift) {
+          console.warn('Skipping shift without shift type:', shift);
+          continue;
+        }
+        
+        if (shift.members && shift.members.length > 0) {
+          // Limpiar el objeto shift antes de enviarlo
+          const cleanShift = {
+            shift: shift.shift,
+            shiftStart: shift.shiftStart,
+            shiftEnd: shift.shiftEnd,
+            members: shift.members.map(member => ({
+              position: member.position || '',
+              ci: member.ci,
+              name: member.name,
+              hours: member.hours
+            }))
+          };
+          
+          await crewApi.createShift(sessionToken, reportId, cleanShift);
         }
       }
     }
@@ -790,10 +833,18 @@ export default function ReportForm() {
     
     // PASO 2: Insertar todos los distributions del formulario (solo si hay datos)
     if (formData.timeDistribution?.distributions && formData.timeDistribution.distributions.length > 0) {
+      // Limpiar y validar los datos antes de enviar
+      const cleanDistributions = formData.timeDistribution.distributions.map(dist => ({
+        operationCodeId: dist.operationCodeId,
+        hoursShift1: typeof dist.hoursShift1 === 'number' ? dist.hoursShift1 : 0,
+        hoursShift2: typeof dist.hoursShift2 === 'number' ? dist.hoursShift2 : 0,
+        hoursShift3: typeof dist.hoursShift3 === 'number' ? dist.hoursShift3 : 0,
+      }));
+      
       await timeDistributionApi.saveBulk(
         sessionToken,
         reportId,
-        formData.timeDistribution.distributions
+        cleanDistributions
       );
     }
   };

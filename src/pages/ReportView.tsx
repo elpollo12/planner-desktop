@@ -334,10 +334,6 @@ export default function ReportView() {
                 <p className="text-base font-medium text-gray-900 dark:text-gray-100">{report.fieldDistrict || '-'}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Municipio</p>
-                <p className="text-base font-medium text-gray-900 dark:text-gray-100">{report.municipality || '-'}</p>
-              </div>
-              <div>
                 <p className="text-sm text-gray-600 dark:text-gray-400">Taladro #</p>
                 <p className="text-base font-medium text-gray-900 dark:text-gray-100">{report.rigNumber || '-'}</p>
               </div>
