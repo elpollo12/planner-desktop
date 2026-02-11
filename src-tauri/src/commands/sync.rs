@@ -229,7 +229,6 @@ pub async fn sync_full(
     check_permission(&session_token, UserRole::Admin, &state)
         .map_err(|e| e.to_string())?;
 
-    let cfg = config::load_config()?;
     let credentials = TursoCredentials::from_env()?;
     let client = TursoClient::new(&credentials.database_url, &credentials.auth_token);
     let now = chrono::Utc::now().to_rfc3339();
@@ -238,13 +237,14 @@ pub async fn sync_full(
     let _ = engine::initialize_remote_db(&client).await;
 
     // === PUSH ===
-    // Step 1: Read local data (sync, lock held briefly)
+    // Step 1: Read ALL local data (full sync pushes everything, not incremental)
+    // This ensures cleanup_turso_child_rows covers ALL reports, removing duplicates
     let table_data = {
         let conn = state
             .db
             .lock()
             .map_err(|e| format!("Failed to lock database: {}", e))?;
-        engine::read_all_local_data(&conn, cfg.last_push_at.as_deref())?
+        engine::read_all_local_data(&conn, None)?
     };
 
     // Step 2: Push to Turso (async, no lock)
@@ -265,7 +265,7 @@ pub async fn sync_full(
     let (pulled_data, pull_result) =
         engine::pull_data_from_turso(&client, None).await?;
 
-    // Step 5: Write to local (sync, lock held briefly)
+    // Step 5: Write to local + reconcile stale records (sync, lock held briefly)
     let mut pull_errors: Vec<String> = Vec::new();
     if !pulled_data.is_empty() {
         let conn = state
@@ -274,6 +274,14 @@ pub async fn sync_full(
             .map_err(|e| format!("Failed to lock database: {}", e))?;
         if let Err(e) = engine::write_pulled_data(&conn, &pulled_data) {
             pull_errors.push(format!("Error writing to local DB: {}", e));
+        }
+
+        // Step 6: Remove local records that don't exist in Turso
+        // Only safe after push succeeded (all local data is already in Turso)
+        if push_result.success {
+            if let Err(e) = engine::reconcile_local_with_remote(&conn, &pulled_data) {
+                pull_errors.push(format!("Reconciliation warning: {}", e));
+            }
         }
     }
 

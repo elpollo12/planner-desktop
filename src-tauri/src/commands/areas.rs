@@ -40,11 +40,11 @@ pub async fn list_areas(state: State<'_, AppState>, include_inactive: bool) -> R
     let conn = state.db.lock().unwrap();
     
     let query = if include_inactive {
-        "SELECT id, name, country, state, active, created_by, updated_by, created_at, updated_at 
-         FROM areas ORDER BY name ASC"
+        "SELECT id, name, country, state, active, created_by, updated_by, created_at, updated_at
+         FROM areas WHERE (is_deleted IS NULL OR is_deleted = 0) ORDER BY name ASC"
     } else {
-        "SELECT id, name, country, state, active, created_by, updated_by, created_at, updated_at 
-         FROM areas WHERE active = 1 ORDER BY name ASC"
+        "SELECT id, name, country, state, active, created_by, updated_by, created_at, updated_at
+         FROM areas WHERE active = 1 AND (is_deleted IS NULL OR is_deleted = 0) ORDER BY name ASC"
     };
 
     let mut stmt = conn.prepare(query)?;
@@ -145,8 +145,12 @@ pub async fn update_area(
 #[tauri::command]
 pub async fn delete_area(state: State<'_, AppState>, id: String) -> Result<()> {
     let conn = state.db.lock().unwrap();
+    let now = Utc::now().to_rfc3339();
 
-    conn.execute("DELETE FROM areas WHERE id = ?1", params![&id])?;
+    conn.execute(
+        "UPDATE areas SET is_deleted = 1, active = 0, updated_at = ?1 WHERE id = ?2",
+        params![&now, &id],
+    )?;
 
     Ok(())
 }

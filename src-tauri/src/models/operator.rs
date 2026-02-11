@@ -38,12 +38,12 @@ impl Operator {
         })
     }
 
-    /// Get all operators (optionally filter by active status)
+    /// Get all operators (optionally filter by active status, excludes soft-deleted)
     pub fn list(conn: &Connection, only_active: bool) -> rusqlite::Result<Vec<Self>> {
         let sql = if only_active {
-            "SELECT * FROM operators WHERE active = 1 ORDER BY name ASC"
+            "SELECT * FROM operators WHERE active = 1 AND (is_deleted IS NULL OR is_deleted = 0) ORDER BY name ASC"
         } else {
-            "SELECT * FROM operators ORDER BY name ASC"
+            "SELECT * FROM operators WHERE (is_deleted IS NULL OR is_deleted = 0) ORDER BY name ASC"
         };
 
         let mut stmt = conn.prepare(sql)?;
@@ -125,11 +125,12 @@ impl Operator {
         Self::get_by_id(conn, id)
     }
 
-    /// Delete an operator (soft delete by setting active = 0)
+    /// Soft delete an operator (marks is_deleted = 1 so sync propagates it)
     pub fn delete(conn: &Connection, id: &str) -> rusqlite::Result<bool> {
+        let now = chrono::Utc::now().to_rfc3339();
         let rows = conn.execute(
-            "UPDATE operators SET active = 0, updated_at = ? WHERE id = ?",
-            params![chrono::Utc::now().to_rfc3339(), id],
+            "UPDATE operators SET is_deleted = 1, active = 0, updated_at = ? WHERE id = ?",
+            params![now, id],
         )?;
         Ok(rows > 0)
     }

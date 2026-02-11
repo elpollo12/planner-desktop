@@ -175,11 +175,11 @@ impl User {
         Ok(user)
     }
 
-    /// Get user by username
+    /// Get user by username (excludes soft-deleted users)
     pub fn get_by_username(conn: &Connection, username: &str) -> Result<User, AppError> {
         let user = conn.query_row(
             "SELECT id, username, password_hash, full_name, ci, role, position, active, has_all_rigs, supervisor_id, last_login, created_by, updated_by, created_at, updated_at
-             FROM users WHERE username = ?1",
+             FROM users WHERE username = ?1 AND (is_deleted IS NULL OR is_deleted = 0)",
             params![username],
             User::from_row,
         )?;
@@ -187,11 +187,11 @@ impl User {
         Ok(user)
     }
 
-    /// List all users
+    /// List all users (excludes soft-deleted)
     pub fn list(conn: &Connection) -> Result<Vec<User>, AppError> {
         let mut stmt = conn.prepare(
             "SELECT id, username, password_hash, full_name, ci, role, position, active, has_all_rigs, supervisor_id, last_login, created_by, updated_by, created_at, updated_at
-             FROM users ORDER BY created_at DESC"
+             FROM users WHERE (is_deleted IS NULL OR is_deleted = 0) ORDER BY created_at DESC"
         )?;
 
         let users = stmt
@@ -398,9 +398,13 @@ impl User {
         Ok(())
     }
 
-    /// Delete user (soft delete by setting active = 0, or hard delete)
+    /// Soft delete user (marks is_deleted = 1 so sync propagates it)
     pub fn delete(conn: &Connection, user_id: &str) -> Result<(), AppError> {
-        conn.execute("DELETE FROM users WHERE id = ?1", params![user_id])?;
+        let now = chrono::Utc::now().to_rfc3339();
+        conn.execute(
+            "UPDATE users SET is_deleted = 1, active = 0, updated_at = ?1 WHERE id = ?2",
+            params![&now, user_id],
+        )?;
         Ok(())
     }
 }

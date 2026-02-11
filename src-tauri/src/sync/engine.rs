@@ -20,7 +20,7 @@ const SYNC_TABLES: &[TableDef] = &[
         columns: &[
             "id", "username", "password_hash", "full_name", "ci", "role",
             "position", "active", "has_all_rigs", "supervisor_id", "last_login", "created_by", "updated_by",
-            "created_at", "updated_at",
+            "created_at", "updated_at", "is_deleted",
         ],
         id_col: "id",
         has_updated_at: true,
@@ -30,7 +30,7 @@ const SYNC_TABLES: &[TableDef] = &[
         name: "operation_codes",
         columns: &[
             "id", "code", "name", "category", "sort_order", "active",
-            "created_by", "updated_by", "created_at",
+            "created_by", "updated_by", "created_at", "is_deleted",
         ],
         id_col: "id",
         has_updated_at: false,
@@ -40,7 +40,7 @@ const SYNC_TABLES: &[TableDef] = &[
         name: "areas",
         columns: &[
             "id", "name", "country", "state", "active", "created_by",
-            "updated_by", "created_at", "updated_at",
+            "updated_by", "created_at", "updated_at", "is_deleted",
         ],
         id_col: "id",
         has_updated_at: true,
@@ -49,7 +49,7 @@ const SYNC_TABLES: &[TableDef] = &[
     TableDef {
         name: "operators",
         columns: &[
-            "id", "name", "logo_path", "active", "created_at", "updated_at",
+            "id", "name", "logo_path", "active", "created_at", "updated_at", "is_deleted",
         ],
         id_col: "id",
         has_updated_at: true,
@@ -59,7 +59,7 @@ const SYNC_TABLES: &[TableDef] = &[
         name: "rigs",
         columns: &[
             "id", "name", "operator", "power", "area_id", "active",
-            "created_by", "updated_by", "created_at", "updated_at",
+            "created_by", "updated_by", "created_at", "updated_at", "is_deleted",
         ],
         id_col: "id",
         has_updated_at: true,
@@ -369,11 +369,13 @@ CREATE TABLE IF NOT EXISTS users (
   position TEXT,
   active INTEGER DEFAULT 1,
   has_all_rigs INTEGER DEFAULT 0,
+  supervisor_id TEXT,
   last_login TEXT,
   created_by TEXT,
   updated_by TEXT,
   created_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL
+  updated_at TEXT NOT NULL,
+  is_deleted INTEGER DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS operation_codes (
@@ -385,7 +387,8 @@ CREATE TABLE IF NOT EXISTS operation_codes (
   active INTEGER DEFAULT 1,
   created_by TEXT,
   updated_by TEXT,
-  created_at TEXT NOT NULL
+  created_at TEXT NOT NULL,
+  is_deleted INTEGER DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS areas (
@@ -397,7 +400,8 @@ CREATE TABLE IF NOT EXISTS areas (
   created_by TEXT,
   updated_by TEXT,
   created_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL
+  updated_at TEXT NOT NULL,
+  is_deleted INTEGER DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS operators (
@@ -406,7 +410,8 @@ CREATE TABLE IF NOT EXISTS operators (
   logo_path TEXT,
   active INTEGER DEFAULT 1,
   created_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL
+  updated_at TEXT NOT NULL,
+  is_deleted INTEGER DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS rigs (
@@ -419,7 +424,8 @@ CREATE TABLE IF NOT EXISTS rigs (
   created_by TEXT,
   updated_by TEXT,
   created_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL
+  updated_at TEXT NOT NULL,
+  is_deleted INTEGER DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS user_rigs (
@@ -627,6 +633,12 @@ const REMOTE_MIGRATIONS: &[&str] = &[
     "ALTER TABLE users ADD COLUMN supervisor_id TEXT",
     // V18: reports.is_deleted (soft delete)
     "ALTER TABLE reports ADD COLUMN is_deleted INTEGER DEFAULT 0",
+    // V19: is_deleted for management tables (soft delete for sync)
+    "ALTER TABLE users ADD COLUMN is_deleted INTEGER DEFAULT 0",
+    "ALTER TABLE areas ADD COLUMN is_deleted INTEGER DEFAULT 0",
+    "ALTER TABLE rigs ADD COLUMN is_deleted INTEGER DEFAULT 0",
+    "ALTER TABLE operators ADD COLUMN is_deleted INTEGER DEFAULT 0",
+    "ALTER TABLE operation_codes ADD COLUMN is_deleted INTEGER DEFAULT 0",
 ];
 
 /// Initialize the remote Turso database with the same schema
@@ -846,6 +858,90 @@ pub fn write_pulled_data(
     Ok(total)
 }
 
+/// During full sync, remove local records that don't exist in Turso.
+/// Only reconciles tables that had rows pulled (tables empty in Turso are left alone).
+/// Must be called AFTER push succeeded and pulled data has been written.
+pub fn reconcile_local_with_remote(
+    conn: &Connection,
+    pulled_data: &[(usize, Vec<Vec<TursoValue>>)],
+) -> Result<u32, String> {
+    conn.execute("PRAGMA foreign_keys = OFF", [])
+        .map_err(|e| format!("Failed to disable FK: {}", e))?;
+
+    let mut total_deleted: u32 = 0;
+
+    for (idx, rows) in pulled_data {
+        let table_def = &SYNC_TABLES[*idx];
+        let id_col_idx = table_def
+            .columns
+            .iter()
+            .position(|c| *c == table_def.id_col)
+            .unwrap_or(0);
+
+        // Collect all IDs from pulled data
+        let pulled_ids: Vec<String> = rows
+            .iter()
+            .filter_map(|row| match row.get(id_col_idx) {
+                Some(TursoValue::Text(id)) => Some(id.clone()),
+                Some(TursoValue::Integer(id)) => Some(id.clone()),
+                _ => None,
+            })
+            .collect();
+
+        if pulled_ids.is_empty() {
+            continue;
+        }
+
+        // Delete local records whose IDs are NOT in the pulled set
+        let placeholders: String = (1..=pulled_ids.len())
+            .map(|i| format!("?{}", i))
+            .collect::<Vec<_>>()
+            .join(", ");
+
+        let sql = format!(
+            "DELETE FROM {} WHERE {} NOT IN ({})",
+            table_def.name, table_def.id_col, placeholders
+        );
+
+        let params: Vec<Box<dyn rusqlite::ToSql>> = pulled_ids
+            .iter()
+            .map(|id| Box::new(id.clone()) as Box<dyn rusqlite::ToSql>)
+            .collect();
+        let param_refs: Vec<&dyn rusqlite::ToSql> =
+            params.iter().map(|p| p.as_ref()).collect();
+
+        match conn.execute(&sql, param_refs.as_slice()) {
+            Ok(count) => {
+                if count > 0 {
+                    println!(
+                        "[Sync] Reconciled '{}': removed {} stale local records",
+                        table_def.name, count
+                    );
+                    total_deleted += count as u32;
+                }
+            }
+            Err(e) => {
+                println!(
+                    "[Sync] Warning: reconcile '{}' failed: {}",
+                    table_def.name, e
+                );
+            }
+        }
+    }
+
+    conn.execute("PRAGMA foreign_keys = ON", [])
+        .map_err(|e| format!("Failed to re-enable FK: {}", e))?;
+
+    if total_deleted > 0 {
+        println!(
+            "[Sync] Reconciliation complete: {} stale records removed",
+            total_deleted
+        );
+    }
+
+    Ok(total_deleted)
+}
+
 // =============================================================================
 // ASYNC: Push/Pull data to/from Turso (no Connection references)
 // =============================================================================
@@ -859,6 +955,9 @@ pub async fn push_data_to_turso(
     let mut total_pushed: u32 = 0;
     let mut tables_synced: u32 = 0;
     let mut errors: Vec<String> = Vec::new();
+
+    // Disable foreign key constraints to avoid reference errors during push
+    let _ = client.execute("PRAGMA foreign_keys = OFF;", vec![]).await;
 
     // Clean up stale child rows in Turso before pushing to prevent duplicates
     let report_ids = collect_report_ids_from_table_data(&table_data);
@@ -887,6 +986,9 @@ pub async fn push_data_to_turso(
             }
         }
     }
+
+    // Re-enable foreign key constraints
+    let _ = client.execute("PRAGMA foreign_keys = ON;", vec![]).await;
 
     Ok(SyncResult {
         success: errors.is_empty(),

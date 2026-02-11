@@ -92,10 +92,10 @@ impl OperationCode {
     pub fn list(conn: &Connection, active_only: bool) -> Result<Vec<OperationCode>, AppError> {
         let query = if active_only {
             "SELECT id, code, name, category, sort_order, active, created_by, updated_by, created_at
-             FROM operation_codes WHERE active = 1 ORDER BY sort_order, code"
+             FROM operation_codes WHERE active = 1 AND (is_deleted IS NULL OR is_deleted = 0) ORDER BY sort_order, code"
         } else {
             "SELECT id, code, name, category, sort_order, active, created_by, updated_by, created_at
-             FROM operation_codes ORDER BY sort_order, code"
+             FROM operation_codes WHERE (is_deleted IS NULL OR is_deleted = 0) ORDER BY sort_order, code"
         };
 
         let mut stmt = conn.prepare(query)?;
@@ -149,8 +149,12 @@ impl OperationCode {
         OperationCode::get_by_id(conn, id)
     }
 
+    /// Soft delete operation code (marks is_deleted = 1 so sync propagates it)
     pub fn delete(conn: &Connection, id: &str) -> Result<(), AppError> {
-        conn.execute("DELETE FROM operation_codes WHERE id = ?1", params![id])?;
+        conn.execute(
+            "UPDATE operation_codes SET is_deleted = 1 WHERE id = ?1",
+            params![id],
+        )?;
         Ok(())
     }
 }
