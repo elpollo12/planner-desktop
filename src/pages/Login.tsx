@@ -80,6 +80,7 @@ export default function Login() {
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Ingrese su contraseña"
             required
+            allowSubmitOnEnter
           />
 
           {error && (
