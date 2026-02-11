@@ -202,8 +202,10 @@ export function UsersManagement() {
     { 
       key: 'username', 
       header: 'Usuario',
+      truncate: true,
+      maxWidth: '150px',
       render: (user: UserWithRigs) => (
-        <div>
+        <div className="truncate" title={user.username}>
           <span className="font-medium text-gray-900 dark:text-gray-100">{user.username}</span>
         </div>
       )
@@ -211,8 +213,12 @@ export function UsersManagement() {
     { 
       key: 'fullName', 
       header: 'Nombre Completo',
+      truncate: true,
+      maxWidth: '200px',
       render: (user: UserWithRigs) => (
-        <span className="text-gray-700 dark:text-gray-300">{user.fullName || '-'}</span>
+        <span className="text-gray-700 dark:text-gray-300 truncate block" title={user.fullName || '-'}>
+          {user.fullName || '-'}
+        </span>
       )
     },
     { 
@@ -235,6 +241,7 @@ export function UsersManagement() {
     { 
       key: 'actions', 
       header: 'Acciones',
+      width: '120px',
       render: (user: UserWithRigs) => (
         <div className="flex gap-2">
           <Button
@@ -330,18 +337,15 @@ export function UsersManagement() {
             )}
           </div>
         ) : (
-          <>
-            <div className="overflow-x-auto">
-              <Table
-                columns={columns}
-                data={filteredUsers}
-                className="min-w-full"
-              />
-            </div>
-            <div className="mt-4 text-sm text-gray-600 dark:text-gray-400">
-              Mostrando {filteredUsers.length} de {users.length} usuarios
-            </div>
-          </>
+          <Table
+            columns={columns}
+            data={filteredUsers}
+            pagination={true}
+            pageSize={5}
+            pageSizeOptions={[5, 10, 20, 50]}
+            hoverable={true}
+            striped={true}
+          />
         )}
       </Card>
     </div>
