@@ -47,7 +47,7 @@ export function OperationCodesManagement() {
   // Abrir modal para crear
   const handleCreate = () => {
     openModal(
-      <OperationCodeForm 
+      <OperationCodeForm
         onSubmit={async (data) => {
           try {
             await operationCodesApi.create(sessionToken!, data);
@@ -71,7 +71,7 @@ export function OperationCodesManagement() {
   // Abrir modal para editar
   const handleEdit = (code: OperationCode) => {
     openModal(
-      <OperationCodeForm 
+      <OperationCodeForm
         code={code}
         onSubmit={async (data) => {
           try {
@@ -137,8 +137,8 @@ export function OperationCodesManagement() {
 
   // Columnas de la tabla
   const columns = [
-    { 
-      key: 'code', 
+    {
+      key: 'code',
       header: 'Código',
       render: (code: OperationCode) => (
         <div>
@@ -146,44 +146,43 @@ export function OperationCodesManagement() {
         </div>
       )
     },
-    { 
-      key: 'name', 
+    {
+      key: 'name',
       header: 'Nombre',
       render: (code: OperationCode) => (
         <span className="text-gray-700 dark:text-gray-300">{code.name}</span>
       )
     },
-    { 
-      key: 'category', 
+    {
+      key: 'category',
       header: 'Categoría',
       render: (code: OperationCode) => (
         <span className="text-gray-600 dark:text-gray-400">{code.category || '-'}</span>
       )
     },
-    { 
-      key: 'sortOrder', 
+    {
+      key: 'sortOrder',
       header: 'Orden',
       render: (code: OperationCode) => (
         <span className="text-center block text-gray-700 dark:text-gray-300">{code.sortOrder}</span>
       )
     },
-    { 
-      key: 'status', 
+    {
+      key: 'status',
       header: 'Estado',
       render: (code: OperationCode) => (
         <span
-          className={`px-2 py-1 text-xs font-medium rounded-full ${
-            code.active
+          className={`px-2 py-1 text-xs font-medium rounded-full ${code.active
               ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
               : 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300'
-          }`}
+            }`}
         >
           {code.active ? 'Activo' : 'Inactivo'}
         </span>
       )
     },
-    { 
-      key: 'actions', 
+    {
+      key: 'actions',
       header: 'Acciones',
       render: (code: OperationCode) => (
         <div className="flex gap-2">
@@ -220,8 +219,8 @@ export function OperationCodesManagement() {
             Administra los códigos de operación para reportes de taladros
           </p>
         </div>
-        <Button 
-          variant="primary" 
+        <Button
+          variant="primary"
           onClick={handleCreate}
           icon={<Plus className="w-4 h-4" />}
         >
@@ -283,9 +282,9 @@ export function OperationCodesManagement() {
                 : 'No hay códigos registrados'}
             </p>
             {!searchTerm && (
-              <Button 
-                variant="primary" 
-                onClick={handleCreate} 
+              <Button
+                variant="primary"
+                onClick={handleCreate}
                 className="mt-4"
                 icon={<Plus className="w-4 h-4" />}
               >
@@ -299,11 +298,12 @@ export function OperationCodesManagement() {
               <Table
                 columns={columns}
                 data={filteredCodes}
-                className="min-w-full"
+                pagination={true}
+                pageSize={5}
+                pageSizeOptions={[5, 10, 20, 50]}
+                hoverable={true}
+                striped={true}
               />
-            </div>
-            <div className="mt-4 text-sm text-gray-600 dark:text-gray-400">
-              Mostrando {filteredCodes.length} de {codes.length} códigos
             </div>
           </>
         )}

@@ -273,10 +273,12 @@ export default function AreasManagement() {
             <Table
               columns={columns}
               data={filteredAreas}
+              pagination={true}
+              pageSize={5}
+              pageSizeOptions={[5, 10, 20, 50]}
+              hoverable={true}
+              striped={true}
             />
-            <div className="mt-4 text-sm text-gray-600">
-              Mostrando {filteredAreas.length} de {areas.length} áreas
-            </div>
           </>
         )}
       </Card>
