@@ -35,6 +35,7 @@
   --color-secondary-800: #9a3412;
   --color-secondary-900: #7c2d12;
   --color-secondary-950: #431407;
+  --color-secondary-contrast: #ffffff;
 
   /* === SUCCESS COLORS === */
   --color-success-50: #f0fdf4;
