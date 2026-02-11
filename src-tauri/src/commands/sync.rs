@@ -150,6 +150,10 @@ pub async fn sync_push(
 
     // Step 2: Push to Turso asynchronously (no lock held)
     let client = TursoClient::new(&credentials.database_url, &credentials.auth_token);
+
+    // Ensure remote schema/migrations are up to date
+    let _ = engine::initialize_remote_db(&client).await;
+
     let result = engine::push_data_to_turso(&client, table_data).await?;
 
     // Step 3: Mark reports as synced (lock held briefly)
@@ -185,6 +189,10 @@ pub async fn sync_pull(
 
     // Step 1: Pull from Turso asynchronously (no lock needed)
     let client = TursoClient::new(&credentials.database_url, &credentials.auth_token);
+
+    // Ensure remote schema/migrations are up to date
+    let _ = engine::initialize_remote_db(&client).await;
+
     let (pulled_data, mut result) =
         engine::pull_data_from_turso(&client, cfg.last_pull_at.as_deref()).await?;
 
@@ -225,6 +233,9 @@ pub async fn sync_full(
     let credentials = TursoCredentials::from_env()?;
     let client = TursoClient::new(&credentials.database_url, &credentials.auth_token);
     let now = chrono::Utc::now().to_rfc3339();
+
+    // Ensure remote schema/migrations are up to date
+    let _ = engine::initialize_remote_db(&client).await;
 
     // === PUSH ===
     // Step 1: Read local data (sync, lock held briefly)

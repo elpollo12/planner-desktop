@@ -49,11 +49,15 @@ export function UsersManagement() {
     }
   };
 
+  // Filtrar supervisores activos para el select
+  const activeSupervisors = users.filter(u => u.role === 'supervisor' && u.active !== false);
+
   // Abrir modal para crear
   const handleCreate = () => {
     openModal(
-      <UsersForm 
+      <UsersForm
         rigs={rigs}
+        supervisors={activeSupervisors}
         onSubmit={async (data) => {
           try {
             await usersApi.create(sessionToken!, {
@@ -64,6 +68,7 @@ export function UsersManagement() {
               role: data.role,
               hasAllRigs: data.hasAllRigs,
               assignedRigIds: data.hasAllRigs ? [] : data.assignedRigIds,
+              supervisorId: data.supervisorId,
             });
             toast.success('Usuario creado exitosamente');
             closeModal();
@@ -85,9 +90,10 @@ export function UsersManagement() {
   // Abrir modal para editar
   const handleEdit = (user: UserWithRigs) => {
     openModal(
-      <UsersForm 
+      <UsersForm
         user={user}
         rigs={rigs}
+        supervisors={activeSupervisors}
         isEditing={true}
         onSubmit={async (data) => {
           try {
@@ -97,6 +103,7 @@ export function UsersManagement() {
               role: data.role,
               hasAllRigs: data.hasAllRigs,
               assignedRigIds: data.hasAllRigs ? [] : data.assignedRigIds,
+              supervisorId: data.role === 'operator' ? (data.supervisorId || null) : null,
             });
             toast.success('Usuario actualizado exitosamente');
             closeModal();
@@ -228,13 +235,28 @@ export function UsersManagement() {
         <span className="text-gray-700 dark:text-gray-300">{user.ci || '-'}</span>
       )
     },
-    { 
-      key: 'role', 
+    {
+      key: 'role',
       header: 'Rol',
       render: (user: UserWithRigs) => getRoleBadge(user.role)
     },
-    { 
-      key: 'access', 
+    {
+      key: 'supervisor',
+      header: 'Supervisor',
+      render: (user: UserWithRigs) => {
+        if (user.role !== 'operator' || !user.supervisorId) {
+          return <span className="text-gray-400">-</span>;
+        }
+        const supervisor = users.find(u => u.id === user.supervisorId);
+        return (
+          <span className="text-gray-700 dark:text-gray-300 text-sm">
+            {supervisor ? (supervisor.fullName || supervisor.username) : '-'}
+          </span>
+        );
+      }
+    },
+    {
+      key: 'access',
       header: 'Acceso a Taladros',
       render: (user: UserWithRigs) => getRigAccessBadge(user)
     },

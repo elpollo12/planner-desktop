@@ -14,13 +14,15 @@ interface UsersFormProps {
         role: UserRole;
         hasAllRigs: boolean;
         assignedRigIds: string[];
+        supervisorId?: string;
     }) => Promise<void>;
     user?: UserWithRigs | null;
     rigs: Rig[];
+    supervisors?: UserWithRigs[];
     isEditing?: boolean;
 }
 
-export default function UsersForm({ onSubmit, user, rigs, isEditing = false }: UsersFormProps) {
+export default function UsersForm({ onSubmit, user, rigs, supervisors = [], isEditing = false }: UsersFormProps) {
     const [formData, setFormData] = useState({
         username: '',
         password: '',
@@ -29,6 +31,7 @@ export default function UsersForm({ onSubmit, user, rigs, isEditing = false }: U
         role: 'operator' as UserRole,
         hasAllRigs: false,  // Siempre inicia en false para usuarios nuevos
         assignedRigIds: [] as string[],
+        supervisorId: '',
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errors, setErrors] = useState<{
@@ -55,6 +58,7 @@ export default function UsersForm({ onSubmit, user, rigs, isEditing = false }: U
                 role: user.role,
                 hasAllRigs: isAdmin ? true : user.hasAllRigs,
                 assignedRigIds: user.assignedRigIds || [],
+                supervisorId: user.supervisorId || '',
             });
         } else {
             setFormData(initialFormData);
@@ -102,6 +106,8 @@ export default function UsersForm({ onSubmit, user, rigs, isEditing = false }: U
                 // Solo enviar username/password en creación
                 username: isEditing ? undefined : formData.username,
                 password: isEditing ? undefined : formData.password,
+                // Solo enviar supervisorId para operadores
+                supervisorId: formData.role === 'operator' ? formData.supervisorId || undefined : undefined,
             };
             await onSubmit(submitData);
         } catch (error) {
@@ -130,6 +136,8 @@ export default function UsersForm({ onSubmit, user, rigs, isEditing = false }: U
             role: value as UserRole,
             // Si es admin, tiene acceso a todos los taladros
             hasAllRigs: value === 'admin' ? true : prev.hasAllRigs,
+            // Limpiar supervisor si no es operador
+            supervisorId: value === 'operator' ? prev.supervisorId : '',
         }));
     };
 
@@ -266,6 +274,31 @@ export default function UsersForm({ onSubmit, user, rigs, isEditing = false }: U
                             {formData.role === 'admin' && ' - Acceso completo al sistema'}
                         </p>
                     </div>
+
+                    {/* Supervisor (solo para operadores) */}
+                    {formData.role === 'operator' && (
+                        <div>
+                            <label htmlFor="supervisorId" className="block text-sm font-medium text-gray-700 mb-1">
+                                Supervisor <span className="text-red-500">*</span>
+                            </label>
+                            <Select
+                                id="supervisorId"
+                                value={formData.supervisorId}
+                                onChange={(e) => handleChange('supervisorId', e.target.value)}
+                                disabled={isSubmitting}
+                                options={[
+                                    { value: '', label: 'Seleccionar supervisor...' },
+                                    ...supervisors.map(s => ({
+                                        value: s.id,
+                                        label: s.fullName || s.username,
+                                    })),
+                                ]}
+                            />
+                            <p className="mt-1 text-xs text-gray-500">
+                                El supervisor asignado aprobará los reportes de este operador
+                            </p>
+                        </div>
+                    )}
                 </div>
 
                 {/* Acceso a Taladros */}

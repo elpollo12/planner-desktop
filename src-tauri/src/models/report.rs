@@ -202,12 +202,12 @@ impl Report {
 
         // Base query for selecting reports
         let mut query = String::from(
-            "SELECT id, report_number, report_date, well_number, api_number, contract, contractor, operator, field_district, municipality, rig_number, company, supervisor_24h, status, created_by, approved_by, submitted_at, approved_at, rejected_at, rejection_reason, created_at, updated_at, synced FROM reports WHERE 1=1"
+            "SELECT id, report_number, report_date, well_number, api_number, contract, contractor, operator, field_district, municipality, rig_number, company, supervisor_24h, status, created_by, approved_by, submitted_at, approved_at, rejected_at, rejection_reason, created_at, updated_at, synced FROM reports WHERE (is_deleted IS NULL OR is_deleted = 0)"
         );
-        
+
         // Query for counting total
         let mut count_query = String::from(
-            "SELECT COUNT(*) FROM reports WHERE 1=1"
+            "SELECT COUNT(*) FROM reports WHERE (is_deleted IS NULL OR is_deleted = 0)"
         );
         
         let mut params_vec: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
@@ -370,9 +370,13 @@ impl Report {
         Report::get_by_id(conn, report_id)
     }
 
-    /// Delete report
+    /// Soft delete report (marks is_deleted = 1 so sync propagates it)
     pub fn delete(conn: &Connection, report_id: &str) -> Result<(), AppError> {
-        conn.execute("DELETE FROM reports WHERE id = ?1", params![report_id])?;
+        let now = chrono::Utc::now().to_rfc3339();
+        conn.execute(
+            "UPDATE reports SET is_deleted = 1, updated_at = ?1 WHERE id = ?2",
+            params![&now, report_id],
+        )?;
         Ok(())
     }
 
