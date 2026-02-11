@@ -466,8 +466,17 @@ CREATE TABLE IF NOT EXISTS user_preferences (
 )
 "#;
 
+/// Migrations to apply to existing Turso databases (add missing columns/tables)
+/// These run individually and errors are ignored (column/table may already exist)
+const REMOTE_MIGRATIONS: &[&str] = &[
+    "ALTER TABLE users ADD COLUMN has_all_rigs INTEGER DEFAULT 0",
+    "ALTER TABLE reports ADD COLUMN company TEXT",
+    "CREATE TABLE IF NOT EXISTS user_rigs (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, rig_id TEXT NOT NULL, assigned_by TEXT, assigned_at TEXT NOT NULL, created_at TEXT, updated_at TEXT, UNIQUE(user_id, rig_id))",
+];
+
 /// Initialize the remote Turso database with the same schema
 pub async fn initialize_remote_db(client: &TursoClient) -> Result<String, String> {
+    // 1. Create tables that don't exist yet
     let statements: Vec<String> = REMOTE_SCHEMA
         .split(';')
         .map(|s| s.trim().to_string())
@@ -482,9 +491,24 @@ pub async fn initialize_remote_db(client: &TursoClient) -> Result<String, String
     let table_count = batch.len();
     client.execute_batch(batch).await?;
 
+    // 2. Apply migrations to existing tables (ignore errors for already-applied migrations)
+    let mut migrations_applied = 0;
+    for migration in REMOTE_MIGRATIONS {
+        match client.execute(&format!("{};", migration), vec![]).await {
+            Ok(_) => {
+                migrations_applied += 1;
+                println!("[Sync] Migration applied: {}", migration);
+            }
+            Err(e) => {
+                // Ignore errors like "duplicate column name" - means migration was already applied
+                println!("[Sync] Migration skipped (already applied): {} - {}", migration, e);
+            }
+        }
+    }
+
     Ok(format!(
-        "Base de datos remota inicializada ({} tablas creadas)",
-        table_count
+        "Base de datos remota inicializada ({} tablas, {} migraciones aplicadas)",
+        table_count, migrations_applied
     ))
 }
 
