@@ -3,6 +3,7 @@ import { toast } from 'react-toastify';
 import { Plus, Search, Edit, Trash2 } from 'lucide-react';
 import { operationCodesApi } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
+import { backgroundPush } from '@/lib/syncHelper';
 import { useModal } from '@/store/modalStore';
 import type { OperationCode } from '@/types/report';
 import OperationCodeForm from './forms/OperationCodeForm';
@@ -54,6 +55,7 @@ export function OperationCodesManagement() {
             toast.success('Código creado exitosamente');
             closeModal();
             loadCodes();
+            backgroundPush(sessionToken!);
           } catch (error: any) {
             console.error('Error creando código:', error);
             toast.error(error.message || 'Error al crear el código');
@@ -79,6 +81,7 @@ export function OperationCodesManagement() {
             toast.success('Código actualizado exitosamente');
             closeModal();
             loadCodes();
+            backgroundPush(sessionToken!);
           } catch (error: any) {
             console.error('Error actualizando código:', error);
             toast.error(error.message || 'Error al actualizar el código');
@@ -116,6 +119,7 @@ export function OperationCodesManagement() {
             await operationCodesApi.delete(sessionToken!, code.id);
             toast.success('Código eliminado exitosamente');
             loadCodes();
+            backgroundPush(sessionToken!);
           } catch (error: any) {
             console.error('Error eliminando código:', error);
             toast.error(error.message || 'Error al eliminar el código');

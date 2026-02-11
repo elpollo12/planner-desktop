@@ -3,6 +3,7 @@ import { toast } from 'react-toastify';
 import { Plus, Pencil, Trash2, Search } from 'lucide-react';
 import { areasApi } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
+import { backgroundPush } from '@/lib/syncHelper';
 import { useModal } from '@/store/modalStore';
 import type { Area } from '@/types/rig';
 import AreaForm from './forms/AreaForm';
@@ -13,6 +14,7 @@ import { Card } from '@/components/ui/Card';
 
 export default function AreasManagement() {
   const user = useAuthStore((state) => state.user);
+  const sessionToken = useAuthStore((state) => state.sessionToken);
   const { openModal, closeModal } = useModal();
   const [areas, setAreas] = useState<Area[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,6 +49,7 @@ export default function AreasManagement() {
             toast.success('Área creada exitosamente');
             closeModal();
             loadAreas();
+            if (sessionToken) backgroundPush(sessionToken);
           } catch (error) {
             console.error('Error creando área:', error);
             toast.error('Error al crear el área');
@@ -72,6 +75,7 @@ export default function AreasManagement() {
             toast.success('Área actualizada exitosamente');
             closeModal();
             loadAreas();
+            if (sessionToken) backgroundPush(sessionToken);
           } catch (error) {
             console.error('Error actualizando área:', error);
             toast.error('Error al actualizar el área');
@@ -109,6 +113,7 @@ export default function AreasManagement() {
             await areasApi.delete(area.id);
             toast.success('Área eliminada exitosamente');
             loadAreas();
+            if (sessionToken) backgroundPush(sessionToken);
           } catch (error) {
             console.error('Error eliminando área:', error);
             toast.error('Error al eliminar el área');

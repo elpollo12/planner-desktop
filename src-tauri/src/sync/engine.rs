@@ -469,9 +469,18 @@ CREATE TABLE IF NOT EXISTS user_preferences (
 /// Migrations to apply to existing Turso databases (add missing columns/tables)
 /// These run individually and errors are ignored (column/table may already exist)
 const REMOTE_MIGRATIONS: &[&str] = &[
+    // V8: users.has_all_rigs
     "ALTER TABLE users ADD COLUMN has_all_rigs INTEGER DEFAULT 0",
-    "ALTER TABLE reports ADD COLUMN company TEXT",
+    // V8: user_rigs table
     "CREATE TABLE IF NOT EXISTS user_rigs (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, rig_id TEXT NOT NULL, assigned_by TEXT, assigned_at TEXT NOT NULL, created_at TEXT, updated_at TEXT, UNIQUE(user_id, rig_id))",
+    // V12: app_settings table (global appearance)
+    "CREATE TABLE IF NOT EXISTS app_settings (id INTEGER PRIMARY KEY CHECK (id = 1), primary_color TEXT NOT NULL DEFAULT '#1e3a5f', secondary_color TEXT NOT NULL DEFAULT '#f97316', logo_path TEXT, created_at TEXT NOT NULL DEFAULT '', updated_at TEXT NOT NULL DEFAULT '')",
+    // V13: Recreate user_preferences with simplified schema (only theme_mode)
+    // Drop old table that had per-user colors (primary_color, secondary_color, logo_path)
+    "DROP TABLE IF EXISTS user_preferences",
+    "CREATE TABLE IF NOT EXISTS user_preferences (id TEXT PRIMARY KEY, user_id TEXT NOT NULL UNIQUE, theme_mode TEXT NOT NULL DEFAULT 'light', created_at TEXT NOT NULL DEFAULT '', updated_at TEXT NOT NULL DEFAULT '')",
+    // V14: reports.company
+    "ALTER TABLE reports ADD COLUMN company TEXT",
 ];
 
 /// Initialize the remote Turso database with the same schema

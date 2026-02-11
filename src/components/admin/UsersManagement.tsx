@@ -3,6 +3,7 @@ import { toast } from 'react-toastify';
 import { Edit, Plus, Search, Trash2 } from 'lucide-react';
 import { usersApi, rigsApi } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
+import { backgroundPush } from '@/lib/syncHelper';
 import { useModal } from '@/store/modalStore';
 import type { UserRole, UserWithRigs } from '@/types/user';
 import type { Rig } from '@/types/rig';
@@ -67,6 +68,7 @@ export function UsersManagement() {
             toast.success('Usuario creado exitosamente');
             closeModal();
             loadData();
+            backgroundPush(sessionToken!);
           } catch (error: any) {
             toast.error(error.message || 'Error al crear el usuario');
           }
@@ -99,6 +101,7 @@ export function UsersManagement() {
             toast.success('Usuario actualizado exitosamente');
             closeModal();
             loadData();
+            backgroundPush(sessionToken!);
           } catch (error: any) {
             toast.error(error.message || 'Error al actualizar el usuario');
           }
@@ -140,6 +143,7 @@ export function UsersManagement() {
             await usersApi.delete(sessionToken!, user.id);
             toast.success('Usuario eliminado exitosamente');
             loadData();
+            backgroundPush(sessionToken!);
           } catch (error: any) {
             toast.error(error.message || 'Error al eliminar el usuario');
           }
