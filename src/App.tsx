@@ -8,6 +8,7 @@ import { useAppSettingsStore } from './store/appSettingsStore';
 import { useThemeApplicator } from './hooks/useThemeApplicator';
 import { useAutoSync } from './hooks/useAutoSync';
 import { backgroundPull } from './lib/syncHelper';
+import { syncEvents } from './lib/syncEvents';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import ReportForm from './pages/ReportForm';
@@ -44,6 +45,16 @@ function App() {
     loadSettings().catch((error) => {
       console.error('Error loading company settings:', error);
     });
+  }, []);
+
+  // Reload company settings after any sync (so all users get admin's branding)
+  useEffect(() => {
+    const unsubscribe = syncEvents.subscribe(() => {
+      loadSettings().catch((error) => {
+        console.error('Error reloading settings after sync:', error);
+      });
+    });
+    return unsubscribe;
   }, []);
 
   // Validate session on startup and pull latest data from cloud
