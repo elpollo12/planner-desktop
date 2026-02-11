@@ -227,6 +227,7 @@ CREATE TABLE IF NOT EXISTS users (
   role TEXT NOT NULL,
   position TEXT,
   active INTEGER DEFAULT 1,
+  has_all_rigs INTEGER DEFAULT 0,
   last_login TEXT,
   created_by TEXT,
   updated_by TEXT,
@@ -280,6 +281,17 @@ CREATE TABLE IF NOT EXISTS rigs (
   updated_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS user_rigs (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  rig_id TEXT NOT NULL,
+  assigned_by TEXT,
+  assigned_at TEXT NOT NULL,
+  created_at TEXT,
+  updated_at TEXT,
+  UNIQUE(user_id, rig_id)
+);
+
 CREATE TABLE IF NOT EXISTS reports (
   id TEXT PRIMARY KEY,
   report_number INTEGER NOT NULL,
@@ -292,6 +304,7 @@ CREATE TABLE IF NOT EXISTS reports (
   field_district TEXT,
   municipality TEXT,
   rig_number TEXT,
+  company TEXT,
   supervisor_24h TEXT,
   status TEXT DEFAULT 'draft',
   created_by TEXT,
