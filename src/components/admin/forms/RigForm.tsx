@@ -24,13 +24,15 @@ const CREW_POSITIONS = [
 ];
 
 interface RigFormProps {
-  onSubmit: (data: CreateRigInput) => Promise<void>;
+  onSubmit: (data: CreateRigInput) => Promise<string | void>;
   rig?: RigWithArea | null;
   areas: Area[];
   operators: Operator[];
 }
 
 export default function RigForm({ onSubmit, rig, areas, operators }: RigFormProps) {
+  const [savedRigId, setSavedRigId] = useState<string | null>(rig?.id || null);
+
   const {
     register,
     handleSubmit,
@@ -48,12 +50,15 @@ export default function RigForm({ onSubmit, rig, areas, operators }: RigFormProp
   });
 
   const activeValue = watch('active');
-  const handleFormSubmit = (data: CreateRigInput) => {
+  const handleFormSubmit = async (data: CreateRigInput) => {
     const submitData = {
       ...data,
       areaId: data.areaId === '' ? undefined : data.areaId,
     };
-    return onSubmit(submitData);
+    const result = await onSubmit(submitData);
+    if (typeof result === 'string') {
+      setSavedRigId(result);
+    }
   };
 
   const areaOptions = [
@@ -158,9 +163,17 @@ export default function RigForm({ onSubmit, rig, areas, operators }: RigFormProp
         </div>
       </form>
 
-      {/* Personnel Section - Only visible when editing an existing rig */}
-      {rig?.id && (
-        <RigPersonnelSection rigId={rig.id} />
+      {/* Personnel Section */}
+      {savedRigId ? (
+        <RigPersonnelSection rigId={savedRigId} />
+      ) : (
+        <div className="border-t pt-6">
+          <div className="p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-center">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Guarda el taladro primero para poder agregar personal de cuadrilla.
+            </p>
+          </div>
+        </div>
       )}
     </div>
   );
