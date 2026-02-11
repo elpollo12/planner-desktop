@@ -1,6 +1,7 @@
 use crate::sync::turso_client::{TursoClient, TursoValue};
 use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 
 /// Tables to sync, in dependency order (parents first)
 const SYNC_TABLES: &[TableDef] = &[
@@ -12,6 +13,7 @@ const SYNC_TABLES: &[TableDef] = &[
         ],
         id_col: "id",
         has_updated_at: true,
+        parent_col: None,
     },
     TableDef {
         name: "users",
@@ -22,6 +24,7 @@ const SYNC_TABLES: &[TableDef] = &[
         ],
         id_col: "id",
         has_updated_at: true,
+        parent_col: None,
     },
     TableDef {
         name: "operation_codes",
@@ -31,6 +34,7 @@ const SYNC_TABLES: &[TableDef] = &[
         ],
         id_col: "id",
         has_updated_at: false,
+        parent_col: None,
     },
     TableDef {
         name: "areas",
@@ -40,6 +44,7 @@ const SYNC_TABLES: &[TableDef] = &[
         ],
         id_col: "id",
         has_updated_at: true,
+        parent_col: None,
     },
     TableDef {
         name: "operators",
@@ -48,6 +53,7 @@ const SYNC_TABLES: &[TableDef] = &[
         ],
         id_col: "id",
         has_updated_at: true,
+        parent_col: None,
     },
     TableDef {
         name: "rigs",
@@ -57,6 +63,7 @@ const SYNC_TABLES: &[TableDef] = &[
         ],
         id_col: "id",
         has_updated_at: true,
+        parent_col: None,
     },
     TableDef {
         name: "user_rigs",
@@ -66,6 +73,7 @@ const SYNC_TABLES: &[TableDef] = &[
         ],
         id_col: "id",
         has_updated_at: true,
+        parent_col: None,
     },
     TableDef {
         name: "reports",
@@ -78,6 +86,7 @@ const SYNC_TABLES: &[TableDef] = &[
         ],
         id_col: "id",
         has_updated_at: true,
+        parent_col: None,
     },
     TableDef {
         name: "drill_string",
@@ -88,6 +97,7 @@ const SYNC_TABLES: &[TableDef] = &[
         ],
         id_col: "id",
         has_updated_at: true,
+        parent_col: Some("report_id"),
     },
     TableDef {
         name: "crew_shifts",
@@ -97,6 +107,7 @@ const SYNC_TABLES: &[TableDef] = &[
         ],
         id_col: "id",
         has_updated_at: true,
+        parent_col: Some("report_id"),
     },
     TableDef {
         name: "crew_members",
@@ -106,6 +117,7 @@ const SYNC_TABLES: &[TableDef] = &[
         ],
         id_col: "id",
         has_updated_at: true,
+        parent_col: Some("crew_shift_id"),
     },
     TableDef {
         name: "time_distribution",
@@ -115,6 +127,7 @@ const SYNC_TABLES: &[TableDef] = &[
         ],
         id_col: "id",
         has_updated_at: true,
+        parent_col: Some("report_id"),
     },
     TableDef {
         name: "bit_records",
@@ -125,6 +138,7 @@ const SYNC_TABLES: &[TableDef] = &[
         ],
         id_col: "id",
         has_updated_at: true,
+        parent_col: Some("report_id"),
     },
     TableDef {
         name: "mud_records",
@@ -134,6 +148,7 @@ const SYNC_TABLES: &[TableDef] = &[
         ],
         id_col: "id",
         has_updated_at: true,
+        parent_col: Some("report_id"),
     },
     TableDef {
         name: "mud_additives",
@@ -143,6 +158,7 @@ const SYNC_TABLES: &[TableDef] = &[
         ],
         id_col: "id",
         has_updated_at: true,
+        parent_col: Some("report_id"),
     },
     TableDef {
         name: "drilling_parameters",
@@ -154,6 +170,7 @@ const SYNC_TABLES: &[TableDef] = &[
         ],
         id_col: "id",
         has_updated_at: true,
+        parent_col: Some("report_id"),
     },
     TableDef {
         name: "deviation_history",
@@ -163,6 +180,7 @@ const SYNC_TABLES: &[TableDef] = &[
         ],
         id_col: "id",
         has_updated_at: true,
+        parent_col: Some("report_id"),
     },
     TableDef {
         name: "operations_log",
@@ -172,6 +190,7 @@ const SYNC_TABLES: &[TableDef] = &[
         ],
         id_col: "id",
         has_updated_at: true,
+        parent_col: Some("report_id"),
     },
     TableDef {
         name: "user_preferences",
@@ -180,6 +199,7 @@ const SYNC_TABLES: &[TableDef] = &[
         ],
         id_col: "id",
         has_updated_at: true,
+        parent_col: None,
     },
 ];
 
@@ -188,6 +208,9 @@ struct TableDef {
     columns: &'static [&'static str],
     id_col: &'static str,
     has_updated_at: bool,
+    /// For child tables: column that links to parent (e.g. "report_id").
+    /// Used to clean up stale rows before sync write.
+    parent_col: Option<&'static str>,
 }
 
 /// Data extracted from a single table for sync
@@ -205,6 +228,124 @@ pub struct SyncResult {
     pub records_pulled: u32,
     pub errors: Vec<String>,
     pub timestamp: String,
+}
+
+/// Collect distinct report_ids from child-table data in a sync batch.
+/// Works with both `Vec<TableData>` and `Vec<(usize, Vec<Vec<TursoValue>>)>`.
+fn collect_report_ids_from_indexed(table_results: &[(usize, Vec<Vec<TursoValue>>)]) -> HashSet<String> {
+    let mut report_ids = HashSet::new();
+    for (idx, rows) in table_results {
+        let table_def = &SYNC_TABLES[*idx];
+        if table_def.parent_col != Some("report_id") {
+            continue;
+        }
+        if let Some(col_idx) = table_def.columns.iter().position(|c| *c == "report_id") {
+            for row in rows {
+                if let Some(TursoValue::Text(val)) = row.get(col_idx) {
+                    report_ids.insert(val.clone());
+                }
+            }
+        }
+    }
+    report_ids
+}
+
+fn collect_report_ids_from_table_data(table_data: &[TableData]) -> HashSet<String> {
+    let mut report_ids = HashSet::new();
+    for data in table_data {
+        let table_def = &SYNC_TABLES[data.table_index];
+        if table_def.parent_col != Some("report_id") {
+            continue;
+        }
+        if let Some(col_idx) = table_def.columns.iter().position(|c| *c == "report_id") {
+            for row in &data.rows {
+                if let Some(TursoValue::Text(val)) = row.get(col_idx) {
+                    report_ids.insert(val.clone());
+                }
+            }
+        }
+    }
+    report_ids
+}
+
+/// Delete stale child rows from local DB for the given report_ids.
+/// Must be called BEFORE writing new data.
+fn cleanup_local_child_rows(conn: &Connection, report_ids: &HashSet<String>) -> Result<(), String> {
+    if report_ids.is_empty() {
+        return Ok(());
+    }
+
+    let placeholders: String = report_ids.iter().enumerate()
+        .map(|(i, _)| format!("?{}", i + 1))
+        .collect::<Vec<_>>()
+        .join(", ");
+
+    let ids: Vec<&str> = report_ids.iter().map(|s| s.as_str()).collect();
+
+    // 1) Delete grandchild first: crew_members via crew_shifts
+    let crew_members_sql = format!(
+        "DELETE FROM crew_members WHERE crew_shift_id IN (SELECT id FROM crew_shifts WHERE report_id IN ({}))",
+        placeholders
+    );
+    conn.execute(&crew_members_sql, rusqlite::params_from_iter(ids.iter()))
+        .map_err(|e| format!("Failed to cleanup crew_members: {}", e))?;
+
+    // 2) Delete all direct child tables with parent_col = "report_id"
+    for table_def in SYNC_TABLES.iter() {
+        if table_def.parent_col == Some("report_id") {
+            let sql = format!(
+                "DELETE FROM {} WHERE report_id IN ({})",
+                table_def.name, placeholders
+            );
+            conn.execute(&sql, rusqlite::params_from_iter(ids.iter()))
+                .map_err(|e| format!("Failed to cleanup {}: {}", table_def.name, e))?;
+        }
+    }
+
+    println!("[Sync] Cleaned up local child rows for {} report(s)", report_ids.len());
+    Ok(())
+}
+
+/// Delete stale child rows from Turso for the given report_ids.
+/// Must be called BEFORE pushing new data.
+async fn cleanup_turso_child_rows(client: &TursoClient, report_ids: &HashSet<String>) -> Result<(), String> {
+    if report_ids.is_empty() {
+        return Ok(());
+    }
+
+    let placeholders: String = report_ids.iter().enumerate()
+        .map(|(i, _)| format!("?{}", i + 1))
+        .collect::<Vec<_>>()
+        .join(", ");
+
+    let params: Vec<TursoValue> = report_ids.iter()
+        .map(|id| TursoValue::Text(id.clone()))
+        .collect();
+
+    let mut batch: Vec<(String, Vec<TursoValue>)> = Vec::new();
+
+    // 1) Delete grandchild first: crew_members via crew_shifts
+    batch.push((
+        format!(
+            "DELETE FROM crew_members WHERE crew_shift_id IN (SELECT id FROM crew_shifts WHERE report_id IN ({}))",
+            placeholders
+        ),
+        params.clone(),
+    ));
+
+    // 2) Delete all direct child tables with parent_col = "report_id"
+    for table_def in SYNC_TABLES.iter() {
+        if table_def.parent_col == Some("report_id") {
+            batch.push((
+                format!("DELETE FROM {} WHERE report_id IN ({})", table_def.name, placeholders),
+                params.clone(),
+            ));
+        }
+    }
+
+    client.execute_batch(batch).await?;
+    println!("[Sync] Cleaned up Turso child rows for {} report(s)", report_ids.len());
+    Ok(())
 }
 
 /// SQL to create all tables on Turso (matching local schema)
@@ -633,6 +774,10 @@ pub fn write_pulled_data(
     conn.execute("PRAGMA foreign_keys = OFF", [])
         .map_err(|e| format!("Failed to disable foreign keys: {}", e))?;
 
+    // Clean up stale child rows before writing to prevent duplicates
+    let report_ids = collect_report_ids_from_indexed(table_results);
+    cleanup_local_child_rows(conn, &report_ids)?;
+
     let mut total: u32 = 0;
 
     for (idx, rows) in table_results {
@@ -707,6 +852,13 @@ pub async fn push_data_to_turso(
     let mut total_pushed: u32 = 0;
     let mut tables_synced: u32 = 0;
     let mut errors: Vec<String> = Vec::new();
+
+    // Clean up stale child rows in Turso before pushing to prevent duplicates
+    let report_ids = collect_report_ids_from_table_data(&table_data);
+    if let Err(e) = cleanup_turso_child_rows(client, &report_ids).await {
+        println!("[Sync] Warning: cleanup_turso_child_rows failed: {}", e);
+        errors.push(format!("Cleanup warning: {}", e));
+    }
 
     for data in table_data {
         let table_def = &SYNC_TABLES[data.table_index];

@@ -269,13 +269,17 @@ impl Report {
 
         // Case-insensitive partial search for well number
         if let Some(ref well_number) = filters.well_number {
-            query.push_str(" AND LOWER(well_number) LIKE LOWER(?)");
+            let clause = " AND LOWER(well_number) LIKE LOWER(?)";
+            query.push_str(clause);
+            count_query.push_str(clause);
             params_vec.push(Box::new(format!("%{}%", well_number)));
         }
 
         // Case-insensitive partial search for rig number
         if let Some(ref rig_number) = filters.rig_number {
-            query.push_str(" AND LOWER(rig_number) LIKE LOWER(?)");
+            let clause = " AND LOWER(rig_number) LIKE LOWER(?)";
+            query.push_str(clause);
+            count_query.push_str(clause);
             params_vec.push(Box::new(format!("%{}%", rig_number)));
         }
 
