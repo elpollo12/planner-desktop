@@ -35,22 +35,20 @@ export function useAutoSync() {
         return;
       }
 
-      console.log('[AutoSync] Starting automatic pull from cloud...');
-      // Use pull instead of fullSync - all users need to get latest data
-      // Push happens automatically after create/update/delete operations
-      const result = await syncApi.pull(sessionToken);
+      console.log('[AutoSync] Starting automatic full sync (push + pull)...');
+      // Full sync: push local changes then pull remote changes
+      // This ensures users, app_settings, reports, etc. all stay in sync
+      const result = await syncApi.fullSync(sessionToken);
       lastSyncRef.current = now;
 
       if (result.success) {
-        console.log(`[AutoSync] Success: ${result.recordsPulled} records pulled`);
-
-        // Notify listeners that new data is available
-        if (result.recordsPulled > 0) {
-          syncEvents.emit();
-        }
+        console.log(`[AutoSync] Success: ${result.recordsPushed} pushed, ${result.recordsPulled} pulled`);
       } else {
-        console.warn('[AutoSync] Pull completed with errors:', result.errors);
+        console.warn('[AutoSync] Completed with errors:', result.errors);
       }
+
+      // Always notify listeners so UI refreshes (settings, reports, etc.)
+      syncEvents.emit();
     } catch (error) {
       console.error('[AutoSync] Error:', error);
     }
