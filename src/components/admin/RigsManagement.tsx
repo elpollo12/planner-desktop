@@ -365,10 +365,12 @@ export default function RigsManagement() {
             <Table
               columns={columns}
               data={filteredRigs}
+              pagination={true}
+              pageSize={5}
+              pageSizeOptions={[5, 10, 20, 50]}
+              hoverable={true}
+              striped={true}
             />
-            <div className="mt-4 text-sm text-gray-600">
-              Mostrando {filteredRigs.length} de {rigs.length} taladros
-            </div>
           </>
         )}
       </Card>
