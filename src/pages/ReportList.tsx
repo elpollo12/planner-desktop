@@ -162,15 +162,14 @@ export default function ReportList() {
         await reportsApi.delete(sessionToken, report.id);
         toast.success('Reporte eliminado exitosamente');
 
-        // NUEVO: Si eliminamos el último de la página, volver a la anterior
-        if (reports.length === 1 && currentPage > 1) {
-          setCurrentPage(currentPage - 1);
-        } else {
-  
         // Push deletion to cloud in background
         backgroundPush(sessionToken);
 
-        loadReports();
+        // Si eliminamos el último de la página, volver a la anterior
+        if (reports.length === 1 && currentPage > 1) {
+          setCurrentPage(currentPage - 1);
+        } else {
+          loadReports();
         }
       } catch (error) {
         console.error('Error deleting report:', error);

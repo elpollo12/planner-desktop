@@ -413,17 +413,18 @@ export default function ReportForm() {
         },
         drillString: drillString || {},
         crew: {
-          shifts: crewShifts.length > 0 
+          shifts: crewShifts.length > 0
             ? crewShifts.map(shift => ({
                 shift: shift.shift,
                 shiftStart: shift.shiftStart,
                 shiftEnd: shift.shiftEnd,
-                members: shift.members.map(member => ({
-                  position: member.position || '',
-                  ci: member.ci,
-                  name: member.name,
-                  hours: member.hours
-                }))
+                members: shift.members
+                  .filter(member => member.personnelId)
+                  .map(member => ({
+                    personnelId: member.personnelId,
+                    position: member.position || '',
+                    hours: member.hours
+                  }))
               }))
             : DEFAULT_VALUES.crew!.shifts,
         },
@@ -530,17 +531,18 @@ export default function ReportForm() {
         },
         drillString: drillString || {},
         crew: {
-          shifts: crewShifts.length > 0 
+          shifts: crewShifts.length > 0
             ? crewShifts.map(shift => ({
                 shift: shift.shift,
                 shiftStart: shift.shiftStart,
                 shiftEnd: shift.shiftEnd,
-                members: shift.members.map(member => ({
-                  position: member.position || '',
-                  ci: member.ci,
-                  name: member.name,
-                  hours: member.hours
-                }))
+                members: shift.members
+                  .filter(member => member.personnelId)
+                  .map(member => ({
+                    personnelId: member.personnelId,
+                    position: member.position || '',
+                    hours: member.hours
+                  }))
               }))
             : DEFAULT_VALUES.crew!.shifts,
         },
@@ -791,9 +793,10 @@ export default function ReportForm() {
             shiftStart: shift.shiftStart,
             shiftEnd: shift.shiftEnd,
             members: validMembers.map(member => ({
+              personnelId: member.personnelId || undefined,
               position: member.position || '',
-              ci: member.ci || undefined,
-              name: member.name || undefined,
+              ci: member.personnelId ? undefined : (member.ci || undefined),
+              name: member.personnelId ? undefined : (member.name || undefined),
               hours: member.hours || undefined
             }))
           };

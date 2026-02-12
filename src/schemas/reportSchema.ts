@@ -26,6 +26,7 @@ export const headerSectionSchema = z.object({
 // ============================================================================
 
 export const crewMemberSchema = z.object({
+  personnelId: z.string().optional(),
   position: z.string().min(1, 'La posición es requerida'),
   ci: z.string().optional(),
   name: z.string().optional(),

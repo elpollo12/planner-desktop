@@ -55,17 +55,18 @@ pub async fn list_rigs(
     let conn = state.db.lock().unwrap();
 
     let query = if include_inactive {
-        "SELECT r.id, r.name, r.operator, r.power, r.area_id, 
+        "SELECT r.id, r.name, r.operator, r.power, r.area_id,
                 a.name, a.country, a.state, r.active, r.created_at, r.updated_at
          FROM rigs r
          LEFT JOIN areas a ON r.area_id = a.id
+         WHERE (r.is_deleted IS NULL OR r.is_deleted = 0)
          ORDER BY r.name ASC"
     } else {
-        "SELECT r.id, r.name, r.operator, r.power, r.area_id, 
+        "SELECT r.id, r.name, r.operator, r.power, r.area_id,
                 a.name, a.country, a.state, r.active, r.created_at, r.updated_at
          FROM rigs r
          LEFT JOIN areas a ON r.area_id = a.id
-         WHERE r.active = 1
+         WHERE r.active = 1 AND (r.is_deleted IS NULL OR r.is_deleted = 0)
          ORDER BY r.name ASC"
     };
 
@@ -176,8 +177,12 @@ pub async fn update_rig(
 #[tauri::command]
 pub async fn delete_rig(state: State<'_, AppState>, id: String) -> Result<()> {
     let conn = state.db.lock().unwrap();
+    let now = Utc::now().to_rfc3339();
 
-    conn.execute("DELETE FROM rigs WHERE id = ?1", params![&id])?;
+    conn.execute(
+        "UPDATE rigs SET is_deleted = 1, active = 0, updated_at = ?1 WHERE id = ?2",
+        params![&now, &id],
+    )?;
 
     Ok(())
 }
@@ -225,7 +230,7 @@ pub async fn list_accessible_rigs(
                     a.name, a.country, a.state, r.active, r.created_at, r.updated_at
              FROM rigs r
              LEFT JOIN areas a ON r.area_id = a.id
-             WHERE r.name IN ({})
+             WHERE (r.is_deleted IS NULL OR r.is_deleted = 0) AND r.name IN ({})
              ORDER BY r.name ASC",
             rig_names.iter().map(|_| "?").collect::<Vec<_>>().join(",")
         )
@@ -235,7 +240,7 @@ pub async fn list_accessible_rigs(
                     a.name, a.country, a.state, r.active, r.created_at, r.updated_at
              FROM rigs r
              LEFT JOIN areas a ON r.area_id = a.id
-             WHERE r.active = 1 AND r.name IN ({})
+             WHERE r.active = 1 AND (r.is_deleted IS NULL OR r.is_deleted = 0) AND r.name IN ({})
              ORDER BY r.name ASC",
             rig_names.iter().map(|_| "?").collect::<Vec<_>>().join(",")
         )

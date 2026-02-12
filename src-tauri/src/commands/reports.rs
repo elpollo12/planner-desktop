@@ -48,9 +48,14 @@ pub async fn list_reports(
         .lock()
         .map_err(|e| format!("Failed to lock database: {}", e))?;
 
-    // Get user's accessible rig names for filtering
-    let accessible_rig_names = User::get_accessible_rig_names(&conn, &session.user_id)
-        .map_err(|e| e.to_string())?;
+    // Admin: see all reports without rig filter
+    // Supervisor/Operator: filter by their assigned rigs
+    let accessible_rig_names = if user_role == UserRole::Admin {
+        None
+    } else {
+        User::get_accessible_rig_names(&conn, &session.user_id)
+            .map_err(|e| e.to_string())?
+    };
 
     // Call list with pagination
     let (reports, total) = Report::list(

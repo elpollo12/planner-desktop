@@ -370,8 +370,8 @@ export default function ReportView() {
                           {shift.members.map((member, mIdx) => (
                             <tr key={mIdx}>
                               <td className="px-4 py-2 text-sm text-gray-900 dark:text-gray-100">{member.position}</td>
-                              <td className="px-4 py-2 text-sm text-gray-900 dark:text-gray-100">{member.ci}</td>
-                              <td className="px-4 py-2 text-sm text-gray-900 dark:text-gray-100">{member.name}</td>
+                              <td className="px-4 py-2 text-sm text-gray-900 dark:text-gray-100">{member.personnelCi || member.ci || '-'}</td>
+                              <td className="px-4 py-2 text-sm text-gray-900 dark:text-gray-100">{member.personnelName || member.name || '-'}</td>
                               <td className="px-4 py-2 text-sm text-gray-900 dark:text-gray-100">{member.hours || '-'}</td>
                             </tr>
                           ))}

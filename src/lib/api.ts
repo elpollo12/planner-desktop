@@ -375,6 +375,24 @@ export const rigsApi = {
 };
 
 // ============================================================================
+// Rig Personnel Commands
+// ============================================================================
+
+export const rigPersonnelApi = {
+  create: (rigId: string, input: import('../types/rig').CreateRigPersonnelInput) =>
+    invoke<import('../types/rig').RigPersonnel>('create_rig_personnel', { rigId, input }),
+
+  list: (rigId: string, includeInactive: boolean = false) =>
+    invoke<import('../types/rig').RigPersonnel[]>('list_rig_personnel', { rigId, includeInactive }),
+
+  update: (id: string, input: import('../types/rig').UpdateRigPersonnelInput) =>
+    invoke<import('../types/rig').RigPersonnel>('update_rig_personnel', { id, input }),
+
+  delete: (id: string) =>
+    invoke<void>('delete_rig_personnel', { id }),
+};
+
+// ============================================================================
 // User Preferences Commands
 // ============================================================================
 

@@ -98,8 +98,8 @@ export function exportSingleReportToExcel(data: any, filename: string): void {
               shiftLabel,
               horario,
               member.position || '-',
-              member.ci || '-',
-              member.name || '-',
+              member.personnelCi || member.ci || '-',
+              member.personnelName || member.name || '-',
               member.hours?.toString() || '-'
             ]);
           });

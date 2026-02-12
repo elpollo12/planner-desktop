@@ -61,10 +61,14 @@ export interface CrewShift {
 export interface CrewMember {
   id: string;
   crewShiftId: string;
+  personnelId?: string;
   position: string;
   ci?: string;
   name?: string;
   hours?: number;
+  // Denormalized from rig_personnel via JOIN
+  personnelName?: string;
+  personnelCi?: string;
 }
 
 // Posiciones estándar de cuadrilla

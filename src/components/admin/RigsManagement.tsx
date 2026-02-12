@@ -68,16 +68,16 @@ export default function RigsManagement() {
         operators={operators}
         onSubmit={async (data) => {
           try {
-            await rigsApi.create(user!.id, data);
-            toast.success('Taladro creado exitosamente');
+            const newRig = await rigsApi.create(user!.id, data);
+            toast.success('Taladro creado. Ahora puedes agregar personal.');
 
             // Push changes to cloud in background
             if (sessionToken) {
               backgroundPush(sessionToken);
             }
 
-            closeModal();
             loadData();
+            return newRig.id;
           } catch (error) {
             console.error('Error creando taladro:', error);
             toast.error('Error al crear el taladro');
@@ -86,8 +86,9 @@ export default function RigsManagement() {
       />,
       {
         title: 'Crear Nuevo Taladro',
-        size: 'md',
+        size: 'xl',
         showCloseButton: true,
+        onClose: () => loadData(),
       }
     );
   };
@@ -109,7 +110,6 @@ export default function RigsManagement() {
               backgroundPush(sessionToken);
             }
 
-            closeModal();
             loadData();
           } catch (error) {
             console.error('Error actualizando taladro:', error);
@@ -119,8 +119,9 @@ export default function RigsManagement() {
       />,
       {
         title: 'Editar Taladro',
-        size: 'md',
+        size: 'xl',
         showCloseButton: true,
+        onClose: () => loadData(),
       }
     );
   };
