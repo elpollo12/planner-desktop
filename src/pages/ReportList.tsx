@@ -11,7 +11,7 @@ import { reportsApi, rigsApi } from '../lib/api';
 import { toast } from '../lib/toast';
 import { backgroundPush } from '../lib/syncHelper';
 import { syncEvents } from '../lib/syncEvents';
-import { formatDateDMY } from '../lib/dateUtils';
+import { formatDateDMY, formatTimeHM } from '../lib/dateUtils';
 import type { Report, ReportStatus } from '../types/report';
 import { RigWithArea } from '@/types';
 
@@ -467,9 +467,12 @@ export default function ReportList() {
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="text-sm text-gray-900 dark:text-gray-100">
+                          <div className="text-sm text-gray-900 dark:text-gray-100">
                             {formatDateDMY(report.reportDate)}
-                          </span>
+                          </div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400">
+                            {formatTimeHM(report.createdAt)}
+                          </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className="text-sm text-gray-900 dark:text-gray-100">

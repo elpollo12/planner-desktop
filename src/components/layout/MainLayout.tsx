@@ -26,9 +26,9 @@ export function MainLayout({
         {/* Header */}
         <Header title={title} subtitle={subtitle} actions={headerActions} />
         
-        <div className="px-6 py-2">
-          <BreadCrumps  />
-        </div>  
+        <div className="px-6 py-2 bg-gray-50 dark:bg-gray-900 relative z-10">
+          <BreadCrumps />
+        </div>
 
         {/* Page Content */}
         <main className="flex-1 overflow-y-auto p-6">

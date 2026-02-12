@@ -1,5 +1,5 @@
 import { useFormContext, useFieldArray } from 'react-hook-form';
-import { Button, Input, Select } from '../ui';
+import { Button, Input } from '../ui';
 import { Plus, Trash2 } from 'lucide-react';
 import type { CompleteReportData } from '../../schemas';
 import { SHIFT_LABELS } from '../../types/report';

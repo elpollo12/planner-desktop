@@ -1,4 +1,4 @@
-use crate::auth::check_permission;
+use crate::auth::{check_permission, get_session};
 use crate::models::user::UserRole;
 use crate::state::AppState;
 use crate::sync::config::{self, TursoCredentials};
@@ -45,13 +45,13 @@ fn build_status(cfg: &config::SyncConfig) -> SyncStatus {
     }
 }
 
-/// Get current sync configuration status (admin only)
+/// Get current sync configuration status (any authenticated user)
 #[tauri::command]
 pub async fn get_sync_status(
     session_token: String,
     state: State<'_, AppState>,
 ) -> Result<SyncStatus, String> {
-    check_permission(&session_token, UserRole::Admin, &state)
+    get_session(&session_token, &state)
         .map_err(|e| e.to_string())?;
 
     let cfg = config::load_config()?;
@@ -126,14 +126,14 @@ pub async fn initialize_remote_database(
     engine::initialize_remote_db(&client).await
 }
 
-/// Push local data to Turso (admin only)
+/// Push local data to Turso (any authenticated user)
 /// Pattern: lock DB → read sync data → drop lock → async push → lock DB → mark synced → drop lock
 #[tauri::command]
 pub async fn sync_push(
     session_token: String,
     state: State<'_, AppState>,
 ) -> Result<SyncResult, String> {
-    check_permission(&session_token, UserRole::Admin, &state)
+    get_session(&session_token, &state)
         .map_err(|e| e.to_string())?;
 
     let cfg = config::load_config()?;
@@ -174,14 +174,14 @@ pub async fn sync_push(
     Ok(result)
 }
 
-/// Pull remote data from Turso (admin only)
+/// Pull remote data from Turso (any authenticated user)
 /// Pattern: async pull from Turso → lock DB → write to local → drop lock
 #[tauri::command]
 pub async fn sync_pull(
     session_token: String,
     state: State<'_, AppState>,
 ) -> Result<SyncResult, String> {
-    check_permission(&session_token, UserRole::Admin, &state)
+    get_session(&session_token, &state)
         .map_err(|e| e.to_string())?;
 
     let cfg = config::load_config()?;
@@ -320,6 +320,82 @@ pub async fn sync_full(
     };
 
     // Update config
+    let mut cfg = config::load_config()?;
+    cfg.last_sync_at = Some(now.clone());
+    cfg.last_push_at = Some(now.clone());
+    cfg.last_pull_at = Some(now);
+    config::save_config(&cfg)?;
+
+    Ok(result)
+}
+
+/// Incremental sync: push changes + pull changes (any authenticated user)
+/// Only sends/receives records modified since last sync timestamps
+#[tauri::command]
+pub async fn sync_incremental(
+    session_token: String,
+    state: State<'_, AppState>,
+) -> Result<SyncResult, String> {
+    get_session(&session_token, &state)
+        .map_err(|e| e.to_string())?;
+
+    let cfg = config::load_config()?;
+    let credentials = TursoCredentials::from_env()?;
+    let client = TursoClient::new(&credentials.database_url, &credentials.auth_token);
+    let now = chrono::Utc::now().to_rfc3339();
+
+    // Ensure remote schema/migrations are up to date
+    let _ = engine::initialize_remote_db(&client).await;
+
+    // === INCREMENTAL PUSH (only changes since last_push_at) ===
+    let table_data = {
+        let conn = state
+            .db
+            .lock()
+            .map_err(|e| format!("Failed to lock database: {}", e))?;
+        engine::read_all_local_data(&conn, cfg.last_push_at.as_deref())?
+    };
+
+    let push_result = engine::push_data_to_turso(&client, table_data).await?;
+
+    if push_result.success {
+        let conn = state
+            .db
+            .lock()
+            .map_err(|e| format!("Failed to lock database: {}", e))?;
+        engine::mark_reports_synced(&conn);
+    }
+
+    // === INCREMENTAL PULL (only changes since last_pull_at) ===
+    let (pulled_data, pull_result) =
+        engine::pull_data_from_turso(&client, cfg.last_pull_at.as_deref()).await?;
+
+    let mut pull_errors: Vec<String> = Vec::new();
+    if !pulled_data.is_empty() {
+        let conn = state
+            .db
+            .lock()
+            .map_err(|e| format!("Failed to lock database: {}", e))?;
+        if let Err(e) = engine::write_pulled_data(&conn, &pulled_data) {
+            pull_errors.push(format!("Error writing to local DB: {}", e));
+        }
+    }
+
+    // Combine results
+    let mut all_errors = push_result.errors;
+    all_errors.extend(pull_result.errors);
+    all_errors.extend(pull_errors);
+
+    let result = SyncResult {
+        success: all_errors.is_empty(),
+        tables_synced: push_result.tables_synced + pull_result.tables_synced,
+        records_pushed: push_result.records_pushed,
+        records_pulled: pull_result.records_pulled,
+        errors: all_errors,
+        timestamp: now.clone(),
+    };
+
+    // Update config timestamps
     let mut cfg = config::load_config()?;
     cfg.last_sync_at = Some(now.clone());
     cfg.last_push_at = Some(now.clone());

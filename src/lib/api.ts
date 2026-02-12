@@ -445,6 +445,9 @@ export const syncApi = {
   fullSync: (sessionToken: string) =>
     invoke<import('../types/sync').SyncResult>('sync_full', { sessionToken }),
 
+  incrementalSync: (sessionToken: string) =>
+    invoke<import('../types/sync').SyncResult>('sync_incremental', { sessionToken }),
+
   disable: (sessionToken: string) =>
     invoke<void>('disable_sync', { sessionToken }),
 };

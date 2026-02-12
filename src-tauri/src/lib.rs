@@ -41,6 +41,8 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .manage(app_state)
         .invoke_handler(tauri::generate_handler![
             // Authentication commands
@@ -158,6 +160,7 @@ pub fn run() {
             commands::sync::sync_push,
             commands::sync::sync_pull,
             commands::sync::sync_full,
+            commands::sync::sync_incremental,
             commands::sync::disable_sync,
 
             // Operators commands

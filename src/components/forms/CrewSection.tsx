@@ -270,7 +270,7 @@ export function CrewSection() {
       </div>
 
       {/* Shift Times */}
-      <div className="grid grid-cols-2 gap-4 mb-6">
+      <div key={`shift-times-${shiftIndex}`} className="grid grid-cols-2 gap-4 mb-6">
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Hora Inicio

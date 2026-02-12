@@ -41,6 +41,24 @@ export function parseDateDMY(dateStr: string): string {
 }
 
 /**
+ * Format an ISO datetime string to HH:mm
+ */
+export function formatTimeHM(dateStr: string | null | undefined): string {
+  if (!dateStr) return '';
+
+  try {
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return '';
+
+    const h = String(date.getHours()).padStart(2, '0');
+    const m = String(date.getMinutes()).padStart(2, '0');
+    return `${h}:${m}`;
+  } catch {
+    return '';
+  }
+}
+
+/**
  * Get today's date in YYYY-MM-DD format
  */
 export function getTodayYMD(): string {

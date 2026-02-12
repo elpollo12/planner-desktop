@@ -17,7 +17,7 @@ import { Card } from '@/components/ui/Card';
 
 export default function RigsManagement() {
   const { user, sessionToken } = useAuthStore();
-  const { openModal, closeModal } = useModal();
+  const { openModal } = useModal();
   const [rigs, setRigs] = useState<RigWithArea[]>([]);
   const [areas, setAreas] = useState<Area[]>([]);
   const [operators, setOperators] = useState<Operator[]>([]);
