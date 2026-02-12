@@ -377,7 +377,7 @@ export default function LogisticsPage() {
       {renderStatsCards()}
 
       {/* Main Card with Tabs */}
-      <Card className="mt-6">
+      <Card>
         <div className="border-b border-gray-200 dark:border-gray-700">
           <nav className="flex -mb-px overflow-x-auto">
             {tabs.map((tab) => {
@@ -422,36 +422,6 @@ export default function LogisticsPage() {
           {activeTab === 'reportes' && <LogisticsReports />}
         </div>
       </Card>
-
-      {/* Quick Stats for Admins */}
-      {activeTab !== 'solicitudes' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-          <Card className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-gray-900 dark:text-gray-100">Solicitudes Pendientes</h3>
-              <ClipboardSignature className="text-orange-500" size={24} />
-            </div>
-            {stats.solicitudesPendientes > 0 ? (
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-                    {stats.solicitudesPendientes}
-                  </p>
-                  <p className="text-sm text-gray-500">requieren atención</p>
-                </div>
-                <button
-                  onClick={() => setActiveTab('solicitudes')}
-                  className="px-4 py-2 bg-primary-50 text-primary-600 dark:bg-primary-900/20 dark:text-primary-400 rounded-lg text-sm font-medium hover:bg-primary-100 transition"
-                >
-                  Ver solicitudes
-                </button>
-              </div>
-            ) : (
-              <p className="text-gray-500 dark:text-gray-400 text-sm">No hay solicitudes pendientes</p>
-            )}
-          </Card>
-        </div>
-      )}
     </MainLayout>
   );
 }

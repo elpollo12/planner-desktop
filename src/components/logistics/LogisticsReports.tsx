@@ -6,7 +6,7 @@ interface LogisticsReportsProps {
 
 export function LogisticsReports({ }: LogisticsReportsProps) {
   return (
-    <div className="space-y-6">
+    <div className="">
       <div className="flex justify-between items-center">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
           Inventario de Botellones
@@ -14,6 +14,7 @@ export function LogisticsReports({ }: LogisticsReportsProps) {
         <div className="flex gap-2">
           <Button
             variant='outline'
+            className='hover:bg-red-500 hover:border-red-500!'
             size='sm'
             icon={<FileText size={18} />}
             iconPosition='right'
@@ -22,6 +23,7 @@ export function LogisticsReports({ }: LogisticsReportsProps) {
           </Button>
           <Button
             variant='outline'
+            className='hover:bg-green-600 hover:border-green-600!'
             size='sm'
             icon={<Sheet size={18} />}
             iconPosition='right'
