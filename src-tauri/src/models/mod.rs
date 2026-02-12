@@ -15,6 +15,7 @@ pub mod user_preferences;
 pub mod operator;
 pub mod app_settings;
 pub mod rig_personnel;
+pub mod logistics;
 
 // Re-export commonly used types
 // Allow unused imports as these are exposed for library consumers
@@ -52,3 +53,5 @@ pub use operator::*;
 pub use app_settings::*;
 #[allow(unused_imports)]
 pub use rig_personnel::*;
+#[allow(unused_imports)]
+pub use logistics::*;

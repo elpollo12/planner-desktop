@@ -15,6 +15,7 @@ import ReportForm from './pages/ReportForm';
 import ReportList from './pages/ReportList';
 import ReportView from './pages/ReportView';
 import AdminPanel from './pages/AdminPanel';
+import Logistics from './pages/Logisctics';
 import './App.css';
 
 // Protected Route Component
@@ -104,62 +105,70 @@ function App() {
       />
       <Routes>
         <Route path="/login" element={<Login />} />
-      
-      <Route
-        path="/dashboard"
-        element={
-          <ProtectedRoute>
-            <Dashboard />
-          </ProtectedRoute>
-        }
-      />
-      
-      <Route
-        path="/reports/new"
-        element={
-          <ProtectedRoute>
-            <ReportForm />
-          </ProtectedRoute>
-        }
-      />
-      
-      <Route
-        path="/reports/edit/:id"
-        element={
-          <ProtectedRoute>
-            <ReportForm />
-          </ProtectedRoute>
-        }
-      />
 
-      <Route
-        path="/reports/view/:id"
-        element={
-          <ProtectedRoute>
-            <ReportView />
-          </ProtectedRoute>
-        }
-      />
-      
-      <Route
-        path="/reports"
-        element={
-          <ProtectedRoute>
-            <ReportList />
-          </ProtectedRoute>
-        }
-      />
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        />
 
-      <Route
-        path="/admin"
-        element={
-          <ProtectedRoute>
-            <AdminPanel />
-          </ProtectedRoute>
-        }
-      />
+        <Route
+          path="/reports/new"
+          element={
+            <ProtectedRoute>
+              <ReportForm />
+            </ProtectedRoute>
+          }
+        />
 
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route
+          path="/reports/edit/:id"
+          element={
+            <ProtectedRoute>
+              <ReportForm />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/reports/view/:id"
+          element={
+            <ProtectedRoute>
+              <ReportView />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/reports"
+          element={
+            <ProtectedRoute>
+              <ReportList />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute>
+              <AdminPanel />
+            </ProtectedRoute>
+          }
+        /> 
+        <Route
+          path="/logistics"
+          element={
+            <ProtectedRoute>
+              <Logistics />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </>
   );

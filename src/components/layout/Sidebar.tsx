@@ -3,6 +3,7 @@ import { useAuthStore } from '../../store/authStore';
 import { useAppSettingsStore } from '../../store/appSettingsStore';
 import { Button } from '../ui';
 import {
+  Forklift,
   LayoutDashboard,
   List,
   LogOut,
@@ -29,6 +30,12 @@ export function Sidebar({ className = '' }: SidebarProps) {
       name: 'Reportes',
       href: '/reports',
       icon: List,
+      show: true,
+    },
+    {
+      name: 'Logística',
+      href: '/logistics',
+      icon: Forklift,
       show: true,
     },
     {
