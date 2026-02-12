@@ -16,7 +16,7 @@ import ReportList from './pages/ReportList';
 import ReportView from './pages/ReportView';
 import AdminPanel from './pages/AdminPanel';
 import { UpdateNotification } from './components/ui/UpdateNotification';
-import Logistics from './pages/Logisctics';
+import Logistics from './pages/Logistics';
 import './App.css';
 
 // Protected Route Component

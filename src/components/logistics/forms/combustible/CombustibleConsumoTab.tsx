@@ -3,24 +3,24 @@ import { fuelApi } from '@/lib/api';
 import { fuelMovementSchema, type FuelMovementForm } from '@/schemas';
 import { MovementFormTab } from '../MovementFormTab';
 
-interface CombustibleIngresoTabProps {
+interface CombustibleConsumoTabProps {
   onSuccess?: () => void;
 }
 
-export function CombustibleIngresoTab({ onSuccess }: CombustibleIngresoTabProps) {
+export function CombustibleConsumoTab({ onSuccess }: CombustibleConsumoTabProps) {
   return (
     <MovementFormTab<FuelMovementForm>
-      direction="entry"
+      direction="exit"
       schema={fuelMovementSchema}
       defaultValues={{ amount: undefined as unknown as number, notes: '' }}
-      bannerText="Registrar una nueva carga de combustible al inventario"
+      bannerText="Registrar consumo o gasto de combustible"
       icon={Fuel}
-      successMessage="Ingreso de combustible registrado"
-      errorMessage="Error al registrar el ingreso"
-      submitLabel="Registrar Ingreso"
+      successMessage="Gasto de combustible registrado"
+      errorMessage="Error al registrar el gasto"
+      submitLabel="Registrar Consumo"
       onSubmit={async (sessionToken, data) => {
         await fuelApi.createMovement(sessionToken, {
-          movementType: 'entry',
+          movementType: 'exit',
           amount: data.amount,
           notes: data.notes || undefined,
         });

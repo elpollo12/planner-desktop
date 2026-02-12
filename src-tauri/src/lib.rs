@@ -174,27 +174,29 @@ pub fn run() {
             commands::operators::get_operator_logo_data,
 
             // Logistics - Water Bottles
-            commands::logistics_water::get_water_bottles_inventory,
             commands::logistics_water::create_water_bottles_movement,
             commands::logistics_water::get_water_bottles_movements,
+            commands::logistics_water::delete_water_bottles_movement,
 
             // Logistics - Fuel
-            commands::logistics_fuel::get_fuel_inventory,
             commands::logistics_fuel::create_fuel_movement,
             commands::logistics_fuel::get_fuel_movements,
+            commands::logistics_fuel::delete_fuel_movement,
 
-            // Logistics - Water Tank (Vacuum)
-            commands::logistics_tank::get_water_tank_inventory,
-            commands::logistics_tank::create_water_tank_movement,
-            commands::logistics_tank::get_water_tank_movements,
+            // Logistics - Vacuum/Cisterna
+            commands::logistics_vacuum::create_vacuum_action,
+            commands::logistics_vacuum::get_vacuum_actions,
+            commands::logistics_vacuum::update_vacuum_action,
+            commands::logistics_vacuum::delete_vacuum_action,
 
-            // Logistics - Consumables
-            commands::logistics_consumables::list_consumables,
-            commands::logistics_consumables::get_consumable,
-            commands::logistics_consumables::create_consumable,
-            commands::logistics_consumables::update_consumable,
-            commands::logistics_consumables::create_consumable_movement,
-            commands::logistics_consumables::get_consumable_movements,
+            // Logistics - Materials (catalog + movements)
+            commands::logistics_materials::create_material,
+            commands::logistics_materials::list_materials,
+            commands::logistics_materials::update_material,
+            commands::logistics_materials::delete_material,
+            commands::logistics_materials::create_material_movement,
+            commands::logistics_materials::get_material_movements,
+            commands::logistics_materials::delete_material_movement,
 
             // Logistics - Requests & Reports
             commands::logistics_requests::create_logistics_request,

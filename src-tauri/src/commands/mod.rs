@@ -20,8 +20,8 @@ pub mod app_settings;
 pub mod rig_personnel;
 pub mod logistics_water;
 pub mod logistics_fuel;
-pub mod logistics_tank;
-pub mod logistics_consumables;
+pub mod logistics_vacuum;
+pub mod logistics_materials;
 pub mod logistics_requests;
 
 // Re-export all command handlers for Tauri
@@ -69,8 +69,8 @@ pub use logistics_water::*;
 #[allow(unused_imports)]
 pub use logistics_fuel::*;
 #[allow(unused_imports)]
-pub use logistics_tank::*;
+pub use logistics_vacuum::*;
 #[allow(unused_imports)]
-pub use logistics_consumables::*;
+pub use logistics_materials::*;
 #[allow(unused_imports)]
 pub use logistics_requests::*;

@@ -3,6 +3,7 @@ export * from './reportSchema';
 export * from './reportSchemaExtended';
 export * from './reportSchemaFinal';
 export * from './rigSchemas';
+export * from './logisticsSchemas';
 
 import { z } from 'zod';
 import {

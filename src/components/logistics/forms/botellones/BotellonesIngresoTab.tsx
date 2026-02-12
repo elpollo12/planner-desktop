@@ -1,27 +1,27 @@
-import { Fuel } from 'lucide-react';
-import { fuelApi } from '@/lib/api';
-import { fuelMovementSchema, type FuelMovementForm } from '@/schemas';
+import { Droplets } from 'lucide-react';
+import { waterBottlesApi } from '@/lib/api';
+import { waterBottlesMovementSchema, type WaterBottlesMovementForm } from '@/schemas';
 import { MovementFormTab } from '../MovementFormTab';
 
-interface CombustibleIngresoTabProps {
+interface BotellonesIngresoTabProps {
   onSuccess?: () => void;
 }
 
-export function CombustibleIngresoTab({ onSuccess }: CombustibleIngresoTabProps) {
+export function BotellonesIngresoTab({ onSuccess }: BotellonesIngresoTabProps) {
   return (
-    <MovementFormTab<FuelMovementForm>
+    <MovementFormTab<WaterBottlesMovementForm>
       direction="entry"
-      schema={fuelMovementSchema}
-      defaultValues={{ amount: undefined as unknown as number, notes: '' }}
-      bannerText="Registrar una nueva carga de combustible al inventario"
-      icon={Fuel}
-      successMessage="Ingreso de combustible registrado"
+      schema={waterBottlesMovementSchema}
+      defaultValues={{ quantity: undefined as unknown as number, notes: '' }}
+      bannerText="Registrar ingreso de botellones al inventario"
+      icon={Droplets}
+      successMessage="Ingreso de botellones registrado"
       errorMessage="Error al registrar el ingreso"
       submitLabel="Registrar Ingreso"
       onSubmit={async (sessionToken, data) => {
-        await fuelApi.createMovement(sessionToken, {
+        await waterBottlesApi.createMovement(sessionToken, {
           movementType: 'entry',
-          amount: data.amount,
+          quantity: data.quantity,
           notes: data.notes || undefined,
         });
       }}
@@ -30,22 +30,22 @@ export function CombustibleIngresoTab({ onSuccess }: CombustibleIngresoTabProps)
         <>
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Cantidad (Litros) <span className="text-red-500">*</span>
+              Cantidad de Botellones <span className="text-red-500">*</span>
             </label>
             <div className="relative">
-              <Fuel className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+              <Droplets className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
               <input
                 type="number"
-                step="0.01"
-                min="0"
-                {...register('amount', { valueAsNumber: true })}
+                min="1"
+                step="1"
+                {...register('quantity', { valueAsNumber: true })}
                 className={`w-full pl-10 pr-4 py-2.5 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
-                  errors.amount ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                  errors.quantity ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
                 }`}
-                placeholder="0.00"
+                placeholder="0"
               />
             </div>
-            {errors.amount && <p className="mt-1 text-sm text-red-500">{errors.amount.message}</p>}
+            {errors.quantity && <p className="mt-1 text-sm text-red-500">{errors.quantity.message}</p>}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Observaciones</label>
