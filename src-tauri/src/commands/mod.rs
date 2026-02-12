@@ -18,6 +18,11 @@ pub mod operators;
 pub mod debug;
 pub mod app_settings;
 pub mod rig_personnel;
+pub mod logistics_water;
+pub mod logistics_fuel;
+pub mod logistics_tank;
+pub mod logistics_consumables;
+pub mod logistics_requests;
 
 // Re-export all command handlers for Tauri
 // Allow unused imports as these are registered in main.rs
@@ -59,3 +64,13 @@ pub use debug::*;
 pub use app_settings::*;
 #[allow(unused_imports)]
 pub use rig_personnel::*;
+#[allow(unused_imports)]
+pub use logistics_water::*;
+#[allow(unused_imports)]
+pub use logistics_fuel::*;
+#[allow(unused_imports)]
+pub use logistics_tank::*;
+#[allow(unused_imports)]
+pub use logistics_consumables::*;
+#[allow(unused_imports)]
+pub use logistics_requests::*;

@@ -173,6 +173,36 @@ pub fn run() {
             commands::operators::remove_operator_logo,
             commands::operators::get_operator_logo_data,
 
+            // Logistics - Water Bottles
+            commands::logistics_water::get_water_bottles_inventory,
+            commands::logistics_water::create_water_bottles_movement,
+            commands::logistics_water::get_water_bottles_movements,
+
+            // Logistics - Fuel
+            commands::logistics_fuel::get_fuel_inventory,
+            commands::logistics_fuel::create_fuel_movement,
+            commands::logistics_fuel::get_fuel_movements,
+
+            // Logistics - Water Tank (Vacuum)
+            commands::logistics_tank::get_water_tank_inventory,
+            commands::logistics_tank::create_water_tank_movement,
+            commands::logistics_tank::get_water_tank_movements,
+
+            // Logistics - Consumables
+            commands::logistics_consumables::list_consumables,
+            commands::logistics_consumables::get_consumable,
+            commands::logistics_consumables::create_consumable,
+            commands::logistics_consumables::update_consumable,
+            commands::logistics_consumables::create_consumable_movement,
+            commands::logistics_consumables::get_consumable_movements,
+
+            // Logistics - Requests & Reports
+            commands::logistics_requests::create_logistics_request,
+            commands::logistics_requests::list_logistics_requests,
+            commands::logistics_requests::update_logistics_request_status,
+            commands::logistics_requests::get_pending_requests_count,
+            commands::logistics_requests::get_logistics_report,
+
             // Debug commands
             commands::debug::debug_list_all_rigs,
             commands::debug::debug_get_sync_info,
