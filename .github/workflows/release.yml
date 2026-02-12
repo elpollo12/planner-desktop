@@ -1,0 +1,111 @@
+name: Build & Publish Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  PUBLIC_REPO: elpollo12/planner-desktop-releases
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: 'src-tauri -> target'
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build Tauri app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tagName: ${{ github.ref_name }}
+
+      - name: Find build artifacts
+        id: artifacts
+        shell: bash
+        run: |
+          NSIS_ZIP=$(find src-tauri/target/release/bundle/nsis -name "*.nsis.zip" | head -1)
+          NSIS_SIG=$(find src-tauri/target/release/bundle/nsis -name "*.nsis.zip.sig" | head -1)
+          NSIS_EXE=$(find src-tauri/target/release/bundle/nsis -name "*.exe" | head -1)
+
+          echo "nsis_zip=$NSIS_ZIP" >> $GITHUB_OUTPUT
+          echo "nsis_sig=$NSIS_SIG" >> $GITHUB_OUTPUT
+          echo "nsis_exe=$NSIS_EXE" >> $GITHUB_OUTPUT
+          echo "nsis_zip_name=$(basename $NSIS_ZIP)" >> $GITHUB_OUTPUT
+
+      - name: Read signature
+        id: sig
+        shell: bash
+        run: |
+          SIG_CONTENT=$(cat "${{ steps.artifacts.outputs.nsis_sig }}")
+          echo "signature=$SIG_CONTENT" >> $GITHUB_OUTPUT
+
+      - name: Get version from tag
+        id: version
+        shell: bash
+        run: echo "version=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
+
+      - name: Generate latest.json
+        shell: bash
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          SIG="${{ steps.sig.outputs.signature }}"
+          ZIP_NAME="${{ steps.artifacts.outputs.nsis_zip_name }}"
+          TAG="${{ github.ref_name }}"
+          PUB_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          REPO="${{ env.PUBLIC_REPO }}"
+
+          cat > latest.json << EOF
+          {
+            "version": "${VERSION}",
+            "notes": "Actualización a versión ${VERSION}",
+            "pub_date": "${PUB_DATE}",
+            "platforms": {
+              "windows-x86_64": {
+                "signature": "${SIG}",
+                "url": "https://github.com/${REPO}/releases/download/${TAG}/${ZIP_NAME}"
+              }
+            }
+          }
+          EOF
+
+      - name: Publish to public releases repo
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PAT }}
+        run: |
+          TAG="${{ github.ref_name }}"
+          VERSION="${{ steps.version.outputs.version }}"
+
+          gh release create "$TAG" \
+            --repo "${{ env.PUBLIC_REPO }}" \
+            --title "Planner $VERSION" \
+            --notes "Actualización a versión $VERSION" \
+            "${{ steps.artifacts.outputs.nsis_exe }}" \
+            "${{ steps.artifacts.outputs.nsis_zip }}" \
+            "${{ steps.artifacts.outputs.nsis_sig }}" \
+            "latest.json"

@@ -96,7 +96,7 @@ export const BreadCrumps = () => {
   return (
     <nav
       aria-label="Breadcrumb"
-      className="flex items-center flex-wrap text-sm text-gray-600 dark:text-gray-400 mt-2 -mb-4"
+      className="flex items-center flex-wrap text-sm text-gray-600 dark:text-gray-400"
     >
       <Link
         to="/"

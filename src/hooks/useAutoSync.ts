@@ -35,10 +35,9 @@ export function useAutoSync() {
         return;
       }
 
-      console.log('[AutoSync] Starting automatic full sync (push + pull)...');
-      // Full sync: push local changes then pull remote changes
-      // This ensures users, app_settings, reports, etc. all stay in sync
-      const result = await syncApi.fullSync(sessionToken);
+      console.log('[AutoSync] Starting incremental sync (push changes + pull changes)...');
+      // Incremental sync: only push/pull records modified since last sync
+      const result = await syncApi.incrementalSync(sessionToken);
       lastSyncRef.current = now;
 
       if (result.success) {

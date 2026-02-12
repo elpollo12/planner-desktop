@@ -15,6 +15,7 @@ import ReportForm from './pages/ReportForm';
 import ReportList from './pages/ReportList';
 import ReportView from './pages/ReportView';
 import AdminPanel from './pages/AdminPanel';
+import { UpdateNotification } from './components/ui/UpdateNotification';
 import './App.css';
 
 // Protected Route Component
@@ -90,6 +91,7 @@ function App() {
 
   return (
     <>
+      <UpdateNotification />
       <ToastContainer
         position="bottom-right"
         autoClose={2000}
