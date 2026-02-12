@@ -43,7 +43,7 @@ export function useUpdateChecker() {
       let totalBytes = 0;
       let downloadedBytes = 0;
 
-      await update.downloadAndInstall((event) => {
+      await update.downloadAndInstall((event)=> {
         if (event.event === 'Started') {
           totalBytes = event.data.contentLength ?? 0;
         } else if (event.event === 'Progress') {
