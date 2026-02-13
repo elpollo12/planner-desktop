@@ -177,11 +177,13 @@ pub fn run() {
             commands::logistics_water::create_water_bottles_movement,
             commands::logistics_water::get_water_bottles_movements,
             commands::logistics_water::delete_water_bottles_movement,
+            commands::logistics_water::get_water_bottles_stock,
 
             // Logistics - Fuel
             commands::logistics_fuel::create_fuel_movement,
             commands::logistics_fuel::get_fuel_movements,
             commands::logistics_fuel::delete_fuel_movement,
+            commands::logistics_fuel::get_fuel_stock,
 
             // Logistics - Vacuum/Cisterna
             commands::logistics_vacuum::create_vacuum_action,
@@ -197,11 +199,13 @@ pub fn run() {
             commands::logistics_materials::create_material_movement,
             commands::logistics_materials::get_material_movements,
             commands::logistics_materials::delete_material_movement,
+            commands::logistics_materials::get_material_stock,
 
             // Logistics - Requests & Reports
             commands::logistics_requests::create_logistics_request,
             commands::logistics_requests::list_logistics_requests,
             commands::logistics_requests::update_logistics_request_status,
+            commands::logistics_requests::delete_logistics_request,
             commands::logistics_requests::get_pending_requests_count,
             commands::logistics_requests::get_logistics_report,
 

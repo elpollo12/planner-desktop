@@ -2,6 +2,8 @@ import { Package } from 'lucide-react';
 import { materialsApi } from '@/lib/api';
 import { materialMovementSchema, type MaterialMovementForm } from '@/schemas';
 import { MovementFormTab } from '../MovementFormTab';
+import { MaterialSearchInput } from './MaterialSearchInput';
+import { capitalize } from '@/lib/stringUtils';
 import type { Material } from '@/types/logistics';
 
 interface Props {
@@ -29,7 +31,7 @@ export function MaterialesIngresoTab({ onSuccess, materials }: Props) {
         });
       }}
       onSuccess={onSuccess}
-      renderFields={({ register, errors, watch }) => {
+      renderFields={({ register, errors, watch, setValue }) => {
         const materialId = watch('materialId');
         const selectedMaterial = materials.find((m) => m.id === materialId);
 
@@ -39,20 +41,12 @@ export function MaterialesIngresoTab({ onSuccess, materials }: Props) {
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Material <span className="text-red-500">*</span>
               </label>
-              <select
-                {...register('materialId')}
-                className={`w-full px-4 py-2.5 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 ${
-                  errors.materialId ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                }`}
-              >
-                <option value="">Seleccionar material</option>
-                {materials.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.name} ({m.unit})
-                  </option>
-                ))}
-              </select>
-              {errors.materialId && <p className="mt-1 text-sm text-red-500">{errors.materialId.message}</p>}
+              <MaterialSearchInput
+                materials={materials}
+                value={materialId}
+                onChange={(id) => setValue('materialId', id as any, { shouldValidate: true })}
+                error={errors.materialId?.message}
+              />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">

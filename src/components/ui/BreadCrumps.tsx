@@ -12,6 +12,7 @@ const routeNames: Record<string, string> = {
   'new': 'Nuevo',
   'edit': 'Editar',
   'view': 'Ver',
+  'logistics' : 'Logística'
 }
 
 export const BreadCrumps = () => {

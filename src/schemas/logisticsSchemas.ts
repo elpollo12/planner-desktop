@@ -9,14 +9,14 @@ export const waterBottlesMovementSchema = z.object({
     .number({ message: 'La cantidad es requerida' })
     .int('La cantidad debe ser un número entero')
     .positive('La cantidad debe ser mayor a 0'),
-  notes: z.string().max(500, 'Máximo 500 caracteres').optional(),
+  notes: z.string().max(500, 'Máximo 500 caracteres').trim().optional(),
 });
 
 export const fuelMovementSchema = z.object({
   amount: z
     .number({ message: 'La cantidad es requerida' })
     .positive('La cantidad debe ser mayor a 0'),
-  notes: z.string().max(500, 'Máximo 500 caracteres').optional(),
+  notes: z.string().max(500, 'Máximo 500 caracteres').trim().optional(),
 });
 
 export const materialMovementSchema = z.object({
@@ -24,7 +24,7 @@ export const materialMovementSchema = z.object({
   quantity: z
     .number({ message: 'La cantidad es requerida' })
     .positive('La cantidad debe ser mayor a 0'),
-  notes: z.string().max(500, 'Máximo 500 caracteres').optional(),
+  notes: z.string().max(500, 'Máximo 500 caracteres').trim().optional(),
 });
 
 // ============================================================================
@@ -37,7 +37,7 @@ export const vacuumActionSchema = z.object({
     .min(1, 'La acción es requerida')
     .max(200, 'Máximo 200 caracteres')
     .trim(),
-  notes: z.string().max(500, 'Máximo 500 caracteres').optional(),
+  notes: z.string().max(500, 'Máximo 500 caracteres').trim().optional(),
 });
 
 // ============================================================================
@@ -52,7 +52,7 @@ export const logisticsRequestSchema = z
     quantity: z.number().positive('La cantidad debe ser mayor a 0').optional(),
     actionRequested: z.string().max(200, 'Máximo 200 caracteres').trim().optional(),
     materialId: z.string().optional(),
-    notes: z.string().max(500, 'Máximo 500 caracteres').optional(),
+    notes: z.string().max(500, 'Máximo 500 caracteres').trim().optional(),
   })
   .superRefine((data, ctx) => {
     if (data.requestType === 'water_bottles' || data.requestType === 'fuel') {
@@ -106,7 +106,7 @@ export const createMaterialSchema = z.object({
     .min(1, 'La unidad es requerida')
     .max(30, 'Máximo 30 caracteres')
     .trim(),
-  description: z.string().max(300, 'Máximo 300 caracteres').optional(),
+  description: z.string().max(300, 'Máximo 300 caracteres').trim().optional(),
 });
 
 // ============================================================================

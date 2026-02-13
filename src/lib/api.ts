@@ -514,6 +514,9 @@ export const waterBottlesApi = {
 
   deleteMovement: (sessionToken: string, movementId: string) =>
     invoke<void>('delete_water_bottles_movement', { sessionToken, movementId }),
+
+  getStock: (sessionToken: string) =>
+    invoke<number>('get_water_bottles_stock', { sessionToken }),
 };
 
 // ============================================================================
@@ -529,6 +532,9 @@ export const fuelApi = {
 
   deleteMovement: (sessionToken: string, movementId: string) =>
     invoke<void>('delete_fuel_movement', { sessionToken, movementId }),
+
+  getStock: (sessionToken: string) =>
+    invoke<number>('get_fuel_stock', { sessionToken }),
 };
 
 // ============================================================================
@@ -576,6 +582,9 @@ export const materialsApi = {
 
   deleteMovement: (sessionToken: string, movementId: string) =>
     invoke<void>('delete_material_movement', { sessionToken, movementId }),
+
+  getStock: (sessionToken: string, materialId: string) =>
+    invoke<number>('get_material_stock', { sessionToken, materialId }),
 };
 
 // ============================================================================
@@ -591,6 +600,9 @@ export const logisticsRequestsApi = {
 
   updateStatus: (sessionToken: string, requestId: string, input: UpdateRequestStatus) =>
     invoke<LogisticsRequest>('update_logistics_request_status', { sessionToken, requestId, input }),
+
+  delete: (sessionToken: string, requestId: string) =>
+    invoke<void>('delete_logistics_request', { sessionToken, requestId }),
 
   getPendingCount: (sessionToken: string) =>
     invoke<number>('get_pending_requests_count', { sessionToken }),

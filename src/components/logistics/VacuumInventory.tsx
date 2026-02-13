@@ -1,14 +1,16 @@
 import { useState, useEffect } from 'react';
 import { Button } from '../ui';
-import { ArrowUpDown, FileText, Trash2 } from 'lucide-react';
+import { ArrowUpDown, FileText, Trash2, Eye } from 'lucide-react';
 import { useModalStore } from '../../store';
 import { useAuthStore } from '../../store/authStore';
-import { vacuumApi } from '../../lib/api';
+import { vacuumApi, usersApi } from '../../lib/api';
 import { toast } from 'react-toastify';
 import { formatDateDMY, formatTimeHM } from '../../lib/dateUtils';
 import { VacuumForm } from './forms/vacuum/VacuumForm';
 import { RequestForm } from './forms/requests/RequestForm';
 import { InventoryShell } from './InventoryShell';
+import ConfirmDeleteModal from '../modals/ConfirmDelete';
+import MovementDetailModal, { buildVacuumFields } from '../modals/MovementDetail';
 import type { VacuumAction } from '../../types/logistics';
 
 interface VacuumInventoryProps {
@@ -60,15 +62,43 @@ export function VacuumInventory({ onUpdate }: VacuumInventoryProps) {
     );
   };
 
-  const handleDelete = async (id: string) => {
-    if (!sessionToken) return;
-    try {
-      await vacuumApi.deleteAction(sessionToken, id);
-      toast.success('Acción eliminada');
-      if (actions.length === 1 && currentPage > 1) setCurrentPage(currentPage - 1);
-      else loadActions();
-      onUpdate();
-    } catch (error: any) { toast.error(error?.toString() || 'Error al eliminar'); }
+  const handleDelete = (action: VacuumAction) => {
+    const label = `${action.actionName} (${formatDateDMY(action.createdAt?.split('T')[0])})`;
+
+    openModal(
+      <ConfirmDeleteModal
+        message="¿Estás seguro de que deseas eliminar esta acción?"
+        itemName={label}
+        onConfirm={async () => {
+          if (!sessionToken) return;
+          try {
+            await vacuumApi.deleteAction(sessionToken, action.id);
+            toast.success('Acción eliminada');
+            if (actions.length === 1 && currentPage > 1) setCurrentPage(currentPage - 1);
+            else loadActions();
+            onUpdate();
+          } catch (error: any) {
+            toast.error(error?.toString() || 'Error al eliminar');
+            throw error;
+          }
+        }}
+      />,
+      { title: '¿Eliminar acción?', size: 'sm', showCloseButton: true }
+    );
+  };
+
+  const handleViewDetail = async (action: VacuumAction) => {
+    let createdByName = '—';
+    if (sessionToken && action.createdBy) {
+      try {
+        const u = await usersApi.get(sessionToken, action.createdBy);
+        createdByName = u.fullName;
+      } catch { /* ignore */ }
+    }
+    openModal(
+      <MovementDetailModal fields={buildVacuumFields(action, createdByName)} />,
+      { title: 'Detalle de la Acción', size: 'sm', showCloseButton: true, closeOnOutsideClick: true }
+    );
   };
 
   const handlePageChange = (page: number) => setCurrentPage(page);
@@ -94,7 +124,7 @@ export function VacuumInventory({ onUpdate }: VacuumInventoryProps) {
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Acción</th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Fecha</th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Observaciones</th>
-            {canManage && <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Acciones</th>}
+            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Acciones</th>
           </tr>
         </thead>
         <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -110,13 +140,16 @@ export function VacuumInventory({ onUpdate }: VacuumInventoryProps) {
                 <div className="text-xs text-gray-500 dark:text-gray-400">{formatTimeHM(a.createdAt)}</div>
               </td>
               <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400 max-w-xs truncate">{a.notes || '-'}</td>
-              {canManage && (
-                <td className="px-6 py-4 whitespace-nowrap text-center">
-                  <div className="flex items-center justify-center gap-2">
-                    <button onClick={() => handleDelete(a.id)} className="p-1 text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300" title="Eliminar"><Trash2 size={18} /></button>
-                  </div>
-                </td>
-              )}
+              <td className="px-6 py-4 whitespace-nowrap text-center">
+                <div className="flex items-center justify-center gap-1">
+                  <button onClick={() => handleViewDetail(a)} className="p-1 text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300" title="Ver detalle">
+                    <Eye size={18} />
+                  </button>
+                  {canManage && (
+                    <button onClick={() => handleDelete(a)} className="p-1 text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300" title="Eliminar"><Trash2 size={18} /></button>
+                  )}
+                </div>
+              </td>
             </tr>
           ))}
         </tbody>

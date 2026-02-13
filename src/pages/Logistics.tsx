@@ -27,13 +27,13 @@ export default function LogisticsPage() {
   const [activeTab, setActiveTab] = useState<LogisticsTab>('botellones');
   const [pendingCount, setPendingCount] = useState(0);
 
-  if (!isAuthenticated || !user) {
-    return <Navigate to="/login" replace />;
-  }
-
   useEffect(() => {
     if (sessionToken) loadPendingCount();
   }, [sessionToken]);
+
+  if (!isAuthenticated || !user) {
+    return <Navigate to="/login" replace />;
+  }
 
   const loadPendingCount = async () => {
     if (!sessionToken) return;

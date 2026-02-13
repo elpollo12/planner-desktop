@@ -1,1 +1,1 @@
-export { default as ConfirmDeleteModal } from './ConfirmDeleteReport';
+export { default as ConfirmDeleteModal } from './ConfirmDelete';

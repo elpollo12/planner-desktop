@@ -30,22 +30,38 @@ pub async fn create_material(
         "supervisor" | "admin" => {}
         _ => return Err("No tienes permisos para crear materiales".to_string()),
     }
-    if input.name.trim().is_empty() { return Err("El nombre del material es requerido".to_string()); }
-    if input.unit.trim().is_empty() { return Err("La unidad de medida es requerida".to_string()); }
+    let name = input.name.trim().to_lowercase();
+    let unit = input.unit.trim().to_lowercase();
+    let description = input.description.map(|d| d.trim().to_string()).filter(|d| !d.is_empty());
+
+    if name.is_empty() { return Err("El nombre del material es requerido".to_string()); }
+    if unit.is_empty() { return Err("La unidad de medida es requerida".to_string()); }
 
     let conn = state.db.lock().map_err(|e| format!("Failed to lock database: {}", e))?;
+
+    // Check for duplicate name (case-insensitive, already lowercased)
+    let exists: bool = conn.query_row(
+        "SELECT COUNT(*) > 0 FROM logistics_materials WHERE LOWER(name) = ?1",
+        params![name],
+        |row| row.get(0),
+    ).map_err(|e| e.to_string())?;
+
+    if exists {
+        return Err(format!("Ya existe un material con el nombre '{}'", name));
+    }
+
     let id = Uuid::new_v4().to_string();
     let now = chrono::Utc::now().to_rfc3339();
 
     conn.execute(
         "INSERT INTO logistics_materials (id, name, unit, description, active, created_by, created_at, updated_at)
          VALUES (?1, ?2, ?3, ?4, 1, ?5, ?6, ?7)",
-        params![id, input.name.trim(), input.unit.trim(), input.description, session.user_id, now, now],
+        params![id, name, unit, description, session.user_id, now, now],
     ).map_err(|e| e.to_string())?;
 
     Ok(Material {
-        id, name: input.name.trim().to_string(), unit: input.unit.trim().to_string(),
-        description: input.description, active: true, created_by: Some(session.user_id),
+        id, name, unit,
+        description, active: true, created_by: Some(session.user_id),
         created_at: now.clone(), updated_at: now,
     })
 }
@@ -155,6 +171,25 @@ pub async fn create_material_movement(
     let id = Uuid::new_v4().to_string();
     let now = chrono::Utc::now().to_rfc3339();
 
+    // Validate stock for exit movements
+    if movement.movement_type == "exit" {
+        let total_entries: f64 = conn.query_row(
+            "SELECT COALESCE(SUM(quantity), 0) FROM logistics_materials_movements WHERE material_id = ?1 AND movement_type = 'entry'",
+            params![movement.material_id], |row| row.get(0),
+        ).map_err(|e| e.to_string())?;
+        let total_exits: f64 = conn.query_row(
+            "SELECT COALESCE(SUM(quantity), 0) FROM logistics_materials_movements WHERE material_id = ?1 AND movement_type = 'exit'",
+            params![movement.material_id], |row| row.get(0),
+        ).map_err(|e| e.to_string())?;
+        let current_stock = total_entries - total_exits;
+        if movement.quantity > current_stock {
+            let mat_name: String = conn.query_row(
+                "SELECT name FROM logistics_materials WHERE id = ?1", params![movement.material_id], |row| row.get(0),
+            ).unwrap_or_else(|_| "Desconocido".to_string());
+            return Err(format!("Stock insuficiente de {}. Stock actual: {:.2}, intentando retirar: {:.2}", mat_name, current_stock, movement.quantity));
+        }
+    }
+
     conn.execute(
         "INSERT INTO logistics_materials_movements (id, material_id, movement_type, quantity, notes, created_by, created_at)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
@@ -228,4 +263,25 @@ pub async fn delete_material_movement(
     let affected = conn.execute("DELETE FROM logistics_materials_movements WHERE id = ?1", params![movement_id]).map_err(|e| e.to_string())?;
     if affected == 0 { return Err("Movimiento no encontrado".to_string()); }
     Ok(())
+}
+
+#[tauri::command]
+pub async fn get_material_stock(
+    session_token: String,
+    material_id: String,
+    state: State<'_, AppState>,
+) -> Result<f64, String> {
+    get_session(&session_token, &state).map_err(|e| e.to_string())?;
+    let conn = state.db.lock().map_err(|e| format!("Failed to lock database: {}", e))?;
+
+    let total_entries: f64 = conn.query_row(
+        "SELECT COALESCE(SUM(quantity), 0) FROM logistics_materials_movements WHERE material_id = ?1 AND movement_type = 'entry'",
+        params![material_id], |row| row.get(0),
+    ).map_err(|e| e.to_string())?;
+    let total_exits: f64 = conn.query_row(
+        "SELECT COALESCE(SUM(quantity), 0) FROM logistics_materials_movements WHERE material_id = ?1 AND movement_type = 'exit'",
+        params![material_id], |row| row.get(0),
+    ).map_err(|e| e.to_string())?;
+
+    Ok(total_entries - total_exits)
 }

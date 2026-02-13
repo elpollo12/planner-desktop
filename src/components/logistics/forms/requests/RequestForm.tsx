@@ -8,6 +8,7 @@ import { toast } from 'react-toastify';
 import { logisticsRequestSchema, type LogisticsRequestForm } from '@/schemas';
 import { REQUEST_TYPE_LABELS } from '@/types/logistics';
 import { Button } from '@/components/ui';
+import { capitalize } from '@/lib/stringUtils';
 import type { Material, RequestType } from '@/types/logistics';
 
 interface RequestFormProps {
@@ -133,7 +134,7 @@ export function RequestForm({ onSuccess, defaultType, materials = [] }: RequestF
                 >
                   <option value="">Seleccionar material</option>
                   {materials.map((m) => (
-                    <option key={m.id} value={m.id}>{m.name} ({m.unit})</option>
+                    <option key={m.id} value={m.id}>{capitalize(m.name)} ({m.unit})</option>
                   ))}
                 </select>
                 {errors.materialId && <p className="mt-1 text-sm text-red-500">{errors.materialId.message}</p>}

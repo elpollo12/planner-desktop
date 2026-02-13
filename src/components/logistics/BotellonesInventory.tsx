@@ -1,14 +1,17 @@
 import { useState, useEffect } from 'react';
 import { Button } from '../ui';
-import { ArrowUpDown, FileText, Trash2, Plus, Minus } from 'lucide-react';
+import { ArrowUpDown, FileText, Trash2, Plus, Minus, Eye } from 'lucide-react';
 import { useModalStore } from '../../store';
 import { useAuthStore } from '../../store/authStore';
-import { waterBottlesApi } from '../../lib/api';
+import { waterBottlesApi, usersApi } from '../../lib/api';
 import { toast } from 'react-toastify';
 import { formatDateDMY, formatTimeHM } from '../../lib/dateUtils';
 import { BotellonesForm } from './forms/botellones/BotellonesForm';
 import { RequestForm } from './forms/requests/RequestForm';
 import { InventoryShell } from './InventoryShell';
+import { StockBadge } from './StockBadge';
+import ConfirmDeleteModal from '../modals/ConfirmDelete';
+import MovementDetailModal, { buildWaterBottlesFields } from '../modals/MovementDetail';
 import { MOVEMENT_LABELS } from '../../types/logistics';
 import type { WaterBottlesMovement } from '../../types/logistics';
 
@@ -26,12 +29,26 @@ export function BotellonesInventory({ onUpdate }: BotellonesInventoryProps) {
   const [pageSize, setPageSize] = useState(5);
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
+  const [stock, setStock] = useState<number | null>(null);
 
   const canDelete = user?.role === 'supervisor' || user?.role === 'admin';
 
   useEffect(() => {
-    if (sessionToken) loadMovements();
+    if (sessionToken) {
+      loadMovements();
+      loadStock();
+    }
   }, [sessionToken, currentPage, pageSize]);
+
+  const loadStock = async () => {
+    if (!sessionToken) return;
+    try {
+      const s = await waterBottlesApi.getStock(sessionToken);
+      setStock(s);
+    } catch (error) {
+      console.error('Error cargando stock:', error);
+    }
+  };
 
   const loadMovements = async () => {
     if (!sessionToken) return;
@@ -51,7 +68,7 @@ export function BotellonesInventory({ onUpdate }: BotellonesInventoryProps) {
 
   const handleRegistrar = () => {
     openModal(
-      <BotellonesForm onSuccess={() => { loadMovements(); onUpdate(); }} />,
+      <BotellonesForm onSuccess={() => { loadMovements(); loadStock(); onUpdate(); }} />,
       { title: 'Registrar Movimiento de Botellones', size: 'xl', showCloseButton: true, closeOnOutsideClick: false }
     );
   };
@@ -63,17 +80,44 @@ export function BotellonesInventory({ onUpdate }: BotellonesInventoryProps) {
     );
   };
 
-  const handleDelete = async (id: string) => {
-    if (!sessionToken) return;
-    try {
-      await waterBottlesApi.deleteMovement(sessionToken, id);
-      toast.success('Movimiento eliminado');
-      if (movements.length === 1 && currentPage > 1) setCurrentPage(currentPage - 1);
-      else loadMovements();
-      onUpdate();
-    } catch (error: any) {
-      toast.error(error?.toString() || 'Error al eliminar');
+  const handleDelete = (movement: WaterBottlesMovement) => {
+    const label = `${MOVEMENT_LABELS[movement.movementType as keyof typeof MOVEMENT_LABELS]} — ${movement.quantity} botellones (${formatDateDMY(movement.createdAt?.split('T')[0])})`;
+
+    openModal(
+      <ConfirmDeleteModal
+        message="¿Estás seguro de que deseas eliminar este registro?"
+        itemName={label}
+        onConfirm={async () => {
+          if (!sessionToken) return;
+          try {
+            await waterBottlesApi.deleteMovement(sessionToken, movement.id);
+            toast.success('Registro eliminado');
+            if (movements.length === 1 && currentPage > 1) setCurrentPage(currentPage - 1);
+            else loadMovements();
+            loadStock();
+            onUpdate();
+          } catch (error: any) {
+            toast.error(error?.toString() || 'Error al eliminar');
+            throw error;
+          }
+        }}
+      />,
+      { title: '¿Eliminar movimiento?', size: 'sm', showCloseButton: true }
+    );
+  };
+
+  const handleViewDetail = async (movement: WaterBottlesMovement) => {
+    let createdByName = '—';
+    if (sessionToken && movement.createdBy) {
+      try {
+        const u = await usersApi.get(sessionToken, movement.createdBy);
+        createdByName = u.fullName;
+      } catch { /* ignore */ }
     }
+    openModal(
+      <MovementDetailModal fields={buildWaterBottlesFields(movement, createdByName)} />,
+      { title: 'Detalle del Movimiento', size: 'md', showCloseButton: true, closeOnOutsideClick: true }
+    );
   };
 
   const handlePageChange = (page: number) => setCurrentPage(page);
@@ -82,6 +126,7 @@ export function BotellonesInventory({ onUpdate }: BotellonesInventoryProps) {
   return (
     <InventoryShell
       title="Botellones de Agua"
+      stockBadge={<StockBadge stock={stock} unit="botellones" />}
       loading={loading}
       isEmpty={movements.length === 0}
       emptyMessage="No hay movimientos registrados"
@@ -104,7 +149,7 @@ export function BotellonesInventory({ onUpdate }: BotellonesInventoryProps) {
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Cantidad</th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Fecha</th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Observaciones</th>
-            {canDelete && <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Acciones</th>}
+            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Acciones</th>
           </tr>
         </thead>
         <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -130,13 +175,18 @@ export function BotellonesInventory({ onUpdate }: BotellonesInventoryProps) {
               <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400 max-w-xs truncate">
                 {m.notes || '-'}
               </td>
-              {canDelete && (
-                <td className="px-6 py-4 whitespace-nowrap text-center">
-                  <button onClick={() => handleDelete(m.id)} className="p-1 text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300" title="Eliminar">
-                    <Trash2 size={18} />
+              <td className="px-6 py-4 whitespace-nowrap text-center">
+                <div className="flex items-center justify-center gap-1">
+                  <button onClick={() => handleViewDetail(m)} className="p-1 text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300" title="Ver detalle">
+                    <Eye size={18} />
                   </button>
-                </td>
-              )}
+                  {canDelete && (
+                    <button onClick={() => handleDelete(m)} className="p-1 text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300" title="Eliminar">
+                      <Trash2 size={18} />
+                    </button>
+                  )}
+                </div>
+              </td>
             </tr>
           ))}
         </tbody>

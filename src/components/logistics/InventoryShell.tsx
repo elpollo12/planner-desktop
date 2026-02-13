@@ -14,6 +14,8 @@ interface PaginationConfig {
 interface InventoryShellProps {
   /** Section title */
   title: string;
+  /** Stock indicator rendered next to the title */
+  stockBadge?: React.ReactNode;
   /** Action buttons (Registrar, Solicitar, etc.) */
   actions?: React.ReactNode;
   /** Extra content between actions and the card (e.g. filters) */
@@ -32,6 +34,7 @@ interface InventoryShellProps {
 
 export function InventoryShell({
   title,
+  stockBadge,
   actions,
   filters,
   loading,
@@ -43,7 +46,10 @@ export function InventoryShell({
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{title}</h2>
+        <div className="flex items-center gap-3">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{title}</h2>
+          {stockBadge}
+        </div>
         {actions && <div className="flex gap-2">{actions}</div>}
       </div>
 

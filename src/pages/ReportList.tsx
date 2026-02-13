@@ -5,7 +5,7 @@ import { Button, Card, Input, Select } from '../components/ui';
 import { Plus, Search, Eye, Edit, Trash2, CheckCircle, Clock, XCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useModal } from '../store/modalStore';
-import ConfirmDeleteModal from '../components/modals/ConfirmDeleteReport';
+import ConfirmDeleteModal from '../components/modals/ConfirmDelete';
 import { reportsApi, rigsApi } from '../lib/api';
 
 import { toast } from '../lib/toast';

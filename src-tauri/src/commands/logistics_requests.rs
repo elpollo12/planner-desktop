@@ -159,6 +159,43 @@ pub async fn update_logistics_request_status(
 }
 
 #[tauri::command]
+pub async fn delete_logistics_request(
+    session_token: String,
+    request_id: String,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    let session = get_session(&session_token, &state).map_err(|e| e.to_string())?;
+    let conn = state.db.lock().map_err(|e| format!("Failed to lock database: {}", e))?;
+
+    // Get the request to check ownership
+    let requested_by: String = conn.query_row(
+        "SELECT requested_by FROM logistics_requests WHERE id = ?1",
+        params![request_id],
+        |row| row.get(0),
+    ).map_err(|_| "Solicitud no encontrada".to_string())?;
+
+    // Permission check: admin/supervisor can delete any, operator only their own
+    match session.role.as_str() {
+        "admin" | "supervisor" => {} // Can delete any request
+        _ => {
+            if requested_by != session.user_id {
+                return Err("Solo puedes eliminar solicitudes creadas por ti".to_string());
+            }
+        }
+    }
+
+    let affected = conn
+        .execute("DELETE FROM logistics_requests WHERE id = ?1", params![request_id])
+        .map_err(|e| e.to_string())?;
+
+    if affected == 0 {
+        return Err("Solicitud no encontrada".to_string());
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
 pub async fn get_pending_requests_count(
     session_token: String, state: State<'_, AppState>,
 ) -> Result<i32, String> {

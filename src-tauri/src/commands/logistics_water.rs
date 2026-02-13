@@ -37,6 +37,22 @@ pub async fn create_water_bottles_movement(
     let id = Uuid::new_v4().to_string();
     let now = chrono::Utc::now().to_rfc3339();
 
+    // Validate stock for exit movements
+    if movement.movement_type == "exit" {
+        let total_entries: i64 = conn.query_row(
+            "SELECT COALESCE(SUM(quantity), 0) FROM logistics_water_bottles_movements WHERE movement_type = 'entry'",
+            [], |row| row.get(0),
+        ).map_err(|e| e.to_string())?;
+        let total_exits: i64 = conn.query_row(
+            "SELECT COALESCE(SUM(quantity), 0) FROM logistics_water_bottles_movements WHERE movement_type = 'exit'",
+            [], |row| row.get(0),
+        ).map_err(|e| e.to_string())?;
+        let current_stock = total_entries - total_exits;
+        if (movement.quantity as i64) > current_stock {
+            return Err(format!("Stock insuficiente. Stock actual: {} botellones, intentando retirar: {}", current_stock, movement.quantity));
+        }
+    }
+
     conn.execute(
         "INSERT INTO logistics_water_bottles_movements (id, movement_type, quantity, notes, created_by, created_at)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
@@ -128,4 +144,24 @@ pub async fn delete_water_bottles_movement(
     }
 
     Ok(())
+}
+
+#[tauri::command]
+pub async fn get_water_bottles_stock(
+    session_token: String,
+    state: State<'_, AppState>,
+) -> Result<i64, String> {
+    get_session(&session_token, &state).map_err(|e| e.to_string())?;
+    let conn = state.db.lock().map_err(|e| format!("Failed to lock database: {}", e))?;
+
+    let total_entries: i64 = conn.query_row(
+        "SELECT COALESCE(SUM(quantity), 0) FROM logistics_water_bottles_movements WHERE movement_type = 'entry'",
+        [], |row| row.get(0),
+    ).map_err(|e| e.to_string())?;
+    let total_exits: i64 = conn.query_row(
+        "SELECT COALESCE(SUM(quantity), 0) FROM logistics_water_bottles_movements WHERE movement_type = 'exit'",
+        [], |row| row.get(0),
+    ).map_err(|e| e.to_string())?;
+
+    Ok(total_entries - total_exits)
 }
