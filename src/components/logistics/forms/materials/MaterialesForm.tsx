@@ -10,12 +10,13 @@ import type { Material } from '@/types/logistics';
 type TabType = 'ingreso' | 'consumo' | 'registro';
 
 interface MaterialesFormProps {
+  rigId: string;
   onSuccess?: () => void;
   initialTab?: TabType;
   materials: Material[];
 }
 
-export function MaterialesForm({ onSuccess, initialTab = 'ingreso', materials }: MaterialesFormProps) {
+export function MaterialesForm({ rigId, onSuccess, initialTab = 'ingreso', materials }: MaterialesFormProps) {
   const [activeTab, setActiveTab] = useState<TabType>(initialTab);
 
   const handleSuccess = () => {
@@ -61,8 +62,8 @@ export function MaterialesForm({ onSuccess, initialTab = 'ingreso', materials }:
       </div>
 
       <div className="flex-1 overflow-y-auto p-2">
-        {activeTab === 'ingreso' && <MaterialesIngresoTab onSuccess={handleSuccess} materials={materials} />}
-        {activeTab === 'consumo' && <MaterialesConsumoTab onSuccess={handleSuccess} materials={materials} />}
+        {activeTab === 'ingreso' && <MaterialesIngresoTab rigId={rigId} onSuccess={handleSuccess} materials={materials} />}
+        {activeTab === 'consumo' && <MaterialesConsumoTab rigId={rigId} onSuccess={handleSuccess} materials={materials} />}
         {activeTab === 'registro' && <MaterialesRegistroTab onSuccess={handleSuccess} />}
       </div>
     </div>

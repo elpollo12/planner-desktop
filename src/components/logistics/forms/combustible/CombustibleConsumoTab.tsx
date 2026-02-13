@@ -4,10 +4,11 @@ import { fuelMovementSchema, type FuelMovementForm } from '@/schemas';
 import { MovementFormTab } from '../MovementFormTab';
 
 interface CombustibleConsumoTabProps {
+  rigId: string;
   onSuccess?: () => void;
 }
 
-export function CombustibleConsumoTab({ onSuccess }: CombustibleConsumoTabProps) {
+export function CombustibleConsumoTab({ rigId, onSuccess }: CombustibleConsumoTabProps) {
   return (
     <MovementFormTab<FuelMovementForm>
       direction="exit"
@@ -19,7 +20,7 @@ export function CombustibleConsumoTab({ onSuccess }: CombustibleConsumoTabProps)
       errorMessage="Error al registrar el gasto"
       submitLabel="Registrar Consumo"
       onSubmit={async (sessionToken, data) => {
-        await fuelApi.createMovement(sessionToken, {
+        await fuelApi.createMovement(sessionToken, rigId, {
           movementType: 'exit',
           amount: data.amount,
           notes: data.notes || undefined,

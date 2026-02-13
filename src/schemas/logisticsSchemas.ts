@@ -110,6 +110,112 @@ export const createMaterialSchema = z.object({
 });
 
 // ============================================================================
+// Report Generation Schemas
+// ============================================================================
+
+export type ReportFormat = 'excel' | 'pdf' | 'both';
+export type MovementFilter = 'entries' | 'exits' | 'both';
+
+const reportFormatEnum = z.enum(['excel', 'pdf', 'both'], {
+  message: 'Selecciona un formato de reporte',
+});
+
+const dateRangeBase = {
+  periodStart: z.string().min(1, 'La fecha de inicio es requerida'),
+  periodEnd: z.string().min(1, 'La fecha de fin es requerida'),
+};
+
+/** General Report — user picks which sections to include */
+export const generalReportSchema = z
+  .object({
+    format: reportFormatEnum,
+    ...dateRangeBase,
+    sections: z
+      .object({
+        botellones: z.boolean(),
+        combustible: z.boolean(),
+        vacuum: z.boolean(),
+        materiales: z.boolean(),
+        solicitudes: z.boolean(),
+      }),
+  })
+  .refine(
+    (d) => Object.values(d.sections).some(Boolean),
+    { message: 'Selecciona al menos una sección', path: ['sections'] },
+  )
+  .refine(
+    (d) => d.periodStart <= d.periodEnd,
+    { message: 'La fecha de inicio debe ser anterior a la fecha de fin', path: ['periodEnd'] },
+  );
+
+/** Detailed report for Botellones / Combustible */
+export const detailedMovementReportSchema = z
+  .object({
+    format: reportFormatEnum,
+    ...dateRangeBase,
+    movementFilter: z.enum(['entries', 'exits', 'both'], {
+      message: 'Selecciona un filtro de movimientos',
+    }),
+  })
+  .refine(
+    (d) => d.periodStart <= d.periodEnd,
+    { message: 'La fecha de inicio debe ser anterior a la fecha de fin', path: ['periodEnd'] },
+  );
+
+/** Detailed report for Materiales — adds material selection */
+export const detailedMaterialsReportSchema = z
+  .object({
+    format: reportFormatEnum,
+    ...dateRangeBase,
+    movementFilter: z.enum(['entries', 'exits', 'both'], {
+      message: 'Selecciona un filtro de movimientos',
+    }),
+    allMaterials: z.boolean(),
+    materialIds: z.array(z.string()),
+  })
+  .refine(
+    (d) => d.periodStart <= d.periodEnd,
+    { message: 'La fecha de inicio debe ser anterior a la fecha de fin', path: ['periodEnd'] },
+  )
+  .refine(
+    (d) => d.allMaterials || d.materialIds.length > 0,
+    { message: 'Selecciona al menos un material', path: ['materialIds'] },
+  );
+
+/** Detailed report for Vacuum — just dates + format */
+export const detailedVacuumReportSchema = z
+  .object({
+    format: reportFormatEnum,
+    ...dateRangeBase,
+  })
+  .refine(
+    (d) => d.periodStart <= d.periodEnd,
+    { message: 'La fecha de inicio debe ser anterior a la fecha de fin', path: ['periodEnd'] },
+  );
+
+/** Detailed report for Solicitudes — filter by status */
+export const detailedRequestsReportSchema = z
+  .object({
+    format: reportFormatEnum,
+    ...dateRangeBase,
+    allStatuses: z.boolean(),
+    statuses: z.object({
+      requested: z.boolean(),
+      pending: z.boolean(),
+      approved: z.boolean(),
+      rejected: z.boolean(),
+    }),
+  })
+  .refine(
+    (d) => d.periodStart <= d.periodEnd,
+    { message: 'La fecha de inicio debe ser anterior a la fecha de fin', path: ['periodEnd'] },
+  )
+  .refine(
+    (d) => d.allStatuses || Object.values(d.statuses).some(Boolean),
+    { message: 'Selecciona al menos un estado', path: ['statuses'] },
+  );
+
+// ============================================================================
 // Type inference
 // ============================================================================
 
@@ -119,3 +225,9 @@ export type MaterialMovementForm = z.infer<typeof materialMovementSchema>;
 export type VacuumActionForm = z.infer<typeof vacuumActionSchema>;
 export type LogisticsRequestForm = z.infer<typeof logisticsRequestSchema>;
 export type CreateMaterialForm = z.infer<typeof createMaterialSchema>;
+
+export type GeneralReportForm = z.infer<typeof generalReportSchema>;
+export type DetailedMovementReportForm = z.infer<typeof detailedMovementReportSchema>;
+export type DetailedMaterialsReportForm = z.infer<typeof detailedMaterialsReportSchema>;
+export type DetailedVacuumReportForm = z.infer<typeof detailedVacuumReportSchema>;
+export type DetailedRequestsReportForm = z.infer<typeof detailedRequestsReportSchema>;

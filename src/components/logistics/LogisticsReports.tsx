@@ -1,17 +1,20 @@
 import { useState, useEffect } from 'react';
 import { Button, Card } from '../ui';
 import {
-  FileText, Sheet, Search, Droplets, Fuel, Container,
+  FileText, Search, Droplets, Fuel, Container,
   Package, ClipboardSignature,
   FolderArchive,
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
+import { useModalStore } from '../../store';
 import {
   waterBottlesApi, fuelApi, vacuumApi, materialsApi,
   logisticsRequestsApi, logisticsReportsApi,
 } from '../../lib/api';
 import { toast } from 'react-toastify';
 import { capitalize } from '../../lib/stringUtils';
+import { GeneralReportModal } from './forms/reports/GeneralReportModal';
+import { DetailedReportModal } from './forms/reports/DetailedReportModal';
 import type { LogisticsReport } from '../../types/logistics';
 
 type Section = 'botellones' | 'combustible' | 'vacuum' | 'materiales' | 'solicitudes';
@@ -32,8 +35,9 @@ interface StockData {
   materialTypes: number;
 }
 
-export function LogisticsReports() {
+export function LogisticsReports({ rigId }: { rigId: string }) {
   const { sessionToken, user } = useAuthStore();
+  const { openModal } = useModalStore();
   const canGenerate = user?.role === 'supervisor' || user?.role === 'admin';
 
   const today = new Date().toISOString().split('T')[0];
@@ -57,17 +61,17 @@ export function LogisticsReports() {
       loadStock();
       loadReport();
     }
-  }, [sessionToken]);
+  }, [sessionToken, rigId]);
 
   const loadStock = async () => {
     if (!sessionToken) return;
     setStockLoading(true);
     try {
       const [wb, fuel, vacuumRes, pending, materialsList] = await Promise.all([
-        waterBottlesApi.getStock(sessionToken),
-        fuelApi.getStock(sessionToken),
-        vacuumApi.getActions(sessionToken, 1, 1),
-        logisticsRequestsApi.getPendingCount(sessionToken),
+        waterBottlesApi.getStock(sessionToken, rigId),
+        fuelApi.getStock(sessionToken, rigId),
+        vacuumApi.getActions(sessionToken, rigId, 1, 1),
+        logisticsRequestsApi.getPendingCount(sessionToken, rigId),
         materialsApi.list(sessionToken, true),
       ]);
       setStock({
@@ -85,7 +89,7 @@ export function LogisticsReports() {
     if (!sessionToken || !canGenerate) return;
     setReportLoading(true);
     try {
-      const data = await logisticsReportsApi.getReport(sessionToken, periodStart, periodEnd);
+      const data = await logisticsReportsApi.getReport(sessionToken, rigId, periodStart, periodEnd);
       setReport(data);
     } catch (error: any) {
       toast.error(error?.toString() || 'Error al generar reporte');
@@ -125,14 +129,34 @@ export function LogisticsReports() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Stock General</h2>
-        <Button
-          variant="primary"
-          size="sm"
-          icon={<FolderArchive size={16} />}
-          onClick={() => {/* TODO: generar reporte general */ }}
-        >
-          Reporte General
-        </Button>
+        <div className='flex gap-2'>
+          <Button
+            variant="secondary"
+            size="md"
+            icon={<FileText size={16} />}
+            onClick={() => {
+              openModal(
+                <DetailedReportModal rigId={rigId} section={activeSection} periodStart={periodStart} periodEnd={periodEnd} />,
+                { title: 'Generar Reporte Detallado', size: 'md', showCloseButton: true, closeOnOutsideClick: false }
+              );
+            }}
+          >
+            Reporte Detallado
+          </Button>
+          <Button
+            variant="primary"
+            size="md"
+            icon={<FolderArchive size={16} />}
+            onClick={() => {
+              openModal(
+                <GeneralReportModal rigId={rigId} periodStart={periodStart} periodEnd={periodEnd} />,
+                { title: 'Generar Reporte General', size: 'md', showCloseButton: true, closeOnOutsideClick: false }
+              );
+            }}
+          >
+            Reporte General
+          </Button>
+        </div>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-4">
@@ -214,14 +238,6 @@ export function LogisticsReports() {
                   })()}
                   <span className="text-xs text-gray-400 ml-2">{report.periodStart} — {report.periodEnd}</span>
                 </div>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  icon={<FileText size={16} />}
-                  onClick={() => {/* TODO: generar reporte especifico */ }}
-                >
-                  Reporte Detallado
-                </Button>
               </div>
 
               {activeSection === 'botellones' && <BotellonesDetail report={report} />}

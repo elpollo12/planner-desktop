@@ -14,10 +14,11 @@ import MovementDetailModal, { buildVacuumFields } from '../modals/MovementDetail
 import type { VacuumAction } from '../../types/logistics';
 
 interface VacuumInventoryProps {
+  rigId: string;
   onUpdate: () => void;
 }
 
-export function VacuumInventory({ onUpdate }: VacuumInventoryProps) {
+export function VacuumInventory({ rigId, onUpdate }: VacuumInventoryProps) {
   const { openModal } = useModalStore();
   const { sessionToken, user } = useAuthStore();
 
@@ -32,13 +33,13 @@ export function VacuumInventory({ onUpdate }: VacuumInventoryProps) {
 
   useEffect(() => {
     if (sessionToken) loadActions();
-  }, [sessionToken, currentPage, pageSize]);
+  }, [sessionToken, currentPage, pageSize, rigId]);
 
   const loadActions = async () => {
     if (!sessionToken) return;
     setLoading(true);
     try {
-      const res = await vacuumApi.getActions(sessionToken, currentPage, pageSize);
+      const res = await vacuumApi.getActions(sessionToken, rigId, currentPage, pageSize);
       setActions(res.data);
       setTotalItems(res.total);
       setTotalPages(res.totalPages);
@@ -50,14 +51,14 @@ export function VacuumInventory({ onUpdate }: VacuumInventoryProps) {
 
   const handleRegistrar = () => {
     openModal(
-      <VacuumForm onSuccess={() => { loadActions(); onUpdate(); }} />,
+      <VacuumForm rigId={rigId} onSuccess={() => { loadActions(); onUpdate(); }} />,
       { title: 'Registrar Acción de Vacuum', size: 'md', showCloseButton: true, closeOnOutsideClick: false }
     );
   };
 
   const handleSolicitar = () => {
     openModal(
-      <RequestForm defaultType="vacuum" onSuccess={() => onUpdate()} />,
+      <RequestForm rigId={rigId} defaultType="vacuum" onSuccess={() => onUpdate()} />,
       { title: 'Solicitar Vacuum/Cisterna', size: 'md', showCloseButton: true, closeOnOutsideClick: false }
     );
   };

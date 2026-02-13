@@ -208,6 +208,7 @@ pub fn run() {
             commands::logistics_requests::delete_logistics_request,
             commands::logistics_requests::get_pending_requests_count,
             commands::logistics_requests::get_logistics_report,
+            commands::logistics_requests::get_detailed_logistics_report,
 
             // Debug commands
             commands::debug::debug_list_all_rigs,

@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "camelCase")]
 pub struct WaterBottlesMovement {
     pub id: String,
+    pub rig_id: Option<String>,
     pub movement_type: String,
     pub quantity: i32,
     pub notes: Option<String>,
@@ -31,6 +32,7 @@ pub struct CreateWaterBottlesMovement {
 #[serde(rename_all = "camelCase")]
 pub struct FuelMovement {
     pub id: String,
+    pub rig_id: Option<String>,
     pub movement_type: String,
     pub amount: f64,
     pub notes: Option<String>,
@@ -54,6 +56,7 @@ pub struct CreateFuelMovement {
 #[serde(rename_all = "camelCase")]
 pub struct VacuumAction {
     pub id: String,
+    pub rig_id: Option<String>,
     pub action_name: String,
     pub notes: Option<String>,
     pub created_by: Option<String>,
@@ -116,6 +119,7 @@ pub struct UpdateMaterial {
 #[serde(rename_all = "camelCase")]
 pub struct MaterialMovement {
     pub id: String,
+    pub rig_id: Option<String>,
     pub material_id: String,
     pub movement_type: String,
     pub quantity: f64,
@@ -141,6 +145,7 @@ pub struct CreateMaterialMovement {
 #[serde(rename_all = "camelCase")]
 pub struct LogisticsRequest {
     pub id: String,
+    pub rig_id: Option<String>,
     pub request_type: String,
     pub quantity: Option<f64>,
     pub action_requested: Option<String>,
@@ -228,6 +233,56 @@ pub struct RequestsSummary {
     pub pending: i32,
     pub approved: i32,
     pub rejected: i32,
+}
+
+// ============================================================================
+// REPORTES DETALLADOS
+// ============================================================================
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DetailedMovement {
+    pub id: String,
+    pub movement_type: Option<String>,
+    pub quantity: Option<f64>,
+    pub action_name: Option<String>,
+    pub material_name: Option<String>,
+    pub material_unit: Option<String>,
+    pub notes: Option<String>,
+    pub created_by_name: String,
+    pub created_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DetailedRequest {
+    pub id: String,
+    pub request_type: String,
+    pub quantity: Option<f64>,
+    pub action_requested: Option<String>,
+    pub material_name: Option<String>,
+    pub status: String,
+    pub notes: Option<String>,
+    pub requested_by_name: String,
+    pub status_changed_by_name: Option<String>,
+    pub requested_at: String,
+    pub status_changed_at: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[serde(tag = "section")]
+pub enum DetailedLogisticsReport {
+    #[serde(rename = "water_bottles")]
+    WaterBottles { movements: Vec<DetailedMovement> },
+    #[serde(rename = "fuel")]
+    Fuel { movements: Vec<DetailedMovement> },
+    #[serde(rename = "vacuum")]
+    Vacuum { movements: Vec<DetailedMovement> },
+    #[serde(rename = "materials")]
+    Materials { movements: Vec<DetailedMovement> },
+    #[serde(rename = "requests")]
+    Requests { requests: Vec<DetailedRequest> },
 }
 
 // ============================================================================

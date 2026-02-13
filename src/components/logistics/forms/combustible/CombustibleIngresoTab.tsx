@@ -4,10 +4,11 @@ import { fuelMovementSchema, type FuelMovementForm } from '@/schemas';
 import { MovementFormTab } from '../MovementFormTab';
 
 interface CombustibleIngresoTabProps {
+  rigId: string;
   onSuccess?: () => void;
 }
 
-export function CombustibleIngresoTab({ onSuccess }: CombustibleIngresoTabProps) {
+export function CombustibleIngresoTab({ rigId, onSuccess }: CombustibleIngresoTabProps) {
   return (
     <MovementFormTab<FuelMovementForm>
       direction="entry"
@@ -19,7 +20,7 @@ export function CombustibleIngresoTab({ onSuccess }: CombustibleIngresoTabProps)
       errorMessage="Error al registrar el ingreso"
       submitLabel="Registrar Ingreso"
       onSubmit={async (sessionToken, data) => {
-        await fuelApi.createMovement(sessionToken, {
+        await fuelApi.createMovement(sessionToken, rigId, {
           movementType: 'entry',
           amount: data.amount,
           notes: data.notes || undefined,

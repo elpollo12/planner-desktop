@@ -16,10 +16,11 @@ import { MOVEMENT_LABELS } from '../../types/logistics';
 import type { WaterBottlesMovement } from '../../types/logistics';
 
 interface BotellonesInventoryProps {
+  rigId: string;
   onUpdate: () => void;
 }
 
-export function BotellonesInventory({ onUpdate }: BotellonesInventoryProps) {
+export function BotellonesInventory({ rigId, onUpdate }: BotellonesInventoryProps) {
   const { openModal } = useModalStore();
   const { sessionToken, user } = useAuthStore();
 
@@ -38,12 +39,12 @@ export function BotellonesInventory({ onUpdate }: BotellonesInventoryProps) {
       loadMovements();
       loadStock();
     }
-  }, [sessionToken, currentPage, pageSize]);
+  }, [sessionToken, currentPage, pageSize, rigId]);
 
   const loadStock = async () => {
     if (!sessionToken) return;
     try {
-      const s = await waterBottlesApi.getStock(sessionToken);
+      const s = await waterBottlesApi.getStock(sessionToken, rigId);
       setStock(s);
     } catch (error) {
       console.error('Error cargando stock:', error);
@@ -54,7 +55,7 @@ export function BotellonesInventory({ onUpdate }: BotellonesInventoryProps) {
     if (!sessionToken) return;
     setLoading(true);
     try {
-      const res = await waterBottlesApi.getMovements(sessionToken, currentPage, pageSize);
+      const res = await waterBottlesApi.getMovements(sessionToken, rigId, currentPage, pageSize);
       setMovements(res.data);
       setTotalItems(res.total);
       setTotalPages(res.totalPages);
@@ -68,14 +69,14 @@ export function BotellonesInventory({ onUpdate }: BotellonesInventoryProps) {
 
   const handleRegistrar = () => {
     openModal(
-      <BotellonesForm onSuccess={() => { loadMovements(); loadStock(); onUpdate(); }} />,
+      <BotellonesForm rigId={rigId} onSuccess={() => { loadMovements(); loadStock(); onUpdate(); }} />,
       { title: 'Registrar Movimiento de Botellones', size: 'xl', showCloseButton: true, closeOnOutsideClick: false }
     );
   };
 
   const handleSolicitar = () => {
     openModal(
-      <RequestForm defaultType="water_bottles" onSuccess={() => onUpdate()} />,
+      <RequestForm rigId={rigId} defaultType="water_bottles" onSuccess={() => onUpdate()} />,
       { title: 'Solicitar Botellones', size: 'md', showCloseButton: true, closeOnOutsideClick: false }
     );
   };

@@ -8,11 +8,12 @@ import { Button } from '@/components/ui/Button';
 type TabType = 'ingreso' | 'consumo';
 
 interface CombustibleFormProps {
+  rigId: string;
   onSuccess?: () => void;
   initialTab?: TabType;
 }
 
-export function CombustibleForm({ onSuccess, initialTab = 'ingreso' }: CombustibleFormProps) {
+export function CombustibleForm({ rigId, onSuccess, initialTab = 'ingreso' }: CombustibleFormProps) {
   const [activeTab, setActiveTab] = useState<TabType>(initialTab);
   const { closeModal } = useModalStore();
 
@@ -65,8 +66,8 @@ export function CombustibleForm({ onSuccess, initialTab = 'ingreso' }: Combustib
 
       {/* Contenido según tab */}
       <div className="flex-1 overflow-y-auto p-2">
-        {activeTab === 'ingreso' && <CombustibleIngresoTab onSuccess={handleSuccess} />}
-        {activeTab === 'consumo' && <CombustibleConsumoTab onSuccess={handleSuccess} />}
+        {activeTab === 'ingreso' && <CombustibleIngresoTab rigId={rigId} onSuccess={handleSuccess} />}
+        {activeTab === 'consumo' && <CombustibleConsumoTab rigId={rigId} onSuccess={handleSuccess} />}
       </div>
     </div>
   );

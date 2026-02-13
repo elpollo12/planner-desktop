@@ -11,13 +11,14 @@ import { REQUEST_TYPE_LABELS, REQUEST_STATUS_LABELS } from '../../types/logistic
 import { capitalize } from '../../lib/stringUtils';
 import MovementDetailModal, { buildRequestFields } from '../modals/MovementDetail';
 import ConfirmDeleteModal from '../modals/ConfirmDelete';
-import type { LogisticsRequest, RequestType, RequestStatus, Material } from '../../types/logistics';
+import type { LogisticsRequest, RequestStatus, Material } from '../../types/logistics';
 
 interface RequestsManagementProps {
+  rigId: string;
   onUpdate: () => void;
 }
 
-export function RequestsManagement({ onUpdate }: RequestsManagementProps) {
+export function RequestsManagement({ rigId, onUpdate }: RequestsManagementProps) {
   const { openModal } = useModalStore();
   const { sessionToken, user } = useAuthStore();
 
@@ -38,7 +39,7 @@ export function RequestsManagement({ onUpdate }: RequestsManagementProps) {
       loadRequests();
       loadMaterials();
     }
-  }, [sessionToken, currentPage, pageSize, filterType, filterStatus]);
+  }, [sessionToken, currentPage, pageSize, filterType, filterStatus, rigId]);
 
   const loadMaterials = async () => {
     if (!sessionToken) return;
@@ -52,7 +53,7 @@ export function RequestsManagement({ onUpdate }: RequestsManagementProps) {
     if (!sessionToken) return;
     setLoading(true);
     try {
-      const res = await logisticsRequestsApi.list(sessionToken, filterType || undefined, filterStatus || undefined, currentPage, pageSize);
+      const res = await logisticsRequestsApi.list(sessionToken, rigId, filterType || undefined, filterStatus || undefined, currentPage, pageSize);
       setRequests(res.data);
       setTotalItems(res.total);
       setTotalPages(res.totalPages);

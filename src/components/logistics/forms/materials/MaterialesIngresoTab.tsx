@@ -3,15 +3,15 @@ import { materialsApi } from '@/lib/api';
 import { materialMovementSchema, type MaterialMovementForm } from '@/schemas';
 import { MovementFormTab } from '../MovementFormTab';
 import { MaterialSearchInput } from './MaterialSearchInput';
-import { capitalize } from '@/lib/stringUtils';
 import type { Material } from '@/types/logistics';
 
 interface Props {
+  rigId: string;
   onSuccess?: () => void;
   materials: Material[];
 }
 
-export function MaterialesIngresoTab({ onSuccess, materials }: Props) {
+export function MaterialesIngresoTab({ rigId, onSuccess, materials }: Props) {
   return (
     <MovementFormTab<MaterialMovementForm>
       direction="entry"
@@ -23,7 +23,7 @@ export function MaterialesIngresoTab({ onSuccess, materials }: Props) {
       errorMessage="Error al registrar el ingreso"
       submitLabel="Registrar Ingreso"
       onSubmit={async (sessionToken, data) => {
-        await materialsApi.createMovement(sessionToken, {
+        await materialsApi.createMovement(sessionToken, rigId, {
           materialId: data.materialId,
           movementType: 'entry',
           quantity: data.quantity,

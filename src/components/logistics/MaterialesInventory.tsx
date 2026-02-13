@@ -18,10 +18,11 @@ import { capitalize } from '../../lib/stringUtils';
 import type { Material, MaterialMovement } from '../../types/logistics';
 
 interface MaterialesInventoryProps {
+  rigId: string;
   onUpdate: () => void;
 }
 
-export function MaterialesInventory({ onUpdate }: MaterialesInventoryProps) {
+export function MaterialesInventory({ rigId, onUpdate }: MaterialesInventoryProps) {
   const { openModal } = useModalStore();
   const { sessionToken, user } = useAuthStore();
 
@@ -43,7 +44,7 @@ export function MaterialesInventory({ onUpdate }: MaterialesInventoryProps) {
 
   useEffect(() => {
     if (sessionToken) loadMovements();
-  }, [sessionToken, currentPage, pageSize, filterMaterialId]);
+  }, [sessionToken, currentPage, pageSize, filterMaterialId, rigId]);
 
   useEffect(() => {
     if (sessionToken && filterMaterialId) {
@@ -51,12 +52,12 @@ export function MaterialesInventory({ onUpdate }: MaterialesInventoryProps) {
     } else {
       setStock(null);
     }
-  }, [sessionToken, filterMaterialId]);
+  }, [sessionToken, filterMaterialId, rigId]);
 
   const loadStock = async (materialId: string) => {
     if (!sessionToken) return;
     try {
-      const s = await materialsApi.getStock(sessionToken, materialId);
+      const s = await materialsApi.getStock(sessionToken, rigId, materialId);
       setStock(s);
     } catch (error) {
       console.error('Error cargando stock:', error);
@@ -75,7 +76,7 @@ export function MaterialesInventory({ onUpdate }: MaterialesInventoryProps) {
     if (!sessionToken) return;
     setLoading(true);
     try {
-      const res = await materialsApi.getMovements(sessionToken, filterMaterialId || undefined, currentPage, pageSize);
+      const res = await materialsApi.getMovements(sessionToken, rigId, filterMaterialId || undefined, currentPage, pageSize);
       setMovements(res.data);
       setTotalItems(res.total);
       setTotalPages(res.totalPages);
@@ -87,14 +88,14 @@ export function MaterialesInventory({ onUpdate }: MaterialesInventoryProps) {
 
   const handleRegistrar = () => {
     openModal(
-      <MaterialesForm materials={materials} onSuccess={() => { loadMaterials(); loadMovements(); if (filterMaterialId) loadStock(filterMaterialId); onUpdate(); }} />,
+      <MaterialesForm rigId={rigId} materials={materials} onSuccess={() => { loadMaterials(); loadMovements(); if (filterMaterialId) loadStock(filterMaterialId); onUpdate(); }} />,
       { title: 'Registrar Movimiento de Material', size: 'xl', showCloseButton: true, closeOnOutsideClick: false }
     );
   };
 
   const handleSolicitar = () => {
     openModal(
-      <RequestForm defaultType="material" materials={materials} onSuccess={() => onUpdate()} />,
+      <RequestForm rigId={rigId} defaultType="material" materials={materials} onSuccess={() => onUpdate()} />,
       { title: 'Solicitar Material', size: 'md', showCloseButton: true, closeOnOutsideClick: false }
     );
   };

@@ -8,11 +8,12 @@ import { Button } from '@/components/ui/Button';
 type TabType = 'ingreso' | 'consumo';
 
 interface BotellonesFormProps {
+  rigId: string;
   onSuccess?: () => void;
   initialTab?: TabType;
 }
 
-export function BotellonesForm({ onSuccess, initialTab = 'ingreso' }: BotellonesFormProps) {
+export function BotellonesForm({ rigId, onSuccess, initialTab = 'ingreso' }: BotellonesFormProps) {
   const [activeTab, setActiveTab] = useState<TabType>(initialTab);
 
   const handleSuccess = () => {
@@ -61,8 +62,8 @@ export function BotellonesForm({ onSuccess, initialTab = 'ingreso' }: Botellones
       </div>
 
       <div className="flex-1 overflow-y-auto p-2">
-        {activeTab === 'ingreso' && <BotellonesIngresoTab onSuccess={handleSuccess} />}
-        {activeTab === 'consumo' && <BotellonesConsumoTab onSuccess={handleSuccess} />}
+        {activeTab === 'ingreso' && <BotellonesIngresoTab rigId={rigId} onSuccess={handleSuccess} />}
+        {activeTab === 'consumo' && <BotellonesConsumoTab rigId={rigId} onSuccess={handleSuccess} />}
       </div>
     </div>
   );

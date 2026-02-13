@@ -38,6 +38,7 @@ export const REQUEST_STATUS_COLORS: Record<RequestStatus, string> = {
 
 export interface WaterBottlesMovement {
   id: string;
+  rigId?: string;
   movementType: MovementType;
   quantity: number;
   notes?: string;
@@ -55,6 +56,7 @@ export interface CreateWaterBottlesMovement {
 
 export interface FuelMovement {
   id: string;
+  rigId?: string;
   movementType: MovementType;
   amount: number;
   notes?: string;
@@ -72,6 +74,7 @@ export interface CreateFuelMovement {
 
 export interface VacuumAction {
   id: string;
+  rigId?: string;
   actionName: string;
   notes?: string;
   createdBy?: string;
@@ -118,6 +121,7 @@ export interface UpdateMaterial {
 
 export interface MaterialMovement {
   id: string;
+  rigId?: string;
   materialId: string;
   movementType: MovementType;
   quantity: number;
@@ -137,6 +141,7 @@ export interface CreateMaterialMovement {
 
 export interface LogisticsRequest {
   id: string;
+  rigId?: string;
   requestType: RequestType;
   quantity?: number;
   actionRequested?: string;
@@ -207,6 +212,41 @@ export interface RequestsSummary {
   approved: number;
   rejected: number;
 }
+
+// --- Reportes Detallados ---
+
+export interface DetailedMovement {
+  id: string;
+  movementType?: string;
+  quantity?: number;
+  actionName?: string;
+  materialName?: string;
+  materialUnit?: string;
+  notes?: string;
+  createdByName: string;
+  createdAt: string;
+}
+
+export interface DetailedRequest {
+  id: string;
+  requestType: string;
+  quantity?: number;
+  actionRequested?: string;
+  materialName?: string;
+  status: string;
+  notes?: string;
+  requestedByName: string;
+  statusChangedByName?: string;
+  requestedAt: string;
+  statusChangedAt?: string;
+}
+
+export type DetailedLogisticsReport =
+  | { section: 'water_bottles'; movements: DetailedMovement[] }
+  | { section: 'fuel'; movements: DetailedMovement[] }
+  | { section: 'vacuum'; movements: DetailedMovement[] }
+  | { section: 'materials'; movements: DetailedMovement[] }
+  | { section: 'requests'; requests: DetailedRequest[] };
 
 // --- Respuesta Paginada ---
 

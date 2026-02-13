@@ -1,5 +1,6 @@
 use crate::auth::get_session;
 use crate::models::logistics::*;
+use crate::models::user::User;
 use crate::state::AppState;
 use rusqlite::params;
 use tauri::State;
@@ -19,10 +20,18 @@ fn total_pages(total: i64, page_size: i64) -> i64 {
 #[tauri::command]
 pub async fn create_water_bottles_movement(
     session_token: String,
+    rig_id: String,
     movement: CreateWaterBottlesMovement,
     state: State<'_, AppState>,
 ) -> Result<WaterBottlesMovement, String> {
     let session = get_session(&session_token, &state).map_err(|e| e.to_string())?;
+
+    // Validate rig access
+    let conn = state.db.lock().map_err(|e| format!("Failed to lock database: {}", e))?;
+    let has_access = User::has_rig_access(&conn, &session.user_id, &rig_id).map_err(|e| e.to_string())?;
+    if !has_access {
+        return Err("No tienes acceso a este taladro".to_string());
+    }
 
     match movement.movement_type.as_str() {
         "entry" | "exit" => {}
@@ -32,20 +41,18 @@ pub async fn create_water_bottles_movement(
         return Err("La cantidad debe ser mayor a 0".to_string());
     }
 
-    let conn = state.db.lock().map_err(|e| format!("Failed to lock database: {}", e))?;
-
     let id = Uuid::new_v4().to_string();
     let now = chrono::Utc::now().to_rfc3339();
 
-    // Validate stock for exit movements
+    // Validate stock for exit movements (scoped to rig)
     if movement.movement_type == "exit" {
         let total_entries: i64 = conn.query_row(
-            "SELECT COALESCE(SUM(quantity), 0) FROM logistics_water_bottles_movements WHERE movement_type = 'entry'",
-            [], |row| row.get(0),
+            "SELECT COALESCE(SUM(quantity), 0) FROM logistics_water_bottles_movements WHERE movement_type = 'entry' AND rig_id = ?1",
+            params![rig_id], |row| row.get(0),
         ).map_err(|e| e.to_string())?;
         let total_exits: i64 = conn.query_row(
-            "SELECT COALESCE(SUM(quantity), 0) FROM logistics_water_bottles_movements WHERE movement_type = 'exit'",
-            [], |row| row.get(0),
+            "SELECT COALESCE(SUM(quantity), 0) FROM logistics_water_bottles_movements WHERE movement_type = 'exit' AND rig_id = ?1",
+            params![rig_id], |row| row.get(0),
         ).map_err(|e| e.to_string())?;
         let current_stock = total_entries - total_exits;
         if (movement.quantity as i64) > current_stock {
@@ -54,13 +61,14 @@ pub async fn create_water_bottles_movement(
     }
 
     conn.execute(
-        "INSERT INTO logistics_water_bottles_movements (id, movement_type, quantity, notes, created_by, created_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-        params![id, movement.movement_type, movement.quantity, movement.notes, session.user_id, now],
+        "INSERT INTO logistics_water_bottles_movements (id, rig_id, movement_type, quantity, notes, created_by, created_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+        params![id, rig_id, movement.movement_type, movement.quantity, movement.notes, session.user_id, now],
     ).map_err(|e| e.to_string())?;
 
     Ok(WaterBottlesMovement {
         id,
+        rig_id: Some(rig_id),
         movement_type: movement.movement_type,
         quantity: movement.quantity,
         notes: movement.notes,
@@ -72,36 +80,46 @@ pub async fn create_water_bottles_movement(
 #[tauri::command]
 pub async fn get_water_bottles_movements(
     session_token: String,
+    rig_id: String,
     page: Option<i64>,
     page_size: Option<i64>,
     state: State<'_, AppState>,
 ) -> Result<PaginatedResponse<WaterBottlesMovement>, String> {
-    get_session(&session_token, &state).map_err(|e| e.to_string())?;
+    let session = get_session(&session_token, &state).map_err(|e| e.to_string())?;
 
     let conn = state.db.lock().map_err(|e| format!("Failed to lock database: {}", e))?;
+    let has_access = User::has_rig_access(&conn, &session.user_id, &rig_id).map_err(|e| e.to_string())?;
+    if !has_access {
+        return Err("No tienes acceso a este taladro".to_string());
+    }
 
     let total: i64 = conn
-        .query_row("SELECT COUNT(*) FROM logistics_water_bottles_movements", [], |row| row.get(0))
+        .query_row(
+            "SELECT COUNT(*) FROM logistics_water_bottles_movements WHERE rig_id = ?1",
+            params![rig_id], |row| row.get(0),
+        )
         .map_err(|e| e.to_string())?;
 
     let (pg, ps, offset) = paginate(page, page_size);
 
     let mut stmt = conn.prepare(
-        "SELECT id, movement_type, quantity, notes, created_by, created_at
+        "SELECT id, rig_id, movement_type, quantity, notes, created_by, created_at
          FROM logistics_water_bottles_movements
+         WHERE rig_id = ?1
          ORDER BY created_at DESC
-         LIMIT ?1 OFFSET ?2"
+         LIMIT ?2 OFFSET ?3"
     ).map_err(|e| e.to_string())?;
 
     let rows = stmt
-        .query_map(params![ps, offset], |row| {
+        .query_map(params![rig_id, ps, offset], |row| {
             Ok(WaterBottlesMovement {
                 id: row.get(0)?,
-                movement_type: row.get(1)?,
-                quantity: row.get(2)?,
-                notes: row.get(3)?,
-                created_by: row.get(4)?,
-                created_at: row.get(5)?,
+                rig_id: row.get(1)?,
+                movement_type: row.get(2)?,
+                quantity: row.get(3)?,
+                notes: row.get(4)?,
+                created_by: row.get(5)?,
+                created_at: row.get(6)?,
             })
         })
         .map_err(|e| e.to_string())?;
@@ -135,6 +153,20 @@ pub async fn delete_water_bottles_movement(
 
     let conn = state.db.lock().map_err(|e| format!("Failed to lock database: {}", e))?;
 
+    // Verify the movement belongs to a rig the user has access to
+    let rig_id: Option<String> = conn.query_row(
+        "SELECT rig_id FROM logistics_water_bottles_movements WHERE id = ?1",
+        params![movement_id],
+        |row| row.get(0),
+    ).map_err(|_| "Movimiento no encontrado".to_string())?;
+
+    if let Some(ref rid) = rig_id {
+        let has_access = User::has_rig_access(&conn, &session.user_id, rid).map_err(|e| e.to_string())?;
+        if !has_access {
+            return Err("No tienes acceso a este taladro".to_string());
+        }
+    }
+
     let affected = conn
         .execute("DELETE FROM logistics_water_bottles_movements WHERE id = ?1", params![movement_id])
         .map_err(|e| e.to_string())?;
@@ -149,18 +181,24 @@ pub async fn delete_water_bottles_movement(
 #[tauri::command]
 pub async fn get_water_bottles_stock(
     session_token: String,
+    rig_id: String,
     state: State<'_, AppState>,
 ) -> Result<i64, String> {
-    get_session(&session_token, &state).map_err(|e| e.to_string())?;
+    let session = get_session(&session_token, &state).map_err(|e| e.to_string())?;
+
     let conn = state.db.lock().map_err(|e| format!("Failed to lock database: {}", e))?;
+    let has_access = User::has_rig_access(&conn, &session.user_id, &rig_id).map_err(|e| e.to_string())?;
+    if !has_access {
+        return Err("No tienes acceso a este taladro".to_string());
+    }
 
     let total_entries: i64 = conn.query_row(
-        "SELECT COALESCE(SUM(quantity), 0) FROM logistics_water_bottles_movements WHERE movement_type = 'entry'",
-        [], |row| row.get(0),
+        "SELECT COALESCE(SUM(quantity), 0) FROM logistics_water_bottles_movements WHERE movement_type = 'entry' AND rig_id = ?1",
+        params![rig_id], |row| row.get(0),
     ).map_err(|e| e.to_string())?;
     let total_exits: i64 = conn.query_row(
-        "SELECT COALESCE(SUM(quantity), 0) FROM logistics_water_bottles_movements WHERE movement_type = 'exit'",
-        [], |row| row.get(0),
+        "SELECT COALESCE(SUM(quantity), 0) FROM logistics_water_bottles_movements WHERE movement_type = 'exit' AND rig_id = ?1",
+        params![rig_id], |row| row.get(0),
     ).map_err(|e| e.to_string())?;
 
     Ok(total_entries - total_exits)

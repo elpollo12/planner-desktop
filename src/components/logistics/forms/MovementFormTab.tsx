@@ -1,4 +1,4 @@
-import { useForm, type FieldValues, type UseFormRegister, type UseFormWatch, type UseFormSetValue, type FieldErrors } from 'react-hook-form';
+import { useForm, type FieldValues, type UseFormRegister, type UseFormWatch, type UseFormSetValue, type FieldErrors, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { type LucideIcon } from 'lucide-react';
 import { useModalStore } from '@/store';
@@ -63,7 +63,7 @@ export function MovementFormTab<TForm extends FieldValues>({
     watch,
     setValue,
   } = useForm<TForm>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(schema as any) as Resolver<TForm>,
     defaultValues: defaultValues as any,
   });
 

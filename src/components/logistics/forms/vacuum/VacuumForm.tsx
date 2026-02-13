@@ -9,10 +9,11 @@ import { vacuumActionSchema, type VacuumActionForm } from '@/schemas';
 import { Button } from '@/components/ui/Button';
 
 interface VacuumFormProps {
+  rigId: string;
   onSuccess?: () => void;
 }
 
-export function VacuumForm({ onSuccess }: VacuumFormProps) {
+export function VacuumForm({ rigId, onSuccess }: VacuumFormProps) {
   const sessionToken = useAuthStore((s) => s.sessionToken);
 
   const {
@@ -27,7 +28,7 @@ export function VacuumForm({ onSuccess }: VacuumFormProps) {
   const onFormSubmit = async (data: VacuumActionForm) => {
     if (!sessionToken) return;
     try {
-      await vacuumApi.createAction(sessionToken, {
+      await vacuumApi.createAction(sessionToken, rigId, {
         actionName: data.actionName,
         notes: data.notes || undefined,
       });

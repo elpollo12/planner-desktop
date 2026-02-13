@@ -16,10 +16,11 @@ import { MOVEMENT_LABELS } from '../../types/logistics';
 import type { FuelMovement } from '../../types/logistics';
 
 interface CombustibleInventoryProps {
+  rigId: string;
   onUpdate: () => void;
 }
 
-export function CombustibleInventory({ onUpdate }: CombustibleInventoryProps) {
+export function CombustibleInventory({ rigId, onUpdate }: CombustibleInventoryProps) {
   const { openModal } = useModalStore();
   const { sessionToken, user } = useAuthStore();
 
@@ -38,12 +39,12 @@ export function CombustibleInventory({ onUpdate }: CombustibleInventoryProps) {
       loadMovements();
       loadStock();
     }
-  }, [sessionToken, currentPage, pageSize]);
+  }, [sessionToken, currentPage, pageSize, rigId]);
 
   const loadStock = async () => {
     if (!sessionToken) return;
     try {
-      const s = await fuelApi.getStock(sessionToken);
+      const s = await fuelApi.getStock(sessionToken, rigId);
       setStock(s);
     } catch (error) {
       console.error('Error cargando stock:', error);
@@ -54,7 +55,7 @@ export function CombustibleInventory({ onUpdate }: CombustibleInventoryProps) {
     if (!sessionToken) return;
     setLoading(true);
     try {
-      const res = await fuelApi.getMovements(sessionToken, currentPage, pageSize);
+      const res = await fuelApi.getMovements(sessionToken, rigId, currentPage, pageSize);
       setMovements(res.data);
       setTotalItems(res.total);
       setTotalPages(res.totalPages);
@@ -66,14 +67,14 @@ export function CombustibleInventory({ onUpdate }: CombustibleInventoryProps) {
 
   const handleRegistrar = () => {
     openModal(
-      <CombustibleForm onSuccess={() => { loadMovements(); loadStock(); onUpdate(); }} />,
+      <CombustibleForm rigId={rigId} onSuccess={() => { loadMovements(); loadStock(); onUpdate(); }} />,
       { title: 'Registrar Movimiento de Combustible', size: 'xl', showCloseButton: true, closeOnOutsideClick: false }
     );
   };
 
   const handleSolicitar = () => {
     openModal(
-      <RequestForm defaultType="fuel" onSuccess={() => onUpdate()} />,
+      <RequestForm rigId={rigId} defaultType="fuel" onSuccess={() => onUpdate()} />,
       { title: 'Solicitar Combustible', size: 'md', showCloseButton: true, closeOnOutsideClick: false }
     );
   };

@@ -12,12 +12,13 @@ import { capitalize } from '@/lib/stringUtils';
 import type { Material, RequestType } from '@/types/logistics';
 
 interface RequestFormProps {
+  rigId: string;
   onSuccess?: () => void;
   defaultType?: RequestType;
   materials?: Material[];
 }
 
-export function RequestForm({ onSuccess, defaultType, materials = [] }: RequestFormProps) {
+export function RequestForm({ rigId, onSuccess, defaultType, materials = [] }: RequestFormProps) {
   const sessionToken = useAuthStore((s) => s.sessionToken);
 
   const {
@@ -42,7 +43,7 @@ export function RequestForm({ onSuccess, defaultType, materials = [] }: RequestF
   const onFormSubmit = async (data: LogisticsRequestForm) => {
     if (!sessionToken) return;
     try {
-      await logisticsRequestsApi.create(sessionToken, {
+      await logisticsRequestsApi.create(sessionToken, rigId, {
         requestType: data.requestType,
         quantity: data.requestType !== 'vacuum' ? data.quantity : undefined,
         actionRequested: data.requestType === 'vacuum' ? data.actionRequested?.trim() : undefined,

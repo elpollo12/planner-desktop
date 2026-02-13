@@ -1,5 +1,6 @@
 use crate::auth::get_session;
 use crate::models::logistics::*;
+use crate::models::user::User;
 use crate::state::AppState;
 use rusqlite::params;
 use tauri::State;
@@ -16,7 +17,9 @@ fn total_pages(total: i64, page_size: i64) -> i64 {
     if total == 0 { 0 } else { (total as f64 / page_size as f64).ceil() as i64 }
 }
 
-// --- Catálogo de materiales ---
+// ============================================================================
+// Catálogo de materiales (GLOBAL — sin rig_id)
+// ============================================================================
 
 #[tauri::command]
 pub async fn create_material(
@@ -39,11 +42,9 @@ pub async fn create_material(
 
     let conn = state.db.lock().map_err(|e| format!("Failed to lock database: {}", e))?;
 
-    // Check for duplicate name (case-insensitive, already lowercased)
     let exists: bool = conn.query_row(
         "SELECT COUNT(*) > 0 FROM logistics_materials WHERE LOWER(name) = ?1",
-        params![name],
-        |row| row.get(0),
+        params![name], |row| row.get(0),
     ).map_err(|e| e.to_string())?;
 
     if exists {
@@ -60,9 +61,8 @@ pub async fn create_material(
     ).map_err(|e| e.to_string())?;
 
     Ok(Material {
-        id, name, unit,
-        description, active: true, created_by: Some(session.user_id),
-        created_at: now.clone(), updated_at: now,
+        id, name, unit, description, active: true,
+        created_by: Some(session.user_id), created_at: now.clone(), updated_at: now,
     })
 }
 
@@ -150,18 +150,24 @@ pub async fn delete_material(
     Ok(())
 }
 
-// --- Movimientos de materiales (paginados) ---
+// ============================================================================
+// Movimientos de materiales (CON rig_id)
+// ============================================================================
 
 #[tauri::command]
 pub async fn create_material_movement(
-    session_token: String, movement: CreateMaterialMovement, state: State<'_, AppState>,
+    session_token: String, rig_id: String, movement: CreateMaterialMovement, state: State<'_, AppState>,
 ) -> Result<MaterialMovement, String> {
     let session = get_session(&session_token, &state).map_err(|e| e.to_string())?;
 
+    let conn = state.db.lock().map_err(|e| format!("Failed to lock database: {}", e))?;
+    let has_access = User::has_rig_access(&conn, &session.user_id, &rig_id).map_err(|e| e.to_string())?;
+    if !has_access {
+        return Err("No tienes acceso a este taladro".to_string());
+    }
+
     match movement.movement_type.as_str() { "entry" | "exit" => {} _ => return Err(format!("Tipo de movimiento inválido: {}", movement.movement_type)), }
     if movement.quantity <= 0.0 { return Err("La cantidad debe ser mayor a 0".to_string()); }
-
-    let conn = state.db.lock().map_err(|e| format!("Failed to lock database: {}", e))?;
 
     let active: bool = conn.query_row(
         "SELECT active FROM logistics_materials WHERE id = ?1", params![movement.material_id], |row| row.get(0),
@@ -171,15 +177,15 @@ pub async fn create_material_movement(
     let id = Uuid::new_v4().to_string();
     let now = chrono::Utc::now().to_rfc3339();
 
-    // Validate stock for exit movements
+    // Validate stock for exit movements (scoped to rig + material)
     if movement.movement_type == "exit" {
         let total_entries: f64 = conn.query_row(
-            "SELECT COALESCE(SUM(quantity), 0) FROM logistics_materials_movements WHERE material_id = ?1 AND movement_type = 'entry'",
-            params![movement.material_id], |row| row.get(0),
+            "SELECT COALESCE(SUM(quantity), 0) FROM logistics_materials_movements WHERE material_id = ?1 AND movement_type = 'entry' AND rig_id = ?2",
+            params![movement.material_id, rig_id], |row| row.get(0),
         ).map_err(|e| e.to_string())?;
         let total_exits: f64 = conn.query_row(
-            "SELECT COALESCE(SUM(quantity), 0) FROM logistics_materials_movements WHERE material_id = ?1 AND movement_type = 'exit'",
-            params![movement.material_id], |row| row.get(0),
+            "SELECT COALESCE(SUM(quantity), 0) FROM logistics_materials_movements WHERE material_id = ?1 AND movement_type = 'exit' AND rig_id = ?2",
+            params![movement.material_id, rig_id], |row| row.get(0),
         ).map_err(|e| e.to_string())?;
         let current_stock = total_entries - total_exits;
         if movement.quantity > current_stock {
@@ -191,13 +197,13 @@ pub async fn create_material_movement(
     }
 
     conn.execute(
-        "INSERT INTO logistics_materials_movements (id, material_id, movement_type, quantity, notes, created_by, created_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
-        params![id, movement.material_id, movement.movement_type, movement.quantity, movement.notes, session.user_id, now],
+        "INSERT INTO logistics_materials_movements (id, rig_id, material_id, movement_type, quantity, notes, created_by, created_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+        params![id, rig_id, movement.material_id, movement.movement_type, movement.quantity, movement.notes, session.user_id, now],
     ).map_err(|e| e.to_string())?;
 
     Ok(MaterialMovement {
-        id, material_id: movement.material_id, movement_type: movement.movement_type,
+        id, rig_id: Some(rig_id), material_id: movement.material_id, movement_type: movement.movement_type,
         quantity: movement.quantity, notes: movement.notes, created_by: Some(session.user_id), created_at: now,
     })
 }
@@ -205,44 +211,52 @@ pub async fn create_material_movement(
 #[tauri::command]
 pub async fn get_material_movements(
     session_token: String,
+    rig_id: String,
     material_id: Option<String>,
     page: Option<i64>,
     page_size: Option<i64>,
     state: State<'_, AppState>,
 ) -> Result<PaginatedResponse<MaterialMovement>, String> {
-    get_session(&session_token, &state).map_err(|e| e.to_string())?;
+    let session = get_session(&session_token, &state).map_err(|e| e.to_string())?;
+
     let conn = state.db.lock().map_err(|e| format!("Failed to lock database: {}", e))?;
+    let has_access = User::has_rig_access(&conn, &session.user_id, &rig_id).map_err(|e| e.to_string())?;
+    if !has_access {
+        return Err("No tienes acceso a este taladro".to_string());
+    }
 
-    let (count_query, data_query, params_vec): (String, String, Vec<Box<dyn rusqlite::types::ToSql>>) =
-        if let Some(ref mid) = material_id {
-            (
-                "SELECT COUNT(*) FROM logistics_materials_movements WHERE material_id = ?1".to_string(),
-                "SELECT id, material_id, movement_type, quantity, notes, created_by, created_at
-                 FROM logistics_materials_movements WHERE material_id = ?1 ORDER BY created_at DESC".to_string(),
-                vec![Box::new(mid.clone()) as Box<dyn rusqlite::types::ToSql>],
-            )
-        } else {
-            (
-                "SELECT COUNT(*) FROM logistics_materials_movements".to_string(),
-                "SELECT id, material_id, movement_type, quantity, notes, created_by, created_at
-                 FROM logistics_materials_movements ORDER BY created_at DESC".to_string(),
-                vec![],
-            )
-        };
+    let mut conditions = vec!["rig_id = ?1".to_string()];
+    let mut param_values: Vec<Box<dyn rusqlite::types::ToSql>> = vec![Box::new(rig_id.clone())];
+    let mut idx = 2;
 
-    let count_refs: Vec<&dyn rusqlite::types::ToSql> = params_vec.iter().map(|p| p.as_ref()).collect();
+    if let Some(ref mid) = material_id {
+        conditions.push(format!("material_id = ?{}", idx));
+        param_values.push(Box::new(mid.clone()));
+        idx += 1;
+    }
+    let _ = idx; // suppress unused warning
+
+    let where_clause = format!("WHERE {}", conditions.join(" AND "));
+
+    let count_query = format!("SELECT COUNT(*) FROM logistics_materials_movements {}", where_clause);
+    let count_refs: Vec<&dyn rusqlite::types::ToSql> = param_values.iter().map(|p| p.as_ref()).collect();
     let total: i64 = conn.query_row(&count_query, count_refs.as_slice(), |row| row.get(0)).map_err(|e| e.to_string())?;
 
     let (pg, ps, offset) = paginate(page, page_size);
 
-    let paginated_query = format!("{} LIMIT {} OFFSET {}", data_query, ps, offset);
-    let mut stmt = conn.prepare(&paginated_query).map_err(|e| e.to_string())?;
+    let data_query = format!(
+        "SELECT id, rig_id, material_id, movement_type, quantity, notes, created_by, created_at
+         FROM logistics_materials_movements {} ORDER BY created_at DESC LIMIT {} OFFSET {}",
+        where_clause, ps, offset
+    );
 
-    let data_refs: Vec<&dyn rusqlite::types::ToSql> = params_vec.iter().map(|p| p.as_ref()).collect();
+    let mut stmt = conn.prepare(&data_query).map_err(|e| e.to_string())?;
+    let data_refs: Vec<&dyn rusqlite::types::ToSql> = param_values.iter().map(|p| p.as_ref()).collect();
+
     let rows = stmt.query_map(data_refs.as_slice(), |row| {
         Ok(MaterialMovement {
-            id: row.get(0)?, material_id: row.get(1)?, movement_type: row.get(2)?,
-            quantity: row.get(3)?, notes: row.get(4)?, created_by: row.get(5)?, created_at: row.get(6)?,
+            id: row.get(0)?, rig_id: row.get(1)?, material_id: row.get(2)?, movement_type: row.get(3)?,
+            quantity: row.get(4)?, notes: row.get(5)?, created_by: row.get(6)?, created_at: row.get(7)?,
         })
     }).map_err(|e| e.to_string())?;
 
@@ -260,6 +274,19 @@ pub async fn delete_material_movement(
     match session.role.as_str() { "supervisor" | "admin" => {} _ => return Err("No tienes permisos para eliminar movimientos".to_string()), }
 
     let conn = state.db.lock().map_err(|e| format!("Failed to lock database: {}", e))?;
+
+    let rig_id: Option<String> = conn.query_row(
+        "SELECT rig_id FROM logistics_materials_movements WHERE id = ?1",
+        params![movement_id], |row| row.get(0),
+    ).map_err(|_| "Movimiento no encontrado".to_string())?;
+
+    if let Some(ref rid) = rig_id {
+        let has_access = User::has_rig_access(&conn, &session.user_id, rid).map_err(|e| e.to_string())?;
+        if !has_access {
+            return Err("No tienes acceso a este taladro".to_string());
+        }
+    }
+
     let affected = conn.execute("DELETE FROM logistics_materials_movements WHERE id = ?1", params![movement_id]).map_err(|e| e.to_string())?;
     if affected == 0 { return Err("Movimiento no encontrado".to_string()); }
     Ok(())
@@ -268,19 +295,25 @@ pub async fn delete_material_movement(
 #[tauri::command]
 pub async fn get_material_stock(
     session_token: String,
+    rig_id: String,
     material_id: String,
     state: State<'_, AppState>,
 ) -> Result<f64, String> {
-    get_session(&session_token, &state).map_err(|e| e.to_string())?;
+    let session = get_session(&session_token, &state).map_err(|e| e.to_string())?;
+
     let conn = state.db.lock().map_err(|e| format!("Failed to lock database: {}", e))?;
+    let has_access = User::has_rig_access(&conn, &session.user_id, &rig_id).map_err(|e| e.to_string())?;
+    if !has_access {
+        return Err("No tienes acceso a este taladro".to_string());
+    }
 
     let total_entries: f64 = conn.query_row(
-        "SELECT COALESCE(SUM(quantity), 0) FROM logistics_materials_movements WHERE material_id = ?1 AND movement_type = 'entry'",
-        params![material_id], |row| row.get(0),
+        "SELECT COALESCE(SUM(quantity), 0) FROM logistics_materials_movements WHERE material_id = ?1 AND movement_type = 'entry' AND rig_id = ?2",
+        params![material_id, rig_id], |row| row.get(0),
     ).map_err(|e| e.to_string())?;
     let total_exits: f64 = conn.query_row(
-        "SELECT COALESCE(SUM(quantity), 0) FROM logistics_materials_movements WHERE material_id = ?1 AND movement_type = 'exit'",
-        params![material_id], |row| row.get(0),
+        "SELECT COALESCE(SUM(quantity), 0) FROM logistics_materials_movements WHERE material_id = ?1 AND movement_type = 'exit' AND rig_id = ?2",
+        params![material_id, rig_id], |row| row.get(0),
     ).map_err(|e| e.to_string())?;
 
     Ok(total_entries - total_exits)

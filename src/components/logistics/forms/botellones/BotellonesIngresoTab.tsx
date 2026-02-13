@@ -4,10 +4,11 @@ import { waterBottlesMovementSchema, type WaterBottlesMovementForm } from '@/sch
 import { MovementFormTab } from '../MovementFormTab';
 
 interface BotellonesIngresoTabProps {
+  rigId: string;
   onSuccess?: () => void;
 }
 
-export function BotellonesIngresoTab({ onSuccess }: BotellonesIngresoTabProps) {
+export function BotellonesIngresoTab({ rigId, onSuccess }: BotellonesIngresoTabProps) {
   return (
     <MovementFormTab<WaterBottlesMovementForm>
       direction="entry"
@@ -19,7 +20,7 @@ export function BotellonesIngresoTab({ onSuccess }: BotellonesIngresoTabProps) {
       errorMessage="Error al registrar el ingreso"
       submitLabel="Registrar Ingreso"
       onSubmit={async (sessionToken, data) => {
-        await waterBottlesApi.createMovement(sessionToken, {
+        await waterBottlesApi.createMovement(sessionToken, rigId, {
           movementType: 'entry',
           quantity: data.quantity,
           notes: data.notes || undefined,
