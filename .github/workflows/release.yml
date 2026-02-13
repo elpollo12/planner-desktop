@@ -45,42 +45,32 @@ jobs:
         id: artifacts
         shell: powershell
         run: |
-          echo "=== Searching bundle directory ==="
-          $bundleDir = "src-tauri\target\release\bundle"
+          $bundleDir = "src-tauri\target\release\bundle\nsis"
 
-          if (Test-Path $bundleDir) {
-            Get-ChildItem -Path $bundleDir -Recurse | ForEach-Object { echo $_.FullName }
-          } else {
-            echo "Bundle directory not found!"
-            exit 1
-          }
+          echo "=== Bundle contents ==="
+          Get-ChildItem -Path $bundleDir -Recurse | ForEach-Object { echo $_.FullName }
 
-          echo ""
-          echo "=== Finding specific artifacts ==="
-
-          $exe = Get-ChildItem -Path $bundleDir -Recurse -Filter "*.exe" | Select-Object -First 1
-          $zip = Get-ChildItem -Path $bundleDir -Recurse -Filter "*.nsis.zip" | Where-Object { $_.Name -notlike "*.sig" } | Select-Object -First 1
-          $sig = Get-ChildItem -Path $bundleDir -Recurse -Filter "*.nsis.zip.sig" | Select-Object -First 1
+          $exe = Get-ChildItem -Path $bundleDir -Filter "*.exe" | Where-Object { $_.Name -notlike "*.sig" } | Select-Object -First 1
+          $sig = Get-ChildItem -Path $bundleDir -Filter "*.exe.sig" | Select-Object -First 1
 
           echo "EXE: $($exe.FullName)"
-          echo "ZIP: $($zip.FullName)"
           echo "SIG: $($sig.FullName)"
 
-          if (-not $exe -or -not $zip -or -not $sig) {
+          if (-not $exe -or -not $sig) {
             echo "ERROR: Missing artifacts!"
             exit 1
           }
 
           echo "nsis_exe=$($exe.FullName)" >> $env:GITHUB_OUTPUT
-          echo "nsis_zip=$($zip.FullName)" >> $env:GITHUB_OUTPUT
           echo "nsis_sig=$($sig.FullName)" >> $env:GITHUB_OUTPUT
-          echo "nsis_zip_name=$($zip.Name)" >> $env:GITHUB_OUTPUT
+          echo "nsis_exe_name=$($exe.Name)" >> $env:GITHUB_OUTPUT
 
       - name: Read signature and get version
         id: meta
         shell: powershell
         run: |
           $sig = Get-Content "${{ steps.artifacts.outputs.nsis_sig }}" -Raw
+          $sig = $sig.Trim()
           echo "signature=$sig" >> $env:GITHUB_OUTPUT
 
           $version = "${{ github.ref_name }}" -replace '^v', ''
@@ -99,12 +89,12 @@ jobs:
             platforms = @{
               "windows-x86_64" = @{
                 signature = "${{ steps.meta.outputs.signature }}"
-                url = "https://github.com/${{ env.PUBLIC_REPO }}/releases/download/${{ github.ref_name }}/${{ steps.artifacts.outputs.nsis_zip_name }}"
+                url = "https://github.com/${{ env.PUBLIC_REPO }}/releases/download/${{ github.ref_name }}/${{ steps.artifacts.outputs.nsis_exe_name }}"
               }
             }
           } | ConvertTo-Json -Depth 3
 
-          $json | Out-File -FilePath "latest.json" -Encoding utf8
+          $json | Out-File -FilePath "latest.json" -Encoding utf8NoBOM
           echo "=== latest.json ==="
           Get-Content "latest.json"
 
@@ -121,6 +111,5 @@ jobs:
             --title "Planner $VERSION" \
             --notes "Actualización a versión $VERSION" \
             "${{ steps.artifacts.outputs.nsis_exe }}" \
-            "${{ steps.artifacts.outputs.nsis_zip }}" \
             "${{ steps.artifacts.outputs.nsis_sig }}" \
             "latest.json"
