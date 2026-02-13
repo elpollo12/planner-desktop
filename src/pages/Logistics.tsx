@@ -47,13 +47,15 @@ export default function LogisticsPage() {
     return <Navigate to="/login" replace />;
   }
 
+  const isOperator = user?.role === 'operator';
+
   const tabs = [
     { id: 'botellones' as LogisticsTab, label: 'Botellones', icon: Droplets },
     { id: 'combustible' as LogisticsTab, label: 'Combustible', icon: Fuel },
     { id: 'materiales' as LogisticsTab, label: 'Materiales', icon: Package },
     { id: 'vacuum' as LogisticsTab, label: 'Vacuum', icon: Container },
     { id: 'solicitudes' as LogisticsTab, label: 'Solicitudes', icon: ClipboardSignature, badge: pendingCount },
-    { id: 'reportes' as LogisticsTab, label: 'Reportes', icon: TrendingUp },
+    ...(!isOperator ? [{ id: 'reportes' as LogisticsTab, label: 'Reportes', icon: TrendingUp }] : []),
   ];
 
   return (
@@ -112,7 +114,7 @@ export default function LogisticsPage() {
             {activeTab === 'materiales' && <MaterialesInventory rigId={selectedRigId} onUpdate={loadPendingCount} />}
             {activeTab === 'vacuum' && <VacuumInventory rigId={selectedRigId} onUpdate={loadPendingCount} />}
             {activeTab === 'solicitudes' && <RequestsManagement rigId={selectedRigId} onUpdate={loadPendingCount} />}
-            {activeTab === 'reportes' && <LogisticsReports rigId={selectedRigId} />}
+            {activeTab === 'reportes' && !isOperator && <LogisticsReports rigId={selectedRigId} />}
           </div>
         </Card>
       ) : null}

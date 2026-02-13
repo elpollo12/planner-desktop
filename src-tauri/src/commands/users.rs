@@ -1,4 +1,4 @@
-use crate::auth::{check_permission, hash_password};
+use crate::auth::{check_permission, get_session, hash_password};
 use crate::models::user::{CreateUserRequest, UpdateUserRequest, User, UserRole, UserWithRigs};
 use crate::state::AppState;
 use tauri::State;
@@ -56,8 +56,9 @@ pub async fn get_user(
     user_id: String,
     state: State<'_, AppState>,
 ) -> Result<UserWithRigs, String> {
-    // Only admin can get any user
-    check_permission(&session_token, UserRole::Admin, &state).map_err(|e| e.to_string())?;
+    // Any authenticated user can look up another user's basic info
+    // (needed for displaying "created by" names in movement details)
+    let _session = get_session(&session_token, &state).map_err(|e| e.to_string())?;
 
     let conn = state
         .db

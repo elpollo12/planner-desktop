@@ -192,6 +192,7 @@ export function DetailedReportModal({
         />
       ) : selectedSection ? (
         <StepConfigureExport
+          rigId={rigId}
           section={selectedSection}
           periodStart={periodStart}
           periodEnd={periodEnd}
@@ -282,11 +283,13 @@ function StepSectionPicker({
 // ============================================================================
 
 function StepConfigureExport({
+  rigId,
   section,
   periodStart,
   periodEnd,
   onBack,
 }: {
+  rigId: string;
   section: Section;
   periodStart: string;
   periodEnd: string;

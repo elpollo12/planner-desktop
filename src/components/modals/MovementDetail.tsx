@@ -30,8 +30,8 @@ export default function MovementDetailModal({ fields }: MovementDetailModalProps
         {fields.map((field, i) => {
           const Icon = field.icon;
           return (
-            <div className=''>
-              <div key={i} className="flex items-start gap-3 px-2">
+            <div key={i}>
+              <div className="flex items-start gap-3 px-2">
                 <div className="mt-0.5 p-1.5 rounded-md bg-gray-100 dark:bg-gray-700">
                   <Icon size={14} className="text-gray-500 dark:text-gray-400" />
                 </div>

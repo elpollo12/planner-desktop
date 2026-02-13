@@ -96,6 +96,12 @@ pub async fn list_logistics_requests(
     let mut param_values: Vec<Box<dyn rusqlite::types::ToSql>> = vec![Box::new(rig_id.clone())];
     let mut idx = 2;
 
+    // Operators can only see their own requests
+    if session.role == "operator" {
+        conditions.push(format!("requested_by = ?{}", idx));
+        param_values.push(Box::new(session.user_id.clone())); idx += 1;
+    }
+
     if let Some(ref rt) = request_type {
         conditions.push(format!("request_type = ?{}", idx));
         param_values.push(Box::new(rt.clone())); idx += 1;
@@ -227,10 +233,20 @@ pub async fn get_pending_requests_count(
         return Err("No tienes acceso a este taladro".to_string());
     }
 
-    conn.query_row(
-        "SELECT COUNT(*) FROM logistics_requests WHERE status IN ('requested', 'pending') AND rig_id = ?1",
-        params![rig_id], |row| row.get(0),
-    ).map_err(|e| e.to_string())
+    // Operators only count their own pending requests
+    let count: i32 = if session.role == "operator" {
+        conn.query_row(
+            "SELECT COUNT(*) FROM logistics_requests WHERE status IN ('requested', 'pending') AND rig_id = ?1 AND requested_by = ?2",
+            params![rig_id, session.user_id], |row| row.get(0),
+        ).map_err(|e| e.to_string())?
+    } else {
+        conn.query_row(
+            "SELECT COUNT(*) FROM logistics_requests WHERE status IN ('requested', 'pending') AND rig_id = ?1",
+            params![rig_id], |row| row.get(0),
+        ).map_err(|e| e.to_string())?
+    };
+
+    Ok(count)
 }
 
 // ============================================================================
