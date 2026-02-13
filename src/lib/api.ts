@@ -481,3 +481,18 @@ export const operatorsApi = {
   getLogoData: (sessionToken: string, operatorId: string) =>
     invoke<string | null>('get_operator_logo_data', { sessionToken, operatorId }),
 };
+
+// ============================================================================
+// License Commands
+// ============================================================================
+
+export const licenseApi = {
+  getStatus: () =>
+    invoke<import('../store/licenseStore').LicenseInfo | null>('get_license_status'),
+
+  activate: (licenseKey: string) =>
+    invoke<import('../store/licenseStore').LicenseInfo>('activate_license', { licenseKey }),
+
+  deactivate: () =>
+    invoke<void>('deactivate_license'),
+};

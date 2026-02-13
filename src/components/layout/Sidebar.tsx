@@ -1,4 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
+import { getVersion } from '@tauri-apps/api/app';
+import { useState, useEffect } from 'react';
 import { useAuthStore } from '../../store/authStore';
 import { useAppSettingsStore } from '../../store/appSettingsStore';
 import { Button } from '../ui';
@@ -18,6 +20,11 @@ export function Sidebar({ className = '' }: SidebarProps) {
   const location = useLocation();
   const { user, logout } = useAuthStore();
   const { settings } = useAppSettingsStore();
+  const [appVersion, setAppVersion] = useState('');
+
+  useEffect(() => {
+    getVersion().then(setAppVersion).catch(() => {});
+  }, []);
 
   const navigation = [
     {
@@ -133,6 +140,11 @@ export function Sidebar({ className = '' }: SidebarProps) {
         >
           <span>Cerrar Sesión</span>
         </Button>
+        {appVersion && (
+          <p className="text-[10px] text-gray-400 dark:text-gray-600 text-center mt-3">
+            v{appVersion}
+          </p>
+        )}
       </div>
     </aside>
   );

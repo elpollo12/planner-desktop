@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { useAuthStore } from './store/authStore';
+import { useLicenseStore } from './store/licenseStore';
 import { usePreferencesStore } from './store/preferencesStore';
 import { useAppSettingsStore } from './store/appSettingsStore';
 import { useThemeApplicator } from './hooks/useThemeApplicator';
@@ -16,6 +17,7 @@ import ReportList from './pages/ReportList';
 import ReportView from './pages/ReportView';
 import AdminPanel from './pages/AdminPanel';
 import { UpdateNotification } from './components/ui/UpdateNotification';
+import LicenseActivation from './pages/LicenseActivation';
 import Logistics from './pages/Logisctics';
 import './App.css';
 
@@ -32,9 +34,15 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 function App() {
   const { sessionToken, getCurrentUser, isAuthenticated } = useAuthStore();
+  const { isLicensed, isLoading: licenseLoading, checkLicense } = useLicenseStore();
   const { loadPreferences, clearPreferences } = usePreferencesStore();
   const { loadSettings } = useAppSettingsStore();
   const [validating, setValidating] = useState(true);
+
+  // Check license on startup
+  useEffect(() => {
+    checkLicense();
+  }, []);
 
   // Apply theme reactively whenever preferences change
   useThemeApplicator();
@@ -82,12 +90,16 @@ function App() {
     }
   }, [isAuthenticated, sessionToken]);
 
-  if (validating) {
+  if (licenseLoading || validating) {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500" />
       </div>
     );
+  }
+
+  if (!isLicensed) {
+    return <LicenseActivation />;
   }
 
   return (

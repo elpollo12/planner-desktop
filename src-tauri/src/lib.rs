@@ -6,6 +6,7 @@ mod db;
 mod models;
 mod commands;
 mod sync;
+mod license;
 
 use state::AppState;
 
@@ -202,6 +203,11 @@ pub fn run() {
             commands::logistics_requests::update_logistics_request_status,
             commands::logistics_requests::get_pending_requests_count,
             commands::logistics_requests::get_logistics_report,
+
+            // License commands
+            commands::license::activate_license,
+            commands::license::get_license_status,
+            commands::license::deactivate_license,
 
             // Debug commands
             commands::debug::debug_list_all_rigs,
