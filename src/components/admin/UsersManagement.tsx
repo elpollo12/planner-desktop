@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
-import { Edit, Plus, Search, Trash2 } from 'lucide-react';
+import { Edit, Plus, Search } from 'lucide-react';
 import { usersApi, rigsApi } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 import { backgroundPush } from '@/lib/syncHelper';
@@ -14,12 +14,13 @@ import { Table } from '@/components/ui/Table';
 import { Card } from '@/components/ui/Card';
 
 export function UsersManagement() {
-  const { sessionToken } = useAuthStore();
+  const { sessionToken, user: currentUser } = useAuthStore();
   const { openModal, closeModal } = useModal();
   const [users, setUsers] = useState<UserWithRigs[]>([]);
   const [rigs, setRigs] = useState<Rig[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [includeInactive, setIncludeInactive] = useState(false);
 
   // Cargar usuarios y taladros
   useEffect(() => {
@@ -95,12 +96,14 @@ export function UsersManagement() {
         rigs={rigs}
         supervisors={activeSupervisors}
         isEditing={true}
+        currentUserId={currentUser?.id}
         onSubmit={async (data) => {
           try {
             await usersApi.update(sessionToken!, user.id, {
               fullName: data.fullName,
               ci: data.ci || undefined,
               role: data.role,
+              active: data.active,
               hasAllRigs: data.hasAllRigs,
               assignedRigIds: data.hasAllRigs ? [] : data.assignedRigIds,
               supervisorId: data.role === 'operator' ? (data.supervisorId || null) : null,
@@ -122,42 +125,6 @@ export function UsersManagement() {
     );
   };
 
-  // Eliminar usuario con confirmación
-  const handleDelete = (user: UserWithRigs) => {
-    openModal(
-      <div className="space-y-3">
-        <p className="text-gray-700">
-          ¿Estás seguro de eliminar el usuario <strong className="text-gray-900">"{user.username}"</strong>?
-        </p>
-        {user.fullName && (
-          <p className="text-sm text-gray-600">
-            Nombre: {user.fullName}
-          </p>
-        )}
-        <p className="text-sm text-gray-500">
-          Esta acción no se puede deshacer. El usuario perderá acceso al sistema inmediatamente.
-        </p>
-      </div>,
-      {
-        title: 'Confirmar Eliminación',
-        size: 'sm',
-        showConfirmButton: true,
-        showCancelButton: true,
-        confirmText: 'Eliminar',
-        cancelText: 'Cancelar',
-        onConfirm: async () => {
-          try {
-            await usersApi.delete(sessionToken!, user.id);
-            toast.success('Usuario eliminado exitosamente');
-            loadData();
-            backgroundPush(sessionToken!);
-          } catch (error: any) {
-            toast.error(error.message || 'Error al eliminar el usuario');
-          }
-        },
-      }
-    );
-  };
 
   // Filtrar usuarios
   const filteredUsers = users.filter((user) => {
@@ -166,7 +133,9 @@ export function UsersManagement() {
       (user.fullName && user.fullName.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (user.ci && user.ci.toLowerCase().includes(searchTerm.toLowerCase()));
 
-    return matchesSearch;
+    const matchesActive = includeInactive || user.active !== false;
+
+    return matchesSearch && matchesActive;
   });
 
   // Funciones helper para mostrar datos
@@ -256,6 +225,21 @@ export function UsersManagement() {
       }
     },
     {
+      key: 'status',
+      header: 'Estado',
+      render: (user: UserWithRigs) => (
+        <span
+          className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
+            user.active !== false
+              ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+              : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-400'
+          }`}
+        >
+          {user.active !== false ? 'Activo' : 'Inactivo'}
+        </span>
+      )
+    },
+    {
       key: 'access',
       header: 'Acceso a Taladros',
       render: (user: UserWithRigs) => getRigAccessBadge(user)
@@ -263,7 +247,7 @@ export function UsersManagement() {
     { 
       key: 'actions', 
       header: 'Acciones',
-      width: '120px',
+      width: '80px',
       render: (user: UserWithRigs) => (
         <div className="flex gap-2">
           <Button
@@ -272,16 +256,6 @@ export function UsersManagement() {
             onClick={() => handleEdit(user)}
             title="Editar"
             icon={<Edit className="w-4 h-4" />}
-            className=""
-          >
-          </Button>
-          <Button
-            variant="danger"
-            size="sm"
-            onClick={() => handleDelete(user)}
-            title="Eliminar"
-            icon={<Trash2 className="w-4 h-4"/>}
-            className=""
           >
           </Button>
         </div>
@@ -330,6 +304,20 @@ export function UsersManagement() {
           </div>
 
           <div></div> {/* Espacio vacío para mantener diseño */}
+        </div>
+
+        {/* Checkbox incluir inactivos */}
+        <div className="mt-4 flex items-center">
+          <input
+            type="checkbox"
+            id="includeInactive"
+            checked={includeInactive}
+            onChange={(e) => setIncludeInactive(e.target.checked)}
+            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600"
+          />
+          <label htmlFor="includeInactive" className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+            Incluir usuarios inactivos
+          </label>
         </div>
       </Card>
 

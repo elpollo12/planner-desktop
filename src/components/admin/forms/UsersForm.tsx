@@ -12,6 +12,7 @@ interface UsersFormProps {
         fullName: string;
         ci: string;
         role: UserRole;
+        active: boolean;
         hasAllRigs: boolean;
         assignedRigIds: string[];
         supervisorId?: string;
@@ -20,15 +21,19 @@ interface UsersFormProps {
     rigs: Rig[];
     supervisors?: UserWithRigs[];
     isEditing?: boolean;
+    currentUserId?: string;
 }
 
-export default function UsersForm({ onSubmit, user, rigs, supervisors = [], isEditing = false }: UsersFormProps) {
+export default function UsersForm({ onSubmit, user, rigs, supervisors = [], isEditing = false, currentUserId }: UsersFormProps) {
+    const isSelf = isEditing && !!currentUserId && user?.id === currentUserId;
+
     const [formData, setFormData] = useState({
         username: '',
         password: '',
         fullName: '',
         ci: '',
         role: 'operator' as UserRole,
+        active: true,
         hasAllRigs: false,  // Siempre inicia en false para usuarios nuevos
         assignedRigIds: [] as string[],
         supervisorId: '',
@@ -56,6 +61,7 @@ export default function UsersForm({ onSubmit, user, rigs, supervisors = [], isEd
                 fullName: user.fullName || '',
                 ci: user.ci || '',
                 role: user.role,
+                active: user.active !== undefined ? user.active : true,
                 hasAllRigs: isAdmin ? true : user.hasAllRigs,
                 assignedRigIds: user.assignedRigIds || [],
                 supervisorId: user.supervisorId || '',
@@ -262,7 +268,7 @@ export default function UsersForm({ onSubmit, user, rigs, supervisors = [], isEd
                             id="role"
                             value={formData.role}
                             onChange={(e) => handleRoleChange(e.target.value)}
-                            disabled={isSubmitting}
+                            disabled={isSubmitting || isSelf}
                             options={[
                                 { value: 'operator', label: 'Operador' },
                                 { value: 'supervisor', label: 'Supervisor' },
@@ -270,8 +276,9 @@ export default function UsersForm({ onSubmit, user, rigs, supervisors = [], isEd
                             ]}
                         />
                         <p className="mt-1 text-xs text-gray-500">
-                            {getRoleLabel(formData.role)}
-                            {formData.role === 'admin' && ' - Acceso completo al sistema'}
+                            {isSelf
+                                ? 'No puedes cambiar tu propio rol'
+                                : <>{getRoleLabel(formData.role)}{formData.role === 'admin' && ' - Acceso completo al sistema'}</>}
                         </p>
                     </div>
 
@@ -300,6 +307,43 @@ export default function UsersForm({ onSubmit, user, rigs, supervisors = [], isEd
                         </div>
                     )}
                 </div>
+
+                {/* Estado Activo/Inactivo (solo en edición) */}
+                {isEditing && (() => {
+                    return (
+                        <div className={`flex items-center justify-between rounded-lg p-4 ${
+                            isSelf
+                                ? 'bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800'
+                                : 'bg-gray-50 dark:bg-gray-800'
+                        }`}>
+                            <div>
+                                <label htmlFor="active" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                    Estado del Usuario
+                                </label>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">
+                                    {isSelf
+                                        ? 'No puedes desactivar tu propia cuenta'
+                                        : formData.active
+                                            ? 'El usuario está activo y puede acceder al sistema'
+                                            : 'El usuario está inactivo y no podrá iniciar sesión'}
+                                </p>
+                            </div>
+                            <div className="flex items-center">
+                                <label className={`relative inline-flex items-center ${isSelf ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
+                                    <input
+                                        type="checkbox"
+                                        id="active"
+                                        checked={formData.active}
+                                        onChange={(e) => handleChange('active', e.target.checked)}
+                                        className="sr-only peer"
+                                        disabled={isSubmitting || !!isSelf}
+                                    />
+                                    <div className={`w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600 ${isSelf ? 'opacity-50' : ''}`}></div>
+                                </label>
+                            </div>
+                        </div>
+                    );
+                })()}
 
                 {/* Acceso a Taladros */}
                 <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">

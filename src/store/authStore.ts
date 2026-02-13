@@ -42,7 +42,16 @@ export const useAuthStore = create<AuthState>()(
             error: null,
           });
         } catch (error) {
-          const errorMessage = error as string;
+          const rawError = error as string;
+          // Map backend error messages to user-friendly Spanish messages
+          let errorMessage = rawError;
+          if (rawError.includes('User account is disabled')) {
+            errorMessage = 'Tu cuenta está desactivada. Contacta al administrador para más información.';
+          } else if (rawError.includes('Invalid password')) {
+            errorMessage = 'Contraseña incorrecta.';
+          } else if (rawError.includes('Authentication failed')) {
+            errorMessage = 'Credenciales inválidas. Verifica tu usuario y contraseña.';
+          }
           set({
             user: null,
             sessionToken: null,
@@ -85,6 +94,19 @@ export const useAuthStore = create<AuthState>()(
         set({ isLoading: true });
         try {
           const user = await invoke<User>('get_current_user', { sessionToken });
+
+          // If the user account was deactivated, force logout
+          if (!user.active) {
+            set({
+              user: null,
+              sessionToken: null,
+              isAuthenticated: false,
+              isLoading: false,
+              error: 'Tu cuenta ha sido desactivada. Contacta al administrador.',
+            });
+            return;
+          }
+
           set({
             user,
             isAuthenticated: true,
