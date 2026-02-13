@@ -59,10 +59,15 @@ export function useLogisticsRigs(): UseLogisticsRigsReturn {
     fetchRigs();
   }, [fetchRigs]);
 
+  // While loading, don't expose the persisted rigId — it may be stale
+  // (e.g. user switched accounts). Only expose after validation.
+  const validatedRigId = loading ? null : selectedRigId;
+  const validatedRigName = loading ? null : selectedRigName;
+
   return {
     accessibleRigs,
-    selectedRigId,
-    selectedRigName,
+    selectedRigId: validatedRigId,
+    selectedRigName: validatedRigName,
     loading,
     setSelectedRig,
     refresh: fetchRigs,

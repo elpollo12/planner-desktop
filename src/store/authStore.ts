@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { User, LoginResponse } from '../types';
 import { invoke } from '@tauri-apps/api/core';
+import { useLogisticsStore } from './logisticsStore';
 
 interface AuthState {
   user: User | null;
@@ -69,6 +70,9 @@ export const useAuthStore = create<AuthState>()(
           isAuthenticated: false,
           error: null,
         });
+
+        // Clear logistics rig selection on logout
+        useLogisticsStore.getState().clearSelectedRig();
       },
 
       getCurrentUser: async () => {
