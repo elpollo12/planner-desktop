@@ -219,11 +219,15 @@ pub async fn get_logistics_report(
 
     let conn = state.db.lock().map_err(|e| format!("Failed to lock database: {}", e))?;
 
-    let water_bottles = build_water_bottles_summary(&conn, &period_start, &period_end)?;
-    let fuel = build_fuel_summary(&conn, &period_start, &period_end)?;
-    let vacuum = build_vacuum_summary(&conn, &period_start, &period_end)?;
-    let materials = build_materials_summary(&conn, &period_start, &period_end)?;
-    let requests = build_requests_summary(&conn, &period_start, &period_end)?;
+    // Normalize date range to cover full days (created_at is RFC3339 timestamp)
+    let start = if period_start.contains('T') { period_start.clone() } else { format!("{}T00:00:00", period_start) };
+    let end = if period_end.contains('T') { period_end.clone() } else { format!("{}T23:59:59", period_end) };
+
+    let water_bottles = build_water_bottles_summary(&conn, &start, &end)?;
+    let fuel = build_fuel_summary(&conn, &start, &end)?;
+    let vacuum = build_vacuum_summary(&conn, &start, &end)?;
+    let materials = build_materials_summary(&conn, &start, &end)?;
+    let requests = build_requests_summary(&conn, &start, &end)?;
 
     Ok(LogisticsReport { period_start, period_end, water_bottles_summary: water_bottles, fuel_summary: fuel, vacuum_summary: vacuum, materials_summary: materials, requests_summary: requests })
 }
