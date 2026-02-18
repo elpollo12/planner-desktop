@@ -3,6 +3,11 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { formatDateDMY, getTodayDMY } from './dateUtils';
 import { capitalize } from './stringUtils';
+import {
+  saveExcelDialog,
+  savePdfDialog,
+  saveBothDialog,
+} from './logisticsSaveDialog';
 import type {
   LogisticsReport,
   DetailedLogisticsReport,
@@ -18,38 +23,36 @@ const ensureText = (v: any): string => (v === null || v === undefined ? '' : Str
 
 const MOVEMENT_TYPE_LABELS: Record<string, string> = { entry: 'Entrada', exit: 'Salida' };
 
-/**
- * Save a jsPDF document using an anchor download trick.
- * jsPDF.save() uses window.open(blobUrl) which Tauri v2 WebView blocks.
- * This mirrors how SheetJS (XLSX.writeFile) saves files successfully.
- */
-function savePdfDocument(doc: jsPDF, filename: string): void {
-  const blob = doc.output('blob');
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  // Cleanup
-  setTimeout(() => {
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  }, 100);
-}
-
 // ============================================================================
-// GENERAL REPORT — Excel
+// SHARED INTERFACES
 // ============================================================================
 
-interface GeneralExportOptions {
+export interface GeneralExportOptions {
   report: LogisticsReport;
   sections: { botellones: boolean; combustible: boolean; vacuum: boolean; materiales: boolean; solicitudes: boolean };
   periodStart: string;
   periodEnd: string;
 }
 
-export function exportGeneralReportExcel(opts: GeneralExportOptions): void {
+export interface DetailedExportOptions {
+  data: DetailedLogisticsReport;
+  periodStart: string;
+  periodEnd: string;
+  movementFilter?: MovementFilter;
+  statusFilters?: string[];
+}
+
+/** Result returned by save operations. `saved` is false when the user cancels. */
+export interface SaveResult {
+  saved: boolean;
+  paths: string[];
+}
+
+// ============================================================================
+// GENERAL REPORT — BUILD (Excel)
+// ============================================================================
+
+export function buildGeneralReportExcel(opts: GeneralExportOptions): { workbook: XLSX.WorkBook; filename: string } {
   const { report, sections, periodStart, periodEnd } = opts;
   const wb = XLSX.utils.book_new();
 
@@ -128,15 +131,15 @@ export function exportGeneralReportExcel(opts: GeneralExportOptions): void {
     XLSX.utils.book_append_sheet(wb, ws, 'Solicitudes');
   }
 
-  const filename = `logistica_general_${periodStart}_${periodEnd}.xlsx`;
-  XLSX.writeFile(wb, filename);
+  const filename = `logistica_general_${periodStart}_${periodEnd}`;
+  return { workbook: wb, filename };
 }
 
 // ============================================================================
-// GENERAL REPORT — PDF
+// GENERAL REPORT — BUILD (PDF)
 // ============================================================================
 
-export function exportGeneralReportPdf(opts: GeneralExportOptions): void {
+export function buildGeneralReportPdf(opts: GeneralExportOptions): { doc: jsPDF; filename: string } {
   const { report, sections, periodStart, periodEnd } = opts;
   const doc = new jsPDF();
   let y = 20;
@@ -239,12 +242,43 @@ export function exportGeneralReportPdf(opts: GeneralExportOptions): void {
     });
   }
 
-  const filename = `logistica_general_${periodStart}_${periodEnd}.pdf`;
-  savePdfDocument(doc, filename);
+  const filename = `logistica_general_${periodStart}_${periodEnd}`;
+  return { doc, filename };
 }
 
 // ============================================================================
-// DETAILED REPORT — Excel
+// GENERAL REPORT — SAVE (public API used by modals)
+// ============================================================================
+
+export async function saveGeneralReport(
+  opts: GeneralExportOptions,
+  format: 'excel' | 'pdf' | 'both',
+): Promise<SaveResult> {
+  if (format === 'excel') {
+    const { workbook, filename } = buildGeneralReportExcel(opts);
+    const result = await saveExcelDialog(workbook, `${filename}.xlsx`);
+    return { saved: !!result.path, paths: result.path ? [result.path] : [] };
+  }
+
+  if (format === 'pdf') {
+    const { doc, filename } = buildGeneralReportPdf(opts);
+    const result = await savePdfDialog(doc, `${filename}.pdf`);
+    return { saved: !!result.path, paths: result.path ? [result.path] : [] };
+  }
+
+  // format === 'both'
+  const { workbook, filename } = buildGeneralReportExcel(opts);
+  const { doc } = buildGeneralReportPdf(opts);
+  const result = await saveBothDialog(workbook, doc, filename);
+  if (!result.directory) return { saved: false, paths: [] };
+  return {
+    saved: true,
+    paths: [result.excelPath!, result.pdfPath!],
+  };
+}
+
+// ============================================================================
+// DETAILED REPORT — BUILD helpers
 // ============================================================================
 
 function filterMovements(movements: DetailedMovement[], filter: MovementFilter): DetailedMovement[] {
@@ -252,24 +286,30 @@ function filterMovements(movements: DetailedMovement[], filter: MovementFilter):
   return movements.filter((m) => (filter === 'entries' ? m.movementType === 'entry' : m.movementType === 'exit'));
 }
 
-interface DetailedExportOptions {
-  data: DetailedLogisticsReport;
-  periodStart: string;
-  periodEnd: string;
-  movementFilter?: MovementFilter;
-  statusFilters?: string[];
+function getDetailedSectionLabel(section: string): string {
+  if (section === 'water_bottles') return 'Botellones';
+  if (section === 'fuel') return 'Combustible';
+  if (section === 'vacuum') return 'Vacuum';
+  if (section === 'materials') return 'Materiales';
+  return 'Solicitudes';
 }
 
-export function exportDetailedReportExcel(opts: DetailedExportOptions): void {
+function getDetailedPdfSectionLabel(section: string): string {
+  if (section === 'water_bottles') return 'Botellones';
+  if (section === 'fuel') return 'Combustible';
+  if (section === 'vacuum') return 'Vacuum / Cisterna';
+  if (section === 'materials') return 'Materiales';
+  return 'Solicitudes';
+}
+
+// ============================================================================
+// DETAILED REPORT — BUILD (Excel)
+// ============================================================================
+
+export function buildDetailedReportExcel(opts: DetailedExportOptions): { workbook: XLSX.WorkBook; filename: string } {
   const { data, periodStart, periodEnd, movementFilter = 'both', statusFilters } = opts;
   const wb = XLSX.utils.book_new();
-
-  const sectionLabel =
-    data.section === 'water_bottles' ? 'Botellones'
-      : data.section === 'fuel' ? 'Combustible'
-        : data.section === 'vacuum' ? 'Vacuum'
-          : data.section === 'materials' ? 'Materiales'
-            : 'Solicitudes';
+  const sectionLabel = getDetailedSectionLabel(data.section);
 
   // Info
   const info = [
@@ -322,25 +362,19 @@ export function exportDetailedReportExcel(opts: DetailedExportOptions): void {
     XLSX.utils.book_append_sheet(wb, ws, sectionLabel);
   }
 
-  const filename = `logistica_${data.section}_${periodStart}_${periodEnd}.xlsx`;
-  XLSX.writeFile(wb, filename);
+  const filename = `logistica_${data.section}_${periodStart}_${periodEnd}`;
+  return { workbook: wb, filename };
 }
 
 // ============================================================================
-// DETAILED REPORT — PDF
+// DETAILED REPORT — BUILD (PDF)
 // ============================================================================
 
-export function exportDetailedReportPdf(opts: DetailedExportOptions): void {
+export function buildDetailedReportPdf(opts: DetailedExportOptions): { doc: jsPDF; filename: string } {
   const { data, periodStart, periodEnd, movementFilter = 'both', statusFilters } = opts;
   const doc = new jsPDF();
   let y = 20;
-
-  const sectionLabel =
-    data.section === 'water_bottles' ? 'Botellones'
-      : data.section === 'fuel' ? 'Combustible'
-        : data.section === 'vacuum' ? 'Vacuum / Cisterna'
-          : data.section === 'materials' ? 'Materiales'
-            : 'Solicitudes';
+  const sectionLabel = getDetailedPdfSectionLabel(data.section);
 
   doc.setFontSize(16);
   doc.text(`Reporte Detallado — ${sectionLabel}`, 14, y);
@@ -402,6 +436,37 @@ export function exportDetailedReportPdf(opts: DetailedExportOptions): void {
     });
   }
 
-  const filename = `logistica_${data.section}_${periodStart}_${periodEnd}.pdf`;
-  savePdfDocument(doc, filename);
+  const filename = `logistica_${data.section}_${periodStart}_${periodEnd}`;
+  return { doc, filename };
+}
+
+// ============================================================================
+// DETAILED REPORT — SAVE (public API used by modals)
+// ============================================================================
+
+export async function saveDetailedReport(
+  opts: DetailedExportOptions,
+  format: 'excel' | 'pdf' | 'both',
+): Promise<SaveResult> {
+  if (format === 'excel') {
+    const { workbook, filename } = buildDetailedReportExcel(opts);
+    const result = await saveExcelDialog(workbook, `${filename}.xlsx`);
+    return { saved: !!result.path, paths: result.path ? [result.path] : [] };
+  }
+
+  if (format === 'pdf') {
+    const { doc, filename } = buildDetailedReportPdf(opts);
+    const result = await savePdfDialog(doc, `${filename}.pdf`);
+    return { saved: !!result.path, paths: result.path ? [result.path] : [] };
+  }
+
+  // format === 'both'
+  const { workbook, filename } = buildDetailedReportExcel(opts);
+  const { doc } = buildDetailedReportPdf(opts);
+  const result = await saveBothDialog(workbook, doc, filename);
+  if (!result.directory) return { saved: false, paths: [] };
+  return {
+    saved: true,
+    paths: [result.excelPath!, result.pdfPath!],
+  };
 }

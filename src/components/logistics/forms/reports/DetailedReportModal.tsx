@@ -20,8 +20,7 @@ import {
   type MovementFilter,
 } from '@/schemas';
 import {
-  exportDetailedReportExcel,
-  exportDetailedReportPdf,
+  saveDetailedReport,
 } from '@/lib/logisticsExport';
 import { capitalize } from '@/lib/stringUtils';
 import { Button } from '@/components/ui';
@@ -387,15 +386,13 @@ function StepConfigureExport({
         }
       }
 
-      // Generate files
-      if (data.format === 'excel' || data.format === 'both') {
-        exportDetailedReportExcel(exportOpts);
-      }
-      if (data.format === 'pdf' || data.format === 'both') {
-        exportDetailedReportPdf(exportOpts);
-      }
+      // Generate files via native save dialog
+      const result = await saveDetailedReport(exportOpts, data.format);
 
-      toast.success('Reporte detallado generado exitosamente');
+      // If user cancelled the dialog, do nothing (keep modal open)
+      if (!result.saved) return;
+
+      toast.success('Reporte detallado guardado exitosamente');
       useModalStore.getState().closeModal();
     } catch (error: any) {
       console.error('Error generando reporte detallado:', error);

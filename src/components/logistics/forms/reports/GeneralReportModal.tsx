@@ -6,7 +6,7 @@ import { useAuthStore } from '@/store/authStore';
 import { logisticsReportsApi } from '@/lib/api';
 import { toast } from 'react-toastify';
 import { generalReportSchema, type GeneralReportForm, type ReportFormat } from '@/schemas';
-import { exportGeneralReportExcel, exportGeneralReportPdf } from '@/lib/logisticsExport';
+import { saveGeneralReport } from '@/lib/logisticsExport';
 import { Button } from '@/components/ui';
 
 // ============================================================================
@@ -82,16 +82,14 @@ export function GeneralReportModal({ rigId, periodStart, periodEnd }: GeneralRep
         periodEnd: data.periodEnd,
       };
 
-      // 2. Generate files
-      if (data.format === 'excel' || data.format === 'both') {
-        exportGeneralReportExcel(opts);
-      }
-      if (data.format === 'pdf' || data.format === 'both') {
-        exportGeneralReportPdf(opts);
-      }
+      // 2. Open native save dialog & write files
+      const result = await saveGeneralReport(opts, data.format);
 
-      // 3. Close & notify
-      toast.success('Reporte general generado exitosamente');
+      // 3. If user cancelled the dialog, do nothing (keep modal open)
+      if (!result.saved) return;
+
+      // 4. Close & notify
+      toast.success('Reporte general guardado exitosamente');
       useModalStore.getState().closeModal();
     } catch (error: any) {
       console.error('Error generando reporte general:', error);
