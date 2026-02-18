@@ -211,6 +211,70 @@ const SYNC_TABLES: &[TableDef] = &[
         has_updated_at: true,
         parent_col: None,
     },
+    // =========================================================================
+    // LOGISTICS MODULE
+    // =========================================================================
+    TableDef {
+        name: "logistics_materials",
+        columns: &[
+            "id", "name", "unit", "description", "active",
+            "created_by", "created_at", "updated_at", "is_deleted",
+        ],
+        id_col: "id",
+        has_updated_at: true,
+        parent_col: None,
+    },
+    TableDef {
+        name: "logistics_water_bottles_movements",
+        columns: &[
+            "id", "rig_id", "movement_type", "quantity", "notes",
+            "created_by", "created_at", "updated_at", "is_deleted",
+        ],
+        id_col: "id",
+        has_updated_at: true,
+        parent_col: None,
+    },
+    TableDef {
+        name: "logistics_fuel_movements",
+        columns: &[
+            "id", "rig_id", "movement_type", "amount", "notes",
+            "created_by", "created_at", "updated_at", "is_deleted",
+        ],
+        id_col: "id",
+        has_updated_at: true,
+        parent_col: None,
+    },
+    TableDef {
+        name: "logistics_vacuum_actions",
+        columns: &[
+            "id", "rig_id", "action_name", "notes",
+            "created_by", "created_at", "updated_at", "is_deleted",
+        ],
+        id_col: "id",
+        has_updated_at: true,
+        parent_col: None,
+    },
+    TableDef {
+        name: "logistics_materials_movements",
+        columns: &[
+            "id", "rig_id", "material_id", "movement_type", "quantity", "notes",
+            "created_by", "created_at", "updated_at", "is_deleted",
+        ],
+        id_col: "id",
+        has_updated_at: true,
+        parent_col: Some("material_id"),
+    },
+    TableDef {
+        name: "logistics_requests",
+        columns: &[
+            "id", "rig_id", "request_type", "quantity", "action_requested",
+            "material_id", "status", "notes", "requested_by", "status_changed_by",
+            "requested_at", "status_changed_at", "created_at", "updated_at", "is_deleted",
+        ],
+        id_col: "id",
+        has_updated_at: true,
+        parent_col: None,
+    },
 ];
 
 struct TableDef {
@@ -634,6 +698,84 @@ CREATE TABLE IF NOT EXISTS user_preferences (
   theme_mode TEXT NOT NULL DEFAULT 'light' CHECK(theme_mode IN ('light', 'dark')),
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS logistics_materials (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  unit TEXT NOT NULL,
+  description TEXT,
+  active INTEGER DEFAULT 1,
+  created_by TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  is_deleted INTEGER DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS logistics_water_bottles_movements (
+  id TEXT PRIMARY KEY,
+  rig_id TEXT,
+  movement_type TEXT NOT NULL,
+  quantity INTEGER NOT NULL,
+  notes TEXT,
+  created_by TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT,
+  is_deleted INTEGER DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS logistics_fuel_movements (
+  id TEXT PRIMARY KEY,
+  rig_id TEXT,
+  movement_type TEXT NOT NULL,
+  amount REAL NOT NULL,
+  notes TEXT,
+  created_by TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT,
+  is_deleted INTEGER DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS logistics_vacuum_actions (
+  id TEXT PRIMARY KEY,
+  rig_id TEXT,
+  action_name TEXT NOT NULL,
+  notes TEXT,
+  created_by TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT,
+  is_deleted INTEGER DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS logistics_materials_movements (
+  id TEXT PRIMARY KEY,
+  rig_id TEXT,
+  material_id TEXT NOT NULL,
+  movement_type TEXT NOT NULL,
+  quantity REAL NOT NULL,
+  notes TEXT,
+  created_by TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT,
+  is_deleted INTEGER DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS logistics_requests (
+  id TEXT PRIMARY KEY,
+  rig_id TEXT,
+  request_type TEXT NOT NULL,
+  quantity REAL,
+  action_requested TEXT,
+  material_id TEXT,
+  status TEXT DEFAULT 'requested' NOT NULL,
+  notes TEXT,
+  requested_by TEXT,
+  status_changed_by TEXT,
+  requested_at TEXT NOT NULL,
+  status_changed_at TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  is_deleted INTEGER DEFAULT 0
 )
 "#;
 
@@ -665,6 +807,24 @@ const REMOTE_MIGRATIONS: &[&str] = &[
     // V20: rig_personnel table + crew_members.personnel_id
     "CREATE TABLE IF NOT EXISTS rig_personnel (id TEXT PRIMARY KEY, rig_id TEXT NOT NULL, name TEXT NOT NULL, ci TEXT, default_position TEXT NOT NULL, active INTEGER DEFAULT 1, is_deleted INTEGER DEFAULT 0, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)",
     "ALTER TABLE crew_members ADD COLUMN personnel_id TEXT",
+    // V25: Logistics module tables
+    "CREATE TABLE IF NOT EXISTS logistics_materials (id TEXT PRIMARY KEY, name TEXT NOT NULL, unit TEXT NOT NULL, description TEXT, active INTEGER DEFAULT 1, created_by TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, is_deleted INTEGER DEFAULT 0)",
+    "CREATE TABLE IF NOT EXISTS logistics_water_bottles_movements (id TEXT PRIMARY KEY, rig_id TEXT, movement_type TEXT NOT NULL, quantity INTEGER NOT NULL, notes TEXT, created_by TEXT, created_at TEXT NOT NULL, updated_at TEXT, is_deleted INTEGER DEFAULT 0)",
+    "CREATE TABLE IF NOT EXISTS logistics_fuel_movements (id TEXT PRIMARY KEY, rig_id TEXT, movement_type TEXT NOT NULL, amount REAL NOT NULL, notes TEXT, created_by TEXT, created_at TEXT NOT NULL, updated_at TEXT, is_deleted INTEGER DEFAULT 0)",
+    "CREATE TABLE IF NOT EXISTS logistics_vacuum_actions (id TEXT PRIMARY KEY, rig_id TEXT, action_name TEXT NOT NULL, notes TEXT, created_by TEXT, created_at TEXT NOT NULL, updated_at TEXT, is_deleted INTEGER DEFAULT 0)",
+    "CREATE TABLE IF NOT EXISTS logistics_materials_movements (id TEXT PRIMARY KEY, rig_id TEXT, material_id TEXT NOT NULL, movement_type TEXT NOT NULL, quantity REAL NOT NULL, notes TEXT, created_by TEXT, created_at TEXT NOT NULL, updated_at TEXT, is_deleted INTEGER DEFAULT 0)",
+    "CREATE TABLE IF NOT EXISTS logistics_requests (id TEXT PRIMARY KEY, rig_id TEXT, request_type TEXT NOT NULL, quantity REAL, action_requested TEXT, material_id TEXT, status TEXT DEFAULT 'requested' NOT NULL, notes TEXT, requested_by TEXT, status_changed_by TEXT, requested_at TEXT NOT NULL, status_changed_at TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, is_deleted INTEGER DEFAULT 0)",
+    // V25: Add sync columns to existing logistics tables (for DBs that already had V22-V24 without sync columns)
+    "ALTER TABLE logistics_water_bottles_movements ADD COLUMN updated_at TEXT",
+    "ALTER TABLE logistics_water_bottles_movements ADD COLUMN is_deleted INTEGER DEFAULT 0",
+    "ALTER TABLE logistics_fuel_movements ADD COLUMN updated_at TEXT",
+    "ALTER TABLE logistics_fuel_movements ADD COLUMN is_deleted INTEGER DEFAULT 0",
+    "ALTER TABLE logistics_vacuum_actions ADD COLUMN updated_at TEXT",
+    "ALTER TABLE logistics_vacuum_actions ADD COLUMN is_deleted INTEGER DEFAULT 0",
+    "ALTER TABLE logistics_materials ADD COLUMN is_deleted INTEGER DEFAULT 0",
+    "ALTER TABLE logistics_materials_movements ADD COLUMN updated_at TEXT",
+    "ALTER TABLE logistics_materials_movements ADD COLUMN is_deleted INTEGER DEFAULT 0",
+    "ALTER TABLE logistics_requests ADD COLUMN is_deleted INTEGER DEFAULT 0",
 ];
 
 /// Initialize the remote Turso database with the same schema
@@ -882,6 +1042,55 @@ pub fn write_pulled_data(
         .map_err(|e| format!("Failed to re-enable foreign keys: {}", e))?;
 
     Ok(total)
+}
+
+/// Recalculate the logistics_stock cache from movement tables.
+/// Must be called AFTER writing pulled data that includes logistics tables.
+pub fn recalculate_logistics_stock(conn: &Connection) -> Result<(), String> {
+    // Check if any logistics movement table was affected by looking at table existence
+    // Always safe to recalculate — it's idempotent
+
+    conn.execute("DELETE FROM logistics_stock", [])
+        .map_err(|e| format!("Failed to clear logistics_stock: {}", e))?;
+
+    // Water bottles
+    conn.execute(
+        "INSERT INTO logistics_stock (rig_id, category, quantity, updated_at)
+         SELECT rig_id, 'water_bottles',
+                SUM(CASE WHEN movement_type = 'entry' THEN quantity ELSE -quantity END),
+                datetime('now')
+         FROM logistics_water_bottles_movements
+         WHERE rig_id IS NOT NULL AND is_deleted = 0
+         GROUP BY rig_id",
+        [],
+    ).map_err(|e| format!("Failed to recalculate water_bottles stock: {}", e))?;
+
+    // Fuel
+    conn.execute(
+        "INSERT INTO logistics_stock (rig_id, category, quantity, updated_at)
+         SELECT rig_id, 'fuel',
+                SUM(CASE WHEN movement_type = 'entry' THEN amount ELSE -amount END),
+                datetime('now')
+         FROM logistics_fuel_movements
+         WHERE rig_id IS NOT NULL AND is_deleted = 0
+         GROUP BY rig_id",
+        [],
+    ).map_err(|e| format!("Failed to recalculate fuel stock: {}", e))?;
+
+    // Materials (one row per rig + material combination)
+    conn.execute(
+        "INSERT INTO logistics_stock (rig_id, category, quantity, updated_at)
+         SELECT rig_id, 'material:' || material_id,
+                SUM(CASE WHEN movement_type = 'entry' THEN quantity ELSE -quantity END),
+                datetime('now')
+         FROM logistics_materials_movements
+         WHERE rig_id IS NOT NULL AND is_deleted = 0
+         GROUP BY rig_id, material_id",
+        [],
+    ).map_err(|e| format!("Failed to recalculate materials stock: {}", e))?;
+
+    println!("[Sync] Logistics stock cache recalculated");
+    Ok(())
 }
 
 /// During full sync, remove local records that don't exist in Turso.
@@ -1333,6 +1542,44 @@ pub fn purge_local_soft_deleted(conn: &Connection, retention_days: i64) -> Resul
         }
     }
 
+    // 6. Purge logistics tables
+    // First: logistics_materials_movements (child of logistics_materials)
+    // Hard-delete movements whose parent material is soft-deleted
+    if let Ok(count) = conn.execute(
+        "DELETE FROM logistics_materials_movements WHERE is_deleted = 1 AND updated_at < ?1",
+        rusqlite::params![&threshold_str],
+    ) {
+        if count > 0 {
+            total_purged += count as u32;
+            println!("[Sync] Purged {} deleted logistics_materials_movements", count);
+        }
+    }
+    // Then: logistics_materials catalog
+    if let Ok(count) = conn.execute(
+        "DELETE FROM logistics_materials WHERE is_deleted = 1 AND updated_at < ?1",
+        rusqlite::params![&threshold_str],
+    ) {
+        if count > 0 {
+            total_purged += count as u32;
+            println!("[Sync] Purged {} deleted logistics_materials", count);
+        }
+    }
+    // Simple logistics tables (no children)
+    for table_name in &[
+        "logistics_water_bottles_movements",
+        "logistics_fuel_movements",
+        "logistics_vacuum_actions",
+        "logistics_requests",
+    ] {
+        let sql = format!("DELETE FROM {} WHERE is_deleted = 1 AND updated_at < ?1", table_name);
+        if let Ok(count) = conn.execute(&sql, rusqlite::params![&threshold_str]) {
+            if count > 0 {
+                total_purged += count as u32;
+                println!("[Sync] Purged {} deleted record(s) from '{}'", count, table_name);
+            }
+        }
+    }
+
     conn.execute("PRAGMA foreign_keys = ON", [])
         .map_err(|e| format!("Failed to re-enable FK: {}", e))?;
 
@@ -1420,6 +1667,30 @@ pub async fn purge_turso_soft_deleted(client: &TursoClient, retention_days: i64)
         "DELETE FROM operation_codes WHERE is_deleted = 1".to_string(),
         vec![],
     ));
+
+    // 6. Logistics tables
+    // Child first: logistics_materials_movements
+    batch.push((
+        "DELETE FROM logistics_materials_movements WHERE is_deleted = 1 AND updated_at < ?1".to_string(),
+        vec![TursoValue::Text(threshold_str.clone())],
+    ));
+    // Parent: logistics_materials catalog
+    batch.push((
+        "DELETE FROM logistics_materials WHERE is_deleted = 1 AND updated_at < ?1".to_string(),
+        vec![TursoValue::Text(threshold_str.clone())],
+    ));
+    // Simple logistics tables
+    for table_name in &[
+        "logistics_water_bottles_movements",
+        "logistics_fuel_movements",
+        "logistics_vacuum_actions",
+        "logistics_requests",
+    ] {
+        batch.push((
+            format!("DELETE FROM {} WHERE is_deleted = 1 AND updated_at < ?1", table_name),
+            vec![TursoValue::Text(threshold_str.clone())],
+        ));
+    }
 
     client.execute_batch(batch).await?;
 

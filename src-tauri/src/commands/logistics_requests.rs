@@ -56,7 +56,7 @@ pub async fn create_logistics_request(
 
     if let Some(ref mid) = input.material_id {
         let exists: bool = conn.query_row(
-            "SELECT COUNT(*) > 0 FROM logistics_materials WHERE id = ?1", params![mid], |row| row.get(0),
+            "SELECT COUNT(*) > 0 FROM logistics_materials WHERE id = ?1 AND is_deleted = 0", params![mid], |row| row.get(0),
         ).map_err(|e| e.to_string())?;
         if !exists { return Err("Material no encontrado".to_string()); }
     }
@@ -92,7 +92,7 @@ pub async fn list_logistics_requests(
         return Err("No tienes acceso a este taladro".to_string());
     }
 
-    let mut conditions = vec!["rig_id = ?1".to_string()];
+    let mut conditions = vec!["rig_id = ?1".to_string(), "is_deleted = 0".to_string()];
     let mut param_values: Vec<Box<dyn rusqlite::types::ToSql>> = vec![Box::new(rig_id.clone())];
     let mut idx = 2;
 
@@ -157,7 +157,7 @@ pub async fn update_logistics_request_status(
 
     // Verify rig access
     let (current_status, rig_id): (String, Option<String>) = conn.query_row(
-        "SELECT status, rig_id FROM logistics_requests WHERE id = ?1",
+        "SELECT status, rig_id FROM logistics_requests WHERE id = ?1 AND is_deleted = 0",
         params![request_id], |row| Ok((row.get(0)?, row.get(1)?)),
     ).map_err(|_| "Solicitud no encontrada".to_string())?;
 
@@ -192,7 +192,7 @@ pub async fn delete_logistics_request(
     let conn = state.db.lock().map_err(|e| format!("Failed to lock database: {}", e))?;
 
     let (requested_by, rig_id): (String, Option<String>) = conn.query_row(
-        "SELECT requested_by, rig_id FROM logistics_requests WHERE id = ?1",
+        "SELECT requested_by, rig_id FROM logistics_requests WHERE id = ?1 AND is_deleted = 0",
         params![request_id], |row| Ok((row.get(0)?, row.get(1)?)),
     ).map_err(|_| "Solicitud no encontrada".to_string())?;
 
@@ -213,8 +213,12 @@ pub async fn delete_logistics_request(
         }
     }
 
+    let now = chrono::Utc::now().to_rfc3339();
     let affected = conn
-        .execute("DELETE FROM logistics_requests WHERE id = ?1", params![request_id])
+        .execute(
+            "UPDATE logistics_requests SET is_deleted = 1, updated_at = ?1 WHERE id = ?2 AND is_deleted = 0",
+            params![now, request_id],
+        )
         .map_err(|e| e.to_string())?;
 
     if affected == 0 { return Err("Solicitud no encontrada".to_string()); }
@@ -236,12 +240,12 @@ pub async fn get_pending_requests_count(
     // Operators only count their own pending requests
     let count: i32 = if session.role == "operator" {
         conn.query_row(
-            "SELECT COUNT(*) FROM logistics_requests WHERE status IN ('requested', 'pending') AND rig_id = ?1 AND requested_by = ?2",
+            "SELECT COUNT(*) FROM logistics_requests WHERE status IN ('requested', 'pending') AND rig_id = ?1 AND requested_by = ?2 AND is_deleted = 0",
             params![rig_id, session.user_id], |row| row.get(0),
         ).map_err(|e| e.to_string())?
     } else {
         conn.query_row(
-            "SELECT COUNT(*) FROM logistics_requests WHERE status IN ('requested', 'pending') AND rig_id = ?1",
+            "SELECT COUNT(*) FROM logistics_requests WHERE status IN ('requested', 'pending') AND rig_id = ?1 AND is_deleted = 0",
             params![rig_id], |row| row.get(0),
         ).map_err(|e| e.to_string())?
     };
@@ -334,11 +338,11 @@ fn get_request_by_id(conn: &rusqlite::Connection, id: &str) -> Result<LogisticsR
 
 fn build_water_bottles_summary(conn: &rusqlite::Connection, rig_id: &str, start: &str, end: &str) -> Result<WaterBottlesSummary, String> {
     let total_entries: i32 = conn.query_row(
-        "SELECT COALESCE(SUM(quantity), 0) FROM logistics_water_bottles_movements WHERE movement_type = 'entry' AND rig_id = ?1 AND created_at BETWEEN ?2 AND ?3",
+        "SELECT COALESCE(SUM(quantity), 0) FROM logistics_water_bottles_movements WHERE movement_type = 'entry' AND rig_id = ?1 AND created_at BETWEEN ?2 AND ?3 AND is_deleted = 0",
         params![rig_id, start, end], |row| row.get(0),
     ).map_err(|e| e.to_string())?;
     let total_exits: i32 = conn.query_row(
-        "SELECT COALESCE(SUM(quantity), 0) FROM logistics_water_bottles_movements WHERE movement_type = 'exit' AND rig_id = ?1 AND created_at BETWEEN ?2 AND ?3",
+        "SELECT COALESCE(SUM(quantity), 0) FROM logistics_water_bottles_movements WHERE movement_type = 'exit' AND rig_id = ?1 AND created_at BETWEEN ?2 AND ?3 AND is_deleted = 0",
         params![rig_id, start, end], |row| row.get(0),
     ).map_err(|e| e.to_string())?;
     Ok(WaterBottlesSummary { total_entries, total_exits, net: total_entries - total_exits })
@@ -346,11 +350,11 @@ fn build_water_bottles_summary(conn: &rusqlite::Connection, rig_id: &str, start:
 
 fn build_fuel_summary(conn: &rusqlite::Connection, rig_id: &str, start: &str, end: &str) -> Result<FuelSummary, String> {
     let total_entries: f64 = conn.query_row(
-        "SELECT COALESCE(SUM(amount), 0) FROM logistics_fuel_movements WHERE movement_type = 'entry' AND rig_id = ?1 AND created_at BETWEEN ?2 AND ?3",
+        "SELECT COALESCE(SUM(amount), 0) FROM logistics_fuel_movements WHERE movement_type = 'entry' AND rig_id = ?1 AND created_at BETWEEN ?2 AND ?3 AND is_deleted = 0",
         params![rig_id, start, end], |row| row.get(0),
     ).map_err(|e| e.to_string())?;
     let total_exits: f64 = conn.query_row(
-        "SELECT COALESCE(SUM(amount), 0) FROM logistics_fuel_movements WHERE movement_type = 'exit' AND rig_id = ?1 AND created_at BETWEEN ?2 AND ?3",
+        "SELECT COALESCE(SUM(amount), 0) FROM logistics_fuel_movements WHERE movement_type = 'exit' AND rig_id = ?1 AND created_at BETWEEN ?2 AND ?3 AND is_deleted = 0",
         params![rig_id, start, end], |row| row.get(0),
     ).map_err(|e| e.to_string())?;
     Ok(FuelSummary { total_entries, total_exits, net: total_entries - total_exits })
@@ -358,7 +362,7 @@ fn build_fuel_summary(conn: &rusqlite::Connection, rig_id: &str, start: &str, en
 
 fn build_vacuum_summary(conn: &rusqlite::Connection, rig_id: &str, start: &str, end: &str) -> Result<VacuumSummary, String> {
     let total_actions: i32 = conn.query_row(
-        "SELECT COUNT(*) FROM logistics_vacuum_actions WHERE rig_id = ?1 AND created_at BETWEEN ?2 AND ?3",
+        "SELECT COUNT(*) FROM logistics_vacuum_actions WHERE rig_id = ?1 AND created_at BETWEEN ?2 AND ?3 AND is_deleted = 0",
         params![rig_id, start, end], |row| row.get(0),
     ).map_err(|e| e.to_string())?;
     Ok(VacuumSummary { total_actions })
@@ -366,7 +370,7 @@ fn build_vacuum_summary(conn: &rusqlite::Connection, rig_id: &str, start: &str, 
 
 fn build_materials_summary(conn: &rusqlite::Connection, rig_id: &str, start: &str, end: &str) -> Result<Vec<MaterialSummary>, String> {
     let mut stmt = conn.prepare(
-        "SELECT id, name, unit FROM logistics_materials WHERE active = 1 ORDER BY name ASC"
+        "SELECT id, name, unit FROM logistics_materials WHERE active = 1 AND is_deleted = 0 ORDER BY name ASC"
     ).map_err(|e| e.to_string())?;
 
     let materials = stmt.query_map([], |row| {
@@ -377,11 +381,11 @@ fn build_materials_summary(conn: &rusqlite::Connection, rig_id: &str, start: &st
     for material in materials {
         let (id, name, unit) = material.map_err(|e| e.to_string())?;
         let total_entries: f64 = conn.query_row(
-            "SELECT COALESCE(SUM(quantity), 0) FROM logistics_materials_movements WHERE material_id = ?1 AND movement_type = 'entry' AND rig_id = ?2 AND created_at BETWEEN ?3 AND ?4",
+            "SELECT COALESCE(SUM(quantity), 0) FROM logistics_materials_movements WHERE material_id = ?1 AND movement_type = 'entry' AND rig_id = ?2 AND created_at BETWEEN ?3 AND ?4 AND is_deleted = 0",
             params![id, rig_id, start, end], |row| row.get(0),
         ).map_err(|e| e.to_string())?;
         let total_exits: f64 = conn.query_row(
-            "SELECT COALESCE(SUM(quantity), 0) FROM logistics_materials_movements WHERE material_id = ?1 AND movement_type = 'exit' AND rig_id = ?2 AND created_at BETWEEN ?3 AND ?4",
+            "SELECT COALESCE(SUM(quantity), 0) FROM logistics_materials_movements WHERE material_id = ?1 AND movement_type = 'exit' AND rig_id = ?2 AND created_at BETWEEN ?3 AND ?4 AND is_deleted = 0",
             params![id, rig_id, start, end], |row| row.get(0),
         ).map_err(|e| e.to_string())?;
         summaries.push(MaterialSummary { material_id: id, material_name: name, unit, total_entries, total_exits, net: total_entries - total_exits });
@@ -390,11 +394,11 @@ fn build_materials_summary(conn: &rusqlite::Connection, rig_id: &str, start: &st
 }
 
 fn build_requests_summary(conn: &rusqlite::Connection, rig_id: &str, start: &str, end: &str) -> Result<RequestsSummary, String> {
-    let total: i32 = conn.query_row("SELECT COUNT(*) FROM logistics_requests WHERE rig_id = ?1 AND requested_at BETWEEN ?2 AND ?3", params![rig_id, start, end], |row| row.get(0)).map_err(|e| e.to_string())?;
-    let requested: i32 = conn.query_row("SELECT COUNT(*) FROM logistics_requests WHERE rig_id = ?1 AND status = 'requested' AND requested_at BETWEEN ?2 AND ?3", params![rig_id, start, end], |row| row.get(0)).map_err(|e| e.to_string())?;
-    let pending: i32 = conn.query_row("SELECT COUNT(*) FROM logistics_requests WHERE rig_id = ?1 AND status = 'pending' AND requested_at BETWEEN ?2 AND ?3", params![rig_id, start, end], |row| row.get(0)).map_err(|e| e.to_string())?;
-    let approved: i32 = conn.query_row("SELECT COUNT(*) FROM logistics_requests WHERE rig_id = ?1 AND status = 'approved' AND requested_at BETWEEN ?2 AND ?3", params![rig_id, start, end], |row| row.get(0)).map_err(|e| e.to_string())?;
-    let rejected: i32 = conn.query_row("SELECT COUNT(*) FROM logistics_requests WHERE rig_id = ?1 AND status = 'rejected' AND requested_at BETWEEN ?2 AND ?3", params![rig_id, start, end], |row| row.get(0)).map_err(|e| e.to_string())?;
+    let total: i32 = conn.query_row("SELECT COUNT(*) FROM logistics_requests WHERE rig_id = ?1 AND requested_at BETWEEN ?2 AND ?3 AND is_deleted = 0", params![rig_id, start, end], |row| row.get(0)).map_err(|e| e.to_string())?;
+    let requested: i32 = conn.query_row("SELECT COUNT(*) FROM logistics_requests WHERE rig_id = ?1 AND status = 'requested' AND requested_at BETWEEN ?2 AND ?3 AND is_deleted = 0", params![rig_id, start, end], |row| row.get(0)).map_err(|e| e.to_string())?;
+    let pending: i32 = conn.query_row("SELECT COUNT(*) FROM logistics_requests WHERE rig_id = ?1 AND status = 'pending' AND requested_at BETWEEN ?2 AND ?3 AND is_deleted = 0", params![rig_id, start, end], |row| row.get(0)).map_err(|e| e.to_string())?;
+    let approved: i32 = conn.query_row("SELECT COUNT(*) FROM logistics_requests WHERE rig_id = ?1 AND status = 'approved' AND requested_at BETWEEN ?2 AND ?3 AND is_deleted = 0", params![rig_id, start, end], |row| row.get(0)).map_err(|e| e.to_string())?;
+    let rejected: i32 = conn.query_row("SELECT COUNT(*) FROM logistics_requests WHERE rig_id = ?1 AND status = 'rejected' AND requested_at BETWEEN ?2 AND ?3 AND is_deleted = 0", params![rig_id, start, end], |row| row.get(0)).map_err(|e| e.to_string())?;
     Ok(RequestsSummary { total, requested, pending, approved, rejected })
 }
 
@@ -403,7 +407,7 @@ fn build_detailed_water_bottles(conn: &rusqlite::Connection, rig_id: &str, start
         "SELECT m.id, m.movement_type, m.quantity, m.notes, COALESCE(u.full_name, 'Desconocido'), m.created_at
          FROM logistics_water_bottles_movements m
          LEFT JOIN users u ON m.created_by = u.id
-         WHERE m.rig_id = ?1 AND m.created_at BETWEEN ?2 AND ?3
+         WHERE m.rig_id = ?1 AND m.created_at BETWEEN ?2 AND ?3 AND m.is_deleted = 0
          ORDER BY m.created_at DESC"
     ).map_err(|e| e.to_string())?;
 
@@ -426,7 +430,7 @@ fn build_detailed_fuel(conn: &rusqlite::Connection, rig_id: &str, start: &str, e
         "SELECT m.id, m.movement_type, m.amount, m.notes, COALESCE(u.full_name, 'Desconocido'), m.created_at
          FROM logistics_fuel_movements m
          LEFT JOIN users u ON m.created_by = u.id
-         WHERE m.rig_id = ?1 AND m.created_at BETWEEN ?2 AND ?3
+         WHERE m.rig_id = ?1 AND m.created_at BETWEEN ?2 AND ?3 AND m.is_deleted = 0
          ORDER BY m.created_at DESC"
     ).map_err(|e| e.to_string())?;
 
@@ -449,7 +453,7 @@ fn build_detailed_vacuum(conn: &rusqlite::Connection, rig_id: &str, start: &str,
         "SELECT m.id, m.action_name, m.notes, COALESCE(u.full_name, 'Desconocido'), m.created_at
          FROM logistics_vacuum_actions m
          LEFT JOIN users u ON m.created_by = u.id
-         WHERE m.rig_id = ?1 AND m.created_at BETWEEN ?2 AND ?3
+         WHERE m.rig_id = ?1 AND m.created_at BETWEEN ?2 AND ?3 AND m.is_deleted = 0
          ORDER BY m.created_at DESC"
     ).map_err(|e| e.to_string())?;
 
@@ -474,7 +478,7 @@ fn build_detailed_materials(conn: &rusqlite::Connection, rig_id: &str, start: &s
              FROM logistics_materials_movements m
              LEFT JOIN users u ON m.created_by = u.id
              LEFT JOIN logistics_materials mat ON m.material_id = mat.id
-             WHERE m.rig_id = ?1 AND m.created_at BETWEEN ?2 AND ?3 AND m.material_id = ?4
+             WHERE m.rig_id = ?1 AND m.created_at BETWEEN ?2 AND ?3 AND m.material_id = ?4 AND m.is_deleted = 0
              ORDER BY m.created_at DESC", true
         ),
         None => (
@@ -482,7 +486,7 @@ fn build_detailed_materials(conn: &rusqlite::Connection, rig_id: &str, start: &s
              FROM logistics_materials_movements m
              LEFT JOIN users u ON m.created_by = u.id
              LEFT JOIN logistics_materials mat ON m.material_id = mat.id
-             WHERE m.rig_id = ?1 AND m.created_at BETWEEN ?2 AND ?3
+             WHERE m.rig_id = ?1 AND m.created_at BETWEEN ?2 AND ?3 AND m.is_deleted = 0
              ORDER BY m.created_at DESC", false
         ),
     };
@@ -519,7 +523,7 @@ fn build_detailed_requests(conn: &rusqlite::Connection, rig_id: &str, start: &st
          LEFT JOIN users u1 ON r.requested_by = u1.id
          LEFT JOIN users u2 ON r.status_changed_by = u2.id
          LEFT JOIN logistics_materials mat ON r.material_id = mat.id
-         WHERE r.rig_id = ?1 AND r.requested_at BETWEEN ?2 AND ?3
+         WHERE r.rig_id = ?1 AND r.requested_at BETWEEN ?2 AND ?3 AND r.is_deleted = 0
          ORDER BY r.requested_at DESC"
     ).map_err(|e| e.to_string())?;
 

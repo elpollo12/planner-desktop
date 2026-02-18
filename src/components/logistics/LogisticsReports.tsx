@@ -30,7 +30,7 @@ const SECTIONS: { value: Section; label: string; icon: typeof Droplets; color: s
   { value: 'solicitudes', label: 'Solicitudes', icon: ClipboardSignature, color: 'text-orange-600 dark:text-orange-400' },
 ];
 
-export function LogisticsReports({ rigId }: { rigId: string }) {
+export function LogisticsReports({ rigId, rigName }: { rigId: string; rigName: string | null }) {
   const { user } = useAuthStore();
   const { openModal } = useModalStore();
   const canGenerate = user?.role === 'supervisor' || user?.role === 'admin';
@@ -99,7 +99,7 @@ export function LogisticsReports({ rigId }: { rigId: string }) {
             icon={<FileText size={16} />}
             onClick={() => {
               openModal(
-                <DetailedReportModal rigId={rigId} section={activeSection} periodStart={periodStart} periodEnd={periodEnd} />,
+                <DetailedReportModal rigId={rigId} rigName={rigName} section={activeSection} periodStart={periodStart} periodEnd={periodEnd} />,
                 { title: 'Generar Reporte Detallado', size: 'md', showCloseButton: true, closeOnOutsideClick: false }
               );
             }}
@@ -112,7 +112,7 @@ export function LogisticsReports({ rigId }: { rigId: string }) {
             icon={<FolderArchive size={16} />}
             onClick={() => {
               openModal(
-                <GeneralReportModal rigId={rigId} periodStart={periodStart} periodEnd={periodEnd} />,
+                <GeneralReportModal rigId={rigId} rigName={rigName} periodStart={periodStart} periodEnd={periodEnd} />,
                 { title: 'Generar Reporte General', size: 'md', showCloseButton: true, closeOnOutsideClick: false }
               );
             }}

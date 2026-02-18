@@ -13,6 +13,7 @@ import type {
   DetailedLogisticsReport,
   DetailedMovement,
 } from '../types/logistics';
+import { REQUEST_TYPE_LABELS, REQUEST_STATUS_LABELS } from '../types/logistics';
 import type { MovementFilter } from '../schemas/logisticsSchemas';
 
 // ============================================================================
@@ -23,15 +24,152 @@ const ensureText = (v: any): string => (v === null || v === undefined ? '' : Str
 
 const MOVEMENT_TYPE_LABELS: Record<string, string> = { entry: 'Entrada', exit: 'Salida' };
 
+/** Parse a hex color string to an [R, G, B] tuple for jsPDF / autoTable. */
+function hexToRgb(hex: string): [number, number, number] {
+  const clean = hex.replace('#', '');
+  const r = parseInt(clean.substring(0, 2), 16);
+  const g = parseInt(clean.substring(2, 4), 16);
+  const b = parseInt(clean.substring(4, 6), 16);
+  return [r, g, b];
+}
+
+/** Get current date-time formatted as "dd/mm/yyyy HH:mm" */
+function getNowDatetime(): string {
+  const now = new Date();
+  const d = String(now.getDate()).padStart(2, '0');
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const y = now.getFullYear();
+  const h = String(now.getHours()).padStart(2, '0');
+  const min = String(now.getMinutes()).padStart(2, '0');
+  return `${d}/${m}/${y} ${h}:${min}`;
+}
+
+/** Get current date as "dd-mm-yyyy" (safe for filenames). */
+function getTodayForFilename(): string {
+  const now = new Date();
+  const d = String(now.getDate()).padStart(2, '0');
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  return `${d}-${m}-${now.getFullYear()}`;
+}
+
+/**
+ * Build a descriptive filename (without extension).
+ * Pattern: "[Taladro] - [Tipo Reporte] - [Fecha]"
+ * Falls back to a generic name when rigName is empty.
+ */
+function buildFilename(rigName: string | undefined, reportType: string): string {
+  const date = getTodayForFilename();
+  const rig = rigName?.trim() || 'Reporte';
+  return `${rig} - ${reportType} - ${date}`;
+}
+
+/**
+ * Draw the branded PDF header.
+ *
+ * Layout:
+ *   Left: Logo (if available)         Right: date-time
+ *   Center: rigName — reportTitle
+ *   Center: (periodStart — periodEnd)
+ *
+ * Returns the Y position after the header (where content should start).
+ */
+function drawPdfHeader(
+  doc: jsPDF,
+  branding: ReportBranding | undefined,
+  reportTitle: string,
+  periodStart: string,
+  periodEnd: string,
+): number {
+  const pageWidth = doc.internal.pageSize.getWidth();
+  let y = 15;
+
+  // --- Row 1: Logo (left) + Date-time (right) ---
+  const datetime = getNowDatetime();
+
+  if (branding?.logoBase64) {
+    try {
+      // Calculate dimensions preserving aspect ratio (max height = 24, max width = 40)
+      const imgProps = doc.getImageProperties(branding.logoBase64);
+      const maxH = 24;
+      const maxW = 40;
+      const ratio = imgProps.width / imgProps.height;
+      let imgW = maxH * ratio;
+      let imgH = maxH;
+      if (imgW > maxW) {
+        imgW = maxW;
+        imgH = maxW / ratio;
+      }
+      doc.addImage(branding.logoBase64, 'PNG', 14, y - 3, imgW, imgH);
+    } catch {
+      // If image fails (bad format), just skip it silently
+    }
+  }
+
+  doc.setFontSize(9);
+  doc.setTextColor(100, 100, 100);
+  const dtWidth = doc.getTextWidth(datetime);
+  doc.text(datetime, pageWidth - 14 - dtWidth, y + 2);
+
+  // User name below date-time
+  if (branding?.userName) {
+    const nameWidth = doc.getTextWidth(branding.userName);
+    doc.text(branding.userName, pageWidth - 14 - nameWidth, y + 7);
+  }
+
+  y += 18;
+
+  // --- Row 2: Rig name — Report type (centered) ---
+  doc.setTextColor(30, 30, 30);
+  doc.setFontSize(14);
+  const rigName = branding?.rigName || '';
+  const titleLine = rigName ? `${rigName} — ${reportTitle}` : reportTitle;
+  doc.text(titleLine, pageWidth / 2, y, { align: 'center' });
+
+  y += 7;
+
+  // --- Row 3: Period (centered) ---
+  doc.setFontSize(10);
+  doc.setTextColor(80, 80, 80);
+  const periodLine = `(${formatDateDMY(periodStart)} — ${formatDateDMY(periodEnd)})`;
+  doc.text(periodLine, pageWidth / 2, y, { align: 'center' });
+
+  y += 4;
+
+  // --- Separator line ---
+  doc.setDrawColor(200, 200, 200);
+  doc.setLineWidth(0.5);
+  doc.line(14, y, pageWidth - 14, y);
+
+  y += 8;
+
+  // Reset text color for body content
+  doc.setTextColor(0, 0, 0);
+
+  return y;
+}
+
 // ============================================================================
 // SHARED INTERFACES
 // ============================================================================
+
+/** Branding info coming from AppSettings, used for PDF headers. */
+export interface ReportBranding {
+  /** Base64-encoded logo image (data:image/png;base64,...) or null */
+  logoBase64: string | null;
+  /** Primary color hex (e.g. "#1e3a5f") */
+  primaryColor: string;
+  /** Name of the rig / taladro */
+  rigName: string;
+  /** Full name of the user generating the report */
+  userName: string;
+}
 
 export interface GeneralExportOptions {
   report: LogisticsReport;
   sections: { botellones: boolean; combustible: boolean; vacuum: boolean; materiales: boolean; solicitudes: boolean };
   periodStart: string;
   periodEnd: string;
+  branding?: ReportBranding;
 }
 
 export interface DetailedExportOptions {
@@ -40,6 +178,7 @@ export interface DetailedExportOptions {
   periodEnd: string;
   movementFilter?: MovementFilter;
   statusFilters?: string[];
+  branding?: ReportBranding;
 }
 
 /** Result returned by save operations. `saved` is false when the user cancels. */
@@ -53,7 +192,7 @@ export interface SaveResult {
 // ============================================================================
 
 export function buildGeneralReportExcel(opts: GeneralExportOptions): { workbook: XLSX.WorkBook; filename: string } {
-  const { report, sections, periodStart, periodEnd } = opts;
+  const { report, sections, periodStart, periodEnd, branding } = opts;
   const wb = XLSX.utils.book_new();
 
   // --- Info sheet ---
@@ -131,7 +270,7 @@ export function buildGeneralReportExcel(opts: GeneralExportOptions): { workbook:
     XLSX.utils.book_append_sheet(wb, ws, 'Solicitudes');
   }
 
-  const filename = `logistica_general_${periodStart}_${periodEnd}`;
+  const filename = buildFilename(branding?.rigName, 'Reporte General');
   return { workbook: wb, filename };
 }
 
@@ -140,18 +279,13 @@ export function buildGeneralReportExcel(opts: GeneralExportOptions): { workbook:
 // ============================================================================
 
 export function buildGeneralReportPdf(opts: GeneralExportOptions): { doc: jsPDF; filename: string } {
-  const { report, sections, periodStart, periodEnd } = opts;
+  const { report, sections, periodStart, periodEnd, branding } = opts;
   const doc = new jsPDF();
-  let y = 20;
+  const headColor: [number, number, number] = branding?.primaryColor
+    ? hexToRgb(branding.primaryColor)
+    : [59, 130, 246];
 
-  doc.setFontSize(16);
-  doc.text('Reporte General de Logística', 14, y);
-  y += 8;
-  doc.setFontSize(10);
-  doc.text(`Período: ${formatDateDMY(periodStart)} — ${formatDateDMY(periodEnd)}`, 14, y);
-  y += 5;
-  doc.text(`Generado: ${getTodayDMY()}`, 14, y);
-  y += 10;
+  let y = drawPdfHeader(doc, branding, 'Reporte General', periodStart, periodEnd);
 
   if (sections.botellones) {
     const s = report.waterBottlesSummary;
@@ -164,6 +298,7 @@ export function buildGeneralReportPdf(opts: GeneralExportOptions): { doc: jsPDF;
       body: [['Entradas', `+${s.totalEntries}`], ['Salidas', `-${s.totalExits}`], ['Neto', String(s.net)]],
       theme: 'grid',
       styles: { fontSize: 9 },
+      headStyles: { fillColor: headColor },
       margin: { left: 14 },
     });
     y = (doc as any).lastAutoTable.finalY + 10;
@@ -184,6 +319,7 @@ export function buildGeneralReportPdf(opts: GeneralExportOptions): { doc: jsPDF;
       ],
       theme: 'grid',
       styles: { fontSize: 9 },
+      headStyles: { fillColor: headColor },
       margin: { left: 14 },
     });
     y = (doc as any).lastAutoTable.finalY + 10;
@@ -199,6 +335,7 @@ export function buildGeneralReportPdf(opts: GeneralExportOptions): { doc: jsPDF;
       body: [['Total Acciones', String(report.vacuumSummary.totalActions)]],
       theme: 'grid',
       styles: { fontSize: 9 },
+      headStyles: { fillColor: headColor },
       margin: { left: 14 },
     });
     y = (doc as any).lastAutoTable.finalY + 10;
@@ -216,6 +353,7 @@ export function buildGeneralReportPdf(opts: GeneralExportOptions): { doc: jsPDF;
       ]),
       theme: 'grid',
       styles: { fontSize: 9 },
+      headStyles: { fillColor: headColor },
       margin: { left: 14 },
     });
     y = (doc as any).lastAutoTable.finalY + 10;
@@ -238,11 +376,12 @@ export function buildGeneralReportPdf(opts: GeneralExportOptions): { doc: jsPDF;
       ],
       theme: 'grid',
       styles: { fontSize: 9 },
+      headStyles: { fillColor: headColor },
       margin: { left: 14 },
     });
   }
 
-  const filename = `logistica_general_${periodStart}_${periodEnd}`;
+  const filename = buildFilename(branding?.rigName, 'Reporte General');
   return { doc, filename };
 }
 
@@ -307,7 +446,7 @@ function getDetailedPdfSectionLabel(section: string): string {
 // ============================================================================
 
 export function buildDetailedReportExcel(opts: DetailedExportOptions): { workbook: XLSX.WorkBook; filename: string } {
-  const { data, periodStart, periodEnd, movementFilter = 'both', statusFilters } = opts;
+  const { data, periodStart, periodEnd, movementFilter = 'both', statusFilters, branding } = opts;
   const wb = XLSX.utils.book_new();
   const sectionLabel = getDetailedSectionLabel(data.section);
 
@@ -328,9 +467,9 @@ export function buildDetailedReportExcel(opts: DetailedExportOptions): { workboo
     }
     const header = ['Tipo', 'Detalle', 'Estado', 'Notas', 'Solicitado por', 'Fecha Solicitud'];
     const rows = reqs.map((r) => [
-      ensureText(r.requestType),
+      REQUEST_TYPE_LABELS[r.requestType as keyof typeof REQUEST_TYPE_LABELS] || ensureText(r.requestType),
       ensureText(r.quantity ?? r.actionRequested),
-      ensureText(r.status),
+      REQUEST_STATUS_LABELS[r.status as keyof typeof REQUEST_STATUS_LABELS] || ensureText(r.status),
       ensureText(r.notes),
       ensureText(r.requestedByName),
       formatDateDMY(r.requestedAt?.split('T')[0]),
@@ -362,7 +501,7 @@ export function buildDetailedReportExcel(opts: DetailedExportOptions): { workboo
     XLSX.utils.book_append_sheet(wb, ws, sectionLabel);
   }
 
-  const filename = `logistica_${data.section}_${periodStart}_${periodEnd}`;
+  const filename = buildFilename(branding?.rigName, `Detallado ${sectionLabel}`);
   return { workbook: wb, filename };
 }
 
@@ -371,19 +510,14 @@ export function buildDetailedReportExcel(opts: DetailedExportOptions): { workboo
 // ============================================================================
 
 export function buildDetailedReportPdf(opts: DetailedExportOptions): { doc: jsPDF; filename: string } {
-  const { data, periodStart, periodEnd, movementFilter = 'both', statusFilters } = opts;
+  const { data, periodStart, periodEnd, movementFilter = 'both', statusFilters, branding } = opts;
   const doc = new jsPDF();
-  let y = 20;
   const sectionLabel = getDetailedPdfSectionLabel(data.section);
+  const headColor: [number, number, number] = branding?.primaryColor
+    ? hexToRgb(branding.primaryColor)
+    : [59, 130, 246];
 
-  doc.setFontSize(16);
-  doc.text(`Reporte Detallado — ${sectionLabel}`, 14, y);
-  y += 8;
-  doc.setFontSize(10);
-  doc.text(`Período: ${formatDateDMY(periodStart)} — ${formatDateDMY(periodEnd)}`, 14, y);
-  y += 5;
-  doc.text(`Generado: ${getTodayDMY()}`, 14, y);
-  y += 10;
+  let y = drawPdfHeader(doc, branding, `Detallado — ${sectionLabel}`, periodStart, periodEnd);
 
   if (data.section === 'requests') {
     let reqs = data.requests;
@@ -394,16 +528,16 @@ export function buildDetailedReportPdf(opts: DetailedExportOptions): { doc: jsPD
       startY: y,
       head: [['Tipo', 'Detalle', 'Estado', 'Notas', 'Solicitado por', 'Fecha']],
       body: reqs.map((r) => [
-        ensureText(r.requestType),
+        REQUEST_TYPE_LABELS[r.requestType as keyof typeof REQUEST_TYPE_LABELS] || ensureText(r.requestType),
         ensureText(r.quantity ?? r.actionRequested),
-        ensureText(r.status),
+        REQUEST_STATUS_LABELS[r.status as keyof typeof REQUEST_STATUS_LABELS] || ensureText(r.status),
         ensureText(r.notes),
         ensureText(r.requestedByName),
         formatDateDMY(r.requestedAt?.split('T')[0]),
       ]),
       theme: 'grid',
       styles: { fontSize: 8, cellPadding: 2 },
-      headStyles: { fillColor: [59, 130, 246] },
+      headStyles: { fillColor: headColor },
       margin: { left: 14 },
     });
   } else {
@@ -431,12 +565,12 @@ export function buildDetailedReportPdf(opts: DetailedExportOptions): { doc: jsPD
       body,
       theme: 'grid',
       styles: { fontSize: 8, cellPadding: 2 },
-      headStyles: { fillColor: [59, 130, 246] },
+      headStyles: { fillColor: headColor },
       margin: { left: 14 },
     });
   }
 
-  const filename = `logistica_${data.section}_${periodStart}_${periodEnd}`;
+  const filename = buildFilename(branding?.rigName, `Detallado ${sectionLabel}`);
   return { doc, filename };
 }
 

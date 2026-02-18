@@ -103,7 +103,7 @@ export default function LogisticsPage() {
             {activeTab === 'materiales' && <MaterialesInventory rigId={selectedRigId} />}
             {activeTab === 'vacuum' && <VacuumInventory rigId={selectedRigId} />}
             {activeTab === 'solicitudes' && <RequestsManagement rigId={selectedRigId} />}
-            {activeTab === 'reportes' && !isOperator && <LogisticsReports rigId={selectedRigId} />}
+            {activeTab === 'reportes' && !isOperator && <LogisticsReports rigId={selectedRigId} rigName={selectedRigName} />}
           </div>
         </Card>
       ) : null}

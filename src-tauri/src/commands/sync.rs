@@ -203,7 +203,12 @@ pub async fn sync_pull(
             .lock()
             .map_err(|e| format!("Failed to lock database: {}", e))?;
         match engine::write_pulled_data(&conn, &pulled_data) {
-            Ok(_) => {}
+            Ok(_) => {
+                // Recalculate logistics stock cache after pulling new movement data
+                if let Err(e) = engine::recalculate_logistics_stock(&conn) {
+                    result.errors.push(format!("Stock recalculation warning: {}", e));
+                }
+            }
             Err(e) => {
                 result.success = false;
                 result.errors.push(format!("Error writing to local DB: {}", e));
@@ -282,6 +287,11 @@ pub async fn sync_full(
             if let Err(e) = engine::reconcile_local_with_remote(&conn, &pulled_data) {
                 pull_errors.push(format!("Reconciliation warning: {}", e));
             }
+        }
+
+        // Step 7: Recalculate logistics stock cache
+        if let Err(e) = engine::recalculate_logistics_stock(&conn) {
+            pull_errors.push(format!("Stock recalculation warning: {}", e));
         }
     }
 
@@ -378,6 +388,11 @@ pub async fn sync_incremental(
             .map_err(|e| format!("Failed to lock database: {}", e))?;
         if let Err(e) = engine::write_pulled_data(&conn, &pulled_data) {
             pull_errors.push(format!("Error writing to local DB: {}", e));
+        }
+
+        // Recalculate logistics stock cache after pulling new movement data
+        if let Err(e) = engine::recalculate_logistics_stock(&conn) {
+            pull_errors.push(format!("Stock recalculation warning: {}", e));
         }
     }
 

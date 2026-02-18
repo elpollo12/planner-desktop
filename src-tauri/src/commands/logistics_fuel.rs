@@ -82,9 +82,9 @@ pub async fn create_fuel_movement(
     }
 
     tx.execute(
-        "INSERT INTO logistics_fuel_movements (id, rig_id, movement_type, amount, notes, created_by, created_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
-        params![id, rig_id, movement.movement_type, movement.amount, movement.notes, session.user_id, now],
+        "INSERT INTO logistics_fuel_movements (id, rig_id, movement_type, amount, notes, created_by, created_at, updated_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+        params![id, rig_id, movement.movement_type, movement.amount, movement.notes, session.user_id, now, now],
     ).map_err(|e| e.to_string())?;
 
     adjust_cached_stock(&tx, &rig_id, CATEGORY, delta)?;
@@ -119,7 +119,7 @@ pub async fn get_fuel_movements(
 
     let total: i64 = conn
         .query_row(
-            "SELECT COUNT(*) FROM logistics_fuel_movements WHERE rig_id = ?1",
+            "SELECT COUNT(*) FROM logistics_fuel_movements WHERE rig_id = ?1 AND is_deleted = 0",
             params![rig_id], |row| row.get(0),
         )
         .map_err(|e| e.to_string())?;
@@ -129,7 +129,7 @@ pub async fn get_fuel_movements(
     let mut stmt = conn.prepare(
         "SELECT id, rig_id, movement_type, amount, notes, created_by, created_at
          FROM logistics_fuel_movements
-         WHERE rig_id = ?1
+         WHERE rig_id = ?1 AND is_deleted = 0
          ORDER BY created_at DESC
          LIMIT ?2 OFFSET ?3"
     ).map_err(|e| e.to_string())?;
@@ -170,7 +170,7 @@ pub async fn delete_fuel_movement(
     let mut conn = state.db.lock().map_err(|e| format!("Failed to lock database: {}", e))?;
 
     let (rig_id, movement_type, amount): (Option<String>, String, f64) = conn.query_row(
-        "SELECT rig_id, movement_type, amount FROM logistics_fuel_movements WHERE id = ?1",
+        "SELECT rig_id, movement_type, amount FROM logistics_fuel_movements WHERE id = ?1 AND is_deleted = 0",
         params![movement_id],
         |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
     ).map_err(|_| "Movimiento no encontrado".to_string())?;
@@ -184,8 +184,12 @@ pub async fn delete_fuel_movement(
 
     let tx = conn.transaction().map_err(|e| e.to_string())?;
 
+    let now_del = chrono::Utc::now().to_rfc3339();
     let affected = tx
-        .execute("DELETE FROM logistics_fuel_movements WHERE id = ?1", params![movement_id])
+        .execute(
+            "UPDATE logistics_fuel_movements SET is_deleted = 1, updated_at = ?1 WHERE id = ?2 AND is_deleted = 0",
+            params![now_del, movement_id],
+        )
         .map_err(|e| e.to_string())?;
     if affected == 0 { return Err("Movimiento no encontrado".to_string()); }
 

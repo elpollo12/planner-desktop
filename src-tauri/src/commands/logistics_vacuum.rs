@@ -40,9 +40,9 @@ pub async fn create_vacuum_action(
     let now = chrono::Utc::now().to_rfc3339();
 
     conn.execute(
-        "INSERT INTO logistics_vacuum_actions (id, rig_id, action_name, notes, created_by, created_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-        params![id, rig_id, input.action_name.trim(), input.notes, session.user_id, now],
+        "INSERT INTO logistics_vacuum_actions (id, rig_id, action_name, notes, created_by, created_at, updated_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+        params![id, rig_id, input.action_name.trim(), input.notes, session.user_id, now, now],
     ).map_err(|e| e.to_string())?;
 
     Ok(VacuumAction {
@@ -73,7 +73,7 @@ pub async fn get_vacuum_actions(
 
     let total: i64 = conn
         .query_row(
-            "SELECT COUNT(*) FROM logistics_vacuum_actions WHERE rig_id = ?1",
+            "SELECT COUNT(*) FROM logistics_vacuum_actions WHERE rig_id = ?1 AND is_deleted = 0",
             params![rig_id], |row| row.get(0),
         )
         .map_err(|e| e.to_string())?;
@@ -83,7 +83,7 @@ pub async fn get_vacuum_actions(
     let mut stmt = conn.prepare(
         "SELECT id, rig_id, action_name, notes, created_by, created_at
          FROM logistics_vacuum_actions
-         WHERE rig_id = ?1
+         WHERE rig_id = ?1 AND is_deleted = 0
          ORDER BY created_at DESC
          LIMIT ?2 OFFSET ?3"
     ).map_err(|e| e.to_string())?;
@@ -125,7 +125,7 @@ pub async fn update_vacuum_action(
 
     // Verify rig access
     let rig_id: Option<String> = conn.query_row(
-        "SELECT rig_id FROM logistics_vacuum_actions WHERE id = ?1",
+        "SELECT rig_id FROM logistics_vacuum_actions WHERE id = ?1 AND is_deleted = 0",
         params![action_id], |row| row.get(0),
     ).map_err(|_| "Acción no encontrada".to_string())?;
 
@@ -158,10 +158,16 @@ pub async fn update_vacuum_action(
         return Err("No hay campos para actualizar".to_string());
     }
 
+    // Always set updated_at on update
+    let now = chrono::Utc::now().to_rfc3339();
+    updates.push(format!("updated_at = ?{}", idx));
+    param_values.push(Box::new(now));
+    idx += 1;
+
     param_values.push(Box::new(action_id.clone()));
 
     let query = format!(
-        "UPDATE logistics_vacuum_actions SET {} WHERE id = ?{}",
+        "UPDATE logistics_vacuum_actions SET {} WHERE id = ?{} AND is_deleted = 0",
         updates.join(", "), idx
     );
 
@@ -198,7 +204,7 @@ pub async fn delete_vacuum_action(
     let conn = state.db.lock().map_err(|e| format!("Failed to lock database: {}", e))?;
 
     let rig_id: Option<String> = conn.query_row(
-        "SELECT rig_id FROM logistics_vacuum_actions WHERE id = ?1",
+        "SELECT rig_id FROM logistics_vacuum_actions WHERE id = ?1 AND is_deleted = 0",
         params![action_id], |row| row.get(0),
     ).map_err(|_| "Acción no encontrada".to_string())?;
 
@@ -209,8 +215,12 @@ pub async fn delete_vacuum_action(
         }
     }
 
+    let now = chrono::Utc::now().to_rfc3339();
     let affected = conn
-        .execute("DELETE FROM logistics_vacuum_actions WHERE id = ?1", params![action_id])
+        .execute(
+            "UPDATE logistics_vacuum_actions SET is_deleted = 1, updated_at = ?1 WHERE id = ?2 AND is_deleted = 0",
+            params![now, action_id],
+        )
         .map_err(|e| e.to_string())?;
 
     if affected == 0 { return Err("Acción no encontrada".to_string()); }

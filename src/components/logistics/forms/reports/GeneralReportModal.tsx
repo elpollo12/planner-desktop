@@ -7,6 +7,8 @@ import { logisticsReportsApi } from '@/lib/api';
 import { toast } from 'react-toastify';
 import { generalReportSchema, type GeneralReportForm, type ReportFormat } from '@/schemas';
 import { saveGeneralReport } from '@/lib/logisticsExport';
+import { useAppSettingsStore } from '@/store/appSettingsStore';
+import { DEFAULT_APP_SETTINGS } from '@/types/appSettings';
 import { Button } from '@/components/ui';
 
 // ============================================================================
@@ -33,12 +35,15 @@ const FORMAT_OPTIONS: { value: ReportFormat; label: string; icon: typeof FileSpr
 
 interface GeneralReportModalProps {
   rigId: string;
+  rigName: string | null;
   periodStart: string;
   periodEnd: string;
 }
 
-export function GeneralReportModal({ rigId, periodStart, periodEnd }: GeneralReportModalProps) {
+export function GeneralReportModal({ rigId, rigName, periodStart, periodEnd }: GeneralReportModalProps) {
   const sessionToken = useAuthStore((s) => s.sessionToken);
+  const user = useAuthStore((s) => s.user);
+  const appSettings = useAppSettingsStore((s) => s.settings);
 
   const {
     register,
@@ -80,6 +85,12 @@ export function GeneralReportModal({ rigId, periodStart, periodEnd }: GeneralRep
         sections: data.sections,
         periodStart: data.periodStart,
         periodEnd: data.periodEnd,
+        branding: {
+          logoBase64: appSettings?.logoPath ?? null,
+          primaryColor: appSettings?.primaryColor ?? DEFAULT_APP_SETTINGS.primaryColor,
+          rigName: rigName ?? '',
+          userName: user?.fullName ?? '',
+        },
       };
 
       // 2. Open native save dialog & write files

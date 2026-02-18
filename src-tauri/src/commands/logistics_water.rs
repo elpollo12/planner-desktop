@@ -87,9 +87,9 @@ pub async fn create_water_bottles_movement(
 
     // Insert the movement
     tx.execute(
-        "INSERT INTO logistics_water_bottles_movements (id, rig_id, movement_type, quantity, notes, created_by, created_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
-        params![id, rig_id, movement.movement_type, movement.quantity, movement.notes, session.user_id, now],
+        "INSERT INTO logistics_water_bottles_movements (id, rig_id, movement_type, quantity, notes, created_by, created_at, updated_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+        params![id, rig_id, movement.movement_type, movement.quantity, movement.notes, session.user_id, now, now],
     ).map_err(|e| e.to_string())?;
 
     // Update cached stock
@@ -127,7 +127,7 @@ pub async fn get_water_bottles_movements(
 
     let total: i64 = conn
         .query_row(
-            "SELECT COUNT(*) FROM logistics_water_bottles_movements WHERE rig_id = ?1",
+            "SELECT COUNT(*) FROM logistics_water_bottles_movements WHERE rig_id = ?1 AND is_deleted = 0",
             params![rig_id], |row| row.get(0),
         )
         .map_err(|e| e.to_string())?;
@@ -137,7 +137,7 @@ pub async fn get_water_bottles_movements(
     let mut stmt = conn.prepare(
         "SELECT id, rig_id, movement_type, quantity, notes, created_by, created_at
          FROM logistics_water_bottles_movements
-         WHERE rig_id = ?1
+         WHERE rig_id = ?1 AND is_deleted = 0
          ORDER BY created_at DESC
          LIMIT ?2 OFFSET ?3"
     ).map_err(|e| e.to_string())?;
@@ -185,9 +185,9 @@ pub async fn delete_water_bottles_movement(
 
     let mut conn = state.db.lock().map_err(|e| format!("Failed to lock database: {}", e))?;
 
-    // Read the movement before deleting (need rig_id, type, quantity for stock adjustment)
+    // Read the movement before soft-deleting (need rig_id, type, quantity for stock adjustment)
     let (rig_id, movement_type, quantity): (Option<String>, String, i64) = conn.query_row(
-        "SELECT rig_id, movement_type, quantity FROM logistics_water_bottles_movements WHERE id = ?1",
+        "SELECT rig_id, movement_type, quantity FROM logistics_water_bottles_movements WHERE id = ?1 AND is_deleted = 0",
         params![movement_id],
         |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
     ).map_err(|_| "Movimiento no encontrado".to_string())?;
@@ -202,8 +202,12 @@ pub async fn delete_water_bottles_movement(
     // --- BEGIN TRANSACTION ---
     let tx = conn.transaction().map_err(|e| e.to_string())?;
 
+    let now = chrono::Utc::now().to_rfc3339();
     let affected = tx
-        .execute("DELETE FROM logistics_water_bottles_movements WHERE id = ?1", params![movement_id])
+        .execute(
+            "UPDATE logistics_water_bottles_movements SET is_deleted = 1, updated_at = ?1 WHERE id = ?2 AND is_deleted = 0",
+            params![now, movement_id],
+        )
         .map_err(|e| e.to_string())?;
 
     if affected == 0 {

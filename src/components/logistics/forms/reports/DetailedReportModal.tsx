@@ -22,6 +22,8 @@ import {
 import {
   saveDetailedReport,
 } from '@/lib/logisticsExport';
+import { useAppSettingsStore } from '@/store/appSettingsStore';
+import { DEFAULT_APP_SETTINGS } from '@/types/appSettings';
 import { capitalize } from '@/lib/stringUtils';
 import { Button } from '@/components/ui';
 import { REQUEST_STATUS_LABELS } from '@/types/logistics';
@@ -115,6 +117,7 @@ const MOVEMENT_FILTER_OPTIONS: { value: MovementFilter; label: string }[] = [
 
 interface DetailedReportModalProps {
   rigId: string;
+  rigName: string | null;
   /** Pre-selected section — if provided, step 1 starts with this selected */
   section?: Section;
   periodStart: string;
@@ -123,6 +126,7 @@ interface DetailedReportModalProps {
 
 export function DetailedReportModal({
   rigId,
+  rigName,
   section: initialSection,
   periodStart,
   periodEnd,
@@ -193,6 +197,7 @@ export function DetailedReportModal({
       ) : selectedSection ? (
         <StepConfigureExport
           rigId={rigId}
+          rigName={rigName}
           section={selectedSection}
           periodStart={periodStart}
           periodEnd={periodEnd}
@@ -284,18 +289,22 @@ function StepSectionPicker({
 
 function StepConfigureExport({
   rigId,
+  rigName,
   section,
   periodStart,
   periodEnd,
   onBack,
 }: {
   rigId: string;
+  rigName: string | null;
   section: Section;
   periodStart: string;
   periodEnd: string;
   onBack: () => void;
 }) {
   const sessionToken = useAuthStore((s) => s.sessionToken);
+  const user = useAuthStore((s) => s.user);
+  const appSettings = useAppSettingsStore((s) => s.settings);
   const { data: materialsList = [], isLoading: loadingMaterials } = useMaterialsCatalog();
 
   // Pick the right schema
@@ -362,6 +371,12 @@ function StepConfigureExport({
         periodEnd: data.periodEnd,
         movementFilter: data.movementFilter as MovementFilter | undefined,
         statusFilters: undefined as string[] | undefined,
+        branding: {
+          logoBase64: appSettings?.logoPath ?? null,
+          primaryColor: appSettings?.primaryColor ?? DEFAULT_APP_SETTINGS.primaryColor,
+          rigName: rigName ?? '',
+          userName: user?.fullName ?? '',
+        },
       };
 
       // Status filters for solicitudes

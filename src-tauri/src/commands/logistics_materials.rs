@@ -70,7 +70,7 @@ pub async fn create_material(
     let conn = state.db.lock().map_err(|e| format!("Failed to lock database: {}", e))?;
 
     let exists: bool = conn.query_row(
-        "SELECT COUNT(*) > 0 FROM logistics_materials WHERE LOWER(name) = ?1",
+        "SELECT COUNT(*) > 0 FROM logistics_materials WHERE LOWER(name) = ?1 AND is_deleted = 0",
         params![name], |row| row.get(0),
     ).map_err(|e| e.to_string())?;
 
@@ -104,10 +104,10 @@ pub async fn list_materials(
 
     let query = if active_only.unwrap_or(true) {
         "SELECT id, name, unit, description, active, created_by, created_at, updated_at
-         FROM logistics_materials WHERE active = 1 ORDER BY name ASC"
+         FROM logistics_materials WHERE active = 1 AND is_deleted = 0 ORDER BY name ASC"
     } else {
         "SELECT id, name, unit, description, active, created_by, created_at, updated_at
-         FROM logistics_materials ORDER BY name ASC"
+         FROM logistics_materials WHERE is_deleted = 0 ORDER BY name ASC"
     };
 
     let mut stmt = conn.prepare(query).map_err(|e| e.to_string())?;
@@ -173,8 +173,18 @@ pub async fn delete_material(
 
     let conn = state.db.lock().map_err(|e| format!("Failed to lock database: {}", e))?;
 
-    let affected = conn.execute("DELETE FROM logistics_materials WHERE id = ?1", params![material_id]).map_err(|e| e.to_string())?;
+    let now = chrono::Utc::now().to_rfc3339();
+    let affected = conn.execute(
+        "UPDATE logistics_materials SET is_deleted = 1, updated_at = ?1 WHERE id = ?2 AND is_deleted = 0",
+        params![now, material_id],
+    ).map_err(|e| e.to_string())?;
     if affected == 0 { return Err("Material no encontrado".to_string()); }
+
+    // Also soft-delete all movements for this material
+    conn.execute(
+        "UPDATE logistics_materials_movements SET is_deleted = 1, updated_at = ?1 WHERE material_id = ?2 AND is_deleted = 0",
+        params![now, material_id],
+    ).map_err(|e| e.to_string())?;
 
     // Clean up stock cache entries for this material across all rigs
     let cat = material_category(&material_id);
@@ -203,7 +213,7 @@ pub async fn create_material_movement(
     if movement.quantity <= 0.0 { return Err("La cantidad debe ser mayor a 0".to_string()); }
 
     let active: bool = conn.query_row(
-        "SELECT active FROM logistics_materials WHERE id = ?1", params![movement.material_id], |row| row.get(0),
+        "SELECT active FROM logistics_materials WHERE id = ?1 AND is_deleted = 0", params![movement.material_id], |row| row.get(0),
     ).map_err(|_| "Material no encontrado".to_string())?;
     if !active { return Err("El material está desactivado".to_string()); }
 
@@ -226,9 +236,9 @@ pub async fn create_material_movement(
     }
 
     tx.execute(
-        "INSERT INTO logistics_materials_movements (id, rig_id, material_id, movement_type, quantity, notes, created_by, created_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
-        params![id, rig_id, movement.material_id, movement.movement_type, movement.quantity, movement.notes, session.user_id, now],
+        "INSERT INTO logistics_materials_movements (id, rig_id, material_id, movement_type, quantity, notes, created_by, created_at, updated_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+        params![id, rig_id, movement.material_id, movement.movement_type, movement.quantity, movement.notes, session.user_id, now, now],
     ).map_err(|e| e.to_string())?;
 
     adjust_cached_stock(&tx, &rig_id, &cat, delta)?;
@@ -257,7 +267,7 @@ pub async fn get_material_movements(
         return Err("No tienes acceso a este taladro".to_string());
     }
 
-    let mut conditions = vec!["rig_id = ?1".to_string()];
+    let mut conditions = vec!["rig_id = ?1".to_string(), "is_deleted = 0".to_string()];
     let mut param_values: Vec<Box<dyn rusqlite::types::ToSql>> = vec![Box::new(rig_id.clone())];
     let mut idx = 2;
 
@@ -308,7 +318,7 @@ pub async fn delete_material_movement(
     let mut conn = state.db.lock().map_err(|e| format!("Failed to lock database: {}", e))?;
 
     let (rig_id, mat_id, movement_type, quantity): (Option<String>, String, String, f64) = conn.query_row(
-        "SELECT rig_id, material_id, movement_type, quantity FROM logistics_materials_movements WHERE id = ?1",
+        "SELECT rig_id, material_id, movement_type, quantity FROM logistics_materials_movements WHERE id = ?1 AND is_deleted = 0",
         params![movement_id],
         |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
     ).map_err(|_| "Movimiento no encontrado".to_string())?;
@@ -322,7 +332,11 @@ pub async fn delete_material_movement(
 
     let tx = conn.transaction().map_err(|e| e.to_string())?;
 
-    let affected = tx.execute("DELETE FROM logistics_materials_movements WHERE id = ?1", params![movement_id]).map_err(|e| e.to_string())?;
+    let now_del = chrono::Utc::now().to_rfc3339();
+    let affected = tx.execute(
+        "UPDATE logistics_materials_movements SET is_deleted = 1, updated_at = ?1 WHERE id = ?2 AND is_deleted = 0",
+        params![now_del, movement_id],
+    ).map_err(|e| e.to_string())?;
     if affected == 0 { return Err("Movimiento no encontrado".to_string()); }
 
     if let Some(ref rid) = rig_id {
