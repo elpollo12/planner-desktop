@@ -4,6 +4,7 @@ version = "0.2.0"
 description = "A Tauri App"
 authors = ["you"]
 edition = "2021"
+default-run = "d-planner-temp"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -13,6 +14,10 @@ edition = "2021"
 # This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
 name = "d_planner_temp_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
+
+[[bin]]
+name = "license_gen"
+path = "src/bin/license_gen.rs"
 
 [build-dependencies]
 tauri-build = { version = "2.5", features = [] }
@@ -33,6 +38,10 @@ refinery = { version = "0.8", features = ["rusqlite"] }
 bcrypt = "0.15"
 uuid = { version = "1.6", features = ["v4", "v5", "serde"] }
 
+# License verification (Ed25519 signatures)
+ed25519-dalek = { version = "2", features = ["rand_core"] }
+rand = "0.8"
+
 # Error Handling
 thiserror = "1.0"
 
@@ -48,6 +57,4 @@ dirs = "5.0"
 dotenvy = "0.15"
 base64 = "0.22"
 
-[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
-tauri-plugin-updater = "2"
 

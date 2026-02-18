@@ -30,3 +30,6 @@ NuevoDocumento*.jpg
 .env
 src-tauri/.env
 nul
+
+# License private key (NEVER commit)
+license_priv.key

@@ -619,3 +619,18 @@ export const logisticsReportsApi = {
   getDetailedReport: (sessionToken: string, rigId: string, section: string, periodStart: string, periodEnd: string, materialId?: string) =>
     invoke<import('../types/logistics').DetailedLogisticsReport>('get_detailed_logistics_report', { sessionToken, rigId, section, periodStart, periodEnd, materialId }),
 };
+
+// ============================================================================
+// License Commands
+// ============================================================================
+
+export const licenseApi = {
+  getStatus: () =>
+    invoke<import('../store/licenseStore').LicenseInfo | null>('get_license_status'),
+
+  activate: (licenseKey: string) =>
+    invoke<import('../store/licenseStore').LicenseInfo>('activate_license', { licenseKey }),
+
+  deactivate: () =>
+    invoke<void>('deactivate_license'),
+};

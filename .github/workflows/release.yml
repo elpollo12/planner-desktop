@@ -41,76 +41,62 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: npm run tauri build
 
-      - name: List bundle contents
-        shell: bash
-        run: |
-          echo "=== NSIS bundle directory ==="
-          ls -laR src-tauri/target/release/bundle/nsis/ || echo "NSIS dir not found"
-          echo "=== All bundle directories ==="
-          ls -la src-tauri/target/release/bundle/ || echo "Bundle dir not found"
-
       - name: Find build artifacts
         id: artifacts
-        shell: bash
+        shell: powershell
         run: |
-          BUNDLE_DIR="src-tauri/target/release/bundle/nsis"
+          $bundleDir = "src-tauri\target\release\bundle\nsis"
 
-          NSIS_EXE=$(ls ${BUNDLE_DIR}/*.exe 2>/dev/null | head -1)
-          NSIS_ZIP=$(ls ${BUNDLE_DIR}/*.nsis.zip 2>/dev/null | head -1)
-          NSIS_SIG=$(ls ${BUNDLE_DIR}/*.nsis.zip.sig 2>/dev/null | head -1)
+          echo "=== Bundle contents ==="
+          Get-ChildItem -Path $bundleDir -Recurse | ForEach-Object { echo $_.FullName }
 
-          echo "Found EXE: $NSIS_EXE"
-          echo "Found ZIP: $NSIS_ZIP"
-          echo "Found SIG: $NSIS_SIG"
+          $exe = Get-ChildItem -Path $bundleDir -Filter "*.exe" | Where-Object { $_.Name -notlike "*.sig" } | Select-Object -First 1
+          $sig = Get-ChildItem -Path $bundleDir -Filter "*.exe.sig" | Select-Object -First 1
 
-          if [ -z "$NSIS_EXE" ] || [ -z "$NSIS_ZIP" ] || [ -z "$NSIS_SIG" ]; then
+          echo "EXE: $($exe.FullName)"
+          echo "SIG: $($sig.FullName)"
+
+          if (-not $exe -or -not $sig) {
             echo "ERROR: Missing artifacts!"
             exit 1
-          fi
+          }
 
-          echo "nsis_exe=$NSIS_EXE" >> $GITHUB_OUTPUT
-          echo "nsis_zip=$NSIS_ZIP" >> $GITHUB_OUTPUT
-          echo "nsis_sig=$NSIS_SIG" >> $GITHUB_OUTPUT
-          echo "nsis_zip_name=$(basename "$NSIS_ZIP")" >> $GITHUB_OUTPUT
+          echo "nsis_exe=$($exe.FullName)" >> $env:GITHUB_OUTPUT
+          echo "nsis_sig=$($sig.FullName)" >> $env:GITHUB_OUTPUT
+          echo "nsis_exe_name=$($exe.Name)" >> $env:GITHUB_OUTPUT
 
-      - name: Read signature
-        id: sig
-        shell: bash
+      - name: Read signature and get version
+        id: meta
+        shell: powershell
         run: |
-          SIG_CONTENT=$(cat "${{ steps.artifacts.outputs.nsis_sig }}")
-          echo "signature=$SIG_CONTENT" >> $GITHUB_OUTPUT
+          $sig = Get-Content "${{ steps.artifacts.outputs.nsis_sig }}" -Raw
+          $sig = $sig.Trim()
+          echo "signature=$sig" >> $env:GITHUB_OUTPUT
 
-      - name: Get version from tag
-        id: version
-        shell: bash
-        run: echo "version=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
+          $version = "${{ github.ref_name }}" -replace '^v', ''
+          echo "version=$version" >> $env:GITHUB_OUTPUT
+
+          $pubDate = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+          echo "pub_date=$pubDate" >> $env:GITHUB_OUTPUT
 
       - name: Generate latest.json
-        shell: bash
+        shell: powershell
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          SIG="${{ steps.sig.outputs.signature }}"
-          ZIP_NAME="${{ steps.artifacts.outputs.nsis_zip_name }}"
-          TAG="${{ github.ref_name }}"
-          PUB_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-          REPO="${{ env.PUBLIC_REPO }}"
-
-          cat > latest.json << EOF
-          {
-            "version": "${VERSION}",
-            "notes": "Actualización a versión ${VERSION}",
-            "pub_date": "${PUB_DATE}",
-            "platforms": {
-              "windows-x86_64": {
-                "signature": "${SIG}",
-                "url": "https://github.com/${REPO}/releases/download/${TAG}/${ZIP_NAME}"
+          $json = @{
+            version = "${{ steps.meta.outputs.version }}"
+            notes = "Actualización a versión ${{ steps.meta.outputs.version }}"
+            pub_date = "${{ steps.meta.outputs.pub_date }}"
+            platforms = @{
+              "windows-x86_64" = @{
+                signature = "${{ steps.meta.outputs.signature }}"
+                url = "https://github.com/${{ env.PUBLIC_REPO }}/releases/download/${{ github.ref_name }}/${{ steps.artifacts.outputs.nsis_exe_name }}"
               }
             }
-          }
-          EOF
+          } | ConvertTo-Json -Depth 3
 
+          [System.IO.File]::WriteAllText("latest.json", $json)
           echo "=== latest.json ==="
-          cat latest.json
+          Get-Content "latest.json"
 
       - name: Publish to public releases repo
         shell: bash
@@ -118,13 +104,12 @@ jobs:
           GH_TOKEN: ${{ secrets.RELEASE_PAT }}
         run: |
           TAG="${{ github.ref_name }}"
-          VERSION="${{ steps.version.outputs.version }}"
+          VERSION="${{ steps.meta.outputs.version }}"
 
           gh release create "$TAG" \
             --repo "${{ env.PUBLIC_REPO }}" \
             --title "Planner $VERSION" \
             --notes "Actualización a versión $VERSION" \
             "${{ steps.artifacts.outputs.nsis_exe }}" \
-            "${{ steps.artifacts.outputs.nsis_zip }}" \
             "${{ steps.artifacts.outputs.nsis_sig }}" \
             "latest.json"
