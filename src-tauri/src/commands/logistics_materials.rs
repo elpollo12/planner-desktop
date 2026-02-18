@@ -17,6 +17,33 @@ fn total_pages(total: i64, page_size: i64) -> i64 {
     if total == 0 { 0 } else { (total as f64 / page_size as f64).ceil() as i64 }
 }
 
+fn material_category(material_id: &str) -> String {
+    format!("material:{}", material_id)
+}
+
+fn read_cached_stock(conn: &rusqlite::Connection, rig_id: &str, category: &str) -> Result<f64, String> {
+    conn.query_row(
+        "SELECT quantity FROM logistics_stock WHERE rig_id = ?1 AND category = ?2",
+        params![rig_id, category],
+        |row| row.get(0),
+    ).or_else(|e| {
+        if e == rusqlite::Error::QueryReturnedNoRows { Ok(0.0) } else { Err(e.to_string()) }
+    })
+}
+
+fn adjust_cached_stock(conn: &rusqlite::Connection, rig_id: &str, category: &str, delta: f64) -> Result<(), String> {
+    let now = chrono::Utc::now().to_rfc3339();
+    conn.execute(
+        "INSERT INTO logistics_stock (rig_id, category, quantity, updated_at)
+         VALUES (?1, ?2, ?3, ?4)
+         ON CONFLICT(rig_id, category) DO UPDATE SET
+           quantity = quantity + ?3,
+           updated_at = ?4",
+        params![rig_id, category, delta, now],
+    ).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 // ============================================================================
 // Catálogo de materiales (GLOBAL — sin rig_id)
 // ============================================================================
@@ -145,8 +172,14 @@ pub async fn delete_material(
     match session.role.as_str() { "admin" => {} _ => return Err("Solo administradores pueden eliminar materiales".to_string()), }
 
     let conn = state.db.lock().map_err(|e| format!("Failed to lock database: {}", e))?;
+
     let affected = conn.execute("DELETE FROM logistics_materials WHERE id = ?1", params![material_id]).map_err(|e| e.to_string())?;
     if affected == 0 { return Err("Material no encontrado".to_string()); }
+
+    // Clean up stock cache entries for this material across all rigs
+    let cat = material_category(&material_id);
+    conn.execute("DELETE FROM logistics_stock WHERE category = ?1", params![cat]).map_err(|e| e.to_string())?;
+
     Ok(())
 }
 
@@ -160,7 +193,7 @@ pub async fn create_material_movement(
 ) -> Result<MaterialMovement, String> {
     let session = get_session(&session_token, &state).map_err(|e| e.to_string())?;
 
-    let conn = state.db.lock().map_err(|e| format!("Failed to lock database: {}", e))?;
+    let mut conn = state.db.lock().map_err(|e| format!("Failed to lock database: {}", e))?;
     let has_access = User::has_rig_access(&conn, &session.user_id, &rig_id).map_err(|e| e.to_string())?;
     if !has_access {
         return Err("No tienes acceso a este taladro".to_string());
@@ -176,31 +209,30 @@ pub async fn create_material_movement(
 
     let id = Uuid::new_v4().to_string();
     let now = chrono::Utc::now().to_rfc3339();
+    let cat = material_category(&movement.material_id);
+    let delta = if movement.movement_type == "entry" { movement.quantity } else { -movement.quantity };
 
-    // Validate stock for exit movements (scoped to rig + material)
+    let tx = conn.transaction().map_err(|e| e.to_string())?;
+
+    // Validate stock for exit movements
     if movement.movement_type == "exit" {
-        let total_entries: f64 = conn.query_row(
-            "SELECT COALESCE(SUM(quantity), 0) FROM logistics_materials_movements WHERE material_id = ?1 AND movement_type = 'entry' AND rig_id = ?2",
-            params![movement.material_id, rig_id], |row| row.get(0),
-        ).map_err(|e| e.to_string())?;
-        let total_exits: f64 = conn.query_row(
-            "SELECT COALESCE(SUM(quantity), 0) FROM logistics_materials_movements WHERE material_id = ?1 AND movement_type = 'exit' AND rig_id = ?2",
-            params![movement.material_id, rig_id], |row| row.get(0),
-        ).map_err(|e| e.to_string())?;
-        let current_stock = total_entries - total_exits;
+        let current_stock = read_cached_stock(&tx, &rig_id, &cat)?;
         if movement.quantity > current_stock {
-            let mat_name: String = conn.query_row(
+            let mat_name: String = tx.query_row(
                 "SELECT name FROM logistics_materials WHERE id = ?1", params![movement.material_id], |row| row.get(0),
             ).unwrap_or_else(|_| "Desconocido".to_string());
             return Err(format!("Stock insuficiente de {}. Stock actual: {:.2}, intentando retirar: {:.2}", mat_name, current_stock, movement.quantity));
         }
     }
 
-    conn.execute(
+    tx.execute(
         "INSERT INTO logistics_materials_movements (id, rig_id, material_id, movement_type, quantity, notes, created_by, created_at)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
         params![id, rig_id, movement.material_id, movement.movement_type, movement.quantity, movement.notes, session.user_id, now],
     ).map_err(|e| e.to_string())?;
+
+    adjust_cached_stock(&tx, &rig_id, &cat, delta)?;
+    tx.commit().map_err(|e| e.to_string())?;
 
     Ok(MaterialMovement {
         id, rig_id: Some(rig_id), material_id: movement.material_id, movement_type: movement.movement_type,
@@ -234,7 +266,7 @@ pub async fn get_material_movements(
         param_values.push(Box::new(mid.clone()));
         idx += 1;
     }
-    let _ = idx; // suppress unused warning
+    let _ = idx;
 
     let where_clause = format!("WHERE {}", conditions.join(" AND "));
 
@@ -273,11 +305,12 @@ pub async fn delete_material_movement(
     let session = get_session(&session_token, &state).map_err(|e| e.to_string())?;
     match session.role.as_str() { "supervisor" | "admin" => {} _ => return Err("No tienes permisos para eliminar movimientos".to_string()), }
 
-    let conn = state.db.lock().map_err(|e| format!("Failed to lock database: {}", e))?;
+    let mut conn = state.db.lock().map_err(|e| format!("Failed to lock database: {}", e))?;
 
-    let rig_id: Option<String> = conn.query_row(
-        "SELECT rig_id FROM logistics_materials_movements WHERE id = ?1",
-        params![movement_id], |row| row.get(0),
+    let (rig_id, mat_id, movement_type, quantity): (Option<String>, String, String, f64) = conn.query_row(
+        "SELECT rig_id, material_id, movement_type, quantity FROM logistics_materials_movements WHERE id = ?1",
+        params![movement_id],
+        |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
     ).map_err(|_| "Movimiento no encontrado".to_string())?;
 
     if let Some(ref rid) = rig_id {
@@ -287,8 +320,18 @@ pub async fn delete_material_movement(
         }
     }
 
-    let affected = conn.execute("DELETE FROM logistics_materials_movements WHERE id = ?1", params![movement_id]).map_err(|e| e.to_string())?;
+    let tx = conn.transaction().map_err(|e| e.to_string())?;
+
+    let affected = tx.execute("DELETE FROM logistics_materials_movements WHERE id = ?1", params![movement_id]).map_err(|e| e.to_string())?;
     if affected == 0 { return Err("Movimiento no encontrado".to_string()); }
+
+    if let Some(ref rid) = rig_id {
+        let cat = material_category(&mat_id);
+        let reverse_delta = if movement_type == "entry" { -quantity } else { quantity };
+        adjust_cached_stock(&tx, rid, &cat, reverse_delta)?;
+    }
+
+    tx.commit().map_err(|e| e.to_string())?;
     Ok(())
 }
 
@@ -307,14 +350,7 @@ pub async fn get_material_stock(
         return Err("No tienes acceso a este taladro".to_string());
     }
 
-    let total_entries: f64 = conn.query_row(
-        "SELECT COALESCE(SUM(quantity), 0) FROM logistics_materials_movements WHERE material_id = ?1 AND movement_type = 'entry' AND rig_id = ?2",
-        params![material_id, rig_id], |row| row.get(0),
-    ).map_err(|e| e.to_string())?;
-    let total_exits: f64 = conn.query_row(
-        "SELECT COALESCE(SUM(quantity), 0) FROM logistics_materials_movements WHERE material_id = ?1 AND movement_type = 'exit' AND rig_id = ?2",
-        params![material_id, rig_id], |row| row.get(0),
-    ).map_err(|e| e.to_string())?;
-
-    Ok(total_entries - total_exits)
+    let cat = material_category(&material_id);
+    let stock = read_cached_stock(&conn, &rig_id, &cat)?;
+    Ok(stock)
 }

@@ -17,6 +17,31 @@ fn total_pages(total: i64, page_size: i64) -> i64 {
     if total == 0 { 0 } else { (total as f64 / page_size as f64).ceil() as i64 }
 }
 
+fn read_cached_stock(conn: &rusqlite::Connection, rig_id: &str, category: &str) -> Result<f64, String> {
+    conn.query_row(
+        "SELECT quantity FROM logistics_stock WHERE rig_id = ?1 AND category = ?2",
+        params![rig_id, category],
+        |row| row.get(0),
+    ).or_else(|e| {
+        if e == rusqlite::Error::QueryReturnedNoRows { Ok(0.0) } else { Err(e.to_string()) }
+    })
+}
+
+fn adjust_cached_stock(conn: &rusqlite::Connection, rig_id: &str, category: &str, delta: f64) -> Result<(), String> {
+    let now = chrono::Utc::now().to_rfc3339();
+    conn.execute(
+        "INSERT INTO logistics_stock (rig_id, category, quantity, updated_at)
+         VALUES (?1, ?2, ?3, ?4)
+         ON CONFLICT(rig_id, category) DO UPDATE SET
+           quantity = quantity + ?3,
+           updated_at = ?4",
+        params![rig_id, category, delta, now],
+    ).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+const CATEGORY: &str = "fuel";
+
 #[tauri::command]
 pub async fn create_fuel_movement(
     session_token: String,
@@ -26,7 +51,7 @@ pub async fn create_fuel_movement(
 ) -> Result<FuelMovement, String> {
     let session = get_session(&session_token, &state).map_err(|e| e.to_string())?;
 
-    let conn = state.db.lock().map_err(|e| format!("Failed to lock database: {}", e))?;
+    let mut conn = state.db.lock().map_err(|e| format!("Failed to lock database: {}", e))?;
     let has_access = User::has_rig_access(&conn, &session.user_id, &rig_id).map_err(|e| e.to_string())?;
     if !has_access {
         return Err("No tienes acceso a este taladro".to_string());
@@ -42,28 +67,28 @@ pub async fn create_fuel_movement(
 
     let id = Uuid::new_v4().to_string();
     let now = chrono::Utc::now().to_rfc3339();
+    let delta = if movement.movement_type == "entry" { movement.amount } else { -movement.amount };
 
-    // Validate stock for exit movements (scoped to rig)
+    let tx = conn.transaction().map_err(|e| e.to_string())?;
+
     if movement.movement_type == "exit" {
-        let total_entries: f64 = conn.query_row(
-            "SELECT COALESCE(SUM(amount), 0) FROM logistics_fuel_movements WHERE movement_type = 'entry' AND rig_id = ?1",
-            params![rig_id], |row| row.get(0),
-        ).map_err(|e| e.to_string())?;
-        let total_exits: f64 = conn.query_row(
-            "SELECT COALESCE(SUM(amount), 0) FROM logistics_fuel_movements WHERE movement_type = 'exit' AND rig_id = ?1",
-            params![rig_id], |row| row.get(0),
-        ).map_err(|e| e.to_string())?;
-        let current_stock = total_entries - total_exits;
+        let current_stock = read_cached_stock(&tx, &rig_id, CATEGORY)?;
         if movement.amount > current_stock {
-            return Err(format!("Stock insuficiente. Stock actual: {:.2} litros, intentando retirar: {:.2}", current_stock, movement.amount));
+            return Err(format!(
+                "Stock insuficiente. Stock actual: {:.2} litros, intentando retirar: {:.2}",
+                current_stock, movement.amount
+            ));
         }
     }
 
-    conn.execute(
+    tx.execute(
         "INSERT INTO logistics_fuel_movements (id, rig_id, movement_type, amount, notes, created_by, created_at)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
         params![id, rig_id, movement.movement_type, movement.amount, movement.notes, session.user_id, now],
     ).map_err(|e| e.to_string())?;
+
+    adjust_cached_stock(&tx, &rig_id, CATEGORY, delta)?;
+    tx.commit().map_err(|e| e.to_string())?;
 
     Ok(FuelMovement {
         id,
@@ -142,11 +167,12 @@ pub async fn delete_fuel_movement(
         _ => return Err("No tienes permisos para eliminar movimientos".to_string()),
     }
 
-    let conn = state.db.lock().map_err(|e| format!("Failed to lock database: {}", e))?;
+    let mut conn = state.db.lock().map_err(|e| format!("Failed to lock database: {}", e))?;
 
-    let rig_id: Option<String> = conn.query_row(
-        "SELECT rig_id FROM logistics_fuel_movements WHERE id = ?1",
-        params![movement_id], |row| row.get(0),
+    let (rig_id, movement_type, amount): (Option<String>, String, f64) = conn.query_row(
+        "SELECT rig_id, movement_type, amount FROM logistics_fuel_movements WHERE id = ?1",
+        params![movement_id],
+        |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
     ).map_err(|_| "Movimiento no encontrado".to_string())?;
 
     if let Some(ref rid) = rig_id {
@@ -156,11 +182,19 @@ pub async fn delete_fuel_movement(
         }
     }
 
-    let affected = conn
+    let tx = conn.transaction().map_err(|e| e.to_string())?;
+
+    let affected = tx
         .execute("DELETE FROM logistics_fuel_movements WHERE id = ?1", params![movement_id])
         .map_err(|e| e.to_string())?;
-
     if affected == 0 { return Err("Movimiento no encontrado".to_string()); }
+
+    if let Some(ref rid) = rig_id {
+        let reverse_delta = if movement_type == "entry" { -amount } else { amount };
+        adjust_cached_stock(&tx, rid, CATEGORY, reverse_delta)?;
+    }
+
+    tx.commit().map_err(|e| e.to_string())?;
     Ok(())
 }
 
@@ -178,14 +212,6 @@ pub async fn get_fuel_stock(
         return Err("No tienes acceso a este taladro".to_string());
     }
 
-    let total_entries: f64 = conn.query_row(
-        "SELECT COALESCE(SUM(amount), 0) FROM logistics_fuel_movements WHERE movement_type = 'entry' AND rig_id = ?1",
-        params![rig_id], |row| row.get(0),
-    ).map_err(|e| e.to_string())?;
-    let total_exits: f64 = conn.query_row(
-        "SELECT COALESCE(SUM(amount), 0) FROM logistics_fuel_movements WHERE movement_type = 'exit' AND rig_id = ?1",
-        params![rig_id], |row| row.get(0),
-    ).map_err(|e| e.to_string())?;
-
-    Ok(total_entries - total_exits)
+    let stock = read_cached_stock(&conn, &rig_id, CATEGORY)?;
+    Ok(stock)
 }

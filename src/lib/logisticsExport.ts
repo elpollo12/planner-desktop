@@ -18,6 +18,26 @@ const ensureText = (v: any): string => (v === null || v === undefined ? '' : Str
 
 const MOVEMENT_TYPE_LABELS: Record<string, string> = { entry: 'Entrada', exit: 'Salida' };
 
+/**
+ * Save a jsPDF document using an anchor download trick.
+ * jsPDF.save() uses window.open(blobUrl) which Tauri v2 WebView blocks.
+ * This mirrors how SheetJS (XLSX.writeFile) saves files successfully.
+ */
+function savePdfDocument(doc: jsPDF, filename: string): void {
+  const blob = doc.output('blob');
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  // Cleanup
+  setTimeout(() => {
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, 100);
+}
+
 // ============================================================================
 // GENERAL REPORT — Excel
 // ============================================================================
@@ -220,7 +240,7 @@ export function exportGeneralReportPdf(opts: GeneralExportOptions): void {
   }
 
   const filename = `logistica_general_${periodStart}_${periodEnd}.pdf`;
-  doc.save(filename);
+  savePdfDocument(doc, filename);
 }
 
 // ============================================================================
@@ -383,5 +403,5 @@ export function exportDetailedReportPdf(opts: DetailedExportOptions): void {
   }
 
   const filename = `logistica_${data.section}_${periodStart}_${periodEnd}.pdf`;
-  doc.save(filename);
+  savePdfDocument(doc, filename);
 }
