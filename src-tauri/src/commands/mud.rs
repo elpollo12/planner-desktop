@@ -1,5 +1,6 @@
 use crate::auth::get_session;
 use crate::models::mud::{CreateMudRecordRequest, CreateMudAdditiveRequest, MudRecord, MudAdditive};
+use crate::models::report::Report;
 use crate::state::AppState;
 use tauri::State;
 
@@ -18,6 +19,9 @@ pub async fn create_mud_record(
         .map_err(|e| format!("Failed to lock database: {}", e))?;
 
     let record = MudRecord::create(&conn, &report_id, &data).map_err(|e| e.to_string())?;
+
+    Report::touch_updated_at(&conn, &report_id).map_err(|e| e.to_string())?;
+
     Ok(record)
 }
 
@@ -53,6 +57,9 @@ pub async fn create_mud_additive(
         .map_err(|e| format!("Failed to lock database: {}", e))?;
 
     let additive = MudAdditive::create(&conn, &report_id, &data).map_err(|e| e.to_string())?;
+
+    Report::touch_updated_at(&conn, &report_id).map_err(|e| e.to_string())?;
+
     Ok(additive)
 }
 
@@ -88,6 +95,9 @@ pub async fn delete_all_mud_records(
         .map_err(|e| format!("Failed to lock database: {}", e))?;
 
     MudRecord::delete_all_by_report(&conn, &report_id).map_err(|e| e.to_string())?;
+
+    Report::touch_updated_at(&conn, &report_id).map_err(|e| e.to_string())?;
+
     Ok(())
 }
 
@@ -105,5 +115,8 @@ pub async fn delete_all_mud_additives(
         .map_err(|e| format!("Failed to lock database: {}", e))?;
 
     MudAdditive::delete_all_by_report(&conn, &report_id).map_err(|e| e.to_string())?;
+
+    Report::touch_updated_at(&conn, &report_id).map_err(|e| e.to_string())?;
+
     Ok(())
 }

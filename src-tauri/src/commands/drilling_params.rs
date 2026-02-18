@@ -1,5 +1,6 @@
 use crate::auth::get_session;
 use crate::models::drilling_params::{CreateDrillingParameterRequest, DrillingParameter};
+use crate::models::report::Report;
 use crate::state::AppState;
 use tauri::State;
 
@@ -19,6 +20,8 @@ pub async fn create_drilling_parameter(
 
     let param = DrillingParameter::create(&conn, &report_id, &data)
         .map_err(|e| e.to_string())?;
+
+    Report::touch_updated_at(&conn, &report_id).map_err(|e| e.to_string())?;
 
     Ok(param)
 }
@@ -58,6 +61,8 @@ pub async fn delete_all_drilling_parameters(
 
     DrillingParameter::delete_all_by_report(&conn, &report_id)
         .map_err(|e| e.to_string())?;
+
+    Report::touch_updated_at(&conn, &report_id).map_err(|e| e.to_string())?;
 
     Ok(())
 }

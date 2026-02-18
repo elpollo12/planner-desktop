@@ -108,6 +108,18 @@ pub struct ReportFilters {
 }
 
 impl Report {
+    /// Update the report's updated_at timestamp.
+    /// Must be called whenever a child section (crew, drill_string, etc.) is modified,
+    /// so that incremental sync picks up the report and cleans up stale child rows.
+    pub fn touch_updated_at(conn: &Connection, report_id: &str) -> Result<(), AppError> {
+        let now = chrono::Utc::now().to_rfc3339();
+        conn.execute(
+            "UPDATE reports SET updated_at = ?1 WHERE id = ?2",
+            params![&now, report_id],
+        )?;
+        Ok(())
+    }
+
     fn from_row(row: &Row) -> Result<Self, rusqlite::Error> {
         Ok(Report {
             id: row.get(0)?,

@@ -54,7 +54,8 @@ export function RequestsManagement({ rigId }: RequestsManagementProps) {
 
   const canDeleteRequest = (r: LogisticsRequest): boolean => {
     if (canManage) return true;
-    return r.requestedBy === user?.id;
+    // Operators can only delete their own requests that are still in "requested" status
+    return r.requestedBy === user?.id && r.status === 'requested';
   };
 
   const handleViewDetail = async (r: LogisticsRequest) => {

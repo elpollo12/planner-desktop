@@ -1,5 +1,6 @@
 use crate::auth::get_session;
 use crate::models::time_distribution::{TimeDistribution, TimeDistributionData};
+use crate::models::report::Report;
 use crate::state::AppState;
 use tauri::State;
 
@@ -19,6 +20,8 @@ pub async fn save_time_distributions(
 
     let records = TimeDistribution::save_bulk(&conn, &report_id, &data)
         .map_err(|e| e.to_string())?;
+
+    Report::touch_updated_at(&conn, &report_id).map_err(|e| e.to_string())?;
 
     Ok(records)
 }
@@ -58,6 +61,8 @@ pub async fn delete_all_time_distributions(
 
     TimeDistribution::delete_all_by_report(&conn, &report_id)
         .map_err(|e| e.to_string())?;
+
+    Report::touch_updated_at(&conn, &report_id).map_err(|e| e.to_string())?;
 
     Ok(())
 }

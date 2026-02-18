@@ -1,5 +1,6 @@
 use crate::auth::get_session;
 use crate::models::drill_string::{DrillString, DrillStringData};
+use crate::models::report::Report;
 use crate::state::AppState;
 use tauri::State;
 
@@ -19,6 +20,8 @@ pub async fn save_drill_string(
         .map_err(|e| format!("Failed to lock database: {}", e))?;
 
     let drill_string = DrillString::save(&conn, &report_id, &data).map_err(|e| e.to_string())?;
+
+    Report::touch_updated_at(&conn, &report_id).map_err(|e| e.to_string())?;
 
     Ok(drill_string)
 }

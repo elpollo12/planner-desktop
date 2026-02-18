@@ -2,6 +2,15 @@ use crate::sync::turso_client::{TursoClient, TursoValue};
 use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
+use std::sync::atomic::{AtomicBool, Ordering};
+use tokio::sync::Mutex as TokioMutex;
+
+/// Whether initialization completed successfully (fast check, no lock needed)
+static REMOTE_DB_INITIALIZED: AtomicBool = AtomicBool::new(false);
+
+/// Mutex to serialize concurrent initialization attempts.
+/// Only one task runs initialize_remote_db at a time; others wait.
+static REMOTE_DB_INIT_LOCK: TokioMutex<()> = TokioMutex::const_new(());
 
 /// Tables to sync, in dependency order (parents first)
 const SYNC_TABLES: &[TableDef] = &[
@@ -30,10 +39,10 @@ const SYNC_TABLES: &[TableDef] = &[
         name: "operation_codes",
         columns: &[
             "id", "code", "name", "category", "sort_order", "active",
-            "created_by", "updated_by", "created_at", "is_deleted",
+            "created_by", "updated_by", "created_at", "updated_at", "is_deleted",
         ],
         id_col: "id",
-        has_updated_at: false,
+        has_updated_at: true,
         parent_col: None,
     },
     TableDef {
@@ -304,121 +313,129 @@ pub struct SyncResult {
     pub timestamp: String,
 }
 
-/// Collect distinct report_ids from child-table data in a sync batch.
-/// Works with both `Vec<TableData>` and `Vec<(usize, Vec<Vec<TursoValue>>)>`.
-fn collect_report_ids_from_indexed(table_results: &[(usize, Vec<Vec<TursoValue>>)]) -> HashSet<String> {
-    let mut report_ids = HashSet::new();
+/// Collect distinct parent IDs from sync data, grouped by parent_col.
+/// Returns a map: parent_col -> set of parent IDs.
+/// E.g. { "report_id" => {"r1", "r2"}, "rig_id" => {"rig1"}, "material_id" => {"m1"} }
+fn collect_parent_ids_from_indexed(table_results: &[(usize, Vec<Vec<TursoValue>>)]) -> std::collections::HashMap<&'static str, HashSet<String>> {
+    let mut parent_map: std::collections::HashMap<&'static str, HashSet<String>> = std::collections::HashMap::new();
     for (idx, rows) in table_results {
         let table_def = &SYNC_TABLES[*idx];
-        if table_def.parent_col != Some("report_id") {
-            continue;
-        }
-        if let Some(col_idx) = table_def.columns.iter().position(|c| *c == "report_id") {
-            for row in rows {
-                if let Some(TursoValue::Text(val)) = row.get(col_idx) {
-                    report_ids.insert(val.clone());
+        if let Some(parent_col) = table_def.parent_col {
+            if let Some(col_idx) = table_def.columns.iter().position(|c| *c == parent_col) {
+                for row in rows {
+                    if let Some(TursoValue::Text(val)) = row.get(col_idx) {
+                        parent_map.entry(parent_col).or_default().insert(val.clone());
+                    }
                 }
             }
         }
     }
-    report_ids
+    parent_map
 }
 
-fn collect_report_ids_from_table_data(table_data: &[TableData]) -> HashSet<String> {
-    let mut report_ids = HashSet::new();
+fn collect_parent_ids_from_table_data(table_data: &[TableData]) -> std::collections::HashMap<&'static str, HashSet<String>> {
+    let mut parent_map: std::collections::HashMap<&'static str, HashSet<String>> = std::collections::HashMap::new();
     for data in table_data {
         let table_def = &SYNC_TABLES[data.table_index];
-        if table_def.parent_col != Some("report_id") {
-            continue;
-        }
-        if let Some(col_idx) = table_def.columns.iter().position(|c| *c == "report_id") {
-            for row in &data.rows {
-                if let Some(TursoValue::Text(val)) = row.get(col_idx) {
-                    report_ids.insert(val.clone());
+        if let Some(parent_col) = table_def.parent_col {
+            if let Some(col_idx) = table_def.columns.iter().position(|c| *c == parent_col) {
+                for row in &data.rows {
+                    if let Some(TursoValue::Text(val)) = row.get(col_idx) {
+                        parent_map.entry(parent_col).or_default().insert(val.clone());
+                    }
                 }
             }
         }
     }
-    report_ids
+    parent_map
 }
 
-/// Delete stale child rows from local DB for the given report_ids.
+/// Delete stale child rows from local DB for all parent relationships in the batch.
 /// Must be called BEFORE writing new data.
-fn cleanup_local_child_rows(conn: &Connection, report_ids: &HashSet<String>) -> Result<(), String> {
-    if report_ids.is_empty() {
-        return Ok(());
-    }
-
-    let placeholders: String = report_ids.iter().enumerate()
-        .map(|(i, _)| format!("?{}", i + 1))
-        .collect::<Vec<_>>()
-        .join(", ");
-
-    let ids: Vec<&str> = report_ids.iter().map(|s| s.as_str()).collect();
-
-    // 1) Delete grandchild first: crew_members via crew_shifts
-    let crew_members_sql = format!(
-        "DELETE FROM crew_members WHERE crew_shift_id IN (SELECT id FROM crew_shifts WHERE report_id IN ({}))",
-        placeholders
-    );
-    conn.execute(&crew_members_sql, rusqlite::params_from_iter(ids.iter()))
-        .map_err(|e| format!("Failed to cleanup crew_members: {}", e))?;
-
-    // 2) Delete all direct child tables with parent_col = "report_id"
-    for table_def in SYNC_TABLES.iter() {
-        if table_def.parent_col == Some("report_id") {
-            let sql = format!(
-                "DELETE FROM {} WHERE report_id IN ({})",
-                table_def.name, placeholders
-            );
-            conn.execute(&sql, rusqlite::params_from_iter(ids.iter()))
-                .map_err(|e| format!("Failed to cleanup {}: {}", table_def.name, e))?;
+fn cleanup_local_child_rows(conn: &Connection, parent_map: &std::collections::HashMap<&str, HashSet<String>>) -> Result<(), String> {
+    for (parent_col, parent_ids) in parent_map {
+        if parent_ids.is_empty() {
+            continue;
         }
-    }
 
-    println!("[Sync] Cleaned up local child rows for {} report(s)", report_ids.len());
+        let placeholders: String = parent_ids.iter().enumerate()
+            .map(|(i, _)| format!("?{}", i + 1))
+            .collect::<Vec<_>>()
+            .join(", ");
+        let ids: Vec<&str> = parent_ids.iter().map(|s| s.as_str()).collect();
+
+        // Special case: crew_members is a grandchild of report_id via crew_shifts
+        if *parent_col == "report_id" {
+            let crew_members_sql = format!(
+                "DELETE FROM crew_members WHERE crew_shift_id IN (SELECT id FROM crew_shifts WHERE report_id IN ({}))",
+                placeholders
+            );
+            conn.execute(&crew_members_sql, rusqlite::params_from_iter(ids.iter()))
+                .map_err(|e| format!("Failed to cleanup crew_members: {}", e))?;
+        }
+
+        // Delete all direct child tables matching this parent_col
+        for table_def in SYNC_TABLES.iter() {
+            if table_def.parent_col == Some(parent_col) {
+                let sql = format!(
+                    "DELETE FROM {} WHERE {} IN ({})",
+                    table_def.name, parent_col, placeholders
+                );
+                conn.execute(&sql, rusqlite::params_from_iter(ids.iter()))
+                    .map_err(|e| format!("Failed to cleanup {}: {}", table_def.name, e))?;
+            }
+        }
+
+        println!("[Sync] Cleaned up local child rows for {} {}(s)", parent_ids.len(), parent_col);
+    }
     Ok(())
 }
 
-/// Delete stale child rows from Turso for the given report_ids.
+/// Delete stale child rows from Turso for all parent relationships in the batch.
 /// Must be called BEFORE pushing new data.
-async fn cleanup_turso_child_rows(client: &TursoClient, report_ids: &HashSet<String>) -> Result<(), String> {
-    if report_ids.is_empty() {
-        return Ok(());
-    }
-
-    let placeholders: String = report_ids.iter().enumerate()
-        .map(|(i, _)| format!("?{}", i + 1))
-        .collect::<Vec<_>>()
-        .join(", ");
-
-    let params: Vec<TursoValue> = report_ids.iter()
-        .map(|id| TursoValue::Text(id.clone()))
-        .collect();
-
+async fn cleanup_turso_child_rows(client: &TursoClient, parent_map: &std::collections::HashMap<&str, HashSet<String>>) -> Result<(), String> {
     let mut batch: Vec<(String, Vec<TursoValue>)> = Vec::new();
 
-    // 1) Delete grandchild first: crew_members via crew_shifts
-    batch.push((
-        format!(
-            "DELETE FROM crew_members WHERE crew_shift_id IN (SELECT id FROM crew_shifts WHERE report_id IN ({}))",
-            placeholders
-        ),
-        params.clone(),
-    ));
+    for (parent_col, parent_ids) in parent_map {
+        if parent_ids.is_empty() {
+            continue;
+        }
 
-    // 2) Delete all direct child tables with parent_col = "report_id"
-    for table_def in SYNC_TABLES.iter() {
-        if table_def.parent_col == Some("report_id") {
+        let placeholders: String = parent_ids.iter().enumerate()
+            .map(|(i, _)| format!("?{}", i + 1))
+            .collect::<Vec<_>>()
+            .join(", ");
+        let params: Vec<TursoValue> = parent_ids.iter()
+            .map(|id| TursoValue::Text(id.clone()))
+            .collect();
+
+        // Special case: crew_members grandchild
+        if *parent_col == "report_id" {
             batch.push((
-                format!("DELETE FROM {} WHERE report_id IN ({})", table_def.name, placeholders),
+                format!(
+                    "DELETE FROM crew_members WHERE crew_shift_id IN (SELECT id FROM crew_shifts WHERE report_id IN ({}))",
+                    placeholders
+                ),
                 params.clone(),
             ));
         }
+
+        // Delete all direct child tables matching this parent_col
+        for table_def in SYNC_TABLES.iter() {
+            if table_def.parent_col == Some(parent_col) {
+                batch.push((
+                    format!("DELETE FROM {} WHERE {} IN ({})", table_def.name, parent_col, placeholders),
+                    params.clone(),
+                ));
+            }
+        }
+
+        println!("[Sync] Cleaned up Turso child rows for {} {}(s)", parent_ids.len(), parent_col);
     }
 
-    client.execute_batch(batch).await?;
-    println!("[Sync] Cleaned up Turso child rows for {} report(s)", report_ids.len());
+    if !batch.is_empty() {
+        client.execute_batch(batch).await?;
+    }
     Ok(())
 }
 
@@ -462,6 +479,7 @@ CREATE TABLE IF NOT EXISTS operation_codes (
   created_by TEXT,
   updated_by TEXT,
   created_at TEXT NOT NULL,
+  updated_at TEXT,
   is_deleted INTEGER DEFAULT 0
 );
 
@@ -788,9 +806,9 @@ const REMOTE_MIGRATIONS: &[&str] = &[
     "CREATE TABLE IF NOT EXISTS user_rigs (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, rig_id TEXT NOT NULL, assigned_by TEXT, assigned_at TEXT NOT NULL, created_at TEXT, updated_at TEXT, UNIQUE(user_id, rig_id))",
     // V12: app_settings table (global appearance)
     "CREATE TABLE IF NOT EXISTS app_settings (id INTEGER PRIMARY KEY CHECK (id = 1), primary_color TEXT NOT NULL DEFAULT '#1e3a5f', secondary_color TEXT NOT NULL DEFAULT '#f97316', logo_path TEXT, created_at TEXT NOT NULL DEFAULT '', updated_at TEXT NOT NULL DEFAULT '')",
-    // V13: Recreate user_preferences with simplified schema (only theme_mode)
-    // Drop old table that had per-user colors (primary_color, secondary_color, logo_path)
-    "DROP TABLE IF EXISTS user_preferences",
+    // V13: user_preferences with simplified schema (only theme_mode)
+    // NOTE: DROP was removed — it already ran on all existing DBs and would cause
+    // data loss if initialize_remote_db is called again (e.g. admin manual init).
     "CREATE TABLE IF NOT EXISTS user_preferences (id TEXT PRIMARY KEY, user_id TEXT NOT NULL UNIQUE, theme_mode TEXT NOT NULL DEFAULT 'light', created_at TEXT NOT NULL DEFAULT '', updated_at TEXT NOT NULL DEFAULT '')",
     // V14: reports.company
     "ALTER TABLE reports ADD COLUMN company TEXT",
@@ -825,6 +843,8 @@ const REMOTE_MIGRATIONS: &[&str] = &[
     "ALTER TABLE logistics_materials_movements ADD COLUMN updated_at TEXT",
     "ALTER TABLE logistics_materials_movements ADD COLUMN is_deleted INTEGER DEFAULT 0",
     "ALTER TABLE logistics_requests ADD COLUMN is_deleted INTEGER DEFAULT 0",
+    // V26: operation_codes.updated_at (enables incremental sync for edits)
+    "ALTER TABLE operation_codes ADD COLUMN updated_at TEXT",
 ];
 
 /// Initialize the remote Turso database with the same schema
@@ -863,6 +883,37 @@ pub async fn initialize_remote_db(client: &TursoClient) -> Result<String, String
         "Base de datos remota inicializada ({} tablas, {} migraciones aplicadas)",
         table_count, migrations_applied
     ))
+}
+
+/// Initialize remote DB only once per app session.
+/// Uses a tokio::Mutex to ensure only one task runs the initialization
+/// while concurrent callers await. If it fails, retries on the next call.
+pub async fn ensure_remote_db_initialized(client: &TursoClient) -> Result<(), String> {
+    // Fast path: already initialized, no lock needed
+    if REMOTE_DB_INITIALIZED.load(Ordering::Acquire) {
+        return Ok(());
+    }
+
+    // Serialize concurrent callers — only one runs initialize_remote_db
+    let _guard = REMOTE_DB_INIT_LOCK.lock().await;
+
+    // Double-check after acquiring lock (another task may have completed it)
+    if REMOTE_DB_INITIALIZED.load(Ordering::Acquire) {
+        return Ok(());
+    }
+
+    match initialize_remote_db(client).await {
+        Ok(msg) => {
+            println!("[Sync] {}", msg);
+            REMOTE_DB_INITIALIZED.store(true, Ordering::Release);
+            Ok(())
+        }
+        Err(e) => {
+            // Do NOT mark as initialized — will retry on next sync operation
+            println!("[Sync] Remote DB initialization failed (will retry): {}", e);
+            Err(e)
+        }
+    }
 }
 
 // =============================================================================
@@ -973,8 +1024,8 @@ pub fn write_pulled_data(
         .map_err(|e| format!("Failed to disable foreign keys: {}", e))?;
 
     // Clean up stale child rows before writing to prevent duplicates
-    let report_ids = collect_report_ids_from_indexed(table_results);
-    cleanup_local_child_rows(conn, &report_ids)?;
+    let parent_map = collect_parent_ids_from_indexed(table_results);
+    cleanup_local_child_rows(conn, &parent_map)?;
 
     let mut total: u32 = 0;
 
@@ -1195,8 +1246,8 @@ pub async fn push_data_to_turso(
     let _ = client.execute("PRAGMA foreign_keys = OFF;", vec![]).await;
 
     // Clean up stale child rows in Turso before pushing to prevent duplicates
-    let report_ids = collect_report_ids_from_table_data(&table_data);
-    if let Err(e) = cleanup_turso_child_rows(client, &report_ids).await {
+    let parent_map = collect_parent_ids_from_table_data(&table_data);
+    if let Err(e) = cleanup_turso_child_rows(client, &parent_map).await {
         println!("[Sync] Warning: cleanup_turso_child_rows failed: {}", e);
         errors.push(format!("Cleanup warning: {}", e));
     }
@@ -1534,8 +1585,11 @@ pub fn purge_local_soft_deleted(conn: &Connection, retention_days: i64) -> Resul
         }
     }
 
-    // 5. Purge operation_codes (no updated_at column, purge all deleted regardless of age)
-    if let Ok(count) = conn.execute("DELETE FROM operation_codes WHERE is_deleted = 1", []) {
+    // 5. Purge operation_codes (now has updated_at, use threshold)
+    if let Ok(count) = conn.execute(
+        "DELETE FROM operation_codes WHERE is_deleted = 1 AND updated_at < ?1",
+        rusqlite::params![&threshold_str],
+    ) {
         if count > 0 {
             total_purged += count as u32;
             println!("[Sync] Purged {} deleted operation_code(s)", count);
@@ -1662,10 +1716,10 @@ pub async fn purge_turso_soft_deleted(client: &TursoClient, retention_days: i64)
         vec![TursoValue::Text(threshold_str.clone())],
     ));
 
-    // 5. operation_codes (no updated_at, purge all deleted)
+    // 5. operation_codes (now has updated_at, use threshold)
     batch.push((
-        "DELETE FROM operation_codes WHERE is_deleted = 1".to_string(),
-        vec![],
+        "DELETE FROM operation_codes WHERE is_deleted = 1 AND updated_at < ?1".to_string(),
+        vec![TursoValue::Text(threshold_str.clone())],
     ));
 
     // 6. Logistics tables

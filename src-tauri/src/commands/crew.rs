@@ -1,5 +1,6 @@
 use crate::auth::get_session;
 use crate::models::crew::{CrewShiftData, CrewShiftWithMembers};
+use crate::models::report::Report;
 use crate::state::AppState;
 use tauri::State;
 
@@ -20,6 +21,8 @@ pub async fn create_crew_shift(
 
     let crew_shift = crate::models::crew::CrewShift::create(&conn, &report_id, &data)
         .map_err(|e| e.to_string())?;
+
+    Report::touch_updated_at(&conn, &report_id).map_err(|e| e.to_string())?;
 
     Ok(crew_shift)
 }
@@ -58,7 +61,16 @@ pub async fn delete_crew_shift(
         .lock()
         .map_err(|e| format!("Failed to lock database: {}", e))?;
 
+    // Get report_id before deleting the shift
+    let report_id: String = conn.query_row(
+        "SELECT report_id FROM crew_shifts WHERE id = ?1",
+        rusqlite::params![&shift_id],
+        |row| row.get(0),
+    ).map_err(|e| format!("Shift not found: {}", e))?;
+
     crate::models::crew::CrewShift::delete(&conn, &shift_id).map_err(|e| e.to_string())?;
+
+    Report::touch_updated_at(&conn, &report_id).map_err(|e| e.to_string())?;
 
     Ok(())
 }
@@ -79,6 +91,8 @@ pub async fn delete_all_crew_shifts(
 
     crate::models::crew::CrewShift::delete_all_by_report(&conn, &report_id)
         .map_err(|e| e.to_string())?;
+
+    Report::touch_updated_at(&conn, &report_id).map_err(|e| e.to_string())?;
 
     Ok(())
 }

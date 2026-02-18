@@ -191,9 +191,9 @@ pub async fn delete_logistics_request(
     let session = get_session(&session_token, &state).map_err(|e| e.to_string())?;
     let conn = state.db.lock().map_err(|e| format!("Failed to lock database: {}", e))?;
 
-    let (requested_by, rig_id): (String, Option<String>) = conn.query_row(
-        "SELECT requested_by, rig_id FROM logistics_requests WHERE id = ?1 AND is_deleted = 0",
-        params![request_id], |row| Ok((row.get(0)?, row.get(1)?)),
+    let (requested_by, rig_id, status): (String, Option<String>, String) = conn.query_row(
+        "SELECT requested_by, rig_id, status FROM logistics_requests WHERE id = ?1 AND is_deleted = 0",
+        params![request_id], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
     ).map_err(|_| "Solicitud no encontrada".to_string())?;
 
     // Verify rig access
@@ -207,8 +207,12 @@ pub async fn delete_logistics_request(
     match session.role.as_str() {
         "admin" | "supervisor" => {}
         _ => {
+            // Operators can only delete their own requests that are still in "requested" status
             if requested_by != session.user_id {
                 return Err("Solo puedes eliminar solicitudes creadas por ti".to_string());
+            }
+            if status != "requested" {
+                return Err("Solo puedes eliminar solicitudes en estado 'Solicitada'".to_string());
             }
         }
     }

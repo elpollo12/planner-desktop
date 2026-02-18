@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 import type { User, LoginResponse } from '../types';
 import { invoke } from '@tauri-apps/api/core';
 import { useLogisticsStore } from './logisticsStore';
+import { queryClient } from '../lib/queryClient';
 
 interface AuthState {
   user: User | null;
@@ -82,6 +83,9 @@ export const useAuthStore = create<AuthState>()(
 
         // Clear logistics rig selection on logout
         useLogisticsStore.getState().clearSelectedRig();
+
+        // Clear all React Query cache to prevent stale data leaking between users
+        queryClient.clear();
       },
 
       getCurrentUser: async () => {

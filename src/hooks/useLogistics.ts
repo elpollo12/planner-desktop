@@ -75,6 +75,8 @@ export const logisticsKeys = {
     ['logistics', rigId, 'requests', 'pendingCount'] as const,
 
   // ── Reports ──
+  reports: (rigId: string) =>
+    ['logistics', rigId, 'report'] as const,
   report: (rigId: string, periodStart: string, periodEnd: string) =>
     ['logistics', rigId, 'report', { periodStart, periodEnd }] as const,
 };
@@ -110,6 +112,7 @@ export function useCreateWaterBottlesMovement(rigId: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: logisticsKeys.water(rigId) });
       qc.invalidateQueries({ queryKey: logisticsKeys.pendingCount(rigId) });
+      qc.invalidateQueries({ queryKey: logisticsKeys.reports(rigId) });
     },
   });
 }
@@ -122,6 +125,7 @@ export function useDeleteWaterBottlesMovement(rigId: string) {
       waterBottlesApi.deleteMovement(sessionToken!, movementId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: logisticsKeys.water(rigId) });
+      qc.invalidateQueries({ queryKey: logisticsKeys.reports(rigId) });
     },
   });
 }
@@ -157,6 +161,7 @@ export function useCreateFuelMovement(rigId: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: logisticsKeys.fuel(rigId) });
       qc.invalidateQueries({ queryKey: logisticsKeys.pendingCount(rigId) });
+      qc.invalidateQueries({ queryKey: logisticsKeys.reports(rigId) });
     },
   });
 }
@@ -169,6 +174,7 @@ export function useDeleteFuelMovement(rigId: string) {
       fuelApi.deleteMovement(sessionToken!, movementId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: logisticsKeys.fuel(rigId) });
+      qc.invalidateQueries({ queryKey: logisticsKeys.reports(rigId) });
     },
   });
 }
@@ -195,6 +201,7 @@ export function useCreateVacuumAction(rigId: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: logisticsKeys.vacuum(rigId) });
       qc.invalidateQueries({ queryKey: logisticsKeys.pendingCount(rigId) });
+      qc.invalidateQueries({ queryKey: logisticsKeys.reports(rigId) });
     },
   });
 }
@@ -207,6 +214,7 @@ export function useDeleteVacuumAction(rigId: string) {
       vacuumApi.deleteAction(sessionToken!, actionId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: logisticsKeys.vacuum(rigId) });
+      qc.invalidateQueries({ queryKey: logisticsKeys.reports(rigId) });
     },
   });
 }
@@ -262,6 +270,7 @@ export function useCreateMaterialMovement(rigId: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: logisticsKeys.materials(rigId) });
       qc.invalidateQueries({ queryKey: logisticsKeys.pendingCount(rigId) });
+      qc.invalidateQueries({ queryKey: logisticsKeys.reports(rigId) });
     },
   });
 }
@@ -274,6 +283,7 @@ export function useDeleteMaterialMovement(rigId: string) {
       materialsApi.deleteMovement(sessionToken!, movementId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: logisticsKeys.materials(rigId) });
+      qc.invalidateQueries({ queryKey: logisticsKeys.reports(rigId) });
     },
   });
 }
@@ -322,6 +332,7 @@ export function useCreateLogisticsRequest(rigId: string) {
       logisticsRequestsApi.create(sessionToken!, rigId, input),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: logisticsKeys.requests(rigId) });
+      qc.invalidateQueries({ queryKey: logisticsKeys.reports(rigId) });
     },
   });
 }
@@ -334,6 +345,7 @@ export function useUpdateRequestStatus(rigId: string) {
       logisticsRequestsApi.updateStatus(sessionToken!, requestId, { status }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: logisticsKeys.requests(rigId) });
+      qc.invalidateQueries({ queryKey: logisticsKeys.reports(rigId) });
     },
   });
 }
@@ -346,6 +358,7 @@ export function useDeleteLogisticsRequest(rigId: string) {
       logisticsRequestsApi.delete(sessionToken!, requestId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: logisticsKeys.requests(rigId) });
+      qc.invalidateQueries({ queryKey: logisticsKeys.reports(rigId) });
     },
   });
 }
