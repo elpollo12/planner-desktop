@@ -9,15 +9,13 @@ type TabType = 'ingreso' | 'consumo';
 
 interface BotellonesFormProps {
   rigId: string;
-  onSuccess?: () => void;
   initialTab?: TabType;
 }
 
-export function BotellonesForm({ rigId, onSuccess, initialTab = 'ingreso' }: BotellonesFormProps) {
+export function BotellonesForm({ rigId, initialTab = 'ingreso' }: BotellonesFormProps) {
   const [activeTab, setActiveTab] = useState<TabType>(initialTab);
 
   const handleSuccess = () => {
-    onSuccess?.();
     useModalStore.getState().closeModal();
   };
 

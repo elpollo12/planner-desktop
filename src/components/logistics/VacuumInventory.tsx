@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from '../ui';
 import { ArrowUpDown, FileText, Trash2, Eye } from 'lucide-react';
 import { useModalStore } from '../../store';
 import { useAuthStore } from '../../store/authStore';
-import { vacuumApi, usersApi } from '../../lib/api';
+import { usersApi } from '../../lib/api';
 import { toast } from 'react-toastify';
 import { formatDateDMY, formatTimeHM } from '../../lib/dateUtils';
+import { useVacuumActions, useDeleteVacuumAction } from '../../hooks/useLogistics';
 import { VacuumForm } from './forms/vacuum/VacuumForm';
 import { RequestForm } from './forms/requests/RequestForm';
 import { InventoryShell } from './InventoryShell';
@@ -15,50 +16,33 @@ import type { VacuumAction } from '../../types/logistics';
 
 interface VacuumInventoryProps {
   rigId: string;
-  onUpdate: () => void;
 }
 
-export function VacuumInventory({ rigId, onUpdate }: VacuumInventoryProps) {
+export function VacuumInventory({ rigId }: VacuumInventoryProps) {
   const { openModal } = useModalStore();
   const { sessionToken, user } = useAuthStore();
 
-  const [actions, setActions] = useState<VacuumAction[]>([]);
-  const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(5);
-  const [totalItems, setTotalItems] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
 
+  const { data: actionsData, isLoading } = useVacuumActions(rigId, currentPage, pageSize);
+  const deleteMutation = useDeleteVacuumAction(rigId);
+
+  const actions = actionsData?.data ?? [];
+  const totalItems = actionsData?.total ?? 0;
+  const totalPages = actionsData?.totalPages ?? 0;
   const canManage = user?.role === 'supervisor' || user?.role === 'admin';
-
-  useEffect(() => {
-    if (sessionToken) loadActions();
-  }, [sessionToken, currentPage, pageSize, rigId]);
-
-  const loadActions = async () => {
-    if (!sessionToken) return;
-    setLoading(true);
-    try {
-      const res = await vacuumApi.getActions(sessionToken, rigId, currentPage, pageSize);
-      setActions(res.data);
-      setTotalItems(res.total);
-      setTotalPages(res.totalPages);
-    } catch (error) {
-      console.error('Error cargando acciones:', error);
-      toast.error('Error al cargar acciones');
-    } finally { setLoading(false); }
-  };
 
   const handleRegistrar = () => {
     openModal(
-      <VacuumForm rigId={rigId} onSuccess={() => { loadActions(); onUpdate(); }} />,
+      <VacuumForm rigId={rigId} />,
       { title: 'Registrar Acción de Vacuum', size: 'md', showCloseButton: true, closeOnOutsideClick: false }
     );
   };
 
   const handleSolicitar = () => {
     openModal(
-      <RequestForm rigId={rigId} defaultType="vacuum" onSuccess={() => onUpdate()} />,
+      <RequestForm rigId={rigId} defaultType="vacuum" />,
       { title: 'Solicitar Vacuum/Cisterna', size: 'md', showCloseButton: true, closeOnOutsideClick: false }
     );
   };
@@ -71,13 +55,10 @@ export function VacuumInventory({ rigId, onUpdate }: VacuumInventoryProps) {
         message="¿Estás seguro de que deseas eliminar esta acción?"
         itemName={label}
         onConfirm={async () => {
-          if (!sessionToken) return;
           try {
-            await vacuumApi.deleteAction(sessionToken, action.id);
+            await deleteMutation.mutateAsync(action.id);
             toast.success('Acción eliminada');
             if (actions.length === 1 && currentPage > 1) setCurrentPage(currentPage - 1);
-            else loadActions();
-            onUpdate();
           } catch (error: any) {
             toast.error(error?.toString() || 'Error al eliminar');
             throw error;
@@ -108,7 +89,7 @@ export function VacuumInventory({ rigId, onUpdate }: VacuumInventoryProps) {
   return (
     <InventoryShell
       title="Vacuum / Cisterna"
-      loading={loading}
+      loading={isLoading}
       isEmpty={actions.length === 0}
       emptyMessage="No hay acciones registradas"
       actions={

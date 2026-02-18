@@ -5,6 +5,8 @@ import { useModalStore } from '@/store';
 import { useAuthStore } from '@/store/authStore';
 import { logisticsRequestsApi } from '@/lib/api';
 import { toast } from 'react-toastify';
+import { useQueryClient } from '@tanstack/react-query';
+import { logisticsKeys } from '@/hooks/useLogistics';
 import { logisticsRequestSchema, type LogisticsRequestForm } from '@/schemas';
 import { REQUEST_TYPE_LABELS } from '@/types/logistics';
 import { Button } from '@/components/ui';
@@ -20,6 +22,7 @@ interface RequestFormProps {
 
 export function RequestForm({ rigId, onSuccess, defaultType, materials = [] }: RequestFormProps) {
   const sessionToken = useAuthStore((s) => s.sessionToken);
+  const qc = useQueryClient();
 
   const {
     register,
@@ -50,6 +53,7 @@ export function RequestForm({ rigId, onSuccess, defaultType, materials = [] }: R
         materialId: data.requestType === 'material' ? data.materialId : undefined,
         notes: data.notes || undefined,
       });
+      qc.invalidateQueries({ queryKey: logisticsKeys.requests(rigId) });
       toast.success('Solicitud creada exitosamente');
       onSuccess?.();
       useModalStore.getState().closeModal();

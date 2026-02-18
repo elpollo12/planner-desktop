@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from '../ui';
 import { ArrowUpDown, FileText, Trash2, Plus, Minus, Eye } from 'lucide-react';
 import { useModalStore } from '../../store';
 import { useAuthStore } from '../../store/authStore';
-import { materialsApi, usersApi } from '../../lib/api';
+import { usersApi } from '../../lib/api';
 import { toast } from 'react-toastify';
 import { formatDateDMY, formatTimeHM } from '../../lib/dateUtils';
+import { useMaterialsCatalog, useMaterialMovements, useMaterialStock, useDeleteMaterialMovement } from '../../hooks/useLogistics';
 import { MaterialesForm } from './forms/materials/MaterialesForm';
 import { RequestForm } from './forms/requests/RequestForm';
 import { InventoryShell } from './InventoryShell';
@@ -15,94 +16,47 @@ import MovementDetailModal, { buildMaterialFields } from '../modals/MovementDeta
 import MaterialsCatalogModal from '../modals/MaterialsCatalog';
 import { MOVEMENT_LABELS } from '../../types/logistics';
 import { capitalize } from '../../lib/stringUtils';
-import type { Material, MaterialMovement } from '../../types/logistics';
+import type { MaterialMovement } from '../../types/logistics';
 
 interface MaterialesInventoryProps {
   rigId: string;
-  onUpdate: () => void;
 }
 
-export function MaterialesInventory({ rigId, onUpdate }: MaterialesInventoryProps) {
+export function MaterialesInventory({ rigId }: MaterialesInventoryProps) {
   const { openModal } = useModalStore();
   const { sessionToken, user } = useAuthStore();
 
-  const [materials, setMaterials] = useState<Material[]>([]);
-  const [movements, setMovements] = useState<MaterialMovement[]>([]);
-  const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(5);
-  const [totalItems, setTotalItems] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
   const [filterMaterialId, setFilterMaterialId] = useState<string>('');
-  const [stock, setStock] = useState<number | null>(null);
 
+  const { data: materials = [] } = useMaterialsCatalog();
+  const { data: movementsData, isLoading } = useMaterialMovements(rigId, filterMaterialId || undefined, currentPage, pageSize);
+  const { data: stock } = useMaterialStock(rigId, filterMaterialId);
+  const deleteMutation = useDeleteMaterialMovement(rigId);
+
+  const movements = movementsData?.data ?? [];
+  const totalItems = movementsData?.total ?? 0;
+  const totalPages = movementsData?.totalPages ?? 0;
   const canDelete = user?.role === 'supervisor' || user?.role === 'admin';
-
-  useEffect(() => {
-    if (sessionToken) { loadMaterials(); }
-  }, [sessionToken]);
-
-  useEffect(() => {
-    if (sessionToken) loadMovements();
-  }, [sessionToken, currentPage, pageSize, filterMaterialId, rigId]);
-
-  useEffect(() => {
-    if (sessionToken && filterMaterialId) {
-      loadStock(filterMaterialId);
-    } else {
-      setStock(null);
-    }
-  }, [sessionToken, filterMaterialId, rigId]);
-
-  const loadStock = async (materialId: string) => {
-    if (!sessionToken) return;
-    try {
-      const s = await materialsApi.getStock(sessionToken, rigId, materialId);
-      setStock(s);
-    } catch (error) {
-      console.error('Error cargando stock:', error);
-    }
-  };
-
-  const loadMaterials = async () => {
-    if (!sessionToken) return;
-    try {
-      const data = await materialsApi.list(sessionToken, true);
-      setMaterials(data);
-    } catch (error) { console.error('Error cargando materiales:', error); }
-  };
-
-  const loadMovements = async () => {
-    if (!sessionToken) return;
-    setLoading(true);
-    try {
-      const res = await materialsApi.getMovements(sessionToken, rigId, filterMaterialId || undefined, currentPage, pageSize);
-      setMovements(res.data);
-      setTotalItems(res.total);
-      setTotalPages(res.totalPages);
-    } catch (error) {
-      console.error('Error cargando movimientos:', error);
-      toast.error('Error al cargar movimientos');
-    } finally { setLoading(false); }
-  };
 
   const handleRegistrar = () => {
     openModal(
-      <MaterialesForm rigId={rigId} materials={materials} onSuccess={() => { loadMaterials(); loadMovements(); if (filterMaterialId) loadStock(filterMaterialId); onUpdate(); }} />,
+      <MaterialesForm rigId={rigId} materials={materials} />,
       { title: 'Registrar Movimiento de Material', size: 'xl', showCloseButton: true, closeOnOutsideClick: false }
     );
   };
 
   const handleSolicitar = () => {
     openModal(
-      <RequestForm rigId={rigId} defaultType="material" materials={materials} onSuccess={() => onUpdate()} />,
+      <RequestForm rigId={rigId} defaultType="material" materials={materials} />,
       { title: 'Solicitar Material', size: 'md', showCloseButton: true, closeOnOutsideClick: false }
     );
   };
 
   const handleOpenCatalog = () => {
     openModal(
-      <MaterialsCatalogModal onUpdate={() => { loadMaterials(); loadMovements(); if (filterMaterialId) loadStock(filterMaterialId); onUpdate(); }} />,
+      <MaterialsCatalogModal />,
       { title: 'Catálogo de Materiales', size: 'xl', showCloseButton: true }
     );
   };
@@ -116,14 +70,10 @@ export function MaterialesInventory({ rigId, onUpdate }: MaterialesInventoryProp
         message="¿Estás seguro de que deseas eliminar este registro?"
         itemName={label}
         onConfirm={async () => {
-          if (!sessionToken) return;
           try {
-            await materialsApi.deleteMovement(sessionToken, movement.id);
+            await deleteMutation.mutateAsync(movement.id);
             toast.success('Registro eliminado');
             if (movements.length === 1 && currentPage > 1) setCurrentPage(currentPage - 1);
-            else loadMovements();
-            if (filterMaterialId) loadStock(filterMaterialId);
-            onUpdate();
           } catch (error: any) {
             toast.error(error?.toString() || 'Error al eliminar');
             throw error;
@@ -162,8 +112,8 @@ export function MaterialesInventory({ rigId, onUpdate }: MaterialesInventoryProp
   return (
     <InventoryShell
       title="Materiales"
-      stockBadge={filteredMaterial ? <StockBadge stock={stock} unit={filteredMaterial.unit} /> : undefined}
-      loading={loading}
+      stockBadge={filteredMaterial ? <StockBadge stock={stock ?? null} unit={filteredMaterial.unit} /> : undefined}
+      loading={isLoading}
       isEmpty={movements.length === 0}
       emptyMessage="No hay movimientos registrados"
       actions={

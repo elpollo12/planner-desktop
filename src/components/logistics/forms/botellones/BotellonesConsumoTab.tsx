@@ -2,6 +2,8 @@ import { Droplets } from 'lucide-react';
 import { waterBottlesApi } from '@/lib/api';
 import { waterBottlesMovementSchema, type WaterBottlesMovementForm } from '@/schemas';
 import { MovementFormTab } from '../MovementFormTab';
+import { useQueryClient } from '@tanstack/react-query';
+import { logisticsKeys } from '@/hooks/useLogistics';
 
 interface BotellonesConsumoTabProps {
   rigId: string;
@@ -9,6 +11,8 @@ interface BotellonesConsumoTabProps {
 }
 
 export function BotellonesConsumoTab({ rigId, onSuccess }: BotellonesConsumoTabProps) {
+  const qc = useQueryClient();
+
   return (
     <MovementFormTab<WaterBottlesMovementForm>
       direction="exit"
@@ -25,6 +29,8 @@ export function BotellonesConsumoTab({ rigId, onSuccess }: BotellonesConsumoTabP
           quantity: data.quantity,
           notes: data.notes || undefined,
         });
+        qc.invalidateQueries({ queryKey: logisticsKeys.water(rigId) });
+        qc.invalidateQueries({ queryKey: logisticsKeys.pendingCount(rigId) });
       }}
       onSuccess={onSuccess}
       renderFields={({ register, errors }) => (

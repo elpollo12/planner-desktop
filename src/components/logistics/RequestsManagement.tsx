@@ -1,76 +1,49 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Card } from '../ui';
 import { CheckCircle, XCircle, Clock, AlertCircle, Eye, Trash2 } from 'lucide-react';
 import { useModalStore } from '../../store';
 import { useAuthStore } from '../../store/authStore';
-import { logisticsRequestsApi, usersApi, materialsApi } from '../../lib/api';
+import { usersApi } from '../../lib/api';
 import { toast } from 'react-toastify';
 import { formatDateDMY, formatTimeHM } from '../../lib/dateUtils';
+import { useLogisticsRequests, useMaterialsCatalog, useUpdateRequestStatus, useDeleteLogisticsRequest } from '../../hooks/useLogistics';
 import { PaginationControls } from './PaginationControls';
 import { REQUEST_TYPE_LABELS, REQUEST_STATUS_LABELS } from '../../types/logistics';
 import { capitalize } from '../../lib/stringUtils';
 import MovementDetailModal, { buildRequestFields } from '../modals/MovementDetail';
 import ConfirmDeleteModal from '../modals/ConfirmDelete';
-import type { LogisticsRequest, RequestStatus, Material } from '../../types/logistics';
+import type { LogisticsRequest, RequestStatus } from '../../types/logistics';
 
 interface RequestsManagementProps {
   rigId: string;
-  onUpdate: () => void;
 }
 
-export function RequestsManagement({ rigId, onUpdate }: RequestsManagementProps) {
+export function RequestsManagement({ rigId }: RequestsManagementProps) {
   const { openModal } = useModalStore();
   const { sessionToken, user } = useAuthStore();
 
-  const [requests, setRequests] = useState<LogisticsRequest[]>([]);
-  const [materials, setMaterials] = useState<Material[]>([]);
-  const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(5);
-  const [totalItems, setTotalItems] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
   const [filterType, setFilterType] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
 
+  const { data: requestsData, isLoading } = useLogisticsRequests(rigId, filterType, filterStatus, currentPage, pageSize);
+  const { data: materials = [] } = useMaterialsCatalog();
+  const updateStatusMutation = useUpdateRequestStatus(rigId);
+  const deleteMutation = useDeleteLogisticsRequest(rigId);
+
+  const requests = requestsData?.data ?? [];
+  const totalItems = requestsData?.total ?? 0;
+  const totalPages = requestsData?.totalPages ?? 0;
   const canManage = user?.role === 'supervisor' || user?.role === 'admin';
 
-  useEffect(() => {
-    if (sessionToken) {
-      loadRequests();
-      loadMaterials();
-    }
-  }, [sessionToken, currentPage, pageSize, filterType, filterStatus, rigId]);
-
-  const loadMaterials = async () => {
-    if (!sessionToken) return;
-    try {
-      const data = await materialsApi.list(sessionToken, false);
-      setMaterials(data);
-    } catch { /* ignore */ }
-  };
-
-  const loadRequests = async () => {
-    if (!sessionToken) return;
-    setLoading(true);
-    try {
-      const res = await logisticsRequestsApi.list(sessionToken, rigId, filterType || undefined, filterStatus || undefined, currentPage, pageSize);
-      setRequests(res.data);
-      setTotalItems(res.total);
-      setTotalPages(res.totalPages);
-    } catch (error) {
-      console.error('Error cargando solicitudes:', error);
-      toast.error('Error al cargar solicitudes');
-    } finally { setLoading(false); }
-  };
-
   const handleUpdateStatus = async (requestId: string, newStatus: RequestStatus) => {
-    if (!sessionToken) return;
     try {
-      await logisticsRequestsApi.updateStatus(sessionToken, requestId, { status: newStatus });
+      await updateStatusMutation.mutateAsync({ requestId, status: newStatus });
       toast.success(`Solicitud ${REQUEST_STATUS_LABELS[newStatus].toLowerCase()}`);
-      loadRequests();
-      onUpdate();
-    } catch (error: any) { toast.error(error?.toString() || 'Error al actualizar'); }
+    } catch (error: any) {
+      toast.error(error?.toString() || 'Error al actualizar');
+    }
   };
 
   const getMaterialName = (id?: string) => {
@@ -123,13 +96,10 @@ export function RequestsManagement({ rigId, onUpdate }: RequestsManagementProps)
         message="¿Estás seguro de que deseas eliminar esta solicitud?"
         itemName={label}
         onConfirm={async () => {
-          if (!sessionToken) return;
           try {
-            await logisticsRequestsApi.delete(sessionToken, r.id);
+            await deleteMutation.mutateAsync(r.id);
             toast.success('Solicitud eliminada');
             if (requests.length === 1 && currentPage > 1) setCurrentPage(currentPage - 1);
-            else loadRequests();
-            onUpdate();
           } catch (error: any) {
             toast.error(error?.toString() || 'Error al eliminar');
             throw error;
@@ -191,7 +161,7 @@ export function RequestsManagement({ rigId, onUpdate }: RequestsManagementProps)
       </div>
 
       <Card>
-        {loading ? (
+        {isLoading ? (
           <div className="p-8 text-center">
             <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
             <p className="mt-2 text-gray-500">Cargando solicitudes...</p>
@@ -232,7 +202,6 @@ export function RequestsManagement({ rigId, onUpdate }: RequestsManagementProps)
                           <div className="text-xs text-gray-500 dark:text-gray-400">{formatTimeHM(r.requestedAt)}</div>
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400 max-w-xs truncate">{r.notes || '-'}</td>
-                        {/* Cambiar Estado — solo supervisor/admin */}
                         {canManage && (
                           <td className="px-6 py-4 whitespace-nowrap text-center">
                             {transitions.length > 0 ? (
@@ -261,7 +230,6 @@ export function RequestsManagement({ rigId, onUpdate }: RequestsManagementProps)
                             )}
                           </td>
                         )}
-                        {/* Acciones — ver detalle + eliminar */}
                         <td className="px-6 py-4 whitespace-nowrap text-center">
                           <div className="flex items-center justify-center gap-1">
                             <button onClick={() => handleViewDetail(r)}

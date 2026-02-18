@@ -2,6 +2,8 @@ import { Fuel } from 'lucide-react';
 import { fuelApi } from '@/lib/api';
 import { fuelMovementSchema, type FuelMovementForm } from '@/schemas';
 import { MovementFormTab } from '../MovementFormTab';
+import { useQueryClient } from '@tanstack/react-query';
+import { logisticsKeys } from '@/hooks/useLogistics';
 
 interface CombustibleIngresoTabProps {
   rigId: string;
@@ -9,6 +11,8 @@ interface CombustibleIngresoTabProps {
 }
 
 export function CombustibleIngresoTab({ rigId, onSuccess }: CombustibleIngresoTabProps) {
+  const qc = useQueryClient();
+
   return (
     <MovementFormTab<FuelMovementForm>
       direction="entry"
@@ -25,6 +29,8 @@ export function CombustibleIngresoTab({ rigId, onSuccess }: CombustibleIngresoTa
           amount: data.amount,
           notes: data.notes || undefined,
         });
+        qc.invalidateQueries({ queryKey: logisticsKeys.fuel(rigId) });
+        qc.invalidateQueries({ queryKey: logisticsKeys.pendingCount(rigId) });
       }}
       onSuccess={onSuccess}
       renderFields={({ register, errors }) => (

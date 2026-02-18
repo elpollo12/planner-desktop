@@ -5,6 +5,8 @@ import { useModalStore } from '@/store';
 import { useAuthStore } from '@/store/authStore';
 import { vacuumApi } from '@/lib/api';
 import { toast } from 'react-toastify';
+import { useQueryClient } from '@tanstack/react-query';
+import { logisticsKeys } from '@/hooks/useLogistics';
 import { vacuumActionSchema, type VacuumActionForm } from '@/schemas';
 import { Button } from '@/components/ui/Button';
 
@@ -15,6 +17,7 @@ interface VacuumFormProps {
 
 export function VacuumForm({ rigId, onSuccess }: VacuumFormProps) {
   const sessionToken = useAuthStore((s) => s.sessionToken);
+  const qc = useQueryClient();
 
   const {
     register,
@@ -32,6 +35,8 @@ export function VacuumForm({ rigId, onSuccess }: VacuumFormProps) {
         actionName: data.actionName,
         notes: data.notes || undefined,
       });
+      qc.invalidateQueries({ queryKey: logisticsKeys.vacuum(rigId) });
+      qc.invalidateQueries({ queryKey: logisticsKeys.pendingCount(rigId) });
       toast.success('Acción de vacuum registrada');
       onSuccess?.();
       useModalStore.getState().closeModal();

@@ -3,6 +3,8 @@ import { materialsApi } from '@/lib/api';
 import { materialMovementSchema, type MaterialMovementForm } from '@/schemas';
 import { MovementFormTab } from '../MovementFormTab';
 import { MaterialSearchInput } from './MaterialSearchInput';
+import { useQueryClient } from '@tanstack/react-query';
+import { logisticsKeys } from '@/hooks/useLogistics';
 import type { Material } from '@/types/logistics';
 
 interface Props {
@@ -12,6 +14,8 @@ interface Props {
 }
 
 export function MaterialesIngresoTab({ rigId, onSuccess, materials }: Props) {
+  const qc = useQueryClient();
+
   return (
     <MovementFormTab<MaterialMovementForm>
       direction="entry"
@@ -29,6 +33,9 @@ export function MaterialesIngresoTab({ rigId, onSuccess, materials }: Props) {
           quantity: data.quantity,
           notes: data.notes || undefined,
         });
+        qc.invalidateQueries({ queryKey: logisticsKeys.materials(rigId) });
+        qc.invalidateQueries({ queryKey: logisticsKeys.materialsCatalog() });
+        qc.invalidateQueries({ queryKey: logisticsKeys.pendingCount(rigId) });
       }}
       onSuccess={onSuccess}
       renderFields={({ register, errors, watch, setValue }) => {

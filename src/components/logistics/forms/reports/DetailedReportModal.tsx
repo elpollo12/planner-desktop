@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
@@ -8,8 +8,9 @@ import {
 } from 'lucide-react';
 import { useModalStore } from '@/store';
 import { useAuthStore } from '@/store/authStore';
-import { logisticsReportsApi, materialsApi } from '@/lib/api';
+import { logisticsReportsApi } from '@/lib/api';
 import { toast } from 'react-toastify';
+import { useMaterialsCatalog } from '@/hooks/useLogistics';
 import {
   detailedMovementReportSchema,
   detailedMaterialsReportSchema,
@@ -25,7 +26,7 @@ import {
 import { capitalize } from '@/lib/stringUtils';
 import { Button } from '@/components/ui';
 import { REQUEST_STATUS_LABELS } from '@/types/logistics';
-import type { Material, RequestStatus } from '@/types/logistics';
+import type { RequestStatus } from '@/types/logistics';
 
 // ============================================================================
 // Types & Constants
@@ -296,20 +297,7 @@ function StepConfigureExport({
   onBack: () => void;
 }) {
   const sessionToken = useAuthStore((s) => s.sessionToken);
-  const [materialsList, setMaterialsList] = useState<Material[]>([]);
-  const [loadingMaterials, setLoadingMaterials] = useState(false);
-
-  // Load materials when needed
-  useEffect(() => {
-    if (section === 'materiales' && sessionToken) {
-      setLoadingMaterials(true);
-      materialsApi
-        .list(sessionToken, true)
-        .then((mats) => setMaterialsList(mats))
-        .catch((err) => console.error('Error loading materials:', err))
-        .finally(() => setLoadingMaterials(false));
-    }
-  }, [section, sessionToken]);
+  const { data: materialsList = [], isLoading: loadingMaterials } = useMaterialsCatalog();
 
   // Pick the right schema
   const schema =

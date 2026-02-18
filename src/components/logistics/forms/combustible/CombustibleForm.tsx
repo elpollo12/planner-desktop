@@ -9,16 +9,14 @@ type TabType = 'ingreso' | 'consumo';
 
 interface CombustibleFormProps {
   rigId: string;
-  onSuccess?: () => void;
   initialTab?: TabType;
 }
 
-export function CombustibleForm({ rigId, onSuccess, initialTab = 'ingreso' }: CombustibleFormProps) {
+export function CombustibleForm({ rigId, initialTab = 'ingreso' }: CombustibleFormProps) {
   const [activeTab, setActiveTab] = useState<TabType>(initialTab);
   const { closeModal } = useModalStore();
 
   const handleSuccess = () => {
-    onSuccess?.();
     closeModal();
   };
 

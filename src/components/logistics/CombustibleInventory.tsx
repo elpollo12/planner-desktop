@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from '../ui';
 import { ArrowUpDown, FileText, Trash2, Plus, Minus, Eye } from 'lucide-react';
 import { useModalStore } from '../../store';
 import { useAuthStore } from '../../store/authStore';
-import { fuelApi, usersApi } from '../../lib/api';
+import { usersApi } from '../../lib/api';
 import { toast } from 'react-toastify';
 import { formatDateDMY, formatTimeHM } from '../../lib/dateUtils';
+import { useFuelMovements, useFuelStock, useDeleteFuelMovement } from '../../hooks/useLogistics';
 import { CombustibleForm } from './forms/combustible/CombustibleForm';
 import { RequestForm } from './forms/requests/RequestForm';
 import { InventoryShell } from './InventoryShell';
@@ -17,64 +18,34 @@ import type { FuelMovement } from '../../types/logistics';
 
 interface CombustibleInventoryProps {
   rigId: string;
-  onUpdate: () => void;
 }
 
-export function CombustibleInventory({ rigId, onUpdate }: CombustibleInventoryProps) {
+export function CombustibleInventory({ rigId }: CombustibleInventoryProps) {
   const { openModal } = useModalStore();
   const { sessionToken, user } = useAuthStore();
 
-  const [movements, setMovements] = useState<FuelMovement[]>([]);
-  const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(5);
-  const [totalItems, setTotalItems] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
-  const [stock, setStock] = useState<number | null>(null);
 
+  const { data: movementsData, isLoading } = useFuelMovements(rigId, currentPage, pageSize);
+  const { data: stock } = useFuelStock(rigId);
+  const deleteMutation = useDeleteFuelMovement(rigId);
+
+  const movements = movementsData?.data ?? [];
+  const totalItems = movementsData?.total ?? 0;
+  const totalPages = movementsData?.totalPages ?? 0;
   const canDelete = user?.role === 'supervisor' || user?.role === 'admin';
-
-  useEffect(() => {
-    if (sessionToken) {
-      loadMovements();
-      loadStock();
-    }
-  }, [sessionToken, currentPage, pageSize, rigId]);
-
-  const loadStock = async () => {
-    if (!sessionToken) return;
-    try {
-      const s = await fuelApi.getStock(sessionToken, rigId);
-      setStock(s);
-    } catch (error) {
-      console.error('Error cargando stock:', error);
-    }
-  };
-
-  const loadMovements = async () => {
-    if (!sessionToken) return;
-    setLoading(true);
-    try {
-      const res = await fuelApi.getMovements(sessionToken, rigId, currentPage, pageSize);
-      setMovements(res.data);
-      setTotalItems(res.total);
-      setTotalPages(res.totalPages);
-    } catch (error) {
-      console.error('Error cargando movimientos:', error);
-      toast.error('Error al cargar movimientos');
-    } finally { setLoading(false); }
-  };
 
   const handleRegistrar = () => {
     openModal(
-      <CombustibleForm rigId={rigId} onSuccess={() => { loadMovements(); loadStock(); onUpdate(); }} />,
+      <CombustibleForm rigId={rigId} />,
       { title: 'Registrar Movimiento de Combustible', size: 'xl', showCloseButton: true, closeOnOutsideClick: false }
     );
   };
 
   const handleSolicitar = () => {
     openModal(
-      <RequestForm rigId={rigId} defaultType="fuel" onSuccess={() => onUpdate()} />,
+      <RequestForm rigId={rigId} defaultType="fuel" />,
       { title: 'Solicitar Combustible', size: 'md', showCloseButton: true, closeOnOutsideClick: false }
     );
   };
@@ -87,14 +58,10 @@ export function CombustibleInventory({ rigId, onUpdate }: CombustibleInventoryPr
         message="¿Estás seguro de que deseas eliminar este registro?"
         itemName={label}
         onConfirm={async () => {
-          if (!sessionToken) return;
           try {
-            await fuelApi.deleteMovement(sessionToken, movement.id);
+            await deleteMutation.mutateAsync(movement.id);
             toast.success('Registro eliminado');
             if (movements.length === 1 && currentPage > 1) setCurrentPage(currentPage - 1);
-            else loadMovements();
-            loadStock();
-            onUpdate();
           } catch (error: any) {
             toast.error(error?.toString() || 'Error al eliminar');
             throw error;
@@ -125,8 +92,8 @@ export function CombustibleInventory({ rigId, onUpdate }: CombustibleInventoryPr
   return (
     <InventoryShell
       title="Combustible"
-      stockBadge={<StockBadge stock={stock} unit="litros" />}
-      loading={loading}
+      stockBadge={<StockBadge stock={stock ?? null} unit="litros" />}
+      loading={isLoading}
       isEmpty={movements.length === 0}
       emptyMessage="No hay movimientos registrados"
       actions={

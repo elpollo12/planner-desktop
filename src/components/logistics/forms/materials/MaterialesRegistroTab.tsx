@@ -5,6 +5,8 @@ import { useModalStore } from '@/store';
 import { useAuthStore } from '@/store/authStore';
 import { materialsApi } from '@/lib/api';
 import { toast } from 'react-toastify';
+import { useQueryClient } from '@tanstack/react-query';
+import { logisticsKeys } from '@/hooks/useLogistics';
 import { createMaterialSchema, type CreateMaterialForm } from '@/schemas';
 import { Button } from '@/components/ui/Button';
 
@@ -14,6 +16,7 @@ interface Props {
 
 export function MaterialesRegistroTab({ onSuccess }: Props) {
   const sessionToken = useAuthStore((s) => s.sessionToken);
+  const qc = useQueryClient();
 
   const {
     register,
@@ -33,6 +36,7 @@ export function MaterialesRegistroTab({ onSuccess }: Props) {
         description: data.description || undefined,
       });
       toast.success('Material registrado exitosamente');
+      qc.invalidateQueries({ queryKey: logisticsKeys.materialsCatalog() });
       onSuccess?.();
     } catch (error: any) {
       toast.error(error?.toString() || 'Error al registrar');

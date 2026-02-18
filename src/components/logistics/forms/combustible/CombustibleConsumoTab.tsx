@@ -2,6 +2,8 @@ import { Fuel } from 'lucide-react';
 import { fuelApi } from '@/lib/api';
 import { fuelMovementSchema, type FuelMovementForm } from '@/schemas';
 import { MovementFormTab } from '../MovementFormTab';
+import { useQueryClient } from '@tanstack/react-query';
+import { logisticsKeys } from '@/hooks/useLogistics';
 
 interface CombustibleConsumoTabProps {
   rigId: string;
@@ -9,6 +11,8 @@ interface CombustibleConsumoTabProps {
 }
 
 export function CombustibleConsumoTab({ rigId, onSuccess }: CombustibleConsumoTabProps) {
+  const qc = useQueryClient();
+
   return (
     <MovementFormTab<FuelMovementForm>
       direction="exit"
@@ -25,6 +29,8 @@ export function CombustibleConsumoTab({ rigId, onSuccess }: CombustibleConsumoTa
           amount: data.amount,
           notes: data.notes || undefined,
         });
+        qc.invalidateQueries({ queryKey: logisticsKeys.fuel(rigId) });
+        qc.invalidateQueries({ queryKey: logisticsKeys.pendingCount(rigId) });
       }}
       onSuccess={onSuccess}
       renderFields={({ register, errors }) => (

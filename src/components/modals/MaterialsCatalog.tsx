@@ -5,23 +5,24 @@ import { Button } from '../ui';
 import { PaginationControls } from '../logistics/PaginationControls';
 import { materialsApi, usersApi } from '../../lib/api';
 import { useAuthStore } from '../../store/authStore';
+import { useLogisticsStore } from '../../store/logisticsStore';
 import { toast } from 'react-toastify';
+import { useQueryClient } from '@tanstack/react-query';
+import { logisticsKeys } from '../../hooks/useLogistics';
 import { formatDateDMY } from '../../lib/dateUtils';
 import { capitalize } from '../../lib/stringUtils';
 import type { Material } from '../../types/logistics';
-
-interface MaterialsCatalogModalProps {
-  onUpdate: () => void;
-}
 
 interface MaterialRow extends Material {
   stock: number | null;
   createdByName: string;
 }
 
-export default function MaterialsCatalogModal({ onUpdate }: MaterialsCatalogModalProps) {
+export default function MaterialsCatalogModal() {
   const { closeModal } = useModal();
   const { sessionToken } = useAuthStore();
+  const { selectedRigId, selectedRigName } = useLogisticsStore();
+  const qc = useQueryClient();
 
   const [rows, setRows] = useState<MaterialRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,9 +48,12 @@ export default function MaterialsCatalogModal({ onUpdate }: MaterialsCatalogModa
           let stock: number | null = null;
           let createdByName = '—';
 
-          try {
-            stock = await materialsApi.getStock(sessionToken, mat.id);
-          } catch { /* ignore */ }
+          // Stock is per-rig: only fetch when there's an active rig
+          if (selectedRigId) {
+            try {
+              stock = await materialsApi.getStock(sessionToken, selectedRigId, mat.id);
+            } catch { /* ignore */ }
+          }
 
           if (mat.createdBy) {
             try {
@@ -94,7 +98,8 @@ export default function MaterialsCatalogModal({ onUpdate }: MaterialsCatalogModa
       // Adjust page if current page is now empty
       const newTotalPages = Math.ceil(updated.length / pageSize) || 1;
       if (currentPage > newTotalPages) setCurrentPage(newTotalPages);
-      onUpdate();
+      // Invalidate catalog cache so other components pick up the change
+      qc.invalidateQueries({ queryKey: logisticsKeys.materialsCatalog() });
     } catch (error: any) {
       toast.error(error?.toString() || 'Error al eliminar material');
     } finally {
@@ -110,6 +115,13 @@ export default function MaterialsCatalogModal({ onUpdate }: MaterialsCatalogModa
           <Package className="w-6 h-6 text-orange-600 dark:text-orange-400" />
         </div>
       </div>
+
+      {/* Rig context indicator */}
+      {selectedRigName && (
+        <p className="text-center text-xs text-gray-500 dark:text-gray-400">
+          Stock mostrado para: <span className="font-medium text-gray-700 dark:text-gray-300">{selectedRigName}</span>
+        </p>
+      )}
 
       {/* Content */}
       {loading ? (
@@ -128,7 +140,9 @@ export default function MaterialsCatalogModal({ onUpdate }: MaterialsCatalogModa
                 <tr>
                   <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Material</th>
                   <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Unidad</th>
-                  <th className="px-4 py-2.5 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Stock</th>
+                  <th className="px-4 py-2.5 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    {selectedRigName ? `Stock (${selectedRigName})` : 'Stock'}
+                  </th>
                   <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Creado por</th>
                   <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Fecha</th>
                   <th className="px-4 py-2.5 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Acciones</th>

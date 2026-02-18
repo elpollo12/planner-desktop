@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button, Card } from '../ui';
 import {
   FileText, Search, Droplets, Fuel, Container,
@@ -8,14 +8,17 @@ import {
 import { useAuthStore } from '../../store/authStore';
 import { useModalStore } from '../../store';
 import {
-  waterBottlesApi, fuelApi, vacuumApi, materialsApi,
-  logisticsRequestsApi, logisticsReportsApi,
-} from '../../lib/api';
-import { toast } from 'react-toastify';
+  useWaterBottlesStock,
+  useFuelStock,
+  useVacuumActions,
+  usePendingRequestsCount,
+  useMaterialsCatalog,
+  useLogisticsReport,
+} from '../../hooks/useLogistics';
 import { capitalize } from '../../lib/stringUtils';
 import { GeneralReportModal } from './forms/reports/GeneralReportModal';
 import { DetailedReportModal } from './forms/reports/DetailedReportModal';
-import type { LogisticsReport } from '../../types/logistics';
+import type { LogisticsReport as LogisticsReportType } from '../../types/logistics';
 
 type Section = 'botellones' | 'combustible' | 'vacuum' | 'materiales' | 'solicitudes';
 
@@ -27,84 +30,36 @@ const SECTIONS: { value: Section; label: string; icon: typeof Droplets; color: s
   { value: 'solicitudes', label: 'Solicitudes', icon: ClipboardSignature, color: 'text-orange-600 dark:text-orange-400' },
 ];
 
-interface StockData {
-  waterBottles: number | null;
-  fuel: number | null;
-  vacuumActions: number | null;
-  pendingRequests: number | null;
-  materialTypes: number;
-}
-
 export function LogisticsReports({ rigId }: { rigId: string }) {
-  const { sessionToken, user } = useAuthStore();
+  const { user } = useAuthStore();
   const { openModal } = useModalStore();
   const canGenerate = user?.role === 'supervisor' || user?.role === 'admin';
 
   const today = new Date().toISOString().split('T')[0];
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-  const [stock, setStock] = useState<StockData>({
-    waterBottles: null, fuel: null, vacuumActions: null,
-    pendingRequests: null, materialTypes: 0,
-  });
-  const [stockLoading, setStockLoading] = useState(true);
-
   const [activeSection, setActiveSection] = useState<Section>('botellones');
   const [periodStart, setPeriodStart] = useState(thirtyDaysAgo);
   const [periodEnd, setPeriodEnd] = useState(today);
-  const [report, setReport] = useState<LogisticsReport | null>(null);
-  const [reportLoading, setReportLoading] = useState(false);
+  // Controlled trigger: only fetch report when user clicks "Buscar"
+  const [reportParams, setReportParams] = useState({ start: thirtyDaysAgo, end: today });
 
-  // Load stock + initial report on mount
-  useEffect(() => {
-    if (sessionToken && canGenerate) {
-      loadStock();
-      loadReport();
-    }
-  }, [sessionToken, rigId]);
+  // ── Stock queries (cached, shared with inventory tabs) ──
+  const { data: waterBottlesStock, isLoading: loadingWb } = useWaterBottlesStock(rigId);
+  const { data: fuelStock, isLoading: loadingFuel } = useFuelStock(rigId);
+  const { data: vacuumData, isLoading: loadingVacuum } = useVacuumActions(rigId, 1, 1);
+  const { data: pendingCount, isLoading: loadingPending } = usePendingRequestsCount(rigId);
+  const { data: materialsList = [], isLoading: loadingMaterials } = useMaterialsCatalog();
 
-  const loadStock = async () => {
-    if (!sessionToken) return;
-    setStockLoading(true);
-    try {
-      const [wb, fuel, vacuumRes, pending, materialsList] = await Promise.all([
-        waterBottlesApi.getStock(sessionToken, rigId),
-        fuelApi.getStock(sessionToken, rigId),
-        vacuumApi.getActions(sessionToken, rigId, 1, 1),
-        logisticsRequestsApi.getPendingCount(sessionToken, rigId),
-        materialsApi.list(sessionToken, true),
-      ]);
-      setStock({
-        waterBottles: wb, fuel, vacuumActions: vacuumRes.total,
-        pendingRequests: pending, materialTypes: materialsList.length,
-      });
-    } catch (error) {
-      console.error('Error cargando stock:', error);
-    } finally {
-      setStockLoading(false);
-    }
-  };
+  const stockLoading = loadingWb || loadingFuel || loadingVacuum || loadingPending || loadingMaterials;
 
-  const loadReport = async () => {
-    if (!sessionToken || !canGenerate) return;
-    setReportLoading(true);
-    try {
-      const data = await logisticsReportsApi.getReport(sessionToken, rigId, periodStart, periodEnd);
-      setReport(data);
-    } catch (error: any) {
-      toast.error(error?.toString() || 'Error al generar reporte');
-    } finally {
-      setReportLoading(false);
-    }
-  };
-
-  const handleSearch = () => {
-    loadReport();
-  };
-
-  const handleSectionChange = (section: Section) => {
-    setActiveSection(section);
-  };
+  // ── Report query ──
+  const { data: report, isLoading: reportLoading } = useLogisticsReport(
+    rigId,
+    reportParams.start,
+    reportParams.end,
+    canGenerate,
+  );
 
   if (!canGenerate) {
     return (
@@ -114,15 +69,23 @@ export function LogisticsReports({ rigId }: { rigId: string }) {
     );
   }
 
-  const fmtStock = (val: number | null) =>
-    val === null ? '—' : Number.isInteger(val) ? String(val) : val.toFixed(2);
+  const handleSearch = () => {
+    setReportParams({ start: periodStart, end: periodEnd });
+  };
+
+  const handleSectionChange = (section: Section) => {
+    setActiveSection(section);
+  };
+
+  const fmtStock = (val: number | null | undefined) =>
+    val === null || val === undefined ? '—' : Number.isInteger(val) ? String(val) : val.toFixed(2);
 
   const stockItems: { section: Section; label: string; value: string; sub: string; icon: typeof Droplets; color: string; bg: string }[] = [
-    { section: 'botellones', label: 'Botellones', value: fmtStock(stock.waterBottles), sub: 'uds', icon: Droplets, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-900/10' },
-    { section: 'combustible', label: 'Combustible', value: fmtStock(stock.fuel), sub: 'litros', icon: Fuel, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-900/10' },
-    { section: 'vacuum', label: 'Vacuum', value: fmtStock(stock.vacuumActions), sub: 'acciones', icon: Container, color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-50 dark:bg-purple-900/10' },
-    { section: 'materiales', label: 'Materiales', value: String(stock.materialTypes), sub: 'tipos', icon: Package, color: 'text-teal-600 dark:text-teal-400', bg: 'bg-teal-50 dark:bg-teal-900/10' },
-    { section: 'solicitudes', label: 'Solicitudes', value: fmtStock(stock.pendingRequests), sub: 'pendientes', icon: ClipboardSignature, color: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-50 dark:bg-orange-900/10' },
+    { section: 'botellones', label: 'Botellones', value: fmtStock(waterBottlesStock), sub: 'uds', icon: Droplets, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-900/10' },
+    { section: 'combustible', label: 'Combustible', value: fmtStock(fuelStock), sub: 'litros', icon: Fuel, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-900/10' },
+    { section: 'vacuum', label: 'Vacuum', value: fmtStock(vacuumData?.total), sub: 'acciones', icon: Container, color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-50 dark:bg-purple-900/10' },
+    { section: 'materiales', label: 'Materiales', value: String(materialsList.length), sub: 'tipos', icon: Package, color: 'text-teal-600 dark:text-teal-400', bg: 'bg-teal-50 dark:bg-teal-900/10' },
+    { section: 'solicitudes', label: 'Solicitudes', value: fmtStock(pendingCount), sub: 'pendientes', icon: ClipboardSignature, color: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-50 dark:bg-orange-900/10' },
   ];
 
   return (
@@ -165,7 +128,6 @@ export function LogisticsReports({ rigId }: { rigId: string }) {
           {/* Filtros */}
           <Card className="p-4!">
             <div className="flex flex-wrap items-end gap-3">
-              {/* Fecha desde */}
               <div>
                 <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Desde</label>
                 <input
@@ -175,8 +137,6 @@ export function LogisticsReports({ rigId }: { rigId: string }) {
                   className="text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                 />
               </div>
-
-              {/* Fecha hasta */}
               <div>
                 <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Hasta</label>
                 <input
@@ -186,8 +146,6 @@ export function LogisticsReports({ rigId }: { rigId: string }) {
                   className="text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                 />
               </div>
-
-              {/* Select de sección */}
               <div>
                 <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Sección</label>
                 <select
@@ -200,8 +158,6 @@ export function LogisticsReports({ rigId }: { rigId: string }) {
                   ))}
                 </select>
               </div>
-
-              {/* Buscar */}
               <Button
                 variant="primary"
                 size="md"
@@ -296,7 +252,7 @@ function SummaryGrid({ items }: { items: { label: string; value: string; color: 
   );
 }
 
-function BotellonesDetail({ report }: { report: LogisticsReport }) {
+function BotellonesDetail({ report }: { report: LogisticsReportType }) {
   const s = report.waterBottlesSummary;
   return (
     <Card className="p-5!">
@@ -309,7 +265,7 @@ function BotellonesDetail({ report }: { report: LogisticsReport }) {
   );
 }
 
-function CombustibleDetail({ report }: { report: LogisticsReport }) {
+function CombustibleDetail({ report }: { report: LogisticsReportType }) {
   const s = report.fuelSummary;
   return (
     <Card className="p-5!">
@@ -322,7 +278,7 @@ function CombustibleDetail({ report }: { report: LogisticsReport }) {
   );
 }
 
-function VacuumDetail({ report }: { report: LogisticsReport }) {
+function VacuumDetail({ report }: { report: LogisticsReportType }) {
   return (
     <Card className="p-5!">
       <SummaryGrid items={[
@@ -332,7 +288,7 @@ function VacuumDetail({ report }: { report: LogisticsReport }) {
   );
 }
 
-function MaterialesDetail({ report }: { report: LogisticsReport }) {
+function MaterialesDetail({ report }: { report: LogisticsReportType }) {
   const mats = report.materialsSummary;
   return (
     <Card className="p-5!">
@@ -368,7 +324,7 @@ function MaterialesDetail({ report }: { report: LogisticsReport }) {
   );
 }
 
-function SolicitudesDetail({ report }: { report: LogisticsReport }) {
+function SolicitudesDetail({ report }: { report: LogisticsReportType }) {
   const s = report.requestsSummary;
   return (
     <Card className="p-5!">

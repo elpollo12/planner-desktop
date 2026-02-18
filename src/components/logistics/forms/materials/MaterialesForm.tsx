@@ -11,16 +11,14 @@ type TabType = 'ingreso' | 'consumo' | 'registro';
 
 interface MaterialesFormProps {
   rigId: string;
-  onSuccess?: () => void;
   initialTab?: TabType;
   materials: Material[];
 }
 
-export function MaterialesForm({ rigId, onSuccess, initialTab = 'ingreso', materials }: MaterialesFormProps) {
+export function MaterialesForm({ rigId, initialTab = 'ingreso', materials }: MaterialesFormProps) {
   const [activeTab, setActiveTab] = useState<TabType>(initialTab);
 
   const handleSuccess = () => {
-    onSuccess?.();
     useModalStore.getState().closeModal();
   };
 

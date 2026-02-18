@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { MainLayout } from '../components/layout';
 import { Card } from '../components/ui';
 import { 
@@ -11,9 +11,9 @@ import {
   PackageOpen,
 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
-import { logisticsRequestsApi } from '../lib/api';
 import { Navigate } from 'react-router-dom';
 import { useLogisticsRigs } from '../hooks/useLogisticsRigs';
+import { usePendingRequestsCount } from '../hooks/useLogistics';
 import { RigSelector } from '../components/logistics/RigSelector';
 
 import { BotellonesInventory } from '../components/logistics/BotellonesInventory';
@@ -26,22 +26,11 @@ import { RequestsManagement } from '../components/logistics/RequestsManagement';
 type LogisticsTab = 'botellones' | 'combustible' | 'materiales' | 'vacuum' | 'solicitudes' | 'reportes';
 
 export default function LogisticsPage() {
-  const { user, sessionToken, isAuthenticated } = useAuthStore();
+  const { user, isAuthenticated } = useAuthStore();
   const { accessibleRigs, selectedRigId, selectedRigName, loading: rigsLoading, setSelectedRig } = useLogisticsRigs();
   const [activeTab, setActiveTab] = useState<LogisticsTab>('botellones');
-  const [pendingCount, setPendingCount] = useState(0);
 
-  const loadPendingCount = useCallback(async () => {
-    if (!sessionToken || !selectedRigId) return;
-    try {
-      const count = await logisticsRequestsApi.getPendingCount(sessionToken, selectedRigId);
-      setPendingCount(count);
-    } catch (error) { console.error('Error loading pending count:', error); }
-  }, [sessionToken, selectedRigId]);
-
-  useEffect(() => {
-    loadPendingCount();
-  }, [loadPendingCount]);
+  const { data: pendingCount = 0 } = usePendingRequestsCount(selectedRigId ?? '');
 
   if (!isAuthenticated || !user) {
     return <Navigate to="/login" replace />;
@@ -109,11 +98,11 @@ export default function LogisticsPage() {
           </div>
 
           <div className="p-6">
-            {activeTab === 'botellones' && <BotellonesInventory rigId={selectedRigId} onUpdate={loadPendingCount} />}
-            {activeTab === 'combustible' && <CombustibleInventory rigId={selectedRigId} onUpdate={loadPendingCount} />}
-            {activeTab === 'materiales' && <MaterialesInventory rigId={selectedRigId} onUpdate={loadPendingCount} />}
-            {activeTab === 'vacuum' && <VacuumInventory rigId={selectedRigId} onUpdate={loadPendingCount} />}
-            {activeTab === 'solicitudes' && <RequestsManagement rigId={selectedRigId} onUpdate={loadPendingCount} />}
+            {activeTab === 'botellones' && <BotellonesInventory rigId={selectedRigId} />}
+            {activeTab === 'combustible' && <CombustibleInventory rigId={selectedRigId} />}
+            {activeTab === 'materiales' && <MaterialesInventory rigId={selectedRigId} />}
+            {activeTab === 'vacuum' && <VacuumInventory rigId={selectedRigId} />}
+            {activeTab === 'solicitudes' && <RequestsManagement rigId={selectedRigId} />}
             {activeTab === 'reportes' && !isOperator && <LogisticsReports rigId={selectedRigId} />}
           </div>
         </Card>
