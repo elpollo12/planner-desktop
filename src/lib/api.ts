@@ -12,6 +12,7 @@ import type {
   UpdateUserInput,
   LoginResponse,
 } from '../types/user';
+import type { LastReportSnapshot } from '../types';
 import type {
   Report,
   CreateReportInput,
@@ -133,6 +134,13 @@ export const reportsApi = {
 
   reject: (sessionToken: string, reportId: string, reason: string) =>
     invoke<Report>('reject_report', { sessionToken, reportId, reason }),
+
+  // Last report snapshot (pre-fill template per rig)
+  getLastSnapshot: (sessionToken: string, rigId: string) =>
+    invoke<LastReportSnapshot | null>('get_last_report_snapshot', { sessionToken, rigId }),
+
+  updateSnapshot: (sessionToken: string, reportId: string) =>
+    invoke<void>('update_report_snapshot', { sessionToken, reportId }),
 };
 
 // ============================================================================

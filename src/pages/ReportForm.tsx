@@ -18,6 +18,7 @@ import { useAutoSave } from '../hooks/useAutoSave';
 import { completeReportSchema, type CompleteReportData } from '../schemas';
 import {
   reportsApi,
+  rigsApi,
   drillStringApi,
   crewApi,
   bitRecordsApi,
@@ -27,9 +28,8 @@ import {
   deviationApi,
   operationsLogApi,
 } from '../lib/api';
-import { transformFormToReportData } from '../lib/reportHelpers';
+import { transformFormToReportData, buildFormFromSnapshot } from '../lib/reportHelpers';
 import { toast } from '../lib/toast';
-import { loadLastReportTemplate, saveLastReportTemplate } from '../lib/lastReportData';
 import { backgroundPush } from '../lib/syncHelper';
 import { formatDateDMY } from '../lib/dateUtils';
 import type { Report } from '../types/report';
@@ -280,7 +280,7 @@ export default function ReportForm() {
   // ============================================================================
 
   /**
-   * Load existing report OR restore draft
+   * Load existing report OR load snapshot template for new report
    */
   useEffect(() => {
     const loadData = async () => {
@@ -288,23 +288,27 @@ export default function ReportForm() {
         await loadExistingReport(id);
         setWizardStep('sections');
       } else if (!isEditMode && sessionToken && user) {
-        const lastCompleteReport = await loadLastCompleteReport();
-        
-        if (lastCompleteReport) {
-          methods.reset(lastCompleteReport);
-            toast.success('Datos del último reporte cargados');
-        } else {
-          const lastReportTemplate = loadLastReportTemplate();
-          if (lastReportTemplate) {
-            const newHeader = {
-              ...DEFAULT_VALUES.header,
-              ...lastReportTemplate,
-              reportDate: new Date().toISOString().split('T')[0],
-            };
-            methods.reset({ ...DEFAULT_VALUES, header: newHeader });
-            toast.info('Encabezado del último reporte cargado');
+        // Try to load snapshot from the user's assigned rig
+        try {
+          const rigs = await rigsApi.listAccessible(sessionToken, false);
+
+          if (rigs.length > 0) {
+            // Use the first accessible rig to get the snapshot
+            const snapshot = await reportsApi.getLastSnapshot(sessionToken, rigs[0].id);
+
+            if (snapshot) {
+              const formData = buildFormFromSnapshot(snapshot);
+              methods.reset(formData);
+              toast.success('Datos del último reporte cargados');
+              return;
+            }
           }
+        } catch (error) {
+          console.warn('[ReportForm] Could not load snapshot, starting blank:', error);
         }
+
+        // Fallback: blank form with defaults
+        methods.reset(DEFAULT_VALUES);
       }
     };
 
@@ -357,9 +361,7 @@ export default function ReportForm() {
    * Handle cancel - clean localStorage and navigate back
    */
   const handleCancel = () => {
-    // Limpiar ambos localStorage
     clearAutoSave();
-    localStorage.removeItem('report-header-draft');
     navigate('/reports');
   };
 
@@ -463,121 +465,6 @@ export default function ReportForm() {
     }
   };
 
-  /**
-   * Load the last complete report from the current user
-   * This will be used to pre-fill a new report with data from the last one
-   */
-  const loadLastCompleteReport = async (): Promise<Partial<CompleteReportData> | null> => {
-    if (!sessionToken || !user) return null;
-
-    try {
-      // Get all reports from the current user
-      const reportsResponse = await reportsApi.list(sessionToken, {
-        dateFrom: undefined,
-        dateTo: undefined,
-        status: undefined,
-        createdBy: user.id,
-        wellNumber: undefined,
-      }, 1, 100);
-
-      if (reportsResponse.reports.length === 0) {
-        return null;
-      }
-
-      // Sort by date descending and get the most recent one
-      const sortedReports = [...reportsResponse.reports].sort((a, b) =>
-        new Date(b.reportDate).getTime() - new Date(a.reportDate).getTime()
-      );
-      const lastReport = sortedReports[0];
-
-
-      // Load all sections from the last report
-      const [
-        drillString,
-        crewShifts,
-        bitRecords,
-        timeDistributions,
-        mudRecords,
-        mudAdditives,
-        drillingParams,
-        deviationHistory,
-        operationsLog,
-      ] = await Promise.all([
-        drillStringApi.get(sessionToken, lastReport.id).catch(() => null),
-        crewApi.listShifts(sessionToken, lastReport.id).catch(() => []),
-        bitRecordsApi.list(sessionToken, lastReport.id).catch(() => []),
-        timeDistributionApi.list(sessionToken, lastReport.id).catch(() => []),
-        mudApi.listRecords(sessionToken, lastReport.id).catch(() => []),
-        mudApi.listAdditives(sessionToken, lastReport.id).catch(() => []),
-        drillingParamsApi.list(sessionToken, lastReport.id).catch(() => []),
-        deviationApi.list(sessionToken, lastReport.id).catch(() => []),
-        operationsLogApi.list(sessionToken, lastReport.id).catch(() => []),
-      ]);
-
-      // Build the complete form data with incremented report number and current date
-      const formData: Partial<CompleteReportData> = {
-        header: {
-          reportNumber: lastReport.reportNumber + 1, // Increment report number
-          reportDate: new Date().toISOString().split('T')[0], // Current date
-          wellNumber: lastReport.wellNumber ?? '',
-          apiNumber: lastReport.apiNumber ?? '',
-          contract: lastReport.contract ?? '',
-          contractor: lastReport.contractor ?? '',
-          operator: lastReport.operator ?? '',
-          fieldDistrict: lastReport.fieldDistrict ?? '',
-          municipality: lastReport.municipality ?? '',
-          rigNumber: lastReport.rigNumber ?? '',
-          supervisor24h: lastReport.supervisor24h ?? '',
-        },
-        drillString: drillString || {},
-        crew: {
-          shifts: crewShifts.length > 0
-            ? crewShifts.map(shift => ({
-                shift: shift.shift,
-                shiftStart: shift.shiftStart,
-                shiftEnd: shift.shiftEnd,
-                members: shift.members
-                  .filter(member => member.personnelId)
-                  .map(member => ({
-                    personnelId: member.personnelId,
-                    position: member.position || '',
-                    hours: member.hours
-                  }))
-              }))
-            : DEFAULT_VALUES.crew!.shifts,
-        },
-        bitRecords: {
-          records: bitRecords,
-        },
-        timeDistribution: {
-          distributions: (timeDistributions as any[]).map(td => ({
-            operationCodeId: td.operationCodeId,
-            hoursShift1: typeof td.hoursShift1 === 'number' ? td.hoursShift1 : 0,
-            hoursShift2: typeof td.hoursShift2 === 'number' ? td.hoursShift2 : 0,
-            hoursShift3: typeof td.hoursShift3 === 'number' ? td.hoursShift3 : 0,
-          })),
-        },
-        mudRecords: {
-          records: (mudRecords as any[]) || [],
-          additives: (mudAdditives as any[]) || [],
-        },
-        lithology: {
-          drillingParameters: (drillingParams as any[]) || [],
-          deviationHistory: (deviationHistory as any[]) || [],
-        },
-        observations: {
-          operations: (operationsLog as any[]) || [],
-        },
-      };
-
-      return formData;
-
-    } catch (error) {
-      console.error('Error loading last complete report:', error);
-      return null;
-    }
-  };
-
   // ============================================================================
   // HANDLERS - DATA SAVING (continuará en la siguiente parte...)
   // ============================================================================
@@ -607,24 +494,15 @@ export default function ReportForm() {
         currentReportId = newReport.id;
         setReportId(currentReportId);
 
-        // Guardar datos del reporte como plantilla para el próximo
-        saveLastReportTemplate({
-          reportNumber: formData.header.reportNumber,
-          wellNumber: formData.header.wellNumber,
-          apiNumber: formData.header.apiNumber,
-          contract: formData.header.contract,
-          contractor: formData.header.contractor,
-          operator: formData.header.operator,
-          fieldDistrict: formData.header.fieldDistrict,
-          municipality: formData.header.municipality,
-          rigNumber: formData.header.rigNumber,
-          supervisor24h: formData.header.supervisor24h,
-        });
-
         toast.success('Reporte guardado como borrador');
       }
 
       await saveAllSectionsWithData(currentReportId);
+
+      // Update snapshot for this rig (replaces localStorage template)
+      await reportsApi.updateSnapshot(sessionToken, currentReportId).catch((err) =>
+        console.warn('[ReportForm] Snapshot update failed (non-blocking):', err)
+      );
 
       clearAutoSave();
 
@@ -664,24 +542,15 @@ export default function ReportForm() {
         const newReport = await reportsApi.create(sessionToken, reportData);
         currentReportId = newReport.id;
         setReportId(currentReportId);
-
-        // Guardar datos del reporte como plantilla para el próximo
-        saveLastReportTemplate({
-          reportNumber: data.header.reportNumber,
-          wellNumber: data.header.wellNumber,
-          apiNumber: data.header.apiNumber,
-          contract: data.header.contract,
-          contractor: data.header.contractor,
-          operator: data.header.operator,
-          fieldDistrict: data.header.fieldDistrict,
-          municipality: data.header.municipality,
-          rigNumber: data.header.rigNumber,
-          supervisor24h: data.header.supervisor24h,
-        });
       }
 
       await saveAllSectionsWithData(currentReportId);
       await reportsApi.submit(sessionToken, currentReportId);
+
+      // Update snapshot for this rig
+      await reportsApi.updateSnapshot(sessionToken, currentReportId).catch((err) =>
+        console.warn('[ReportForm] Snapshot update failed (non-blocking):', err)
+      );
 
       clearAutoSave();
 
@@ -759,8 +628,8 @@ export default function ReportForm() {
   const saveCrew = async (reportId: string) => {
     if (!sessionToken) return;
     
-    // PASO 1: Eliminar todos los shifts existentes (siempre en edit mode)
-    if (isEditMode) {
+    // PASO 1: Eliminar shifts existentes (si el reporte ya existe en DB)
+    if (reportId) {
       try {
         await crewApi.deleteAllShifts(sessionToken, reportId);
       } catch (error) {
@@ -814,8 +683,8 @@ export default function ReportForm() {
   const saveBits = async (reportId: string) => {
     if (!sessionToken) return;
     
-    // PASO 1: Eliminar todos los records existentes
-    if (isEditMode) {
+    // PASO 1: Eliminar records existentes (si el reporte ya existe en DB)
+    if (reportId) {
       try {
         await bitRecordsApi.deleteAll(sessionToken, reportId);
       } catch (error) {
@@ -838,8 +707,8 @@ export default function ReportForm() {
   const saveTime = async (reportId: string) => {
     if (!sessionToken) return;
     
-    // PASO 1: Eliminar todos los distributions existentes (siempre en edit mode)
-    if (isEditMode) {
+    // PASO 1: Eliminar distributions existentes (si el reporte ya existe en DB)
+    if (reportId) {
       try {
         await timeDistributionApi.deleteAll(sessionToken, reportId);
       } catch (error) {
@@ -877,8 +746,8 @@ export default function ReportForm() {
   const saveMud = async (reportId: string) => {
     if (!sessionToken) return;
     
-    // PASO 1: Eliminar todos los records y additives existentes (siempre en edit mode)
-    if (isEditMode) {
+    // PASO 1: Eliminar records y additives existentes (si el reporte ya existe en DB)
+    if (reportId) {
       try {
         await mudApi.deleteAllRecords(sessionToken, reportId);
         await mudApi.deleteAllAdditives(sessionToken, reportId);
@@ -909,8 +778,8 @@ export default function ReportForm() {
   const saveLithology = async (reportId: string) => {
     if (!sessionToken) return;
     
-    // PASO 1: Eliminar todos los params y deviations existentes (siempre en edit mode)
-    if (isEditMode) {
+    // PASO 1: Eliminar params y deviations existentes (si el reporte ya existe en DB)
+    if (reportId) {
       try {
         await drillingParamsApi.deleteAll(sessionToken, reportId);
         await deviationApi.deleteAll(sessionToken, reportId);
@@ -941,8 +810,8 @@ export default function ReportForm() {
   const saveObservations = async (reportId: string) => {
     if (!sessionToken) return;
     
-    // PASO 1: Eliminar todos los operations existentes (siempre en edit mode)
-    if (isEditMode) {
+    // PASO 1: Eliminar operations existentes (si el reporte ya existe en DB)
+    if (reportId) {
       try {
         await operationsLogApi.deleteAll(sessionToken, reportId);
       } catch (error) {
@@ -1022,8 +891,8 @@ export default function ReportForm() {
           // Section has data: save it (will delete old + insert new)
           await section.saveFn();
           savedCount++;
-        } else if (isEditMode) {
-          // Section is empty in edit mode: just delete (cleanup)
+        } else if (reportId) {
+          // Section is empty but report exists: delete old data (cleanup)
           await section.saveFn(); // The saveFn already handles DELETE ALL
           deletedCount++;
         }

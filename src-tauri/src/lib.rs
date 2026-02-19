@@ -218,6 +218,10 @@ pub fn run() {
             commands::license::get_license_status,
             commands::license::deactivate_license,
 
+            // Last report snapshot commands
+            commands::last_report_snapshot::get_last_report_snapshot,
+            commands::last_report_snapshot::update_report_snapshot,
+
             // Debug commands
             commands::debug::debug_list_all_rigs,
             commands::debug::debug_get_sync_info,

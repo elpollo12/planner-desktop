@@ -1,5 +1,6 @@
 import type { CompleteReportData } from '../schemas';
 import type { Report, CrewShift, BitRecord } from '../types/report';
+import type { LastReportSnapshot } from '../types';
 
 /**
  * Transform form data to backend format for creating a report
@@ -85,5 +86,107 @@ export function validateMinimumData(formData: CompleteReportData): {
   return {
     valid: errors.length === 0,
     errors,
+  };
+}
+
+// Default values for empty sections (shared with ReportForm)
+const EMPTY_CREW = {
+  shifts: [
+    { shift: 'morning' as const, shiftStart: '06:00', shiftEnd: '14:00', members: [] },
+    { shift: 'afternoon' as const, shiftStart: '14:00', shiftEnd: '22:00', members: [] },
+    { shift: 'night' as const, shiftStart: '22:00', shiftEnd: '06:00', members: [] },
+  ],
+};
+
+/**
+ * Safely parse a JSON string, returning fallback on failure
+ */
+function safeParse<T>(json: string | undefined | null, fallback: T): T {
+  if (!json) return fallback;
+  try {
+    return JSON.parse(json) as T;
+  } catch {
+    console.warn('Failed to parse snapshot JSON:', json?.substring(0, 100));
+    return fallback;
+  }
+}
+
+/**
+ * Build a complete form data object from a LastReportSnapshot.
+ * Increments reportNumber by 1 and sets today's date.
+ */
+export function buildFormFromSnapshot(snapshot: LastReportSnapshot): Partial<CompleteReportData> {
+  // Parse crew data — the backend stores CrewShiftWithMembers[] (shift + members nested).
+  // We need to transform it into the form's expected shape.
+  const rawCrew = safeParse<any[]>(snapshot.crewData, []);
+  const crewShifts = rawCrew.length > 0
+    ? {
+        shifts: rawCrew.map((item: any) => {
+          // Backend serializes as { shift: { id, reportId, shift, ... }, members: [...] }
+          const shiftData = item.shift || item;
+          const members = (item.members || [])
+            .filter((m: any) => m.personnelId || m.position)
+            .map((m: any) => ({
+              personnelId: m.personnelId || undefined,
+              position: m.position || '',
+              hours: m.hours || undefined,
+            }));
+          return {
+            shift: shiftData.shift,
+            shiftStart: shiftData.shiftStart,
+            shiftEnd: shiftData.shiftEnd,
+            members,
+          };
+        }),
+      }
+    : EMPTY_CREW;
+
+  // Parse time distributions
+  const rawTimeDist = safeParse<any[]>(snapshot.timeDistributionData, []);
+  const timeDistribution = {
+    distributions: rawTimeDist.map((td: any) => ({
+      operationCodeId: td.operationCodeId,
+      hoursShift1: typeof td.hoursShift1 === 'number' ? td.hoursShift1 : 0,
+      hoursShift2: typeof td.hoursShift2 === 'number' ? td.hoursShift2 : 0,
+      hoursShift3: typeof td.hoursShift3 === 'number' ? td.hoursShift3 : 0,
+    })),
+  };
+
+  // Parse simple array sections
+  const bitRecords = { records: safeParse<any[]>(snapshot.bitRecordsData, []) };
+  const mudRecords = {
+    records: safeParse<any[]>(snapshot.mudRecordsData, []),
+    additives: safeParse<any[]>(snapshot.mudAdditivesData, []),
+  };
+  const lithology = {
+    drillingParameters: safeParse<any[]>(snapshot.drillingParamsData, []),
+    deviationHistory: safeParse<any[]>(snapshot.deviationData, []),
+  };
+  const observations = {
+    operations: safeParse<any[]>(snapshot.operationsLogData, []),
+  };
+  const drillString = safeParse<any>(snapshot.drillStringData, {});
+
+  return {
+    header: {
+      reportNumber: snapshot.reportNumber + 1,
+      reportDate: new Date().toISOString().split('T')[0],
+      wellNumber: snapshot.wellNumber ?? '',
+      apiNumber: snapshot.apiNumber ?? '',
+      contract: snapshot.contract ?? '',
+      contractor: snapshot.contractor ?? '',
+      operator: snapshot.operator ?? '',
+      fieldDistrict: snapshot.fieldDistrict ?? '',
+      municipality: snapshot.municipality ?? '',
+      rigNumber: snapshot.rigNumber ?? '',
+      supervisor24h: snapshot.supervisor24h ?? '',
+    },
+    crew: crewShifts,
+    timeDistribution,
+    bitRecords,
+    mudRecords,
+    lithology,
+    observations,
+    drillString,
   };
 }
