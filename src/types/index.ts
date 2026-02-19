@@ -82,14 +82,6 @@ export interface CreateReportRequest {
   supervisor_24h?: string;
 }
 
-export interface ReportFilters {
-  date_from?: string;
-  date_to?: string;
-  status?: string;
-  created_by?: string;
-  well_number?: string;
-}
-
 // Last report snapshot (pre-fill template per rig)
 export interface LastReportSnapshot {
   id: string;

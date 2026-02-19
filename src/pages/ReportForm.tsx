@@ -14,6 +14,7 @@ import {
   Edit2,
 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
+import { useModal } from '../store/modalStore';
 import { useAutoSave } from '../hooks/useAutoSave';
 import { completeReportSchema, type CompleteReportData } from '../schemas';
 import {
@@ -33,6 +34,8 @@ import { toast } from '../lib/toast';
 import { backgroundPush } from '../lib/syncHelper';
 import { formatDateDMY } from '../lib/dateUtils';
 import type { Report } from '../types/report';
+import type { RigWithArea } from '../types/rig';
+import SnapshotConfirmModal from '../components/modals/SnapshotConfirmModal';
 
 // Import form sections
 import { HeaderSection } from '../components/forms/HeaderSection';
@@ -56,7 +59,7 @@ interface Tab {
   description: string;
 }
 
-type WizardStep = 'header' | 'sections';
+type WizardStep = 'rig' | 'header' | 'sections';
 
 // ============================================================================
 // CONSTANTS
@@ -152,8 +155,17 @@ export default function ReportForm() {
   const { sessionToken, user } = useAuthStore();
 
   // Wizard state
-  const [wizardStep, setWizardStep] = useState<WizardStep>('header');
+  const [wizardStep, setWizardStep] = useState<WizardStep>('rig');
   const [activeTab, setActiveTab] = useState<TabId>('crew');
+
+  // Rig selection state (step 0)
+  const [accessibleRigs, setAccessibleRigs] = useState<RigWithArea[]>([]);
+  const [selectedRigId, setSelectedRigId] = useState<string>('');
+  const [isLoadingRigs, setIsLoadingRigs] = useState(false);
+  const [isLoadingSnapshot, setIsLoadingSnapshot] = useState(false);
+
+  // Modal
+  const { openModal } = useModal();
 
   // Loading states
   const [isSaving, setIsSaving] = useState(false);
@@ -280,40 +292,35 @@ export default function ReportForm() {
   // ============================================================================
 
   /**
-   * Load existing report OR load snapshot template for new report
+   * Load existing report for edit mode, or load accessible rigs for new report
    */
   useEffect(() => {
     const loadData = async () => {
       if (isEditMode && id && sessionToken) {
         await loadExistingReport(id);
         setWizardStep('sections');
-      } else if (!isEditMode && sessionToken && user) {
-        // Try to load snapshot from the user's assigned rig
+      } else if (!isEditMode && sessionToken) {
+        // New report: start blank, load rigs for step 0
+        methods.reset(DEFAULT_VALUES);
+        setIsLoadingRigs(true);
         try {
           const rigs = await rigsApi.listAccessible(sessionToken, false);
-
-          if (rigs.length > 0) {
-            // Use the first accessible rig to get the snapshot
-            const snapshot = await reportsApi.getLastSnapshot(sessionToken, rigs[0].id);
-
-            if (snapshot) {
-              const formData = buildFormFromSnapshot(snapshot);
-              methods.reset(formData);
-              toast.success('Datos del último reporte cargados');
-              return;
-            }
+          setAccessibleRigs(rigs);
+          // Auto-select if user only has 1 rig
+          if (rigs.length === 1) {
+            setSelectedRigId(rigs[0].id);
           }
         } catch (error) {
-          console.warn('[ReportForm] Could not load snapshot, starting blank:', error);
+          console.error('[ReportForm] Failed to load rigs:', error);
+          toast.error('Error al cargar taladros');
+        } finally {
+          setIsLoadingRigs(false);
         }
-
-        // Fallback: blank form with defaults
-        methods.reset(DEFAULT_VALUES);
       }
     };
 
     loadData();
-  }, [isEditMode, id, sessionToken, user]);
+  }, [isEditMode, id, sessionToken]);
 
   /**
    * Validate edit permissions
@@ -328,6 +335,68 @@ export default function ReportForm() {
   // ============================================================================
   // HANDLERS - WIZARD NAVIGATION
   // ============================================================================
+
+  /**
+   * Handle rig selection confirmed → check snapshot → move to header
+   */
+  const handleRigConfirmed = async () => {
+    if (!sessionToken || !selectedRigId) return;
+
+    const rig = accessibleRigs.find(r => r.id === selectedRigId);
+    if (!rig) return;
+
+    // Set rig in form
+    methods.setValue('header.rigNumber', rig.name);
+
+    // Check for snapshot
+    setIsLoadingSnapshot(true);
+    try {
+      const snapshot = await reportsApi.getLastSnapshot(sessionToken, rig.id);
+
+      if (snapshot) {
+        // Show modal asking to preload
+        openModal(
+          <SnapshotConfirmModal
+            rigName={rig.name}
+            onConfirm={() => {
+              const formData = buildFormFromSnapshot(snapshot);
+              methods.reset(formData);
+              toast.success('Datos del último reporte precargados');
+              setWizardStep('header');
+            }}
+            onReject={() => {
+              // Keep blank form but preserve rig
+              methods.setValue('header.rigNumber', rig.name);
+              setWizardStep('header');
+            }}
+          />,
+          {
+            title: 'Datos disponibles',
+            size: 'sm',
+            showCloseButton: false,
+            closeOnOutsideClick: false,
+            closeOnEsc: false,
+          }
+        );
+      } else {
+        // No snapshot, go straight to header
+        setWizardStep('header');
+      }
+    } catch (error) {
+      console.warn('[ReportForm] Could not check snapshot:', error);
+      setWizardStep('header');
+    } finally {
+      setIsLoadingSnapshot(false);
+    }
+  };
+
+  /**
+   * Handle back to rig selection — resets all form data
+   */
+  const handleBackToRig = () => {
+    methods.reset(DEFAULT_VALUES);
+    setWizardStep('rig');
+  };
 
   /**
    * Handle continue from header to sections
@@ -434,7 +503,7 @@ export default function ReportForm() {
           records: bitRecords,
         },
         timeDistribution: {
-          distributions: (timeDistributions as any[]).map(td => ({
+          distributions: timeDistributions.map(td => ({
             operationCodeId: td.operationCodeId,
             hoursShift1: typeof td.hoursShift1 === 'number' ? td.hoursShift1 : 0,
             hoursShift2: typeof td.hoursShift2 === 'number' ? td.hoursShift2 : 0,
@@ -442,15 +511,15 @@ export default function ReportForm() {
           })),
         },
         mudRecords: {
-          records: (mudRecords as any[]) || [],
-          additives: (mudAdditives as any[]) || [],
+          records: mudRecords || [],
+          additives: mudAdditives || [],
         },
         lithology: {
-          drillingParameters: (drillingParams as any[]) || [],
-          deviationHistory: (deviationHistory as any[]) || [],
+          drillingParameters: drillingParams || [],
+          deviationHistory: deviationHistory || [],
         },
         observations: {
-          operations: (operationsLog as any[]) || [],
+          operations: operationsLog || [],
         },
       };
 
@@ -880,28 +949,23 @@ export default function ReportForm() {
       hasData: hasSectionData('observations')
     });
 
-    // Process all sections
-    const errors: Array<{ section: string; error: any }> = [];
-    let savedCount = 0;
-    let deletedCount = 0;
-
-    for (const section of sectionsToProcess) {
-      try {
-        if (section.hasData) {
-          // Section has data: save it (will delete old + insert new)
+    // Process all sections in parallel
+    const tasks = sectionsToProcess
+      .filter(section => section.hasData || reportId)
+      .map(async (section) => {
+        try {
           await section.saveFn();
-          savedCount++;
-        } else if (reportId) {
-          // Section is empty but report exists: delete old data (cleanup)
-          await section.saveFn(); // The saveFn already handles DELETE ALL
-          deletedCount++;
+          return { section: section.name, hasData: section.hasData, error: null };
+        } catch (error) {
+          console.error(`✗ Error processing ${section.name}:`, error);
+          return { section: section.name, hasData: section.hasData, error };
         }
-        // If new report and empty: do nothing (no data to save)
-      } catch (error) {
-        console.error(`✗ Error processing ${section.name}:`, error);
-        errors.push({ section: section.name, error });
-      }
-    }
+      });
+
+    const results = await Promise.all(tasks);
+    const errors = results.filter(r => r.error !== null);
+    const savedCount = results.filter(r => r.error === null && r.hasData).length;
+    const deletedCount = results.filter(r => r.error === null && !r.hasData).length;
 
     // Report results
     if (errors.length === 0) {
@@ -1042,9 +1106,11 @@ export default function ReportForm() {
           subtitle={
             isEditMode
               ? `Reporte #${existingReport?.reportNumber || id}`
-              : wizardStep === 'header'
-                ? 'Paso 1: Completa el encabezado del reporte'
-                : 'Paso 2: Selecciona y llena una sección'
+              : wizardStep === 'rig'
+                ? 'Paso 1: Selecciona el taladro'
+                : wizardStep === 'header'
+                  ? 'Paso 2: Completa el encabezado del reporte'
+                  : 'Paso 3: Selecciona y llena una sección'
           }
           headerActions={
             <div className="flex gap-2 items-center flex-wrap">
@@ -1077,6 +1143,96 @@ export default function ReportForm() {
         >
           <div className="max-w-7xl mx-auto space-y-6">
 
+            {/* STEP 0: RIG SELECTION (new reports only) */}
+            {wizardStep === 'rig' && !isEditMode && (
+              <Card>
+                <div className="p-6">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="flex items-center justify-center w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-bold">
+                      1
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                        Selección de Taladro
+                      </h2>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        Selecciona el taladro para este reporte
+                      </p>
+                    </div>
+                  </div>
+
+                  {isLoadingRigs ? (
+                    <div className="flex items-center justify-center h-32">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500" />
+                    </div>
+                  ) : accessibleRigs.length === 0 ? (
+                    <div className="text-center py-8">
+                      <p className="text-gray-500 dark:text-gray-400">
+                        No tienes taladros asignados. Contacta a tu administrador.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {accessibleRigs.map((rig) => (
+                        <button
+                          key={rig.id}
+                          type="button"
+                          onClick={() => setSelectedRigId(rig.id)}
+                          className={`
+                            p-4 rounded-lg border-2 text-left transition-all
+                            ${selectedRigId === rig.id
+                              ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/10'
+                              : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                            }
+                          `}
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className="text-2xl">🛢️</span>
+                            <div className="flex-1">
+                              <h3 className={`font-semibold ${selectedRigId === rig.id ? 'text-primary-700 dark:text-primary-400' : 'text-gray-900 dark:text-gray-100'}`}>
+                                {rig.name}
+                              </h3>
+                              {rig.areaName && (
+                                <p className="text-xs text-gray-500 dark:text-gray-400">
+                                  {rig.areaName}
+                                </p>
+                              )}
+                            </div>
+                            {selectedRigId === rig.id && (
+                              <CheckCircle2 className="text-primary-500 shrink-0" size={20} />
+                            )}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Continue button */}
+                  <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+                    <Button
+                      variant="outline"
+                      type="button"
+                      onClick={handleCancel}
+                      icon={<ChevronLeft size={16} />}
+                    >
+                      Cancelar
+                    </Button>
+                    <Button
+                      variant="primary"
+                      size="lg"
+                      onClick={handleRigConfirmed}
+                      disabled={!selectedRigId || isLoadingSnapshot}
+                      loading={isLoadingSnapshot}
+                      icon={<ChevronRight size={20} />}
+                      iconPosition="right"
+                    >
+                      Continuar
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            )}
+
             {/* STEP 1: HEADER SECTION */}
             {wizardStep === 'header' && (
               <>
@@ -1084,7 +1240,7 @@ export default function ReportForm() {
                   <div className="p-6">
                     <div className="flex items-center gap-3 mb-6">
                       <div className="flex items-center justify-center w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-bold">
-                        1
+                        {isEditMode ? 1 : 2}
                       </div>
                       <div>
                         <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
@@ -1096,27 +1252,36 @@ export default function ReportForm() {
                       </div>
                     </div>
 
-                    <HeaderSection />
+                    <HeaderSection isEditMode={isEditMode} />
                   </div>
                 </Card>
 
-                {/* Continue Button */}
+                {/* Navigation Buttons */}
                 <Card>
                   <div className="p-6">
                     <div className="flex items-center justify-between">
-                      <div>
+                      {!isEditMode ? (
+                        <Button
+                          variant="outline"
+                          type="button"
+                          onClick={handleBackToRig}
+                          icon={<ChevronLeft size={16} />}
+                        >
+                          Atrás
+                        </Button>
+                      ) : (
                         <p className="text-sm text-gray-600 dark:text-gray-400">
                           {isHeaderValid
                             ? '✅ Encabezado completado. Puedes continuar.'
                             : '⚠️ Completa los campos obligatorios para continuar'
                           }
                         </p>
-                        {errors.header && (
-                          <p className="text-sm text-red-600 dark:text-red-400 mt-1">
-                            Hay errores en el encabezado
-                          </p>
-                        )}
-                      </div>
+                      )}
+                      {errors.header && (
+                        <p className="text-sm text-red-600 dark:text-red-400 mt-1">
+                          Hay errores en el encabezado
+                        </p>
+                      )}
                       <Button
                         variant="primary"
                         size="lg"
@@ -1134,7 +1299,7 @@ export default function ReportForm() {
               </>
             )}
 
-            {/* STEP 2: SECTIONS */}
+            {/* STEP 3: SECTIONS */}
             {wizardStep === 'sections' && (
               <>
                 {/* Header Summary */}

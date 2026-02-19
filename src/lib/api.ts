@@ -21,6 +21,12 @@ import type {
   CrewShift,
   BitRecord,
   OperationCode,
+  MudRecord,
+  MudAdditive,
+  TimeDistribution,
+  DrillingParameters,
+  DeviationHistory,
+  OperationsLog,
 } from '../types/report';
 import type {
   Area,
@@ -160,7 +166,7 @@ export const drillStringApi = {
 // ============================================================================
 
 export const crewApi = {
-  createShift: (sessionToken: string, reportId: string, data: any) =>
+  createShift: (sessionToken: string, reportId: string, data: { shift: string; shiftStart?: string; shiftEnd?: string; members: Array<{ personnelId?: string; position: string; ci?: string; name?: string; hours?: number }> }) =>
     invoke<CrewShift>('create_crew_shift', { sessionToken, reportId, data }),
 
   listShifts: (sessionToken: string, reportId: string) =>
@@ -219,23 +225,23 @@ export const operationCodesApi = {
 // ============================================================================
 
 export const mudApi = {
-  createRecord: (sessionToken: string, reportId: string, data: any) =>
-    invoke('create_mud_record', { sessionToken, reportId, data }),
+  createRecord: (sessionToken: string, reportId: string, data: Partial<MudRecord>) =>
+    invoke<MudRecord>('create_mud_record', { sessionToken, reportId, data }),
 
   listRecords: (sessionToken: string, reportId: string) =>
-    invoke('list_mud_records', { sessionToken, reportId }),
+    invoke<MudRecord[]>('list_mud_records', { sessionToken, reportId }),
 
-  createAdditive: (sessionToken: string, reportId: string, data: any) =>
-    invoke('create_mud_additive', { sessionToken, reportId, data }),
+  createAdditive: (sessionToken: string, reportId: string, data: Partial<MudAdditive>) =>
+    invoke<MudAdditive>('create_mud_additive', { sessionToken, reportId, data }),
 
   listAdditives: (sessionToken: string, reportId: string) =>
-    invoke('list_mud_additives', { sessionToken, reportId }),
+    invoke<MudAdditive[]>('list_mud_additives', { sessionToken, reportId }),
 
   deleteAllRecords: (sessionToken: string, reportId: string) =>
-    invoke('delete_all_mud_records', { sessionToken, reportId }),
+    invoke<void>('delete_all_mud_records', { sessionToken, reportId }),
 
   deleteAllAdditives: (sessionToken: string, reportId: string) =>
-    invoke('delete_all_mud_additives', { sessionToken, reportId }),
+    invoke<void>('delete_all_mud_additives', { sessionToken, reportId }),
 };
 
 // ============================================================================
@@ -243,8 +249,7 @@ export const mudApi = {
 // ============================================================================
 
 export const timeDistributionApi = {
-  saveBulk: async (sessionToken: string, reportId: string, data: any[]) => {
-    // Transform camelCase to snake_case for Rust backend
+  saveBulk: async (sessionToken: string, reportId: string, data: Array<{ operationCodeId: string; hoursShift1: number; hoursShift2: number; hoursShift3: number }>) => {
     const transformedData = data.map(distribution => ({
       operation_code_id: distribution.operationCodeId,
       hours_shift1: distribution.hoursShift1,
@@ -252,26 +257,18 @@ export const timeDistributionApi = {
       hours_shift3: distribution.hoursShift3,
     }));
 
-    console.log('🔧 timeDistributionApi.saveBulk - Calling Rust:', {
-      reportId,
-      transformedData
-    });
-
-    const result = await invoke('save_time_distributions', {
+    return invoke<TimeDistribution[]>('save_time_distributions', {
       sessionToken,
       reportId,
       data: transformedData
     });
-
-    console.log('✅ timeDistributionApi.saveBulk - Result from Rust:', result);
-    return result;
   },
 
   list: (sessionToken: string, reportId: string) =>
-    invoke('list_time_distributions', { sessionToken, reportId }),
+    invoke<TimeDistribution[]>('list_time_distributions', { sessionToken, reportId }),
 
   deleteAll: (sessionToken: string, reportId: string) =>
-    invoke('delete_all_time_distributions', { sessionToken, reportId }),
+    invoke<void>('delete_all_time_distributions', { sessionToken, reportId }),
 };
 
 // ============================================================================
@@ -279,14 +276,14 @@ export const timeDistributionApi = {
 // ============================================================================
 
 export const drillingParamsApi = {
-  create: (sessionToken: string, reportId: string, data: any) =>
-    invoke('create_drilling_parameter', { sessionToken, reportId, data }),
+  create: (sessionToken: string, reportId: string, data: Partial<DrillingParameters>) =>
+    invoke<DrillingParameters>('create_drilling_parameter', { sessionToken, reportId, data }),
 
   list: (sessionToken: string, reportId: string) =>
-    invoke('list_drilling_parameters', { sessionToken, reportId }),
+    invoke<DrillingParameters[]>('list_drilling_parameters', { sessionToken, reportId }),
 
   deleteAll: (sessionToken: string, reportId: string) =>
-    invoke('delete_all_drilling_parameters', { sessionToken, reportId }),
+    invoke<void>('delete_all_drilling_parameters', { sessionToken, reportId }),
 };
 
 // ============================================================================
@@ -294,14 +291,14 @@ export const drillingParamsApi = {
 // ============================================================================
 
 export const deviationApi = {
-  create: (sessionToken: string, reportId: string, data: any) =>
-    invoke('create_deviation_record', { sessionToken, reportId, data }),
+  create: (sessionToken: string, reportId: string, data: Partial<DeviationHistory>) =>
+    invoke<DeviationHistory>('create_deviation_record', { sessionToken, reportId, data }),
 
   list: (sessionToken: string, reportId: string) =>
-    invoke('list_deviation_records', { sessionToken, reportId }),
+    invoke<DeviationHistory[]>('list_deviation_records', { sessionToken, reportId }),
 
   deleteAll: (sessionToken: string, reportId: string) =>
-    invoke('delete_all_deviation_records', { sessionToken, reportId }),
+    invoke<void>('delete_all_deviation_records', { sessionToken, reportId }),
 };
 
 // ============================================================================
@@ -309,14 +306,14 @@ export const deviationApi = {
 // ============================================================================
 
 export const operationsLogApi = {
-  create: (sessionToken: string, reportId: string, data: any) =>
-    invoke('create_operation_log', { sessionToken, reportId, data }),
+  create: (sessionToken: string, reportId: string, data: Partial<OperationsLog>) =>
+    invoke<OperationsLog>('create_operation_log', { sessionToken, reportId, data }),
 
   list: (sessionToken: string, reportId: string) =>
-    invoke('list_operation_logs', { sessionToken, reportId }),
+    invoke<OperationsLog[]>('list_operation_logs', { sessionToken, reportId }),
 
   deleteAll: (sessionToken: string, reportId: string) =>
-    invoke('delete_all_operation_logs', { sessionToken, reportId }),
+    invoke<void>('delete_all_operation_logs', { sessionToken, reportId }),
 };
 
 // ============================================================================

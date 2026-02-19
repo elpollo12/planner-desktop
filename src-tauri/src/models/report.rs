@@ -386,7 +386,8 @@ impl Report {
         Report::get_by_id(conn, report_id)
     }
 
-    /// Soft delete report (marks is_deleted = 1 so sync propagates it)
+    /// Soft-delete report (marks is_deleted = 1 so sync propagates it).
+    /// Child entities are left in place and cleaned up by the purge cycle.
     pub fn delete(conn: &Connection, report_id: &str) -> Result<(), AppError> {
         let now = chrono::Utc::now().to_rfc3339();
         conn.execute(

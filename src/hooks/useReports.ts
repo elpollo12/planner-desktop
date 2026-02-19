@@ -1,7 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { invoke } from '@tauri-apps/api/core';
 import { useAuthStore } from '../store/authStore';
-import type { Report, CreateReportRequest, ReportFilters } from '../types';
+import type { Report, CreateReportRequest } from '../types';
+import type { ReportFilters } from '../types/report';
 
 export function useReports(filters?: ReportFilters) {
   const { sessionToken } = useAuthStore();

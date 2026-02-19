@@ -122,19 +122,19 @@ export function buildFormFromSnapshot(snapshot: LastReportSnapshot): Partial<Com
   const crewShifts = rawCrew.length > 0
     ? {
         shifts: rawCrew.map((item: any) => {
-          // Backend serializes as { shift: { id, reportId, shift, ... }, members: [...] }
-          const shiftData = item.shift || item;
+          // Backend serializes CrewShiftWithMembers with #[serde(flatten)],
+          // so shift fields are at root level: { shift, shiftStart, shiftEnd, members, ... }
           const members = (item.members || [])
             .filter((m: any) => m.personnelId || m.position)
             .map((m: any) => ({
               personnelId: m.personnelId || undefined,
               position: m.position || '',
-              hours: m.hours || undefined,
+              hours: m.hours ?? undefined,
             }));
           return {
-            shift: shiftData.shift,
-            shiftStart: shiftData.shiftStart,
-            shiftEnd: shiftData.shiftEnd,
+            shift: item.shift,
+            shiftStart: item.shiftStart,
+            shiftEnd: item.shiftEnd,
             members,
           };
         }),

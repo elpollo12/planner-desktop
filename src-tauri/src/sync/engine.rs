@@ -1079,6 +1079,18 @@ pub fn write_pulled_data(
                 }
             }
 
+            // Special handling for user_rigs due to UNIQUE(user_id, rig_id) constraint
+            if table_def.name == "user_rigs" {
+                // Delete existing assignment with same user_id+rig_id but different id
+                // user_id is at index 1, rig_id is at index 2
+                if params.len() >= 3 {
+                    let _ = conn.execute(
+                        "DELETE FROM user_rigs WHERE user_id = ?1 AND rig_id = ?2 AND id != ?3",
+                        rusqlite::params![params.get(1), params.get(2), params.get(0)],
+                    );
+                }
+            }
+
             conn.execute(&upsert_sql, params_refs.as_slice())
                 .map_err(|e| {
                     format!("Failed to upsert into '{}': {}", table_def.name, e)
@@ -1330,6 +1342,18 @@ async fn push_rows_to_turso(
                 if row.len() >= 2 {
                     let delete_sql = "DELETE FROM users WHERE username = ?1 AND id != ?2".to_string();
                     let delete_params = vec![row[1].clone(), row[0].clone()];
+                    batch.push((delete_sql, delete_params));
+                }
+                // Add UPSERT statement
+                batch.push((upsert_sql.clone(), row.clone()));
+            }
+        } else if table_def.name == "user_rigs" {
+            for row in chunk {
+                // Delete existing assignment with same user_id+rig_id but different id
+                // user_id is at index 1, rig_id is at index 2
+                if row.len() >= 3 {
+                    let delete_sql = "DELETE FROM user_rigs WHERE user_id = ?1 AND rig_id = ?2 AND id != ?3".to_string();
+                    let delete_params = vec![row[1].clone(), row[2].clone(), row[0].clone()];
                     batch.push((delete_sql, delete_params));
                 }
                 // Add UPSERT statement
