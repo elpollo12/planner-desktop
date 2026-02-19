@@ -52,7 +52,7 @@ export function useReportLoader(
 
         // Load all related entities in parallel
         const [
-          drillString,
+          drillStringComponents,
           crewShifts,
           bitRecords,
           timeDistributions,
@@ -62,7 +62,7 @@ export function useReportLoader(
           deviationHistory,
           operationsLog,
         ] = await Promise.all([
-          drillStringApi.get(sessionToken, reportId).catch(() => null),
+          drillStringApi.list(sessionToken, reportId).catch(() => []),
           crewApi.listShifts(sessionToken, reportId).catch(() => []),
           bitRecordsApi.list(sessionToken, reportId).catch(() => []),
           timeDistributionApi.list(sessionToken, reportId).catch(() => []),
@@ -88,7 +88,12 @@ export function useReportLoader(
             rigNumber: report.rigNumber ?? '',
             supervisor24h: report.supervisor24h ?? '',
           },
-          drillString: drillString || {},
+          drillString: {
+            components: (drillStringComponents as any[] || []).map((c: any) => ({
+              pieceName: c.pieceName || '',
+              length: c.length ?? undefined,
+            })),
+          },
           crew: {
             shifts:
               crewShifts.length > 0

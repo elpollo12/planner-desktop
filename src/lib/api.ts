@@ -17,7 +17,7 @@ import type {
   Report,
   CreateReportInput,
   ReportFilters,
-  DrillString,
+  DrillStringComponent,
   CrewShift,
   BitRecord,
   OperationCode,
@@ -154,11 +154,14 @@ export const reportsApi = {
 // ============================================================================
 
 export const drillStringApi = {
-  save: (sessionToken: string, reportId: string, data: Partial<DrillString>) =>
-    invoke<DrillString>('save_drill_string', { sessionToken, reportId, data }),
+  create: (sessionToken: string, reportId: string, data: { pieceName: string; length?: number }) =>
+    invoke<DrillStringComponent>('create_drill_string_component', { sessionToken, reportId, data }),
 
-  get: (sessionToken: string, reportId: string) =>
-    invoke<DrillString>('get_drill_string', { sessionToken, reportId }),
+  list: (sessionToken: string, reportId: string) =>
+    invoke<DrillStringComponent[]>('list_drill_string_components', { sessionToken, reportId }),
+
+  deleteAll: (sessionToken: string, reportId: string) =>
+    invoke<void>('delete_all_drill_string_components', { sessionToken, reportId }),
 };
 
 // ============================================================================

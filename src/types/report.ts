@@ -33,18 +33,15 @@ export interface Report {
   synced: boolean;
 }
 
-// Datos de la Sarta
-export interface DrillString {
+// Componente de la Sarta de Perforación
+export interface DrillStringComponent {
   id: string;
   reportId: string;
-  size?: string;
-  weight?: string;
-  grade?: string;
-  connectionType?: string;
-  stringNumber?: string;
-  pumpBrand?: string;
-  pumpType?: string;
-  headerLength?: string;
+  entryNumber: number;
+  pieceName: string;
+  length?: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // Turno de cuadrilla
@@ -195,7 +192,7 @@ export interface OperationsLog {
 
 // Reporte completo con todas las relaciones
 export interface FullReport extends Report {
-  drillString?: DrillString;
+  drillStringComponents: DrillStringComponent[];
   crewShifts: CrewShift[];
   timeDistribution: TimeDistribution[];
   bitRecords: BitRecord[];

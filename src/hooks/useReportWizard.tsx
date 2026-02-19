@@ -130,8 +130,8 @@ export function useReportWizard({
           return opsCount > 0 ? `${opsCount} observaciones` : 'Sin datos';
         }
         case 'drillString': {
-          const hasData = formData.drillString && Object.keys(formData.drillString).length > 0;
-          return hasData ? 'Configurado' : 'Sin datos';
+          const compCount = formData.drillString?.components?.length || 0;
+          return compCount > 0 ? `${compCount} piezas` : 'Sin datos';
         }
         default:
           return 'Sin datos';

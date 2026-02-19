@@ -47,8 +47,9 @@ export function useReportSave({
       switch (sectionId) {
         case 'drillString':
           return !!(
-            formData.drillString &&
-            Object.values(formData.drillString).some((v) => typeof v === 'string' && v.trim() !== '')
+            formData.drillString?.components &&
+            formData.drillString.components.length > 0 &&
+            formData.drillString.components.some((c) => c.pieceName && c.pieceName.trim() !== '')
           );
 
         case 'crew':
@@ -96,14 +97,35 @@ export function useReportSave({
   // INDIVIDUAL SECTION SAVERS
   // ==========================================================================
 
+  /**
+   * Save Drill String section
+   * Strategy: DELETE ALL + INSERT ALL (parallel) to avoid duplicates
+   */
   const saveDrillString = async (reportId: string) => {
-    if (!sessionToken || !formData.drillString) return;
-    // Skip save if all fields are empty
-    const hasValue = Object.values(formData.drillString).some(
-      (v) => typeof v === 'string' && v.trim() !== '',
+    if (!sessionToken) return;
+
+    if (reportId) {
+      try {
+        await drillStringApi.deleteAll(sessionToken, reportId);
+      } catch (error) {
+        console.warn('Could not delete existing drill string components:', error);
+      }
+    }
+
+    const validComponents = (formData.drillString?.components || []).filter(
+      (c) => c.pieceName && c.pieceName.trim() !== '',
     );
-    if (!hasValue) return;
-    await drillStringApi.save(sessionToken, reportId, formData.drillString);
+
+    if (validComponents.length > 0) {
+      await Promise.all(
+        validComponents.map((comp) =>
+          drillStringApi.create(sessionToken, reportId, {
+            pieceName: comp.pieceName,
+            length: comp.length,
+          }),
+        ),
+      );
+    }
   };
 
   /**

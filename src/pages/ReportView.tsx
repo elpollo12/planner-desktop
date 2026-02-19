@@ -16,15 +16,17 @@ import {
   operationsLogApi,
   usersApi,
 } from '../lib/api';
-import { exportReportToPDF } from '../lib/pdfExport';
-import { exportSingleReportToExcel } from '../lib/excelExport';
+import { saveDDRReport } from '../lib/reportExport';
+import type { ReportBranding } from '../lib/logisticsExport';
+import { useAppSettingsStore } from '../store/appSettingsStore';
+import { DEFAULT_APP_SETTINGS } from '../types/appSettings';
 import { toast } from '../lib/toast';
 import { formatDateDMY } from '../lib/dateUtils';
 import type {
   Report,
   CrewShift,
   BitRecord,
-  DrillString,
+  DrillStringComponent,
   TimeDistribution,
   MudRecord,
   MudAdditive,
@@ -34,6 +36,12 @@ import type {
 } from '../types/report';
 import { SHIFT_LABELS } from '../types/report';
 
+// ── Shift sort helper ──────────────────────────────────────────────────────
+const SHIFT_ORDER: Record<string, number> = { morning: 0, afternoon: 1, night: 2 };
+function sortByShift<T extends { shift?: string }>(items: T[]): T[] {
+  return [...items].sort((a, b) => (SHIFT_ORDER[a.shift ?? ''] ?? 99) - (SHIFT_ORDER[b.shift ?? ''] ?? 99));
+}
+
 export default function ReportView() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -42,7 +50,7 @@ export default function ReportView() {
   const [report, setReport] = useState<Report | null>(null);
   const [crewShifts, setCrewShifts] = useState<CrewShift[]>([]);
   const [bitRecords, setBitRecords] = useState<BitRecord[]>([]);
-  const [drillString, setDrillString] = useState<DrillString | null>(null);
+  const [drillStringComponents, setDrillStringComponents] = useState<DrillStringComponent[]>([]);
   const [timeDistributions, setTimeDistributions] = useState<TimeDistribution[]>([]);
   const [mudRecords, setMudRecords] = useState<MudRecord[]>([]);
   const [mudAdditives, setMudAdditives] = useState<MudAdditive[]>([]);
@@ -67,7 +75,7 @@ export default function ReportView() {
       const results = await Promise.all([
         crewApi.listShifts(sessionToken, id).catch(() => []),
         bitRecordsApi.list(sessionToken, id).catch(() => []),
-        drillStringApi.get(sessionToken, id).catch(() => null),
+        drillStringApi.list(sessionToken, id).catch(() => []),
         timeDistributionApi.list(sessionToken, id).catch(() => []),
         mudApi.listRecords(sessionToken, id).catch(() => []),
         mudApi.listAdditives(sessionToken, id).catch(() => []),
@@ -76,15 +84,15 @@ export default function ReportView() {
         operationsLogApi.list(sessionToken, id).catch(() => []),
       ]);
 
-      setCrewShifts(results[0] as CrewShift[]);
+      setCrewShifts(sortByShift(results[0] as CrewShift[]));
       setBitRecords(results[1] as BitRecord[]);
-      setDrillString(results[2] as DrillString | null);
+      setDrillStringComponents(results[2] as DrillStringComponent[]);
       setTimeDistributions(results[3] as TimeDistribution[]);
-      setMudRecords(results[4] as MudRecord[]);
-      setMudAdditives(results[5] as MudAdditive[]);
-      setDrillingParams(results[6] as DrillingParameters[]);
+      setMudRecords(sortByShift(results[4] as MudRecord[]));
+      setMudAdditives(sortByShift(results[5] as MudAdditive[]));
+      setDrillingParams(sortByShift(results[6] as DrillingParameters[]));
       setDeviationHistory(results[7] as DeviationHistory[]);
-      setOperationsLog(results[8] as OperationsLog[]);
+      setOperationsLog(sortByShift(results[8] as OperationsLog[]));
 
       // Resolve creator name
       if (reportData.createdBy) {
@@ -141,28 +149,31 @@ export default function ReportView() {
     return user.role === 'supervisor' || user.role === 'admin';
   };
 
-  const handleExportPDF = async () => {
-    if (!report) { toast.warning('No hay información del reporte para exportar'); return; }
-    try {
-      toast.info('Generando PDF...', { autoClose: 1000 });
-      await exportReportToPDF({ report, crewShifts, bitRecords, timeDistributions, mudRecords, drillingParams, deviationHistory, operationsLog });
-      setTimeout(() => toast.success('PDF generado exitosamente'), 1000);
-    } catch (error) {
-      console.error('Error exporting PDF:', error);
-      toast.error(`Error al exportar PDF: ${error instanceof Error ? error.message : 'Error desconocido'}`);
-    }
-  };
+  const appSettings = useAppSettingsStore((s) => s.settings);
 
-  const handleExportExcel = () => {
+  const getBranding = (): ReportBranding => ({
+    logoBase64: appSettings?.logoPath ?? null,
+    primaryColor: appSettings?.primaryColor ?? DEFAULT_APP_SETTINGS.primaryColor,
+    rigName: report?.rigNumber ?? '',
+    userName: user?.fullName ?? '',
+  });
+
+  const handleExport = async (format: 'pdf' | 'excel' | 'both') => {
     if (!report) { toast.warning('No hay información del reporte para exportar'); return; }
     try {
-      toast.info('Generando Excel...', { autoClose: 1000 });
-      const filename = `DDR_${report.reportNumber}_${report.reportDate}.xlsx`;
-      exportSingleReportToExcel({ report, crewShifts, bitRecords, timeDistributions, mudRecords }, filename);
-      setTimeout(() => toast.success('Excel generado exitosamente'), 1000);
+      const result = await saveDDRReport(
+        {
+          data: { report, crewShifts, bitRecords, timeDistributions, mudRecords, mudAdditives, drillingParams, deviationHistory, operationsLog, drillStringComponents },
+          branding: getBranding(),
+        },
+        format,
+      );
+      if (result.saved) {
+        toast.success(`${format === 'both' ? 'Reportes guardados' : format === 'pdf' ? 'PDF guardado' : 'Excel guardado'} exitosamente`);
+      }
     } catch (error) {
-      console.error('Error exporting Excel:', error);
-      toast.error(`Error al exportar Excel: ${error instanceof Error ? error.message : 'Error desconocido'}`);
+      console.error('Error exporting report:', error);
+      toast.error(`Error al exportar: ${error instanceof Error ? error.message : 'Error desconocido'}`);
     }
   };
 
@@ -218,10 +229,10 @@ export default function ReportView() {
           <Button variant="outline" onClick={() => navigate('/reports')} icon={<ArrowLeft size={16} />}>
             Volver
           </Button>
-          <Button variant="outline" onClick={handleExportPDF} icon={<FileDown size={16} />}>
+          <Button variant="outline" onClick={() => handleExport('pdf')} icon={<FileDown size={16} />}>
             PDF
           </Button>
-          <Button variant="outline" onClick={handleExportExcel} icon={<FileSpreadsheet size={16} />}>
+          <Button variant="outline" onClick={() => handleExport('excel')} icon={<FileSpreadsheet size={16} />}>
             Excel
           </Button>
           {canEdit() && (
@@ -542,21 +553,40 @@ export default function ReportView() {
         )}
 
         {/* ================================================================
-            DRILL STRING
+            DRILL STRING COMPONENTS
             ================================================================ */}
-        {drillString && (
+        {drillStringComponents.length > 0 && (
           <Card>
             <div className="p-6">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Sarta de Perforación</h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                <DataField label="Tamaño" value={drillString.size} />
-                <DataField label="Peso" value={drillString.weight} />
-                <DataField label="Grado" value={drillString.grade} />
-                <DataField label="Conexión" value={drillString.connectionType} />
-                <DataField label="# Sarta" value={drillString.stringNumber} />
-                <DataField label="Marca Bomba" value={drillString.pumpBrand} />
-                <DataField label="Tipo Bomba" value={drillString.pumpType} />
-                <DataField label="Longitud Encab." value={drillString.headerLength} />
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 border border-gray-200 dark:border-gray-700 rounded">
+                  <thead className="bg-gray-50 dark:bg-gray-800">
+                    <tr>
+                      <TH align="left">N°</TH>
+                      <TH align="left">Pieza</TH>
+                      <TH>Longitud (ft)</TH>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                    {drillStringComponents.map((comp) => (
+                      <tr key={comp.id}>
+                        <TD align="left">{comp.entryNumber}</TD>
+                        <TD align="left">{comp.pieceName}</TD>
+                        <TD>{comp.length != null ? comp.length : '-'}</TD>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot className="bg-gray-50 dark:bg-gray-800">
+                    <tr>
+                      <TD align="left" className="font-semibold">Total</TD>
+                      <TD align="left" className="font-semibold">{drillStringComponents.length} piezas</TD>
+                      <TD className="font-semibold">
+                        {drillStringComponents.reduce((sum, c) => sum + (c.length || 0), 0).toFixed(2)} ft
+                      </TD>
+                    </tr>
+                  </tfoot>
+                </table>
               </div>
             </div>
           </Card>

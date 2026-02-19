@@ -103,5 +103,7 @@ export const DEFAULT_REPORT_VALUES: Partial<CompleteReportData> = {
   observations: {
     operations: [],
   },
-  drillString: {},
+  drillString: {
+    components: [],
+  },
 };

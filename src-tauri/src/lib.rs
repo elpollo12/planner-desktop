@@ -71,8 +71,9 @@ pub fn run() {
             commands::reports::reject_report,
 
             // Drill string commands
-            commands::drill_string::save_drill_string,
-            commands::drill_string::get_drill_string,
+            commands::drill_string::create_drill_string_component,
+            commands::drill_string::list_drill_string_components,
+            commands::drill_string::delete_all_drill_string_components,
 
             // Crew commands
             commands::crew::create_crew_shift,

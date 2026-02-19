@@ -4,7 +4,7 @@ use crate::error::AppError;
 use crate::models::bit_record::BitRecord;
 use crate::models::crew::CrewShift;
 use crate::models::deviation::DeviationRecord;
-use crate::models::drill_string::DrillString;
+use crate::models::drill_string::DrillStringComponent;
 use crate::models::drilling_params::DrillingParameter;
 use crate::models::mud::{MudAdditive, MudRecord};
 use crate::models::operations_log::OperationLog;
@@ -225,9 +225,7 @@ impl LastReportSnapshot {
     }
 
     fn serialize_drill_string(conn: &Connection, report_id: &str) -> Option<String> {
-        match DrillString::get_by_report_id(conn, report_id) {
-            Ok(ds) => serde_json::to_string(&ds).ok(),
-            Err(_) => None,
-        }
+        let components = DrillStringComponent::list_by_report(conn, report_id).unwrap_or_default();
+        Self::serialize_list(&components)
     }
 }

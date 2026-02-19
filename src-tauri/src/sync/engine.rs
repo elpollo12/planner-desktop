@@ -108,10 +108,9 @@ const SYNC_TABLES: &[TableDef] = &[
         parent_col: None,
     },
     TableDef {
-        name: "drill_string",
+        name: "drill_string_components",
         columns: &[
-            "id", "report_id", "size", "weight", "grade", "connection_type",
-            "string_number", "pump_brand", "pump_type", "header_length",
+            "id", "report_id", "entry_number", "piece_name", "length",
             "created_at", "updated_at",
         ],
         id_col: "id",
@@ -279,6 +278,24 @@ const SYNC_TABLES: &[TableDef] = &[
             "id", "rig_id", "request_type", "quantity", "action_requested",
             "material_id", "status", "notes", "requested_by", "status_changed_by",
             "requested_at", "status_changed_at", "created_at", "updated_at", "is_deleted",
+        ],
+        id_col: "id",
+        has_updated_at: true,
+        parent_col: None,
+    },
+    // =========================================================================
+    // SNAPSHOTS
+    // =========================================================================
+    TableDef {
+        name: "last_report_snapshot",
+        columns: &[
+            "id", "rig_id", "report_number", "well_number", "api_number",
+            "contract", "contractor", "operator", "field_district", "municipality",
+            "rig_number", "company", "supervisor_24h",
+            "crew_data", "time_distribution_data", "bit_records_data",
+            "mud_records_data", "mud_additives_data", "drilling_params_data",
+            "deviation_data", "operations_log_data", "drill_string_data",
+            "source_report_id", "updated_by", "updated_at",
         ],
         id_col: "id",
         has_updated_at: true,
@@ -570,17 +587,12 @@ CREATE TABLE IF NOT EXISTS reports (
   is_deleted INTEGER DEFAULT 0
 );
 
-CREATE TABLE IF NOT EXISTS drill_string (
+CREATE TABLE IF NOT EXISTS drill_string_components (
   id TEXT PRIMARY KEY,
   report_id TEXT,
-  size TEXT,
-  weight TEXT,
-  grade TEXT,
-  connection_type TEXT,
-  string_number TEXT,
-  pump_brand TEXT,
-  pump_type TEXT,
-  header_length TEXT,
+  entry_number INTEGER NOT NULL DEFAULT 0,
+  piece_name TEXT,
+  length REAL,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
@@ -778,6 +790,35 @@ CREATE TABLE IF NOT EXISTS logistics_materials_movements (
   is_deleted INTEGER DEFAULT 0
 );
 
+CREATE TABLE IF NOT EXISTS last_report_snapshot (
+  id TEXT PRIMARY KEY,
+  rig_id TEXT NOT NULL,
+  report_number INTEGER NOT NULL,
+  well_number TEXT,
+  api_number TEXT,
+  contract TEXT,
+  contractor TEXT,
+  operator TEXT,
+  field_district TEXT,
+  municipality TEXT,
+  rig_number TEXT,
+  company TEXT,
+  supervisor_24h TEXT,
+  crew_data TEXT,
+  time_distribution_data TEXT,
+  bit_records_data TEXT,
+  mud_records_data TEXT,
+  mud_additives_data TEXT,
+  drilling_params_data TEXT,
+  deviation_data TEXT,
+  operations_log_data TEXT,
+  drill_string_data TEXT,
+  source_report_id TEXT,
+  updated_by TEXT,
+  updated_at TEXT NOT NULL,
+  UNIQUE(rig_id)
+);
+
 CREATE TABLE IF NOT EXISTS logistics_requests (
   id TEXT PRIMARY KEY,
   rig_id TEXT,
@@ -845,6 +886,10 @@ const REMOTE_MIGRATIONS: &[&str] = &[
     "ALTER TABLE logistics_requests ADD COLUMN is_deleted INTEGER DEFAULT 0",
     // V26: operation_codes.updated_at (enables incremental sync for edits)
     "ALTER TABLE operation_codes ADD COLUMN updated_at TEXT",
+    // V27: last_report_snapshot table
+    "CREATE TABLE IF NOT EXISTS last_report_snapshot (id TEXT PRIMARY KEY, rig_id TEXT NOT NULL, report_number INTEGER NOT NULL, well_number TEXT, api_number TEXT, contract TEXT, contractor TEXT, operator TEXT, field_district TEXT, municipality TEXT, rig_number TEXT, company TEXT, supervisor_24h TEXT, crew_data TEXT, time_distribution_data TEXT, bit_records_data TEXT, mud_records_data TEXT, mud_additives_data TEXT, drilling_params_data TEXT, deviation_data TEXT, operations_log_data TEXT, drill_string_data TEXT, source_report_id TEXT, updated_by TEXT, updated_at TEXT NOT NULL, UNIQUE(rig_id))",
+    // V28: drill_string_components replaces drill_string
+    "CREATE TABLE IF NOT EXISTS drill_string_components (id TEXT PRIMARY KEY, report_id TEXT, entry_number INTEGER NOT NULL DEFAULT 0, piece_name TEXT, length REAL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)",
 ];
 
 /// Initialize the remote Turso database with the same schema
@@ -1087,6 +1132,18 @@ pub fn write_pulled_data(
                     let _ = conn.execute(
                         "DELETE FROM user_rigs WHERE user_id = ?1 AND rig_id = ?2 AND id != ?3",
                         rusqlite::params![params.get(1), params.get(2), params.get(0)],
+                    );
+                }
+            }
+
+            // Special handling for last_report_snapshot due to UNIQUE(rig_id) constraint
+            if table_def.name == "last_report_snapshot" {
+                // Delete existing snapshot with same rig_id but different id
+                // rig_id is at index 1
+                if params.len() >= 2 {
+                    let _ = conn.execute(
+                        "DELETE FROM last_report_snapshot WHERE rig_id = ?1 AND id != ?2",
+                        rusqlite::params![params.get(1), params.get(0)],
                     );
                 }
             }
@@ -1357,6 +1414,17 @@ async fn push_rows_to_turso(
                     batch.push((delete_sql, delete_params));
                 }
                 // Add UPSERT statement
+                batch.push((upsert_sql.clone(), row.clone()));
+            }
+        } else if table_def.name == "last_report_snapshot" {
+            for row in chunk {
+                // Delete existing snapshot with same rig_id but different id
+                // rig_id is at index 1
+                if row.len() >= 2 {
+                    let delete_sql = "DELETE FROM last_report_snapshot WHERE rig_id = ?1 AND id != ?2".to_string();
+                    let delete_params = vec![row[1].clone(), row[0].clone()];
+                    batch.push((delete_sql, delete_params));
+                }
                 batch.push((upsert_sql.clone(), row.clone()));
             }
         } else {

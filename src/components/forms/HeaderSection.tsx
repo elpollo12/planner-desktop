@@ -252,7 +252,7 @@ export function HeaderSection({ isEditMode = false }: HeaderSectionProps) {
           />
         ) : (
           <Input
-            label="TAL N°"
+            label="Taladro"
             value={control._formValues?.header?.rigNumber || ''}
             disabled
           />

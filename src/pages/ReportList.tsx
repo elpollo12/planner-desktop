@@ -194,7 +194,7 @@ export default function ReportList() {
 
 
 
-  // NUEVO: Renderizar controles de paginación
+  // Renderizar controles de paginación
   const renderPagination = () => {
     if (totalPages <= 1) return null;
 
@@ -421,19 +421,16 @@ export default function ReportList() {
                   <thead className="bg-gray-50 dark:bg-gray-800">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        # Reporte
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        Fecha
+                        Taladro
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                         Pozo
                       </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Taladro
-                    </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                         Estado
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        Fecha Creación
                       </th>
                       <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                         Acciones
@@ -442,38 +439,36 @@ export default function ReportList() {
                   </thead>
                   <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                     {reports.map((report) => (
-                      <tr key={report.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                      <tr key={report.id} className=" dark:hover:bg-gray-700">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                            #{report.reportNumber}
+                            {report.rigNumber || '-'}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                            {report.wellNumber || '-'}
+                          </div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400">
+                            Reporte #{report.reportNumber}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <ReportStatusBadge status={report.status} />
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-900 dark:text-gray-100">
-                            {formatDateDMY(report.reportDate)}
+                            {formatDateDMY(report.createdAt?.split('T')[0])}
                           </div>
                           <div className="text-xs text-gray-500 dark:text-gray-400">
                             {formatTimeHM(report.createdAt)}
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="text-sm text-gray-900 dark:text-gray-100">
-                            {report.wellNumber || '-'}
-                          </span>
-                        </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm text-gray-900 dark:text-gray-100">
-                          {report.rigNumber || '-'}
-                        </span>
-                      </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <ReportStatusBadge status={report.status} />
-                        </td>
                         <td className="px-6 py-4 whitespace-nowrap text-center">
                           <div className="flex items-center justify-center gap-2">
                             <button
                               onClick={() => navigate(`/reports/view/${report.id}`)}
-                              className="p-1 text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
+                              className="p-1 text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 cursor-pointer"
                               title="Ver detalle"
                             >
                               <Eye size={18} />
@@ -481,7 +476,7 @@ export default function ReportList() {
                             {(report.status === 'draft' || user?.role === 'supervisor' || user?.role === 'admin') && (
                               <button
                                 onClick={() => navigate(`/reports/edit/${report.id}`)}
-                                className="p-1 text-yellow-600 hover:text-yellow-900 dark:text-yellow-400 dark:hover:text-yellow-300"
+                                className="p-1 text-yellow-600 hover:text-yellow-900 dark:text-yellow-400 dark:hover:text-yellow-300 cursor-pointer"
                                 title="Editar"
                               >
                                 <Edit size={18} />
@@ -490,7 +485,7 @@ export default function ReportList() {
                             {(user?.role === 'supervisor' || user?.role === 'admin') && (
                               <button
                                 onClick={() => handleDelete(report)}
-                                className="p-1 text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                                className="p-1 text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 cursor-pointer"
                                 title="Eliminar"
                               >
                                 <Trash2 size={18} />

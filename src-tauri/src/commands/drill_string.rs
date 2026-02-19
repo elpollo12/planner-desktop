@@ -1,17 +1,16 @@
 use crate::auth::get_session;
-use crate::models::drill_string::{DrillString, DrillStringData};
+use crate::models::drill_string::{CreateDrillStringComponentRequest, DrillStringComponent};
 use crate::models::report::Report;
 use crate::state::AppState;
 use tauri::State;
 
 #[tauri::command]
-pub async fn save_drill_string(
+pub async fn create_drill_string_component(
     session_token: String,
     report_id: String,
-    data: DrillStringData,
+    data: CreateDrillStringComponentRequest,
     state: State<'_, AppState>,
-) -> Result<DrillString, String> {
-    // Verify session
+) -> Result<DrillStringComponent, String> {
     get_session(&session_token, &state).map_err(|e| e.to_string())?;
 
     let conn = state
@@ -19,20 +18,20 @@ pub async fn save_drill_string(
         .lock()
         .map_err(|e| format!("Failed to lock database: {}", e))?;
 
-    let drill_string = DrillString::save(&conn, &report_id, &data).map_err(|e| e.to_string())?;
+    let component =
+        DrillStringComponent::create(&conn, &report_id, &data).map_err(|e| e.to_string())?;
 
     Report::touch_updated_at(&conn, &report_id).map_err(|e| e.to_string())?;
 
-    Ok(drill_string)
+    Ok(component)
 }
 
 #[tauri::command]
-pub async fn get_drill_string(
+pub async fn list_drill_string_components(
     session_token: String,
     report_id: String,
     state: State<'_, AppState>,
-) -> Result<DrillString, String> {
-    // Verify session
+) -> Result<Vec<DrillStringComponent>, String> {
     get_session(&session_token, &state).map_err(|e| e.to_string())?;
 
     let conn = state
@@ -40,7 +39,28 @@ pub async fn get_drill_string(
         .lock()
         .map_err(|e| format!("Failed to lock database: {}", e))?;
 
-    let drill_string = DrillString::get_by_report_id(&conn, &report_id).map_err(|e| e.to_string())?;
+    let components =
+        DrillStringComponent::list_by_report(&conn, &report_id).map_err(|e| e.to_string())?;
 
-    Ok(drill_string)
+    Ok(components)
+}
+
+#[tauri::command]
+pub async fn delete_all_drill_string_components(
+    session_token: String,
+    report_id: String,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    get_session(&session_token, &state).map_err(|e| e.to_string())?;
+
+    let conn = state
+        .db
+        .lock()
+        .map_err(|e| format!("Failed to lock database: {}", e))?;
+
+    DrillStringComponent::delete_all_by_report(&conn, &report_id).map_err(|e| e.to_string())?;
+
+    Report::touch_updated_at(&conn, &report_id).map_err(|e| e.to_string())?;
+
+    Ok(())
 }

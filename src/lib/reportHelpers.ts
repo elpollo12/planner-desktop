@@ -60,7 +60,7 @@ export function transformReportToForm(
     mudRecords: { records: [], additives: [] },
     lithology: { drillingParameters: [], deviationHistory: [] },
     observations: { operations: [] },
-    drillString: {},
+    drillString: { components: [] },
   };
 }
 
@@ -165,7 +165,13 @@ export function buildFormFromSnapshot(snapshot: LastReportSnapshot): Partial<Com
   const observations = {
     operations: safeParse<any[]>(snapshot.operationsLogData, []),
   };
-  const drillString = safeParse<any>(snapshot.drillStringData, {});
+  const rawDrillString = safeParse<any[]>(snapshot.drillStringData, []);
+  const drillString = {
+    components: rawDrillString.map((c: any) => ({
+      pieceName: c.pieceName || '',
+      length: typeof c.length === 'number' ? c.length : undefined,
+    })),
+  };
 
   return {
     header: {
