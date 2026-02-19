@@ -1,35 +1,36 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { MainLayout } from '../components/layout';
-import { Button, Card } from '../components/ui';
-import { ArrowLeft, Edit, CheckCircle, XCircle, FileDown, FileSpreadsheet } from 'lucide-react';
+import { Button, Card, ReportStatusBadge, SectionCarousel } from '../components/ui';
+import { ArrowLeft, Edit, CheckCircle, XCircle, FileDown, FileSpreadsheet, Calendar, User as UserIcon } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
-import { 
-  reportsApi, 
-  crewApi, 
-  bitRecordsApi, 
+import {
+  reportsApi,
+  crewApi,
+  bitRecordsApi,
   drillStringApi,
   timeDistributionApi,
   mudApi,
   drillingParamsApi,
   deviationApi,
-  operationsLogApi 
+  operationsLogApi,
+  usersApi,
 } from '../lib/api';
 import { exportReportToPDF } from '../lib/pdfExport';
 import { exportSingleReportToExcel } from '../lib/excelExport';
 import { toast } from '../lib/toast';
 import { formatDateDMY } from '../lib/dateUtils';
-import type { 
-  Report, 
-  CrewShift, 
-  BitRecord, 
+import type {
+  Report,
+  CrewShift,
+  BitRecord,
   DrillString,
   TimeDistribution,
   MudRecord,
   MudAdditive,
   DrillingParameters,
   DeviationHistory,
-  OperationsLog 
+  OperationsLog,
 } from '../types/report';
 import { SHIFT_LABELS } from '../types/report';
 
@@ -37,7 +38,7 @@ export default function ReportView() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { sessionToken, user } = useAuthStore();
-  
+
   const [report, setReport] = useState<Report | null>(null);
   const [crewShifts, setCrewShifts] = useState<CrewShift[]>([]);
   const [bitRecords, setBitRecords] = useState<BitRecord[]>([]);
@@ -48,6 +49,7 @@ export default function ReportView() {
   const [drillingParams, setDrillingParams] = useState<DrillingParameters[]>([]);
   const [deviationHistory, setDeviationHistory] = useState<DeviationHistory[]>([]);
   const [operationsLog, setOperationsLog] = useState<OperationsLog[]>([]);
+  const [creatorName, setCreatorName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -62,7 +64,6 @@ export default function ReportView() {
       const reportData = await reportsApi.get(sessionToken, id);
       setReport(reportData);
 
-      // Load all related entities in parallel
       const results = await Promise.all([
         crewApi.listShifts(sessionToken, id).catch(() => []),
         bitRecordsApi.list(sessionToken, id).catch(() => []),
@@ -84,6 +85,13 @@ export default function ReportView() {
       setDrillingParams(results[6] as DrillingParameters[]);
       setDeviationHistory(results[7] as DeviationHistory[]);
       setOperationsLog(results[8] as OperationsLog[]);
+
+      // Resolve creator name
+      if (reportData.createdBy) {
+        usersApi.get(sessionToken, reportData.createdBy)
+          .then((u) => setCreatorName(u.fullName || u.username))
+          .catch(() => setCreatorName(null));
+      }
     } catch (error) {
       console.error('Error loading report:', error);
       toast.error('Error al cargar el reporte');
@@ -92,9 +100,10 @@ export default function ReportView() {
     }
   };
 
+  // ── Actions ──────────────────────────────────────────────────────────────
+
   const handleApprove = async () => {
     if (!sessionToken || !id) return;
-
     try {
       await reportsApi.approve(sessionToken, id);
       toast.success('Reporte aprobado exitosamente');
@@ -107,10 +116,8 @@ export default function ReportView() {
 
   const handleReject = async () => {
     if (!sessionToken || !id) return;
-
     const reason = window.prompt('Motivo del rechazo:');
     if (!reason) return;
-
     try {
       await reportsApi.reject(sessionToken, id, reason);
       toast.success('Reporte rechazado');
@@ -135,67 +142,53 @@ export default function ReportView() {
   };
 
   const handleExportPDF = async () => {
-    if (!report) {
-      toast.warning('No hay información del reporte para exportar');
-      return;
-    }
-
+    if (!report) { toast.warning('No hay información del reporte para exportar'); return; }
     try {
       toast.info('Generando PDF...', { autoClose: 1000 });
-      
-      await exportReportToPDF({
-        report,
-        crewShifts,
-        bitRecords,
-        timeDistributions,
-        mudRecords,
-        drillingParams,
-        deviationHistory,
-        operationsLog,
-      });
-      setTimeout(() => {
-        toast.success('PDF generado exitosamente');
-      }, 1000);
+      await exportReportToPDF({ report, crewShifts, bitRecords, timeDistributions, mudRecords, drillingParams, deviationHistory, operationsLog });
+      setTimeout(() => toast.success('PDF generado exitosamente'), 1000);
     } catch (error) {
       console.error('Error exporting PDF:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
-      toast.error(`Error al exportar PDF: ${errorMessage}`);
+      toast.error(`Error al exportar PDF: ${error instanceof Error ? error.message : 'Error desconocido'}`);
     }
   };
 
   const handleExportExcel = () => {
-    if (!report) {
-      toast.warning('No hay información del reporte para exportar');
-      return;
-    }
-
+    if (!report) { toast.warning('No hay información del reporte para exportar'); return; }
     try {
       toast.info('Generando Excel...', { autoClose: 1000 });
-      
       const filename = `DDR_${report.reportNumber}_${report.reportDate}.xlsx`;
-      exportSingleReportToExcel({
-        report,
-        crewShifts,
-        bitRecords,
-        timeDistributions,
-        mudRecords,
-      }, filename);
-      
-      setTimeout(() => {
-        toast.success('Excel generado exitosamente');
-      }, 1000);
+      exportSingleReportToExcel({ report, crewShifts, bitRecords, timeDistributions, mudRecords }, filename);
+      setTimeout(() => toast.success('Excel generado exitosamente'), 1000);
     } catch (error) {
       console.error('Error exporting Excel:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
-      toast.error(`Error al exportar Excel: ${errorMessage}`);
+      toast.error(`Error al exportar Excel: ${error instanceof Error ? error.message : 'Error desconocido'}`);
     }
   };
+
+  // ── Helpers for date display ─────────────────────────────────────────────
+
+  const formatDateTime = (isoStr: string | null | undefined): string => {
+    if (!isoStr) return '-';
+    try {
+      const d = new Date(isoStr);
+      if (isNaN(d.getTime())) return '-';
+      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const year = d.getFullYear();
+      const hours = String(d.getHours()).padStart(2, '0');
+      const mins = String(d.getMinutes()).padStart(2, '0');
+      return `${day}/${month}/${year} ${hours}:${mins}`;
+    } catch { return '-'; }
+  };
+
+  // ── Loading / Not found ──────────────────────────────────────────────────
 
   if (loading) {
     return (
       <MainLayout title="Cargando...">
         <div className="flex items-center justify-center h-64">
-          <p className="text-gray-500">Cargando reporte...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500" />
         </div>
       </MainLayout>
     );
@@ -207,71 +200,41 @@ export default function ReportView() {
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <p className="text-gray-500 mb-4">Reporte no encontrado</p>
-            <Button onClick={() => navigate('/reports')}>
-              Volver a Reportes
-            </Button>
+            <Button onClick={() => navigate('/reports')}>Volver a Reportes</Button>
           </div>
         </div>
       </MainLayout>
     );
   }
 
+  // ── Render ───────────────────────────────────────────────────────────────
+
   return (
     <MainLayout
       title={`Reporte DDR #${report.reportNumber}`}
-      subtitle={`Fecha: ${formatDateDMY(report.reportDate)}`}
+      subtitle={`${report.wellNumber || 'Sin pozo'} · ${report.rigNumber || 'Sin taladro'}`}
       headerActions={
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={() => navigate('/reports')}
-            icon={<ArrowLeft size={16} />}
-          >
+        <div className="flex gap-2 flex-wrap">
+          <Button variant="outline" onClick={() => navigate('/reports')} icon={<ArrowLeft size={16} />}>
             Volver
           </Button>
-
-          <Button
-            variant="outline"
-            onClick={handleExportPDF}
-            icon={<FileDown size={16} />}
-          >
+          <Button variant="outline" onClick={handleExportPDF} icon={<FileDown size={16} />}>
             PDF
           </Button>
-
-          <Button
-            variant="outline"
-            onClick={handleExportExcel}
-            icon={<FileSpreadsheet size={16} />}
-          >
+          <Button variant="outline" onClick={handleExportExcel} icon={<FileSpreadsheet size={16} />}>
             Excel
           </Button>
-
           {canEdit() && (
-            <Button
-              variant="primary"
-              onClick={() => navigate(`/reports/edit/${id}`)}
-              icon={<Edit size={16} />}
-            >
+            <Button variant="primary" onClick={() => navigate(`/reports/edit/${id}`)} icon={<Edit size={16} />}>
               Editar
             </Button>
           )}
-
           {canApprove() && (
             <>
-              <Button
-                variant="primary"
-                onClick={handleApprove}
-                icon={<CheckCircle size={16} />}
-                className="bg-green-600 hover:bg-green-700"
-              >
+              <Button variant="primary" onClick={handleApprove} icon={<CheckCircle size={16} />} className="bg-green-600 hover:bg-green-700">
                 Aprobar
               </Button>
-              <Button
-                variant="outline"
-                onClick={handleReject}
-                icon={<XCircle size={16} />}
-                className="text-red-600 hover:bg-red-50"
-              >
+              <Button variant="outline" onClick={handleReject} icon={<XCircle size={16} />} className="text-red-600 hover:bg-red-50">
                 Rechazar
               </Button>
             </>
@@ -279,115 +242,93 @@ export default function ReportView() {
         </div>
       }
     >
-      <div className="space-y-6">
-        {/* Status Badge */}
-        <div>
-          {report.status === 'draft' && (
-            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-700">
-              Borrador
-            </span>
-          )}
-          {report.status === 'submitted' && (
-            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-700">
-              Enviado
-            </span>
-          )}
-          {report.status === 'approved' && (
-            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-700">
-              Aprobado
-            </span>
-          )}
-          {report.status === 'rejected' && (
-            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-700">
-              Rechazado
-            </span>
-          )}
+      <div className="space-y-6 max-w-7xl mx-auto">
+
+        {/* ================================================================
+            REPORT HERO — Title, metadata & status
+            ================================================================ */}
+        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+          {/* Left: primary identification */}
+          <div className="space-y-1">
+            <div className="flex items-center gap-3 flex-wrap">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-50">
+                {report.wellNumber || 'Sin pozo'}
+              </h2>
+              <ReportStatusBadge status={report.status} size="md" />
+            </div>
+
+            <p className="text-base text-gray-600 dark:text-gray-400">
+              Taladro <span className="font-semibold text-gray-800 dark:text-gray-200">{report.rigNumber || '-'}</span>
+              {report.fieldDistrict && (
+                <> · {report.fieldDistrict}</>
+              )}
+            </p>
+
+            <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400 pt-1">
+              <span className="inline-flex items-center gap-1.5">
+                <Calendar size={14} />
+                Fecha reporte: {formatDateDMY(report.reportDate)}
+              </span>
+              <span className="hidden sm:inline text-gray-300 dark:text-gray-600">|</span>
+              <span className="hidden sm:inline">
+                Creado: {formatDateTime(report.createdAt)}
+              </span>
+              {report.updatedAt && report.updatedAt !== report.createdAt && (
+                <>
+                  <span className="hidden sm:inline text-gray-300 dark:text-gray-600">|</span>
+                  <span className="hidden sm:inline">
+                    Editado: {formatDateTime(report.updatedAt)}
+                  </span>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Right: creator */}
+          <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 md:text-right shrink-0">
+            <UserIcon size={14} className="text-gray-400" />
+            <span>Creado por <span className="font-medium text-gray-700 dark:text-gray-300">{creatorName || report.createdBy || '-'}</span></span>
+          </div>
         </div>
 
-        {/* Header Information */}
+        {/* ================================================================
+            GENERAL DATA CARDS
+            ================================================================ */}
         <Card>
           <div className="p-6">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Datos Generales</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Número de Pozo</p>
-                <p className="text-base font-medium text-gray-900 dark:text-gray-100">{report.wellNumber || '-'}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Número API</p>
-                <p className="text-base font-medium text-gray-900 dark:text-gray-100">{report.apiNumber || '-'}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Contrato</p>
-                <p className="text-base font-medium text-gray-900 dark:text-gray-100">{report.contract || '-'}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Contratista</p>
-                <p className="text-base font-medium text-gray-900 dark:text-gray-100">{report.contractor || '-'}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Operador</p>
-                <p className="text-base font-medium text-gray-900 dark:text-gray-100">{report.operator || '-'}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Campo/Distrito</p>
-                <p className="text-base font-medium text-gray-900 dark:text-gray-100">{report.fieldDistrict || '-'}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Taladro #</p>
-                <p className="text-base font-medium text-gray-900 dark:text-gray-100">{report.rigNumber || '-'}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Supervisor 24h</p>
-                <p className="text-base font-medium text-gray-900 dark:text-gray-100">{report.supervisor24h || '-'}</p>
-              </div>
+              <DataField label="Número API" value={report.apiNumber} />
+              <DataField label="Contrato" value={report.contract} />
+              <DataField label="Contratista" value={report.contractor} />
+              <DataField label="Operador" value={report.operator} />
+              <DataField label="Supervisor 24h" value={report.supervisor24h} />
             </div>
           </div>
         </Card>
 
-        {/* Crew Shifts */}
+        {/* ================================================================
+            CREW SHIFTS — Carousel when multiple shifts
+            ================================================================ */}
         {crewShifts.length > 0 && (
           <Card>
             <div className="p-6">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Cuadrilla por Turno</h3>
-              {crewShifts.map((shift, idx) => (
-                <div key={idx} className="mb-6 last:mb-0">
-                  <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-3">
-                    {SHIFT_LABELS[shift.shift]} ({shift.shiftStart} - {shift.shiftEnd})
-                  </h4>
-                  {shift.members && shift.members.length > 0 ? (
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 border border-gray-200 dark:border-gray-700 rounded">
-                        <thead className="bg-gray-50 dark:bg-gray-800">
-                          <tr>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Posición</th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">CI</th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Nombre</th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Horas</th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                          {shift.members.map((member, mIdx) => (
-                            <tr key={mIdx}>
-                              <td className="px-4 py-2 text-sm text-gray-900 dark:text-gray-100">{member.position}</td>
-                              <td className="px-4 py-2 text-sm text-gray-900 dark:text-gray-100">{member.personnelCi || member.ci || '-'}</td>
-                              <td className="px-4 py-2 text-sm text-gray-900 dark:text-gray-100">{member.personnelName || member.name || '-'}</td>
-                              <td className="px-4 py-2 text-sm text-gray-900 dark:text-gray-100">{member.hours || '-'}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : (
-                    <p className="text-sm text-gray-500">No hay miembros registrados</p>
-                  )}
-                </div>
-              ))}
+              <SectionCarousel
+                slides={crewShifts.map((shift) => ({
+                  label: `${SHIFT_LABELS[shift.shift]} (${shift.shiftStart || '?'} - ${shift.shiftEnd || '?'})`,
+                  content: (
+                    <CrewShiftTable shift={shift} />
+                  ),
+                }))}
+              />
             </div>
           </Card>
         )}
 
-        {/* Time Distribution */}
+        {/* ================================================================
+            TIME DISTRIBUTION
+            ================================================================ */}
         {timeDistributions.length > 0 && (
           <Card>
             <div className="p-6">
@@ -396,25 +337,21 @@ export default function ReportView() {
                 <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 border border-gray-200 dark:border-gray-700 rounded">
                   <thead className="bg-gray-50 dark:bg-gray-800">
                     <tr>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Código</th>
-                      <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Mañana (hrs)</th>
-                      <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Tarde (hrs)</th>
-                      <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Noche (hrs)</th>
-                      <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Total</th>
+                      <TH align="left">Código</TH>
+                      <TH>Mañana (hrs)</TH>
+                      <TH>Tarde (hrs)</TH>
+                      <TH>Noche (hrs)</TH>
+                      <TH>Total</TH>
                     </tr>
                   </thead>
                   <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                     {timeDistributions.map((td, idx) => (
                       <tr key={idx}>
-                        <td className="px-4 py-2 text-sm text-gray-900 dark:text-gray-100">
-                          {td.operationCode?.name || td.operationCodeId}
-                        </td>
-                        <td className="px-4 py-2 text-sm text-gray-900 dark:text-gray-100 text-center">{td.hoursShift1}</td>
-                        <td className="px-4 py-2 text-sm text-gray-900 dark:text-gray-100 text-center">{td.hoursShift2}</td>
-                        <td className="px-4 py-2 text-sm text-gray-900 dark:text-gray-100 text-center">{td.hoursShift3}</td>
-                        <td className="px-4 py-2 text-sm font-medium text-gray-900 dark:text-gray-100 text-center">
-                          {td.hoursShift1 + td.hoursShift2 + td.hoursShift3}h
-                        </td>
+                        <TD align="left">{td.operationCode?.name || td.operationCodeId}</TD>
+                        <TD>{td.hoursShift1}</TD>
+                        <TD>{td.hoursShift2}</TD>
+                        <TD>{td.hoursShift3}</TD>
+                        <TD className="font-medium">{td.hoursShift1 + td.hoursShift2 + td.hoursShift3}h</TD>
                       </tr>
                     ))}
                   </tbody>
@@ -424,85 +361,53 @@ export default function ReportView() {
           </Card>
         )}
 
-        {/* Bit Records */}
+        {/* ================================================================
+            BIT RECORDS — Carousel when multiple
+            ================================================================ */}
         {bitRecords.length > 0 && (
           <Card>
             <div className="p-6">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Records de Mechas</h3>
-              <div className="space-y-4">
-                {bitRecords.map((bit, idx) => (
-                  <div key={idx} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-                    <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-3">Mecha #{idx + 1}</h4>
+              <SectionCarousel
+                slides={bitRecords.map((bit, idx) => ({
+                  label: `Mecha #${idx + 1}`,
+                  content: (
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                      <div>
-                        <p className="text-gray-600 dark:text-gray-400">Tamaño</p>
-                        <p className="text-gray-900 dark:text-gray-100">{bit.size || '-'}</p>
-                      </div>
-                      <div>
-                        <p className="text-gray-600 dark:text-gray-400">Marca</p>
-                        <p className="text-gray-900 dark:text-gray-100">{bit.brand || '-'}</p>
-                      </div>
-                      <div>
-                        <p className="text-gray-600 dark:text-gray-400">Tipo</p>
-                        <p className="text-gray-900 dark:text-gray-100">{bit.bitType || '-'}</p>
-                      </div>
-                      <div>
-                        <p className="text-gray-600 dark:text-gray-400">Serial</p>
-                        <p className="text-gray-900 dark:text-gray-100">{bit.serialNumber || '-'}</p>
-                      </div>
+                      <DataField label="Tamaño" value={bit.size} />
+                      <DataField label="Marca" value={bit.brand} />
+                      <DataField label="Tipo" value={bit.bitType} />
+                      <DataField label="Serial" value={bit.serialNumber} />
+                      <DataField label="Jets" value={bit.jets} />
+                      <DataField label="TFA" value={bit.tfa} />
+                      <DataField label="Prof. Entrada" value={bit.depthIn} />
+                      <DataField label="Prof. Salida" value={bit.depthOut} />
+                      <DataField label="Metraje" value={bit.footage} />
+                      <DataField label="Horas Total" value={bit.hoursTotal?.toString()} />
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ),
+                }))}
+              />
             </div>
           </Card>
         )}
 
-        {/* Mud Records */}
+        {/* ================================================================
+            MUD RECORDS — Carousel by shift, table per shift
+            ================================================================ */}
         {mudRecords.length > 0 && (
           <Card>
             <div className="p-6">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Propiedades del Lodo</h3>
-              <div className="space-y-4">
-                {mudRecords.map((mud, idx) => (
-                  <div key={idx} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-                    <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-3">
-                      Medición #{idx + 1} - {mud.shift ? SHIFT_LABELS[mud.shift] : ''} {mud.hour ? `(${mud.hour})` : ''}
-                    </h4>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                      {mud.weight && (
-                        <div>
-                          <p className="text-gray-600 dark:text-gray-400">Peso (ppg)</p>
-                          <p className="text-gray-900 dark:text-gray-100">{mud.weight}</p>
-                        </div>
-                      )}
-                      {mud.viscosity && (
-                        <div>
-                          <p className="text-gray-600 dark:text-gray-400">Viscosidad (seg)</p>
-                          <p className="text-gray-900 dark:text-gray-100">{mud.viscosity}</p>
-                        </div>
-                      )}
-                      {mud.pvp && (
-                        <div>
-                          <p className="text-gray-600 dark:text-gray-400">PVP (cps)</p>
-                          <p className="text-gray-900 dark:text-gray-100">{mud.pvp}</p>
-                        </div>
-                      )}
-                      {mud.ph && (
-                        <div>
-                          <p className="text-gray-600 dark:text-gray-400">pH</p>
-                          <p className="text-gray-900 dark:text-gray-100">{mud.ph}</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <SectionCarousel
+                slides={groupMudRecordsByShift(mudRecords)}
+              />
             </div>
           </Card>
         )}
 
-        {/* Mud Additives */}
+        {/* ================================================================
+            MUD ADDITIVES
+            ================================================================ */}
         {mudAdditives.length > 0 && (
           <Card>
             <div className="p-6">
@@ -511,19 +416,17 @@ export default function ReportView() {
                 <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 border border-gray-200 dark:border-gray-700 rounded">
                   <thead className="bg-gray-50 dark:bg-gray-800">
                     <tr>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Turno</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Tipo</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Cantidad</th>
+                      <TH align="left">Turno</TH>
+                      <TH align="left">Tipo</TH>
+                      <TH align="left">Cantidad</TH>
                     </tr>
                   </thead>
                   <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                     {mudAdditives.map((additive, idx) => (
                       <tr key={idx}>
-                        <td className="px-4 py-2 text-sm text-gray-900 dark:text-gray-100">
-                          {additive.shift ? SHIFT_LABELS[additive.shift] : '-'}
-                        </td>
-                        <td className="px-4 py-2 text-sm text-gray-900 dark:text-gray-100">{additive.additiveType || '-'}</td>
-                        <td className="px-4 py-2 text-sm text-gray-900 dark:text-gray-100">{additive.quantity || '-'}</td>
+                        <TD align="left">{additive.shift ? SHIFT_LABELS[additive.shift] : '-'}</TD>
+                        <TD align="left">{additive.additiveType || '-'}</TD>
+                        <TD align="left">{additive.quantity || '-'}</TD>
                       </tr>
                     ))}
                   </tbody>
@@ -533,58 +436,45 @@ export default function ReportView() {
           </Card>
         )}
 
-        {/* Drilling Parameters */}
+        {/* ================================================================
+            DRILLING PARAMETERS — Carousel when multiple
+            ================================================================ */}
         {drillingParams.length > 0 && (
           <Card>
             <div className="p-6">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Parámetros de Perforación</h3>
-              <div className="space-y-4">
-                {drillingParams.map((param, idx) => (
-                  <div key={idx} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-                    <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-3">
-                      Registro #{idx + 1} - {param.shift ? SHIFT_LABELS[param.shift] : ''} 
-                      {param.depthFrom && param.depthTo && ` (${param.depthFrom} - ${param.depthTo} ft)`}
-                    </h4>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-3">
-                      {param.rotaryRpm && (
-                        <div>
-                          <p className="text-gray-600 dark:text-gray-400">RPM</p>
-                          <p className="text-gray-900 dark:text-gray-100">{param.rotaryRpm}</p>
-                        </div>
-                      )}
-                      {param.bitWeight && (
-                        <div>
-                          <p className="text-gray-600 dark:text-gray-400">Peso Mecha</p>
-                          <p className="text-gray-900 dark:text-gray-100">{param.bitWeight}</p>
-                        </div>
-                      )}
-                      {param.pumpPressure && (
-                        <div>
-                          <p className="text-gray-600 dark:text-gray-400">Presión</p>
-                          <p className="text-gray-900 dark:text-gray-100">{param.pumpPressure}</p>
-                        </div>
-                      )}
-                      {param.totalGpm && (
-                        <div>
-                          <p className="text-gray-600 dark:text-gray-400">GPM</p>
-                          <p className="text-gray-900 dark:text-gray-100">{param.totalGpm}</p>
+              <SectionCarousel
+                slides={drillingParams.map((param, idx) => ({
+                  label: `${param.shift ? SHIFT_LABELS[param.shift] : `#${idx + 1}`}${param.depthFrom && param.depthTo ? ` (${param.depthFrom}–${param.depthTo} ft)` : ''}`,
+                  content: (
+                    <div>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-3">
+                        <DataField label="RPM" value={param.rotaryRpm} />
+                        <DataField label="Peso Mecha" value={param.bitWeight} />
+                        <DataField label="Presión" value={param.pumpPressure} />
+                        <DataField label="GPM" value={param.totalGpm} />
+                        <DataField label="# Bomba" value={param.pumpNumber} />
+                        <DataField label="Liner Bomba" value={param.pumpLiner} />
+                        <DataField label="SPM" value={param.pumpSpm} />
+                        <DataField label="Método" value={param.methodUsed} />
+                      </div>
+                      {param.lithologyNotes && (
+                        <div className="pt-2 border-t border-gray-100 dark:border-gray-700">
+                          <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Notas de Litología</p>
+                          <p className="text-sm text-gray-900 dark:text-gray-100">{param.lithologyNotes}</p>
                         </div>
                       )}
                     </div>
-                    {param.lithologyNotes && (
-                      <div>
-                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Notas:</p>
-                        <p className="text-sm text-gray-900 dark:text-gray-100">{param.lithologyNotes}</p>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
+                  ),
+                }))}
+              />
             </div>
           </Card>
         )}
 
-        {/* Deviation History */}
+        {/* ================================================================
+            DEVIATION HISTORY
+            ================================================================ */}
         {deviationHistory.length > 0 && (
           <Card>
             <div className="p-6">
@@ -593,21 +483,21 @@ export default function ReportView() {
                 <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 border border-gray-200 dark:border-gray-700 rounded">
                   <thead className="bg-gray-50 dark:bg-gray-800">
                     <tr>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Profundidad (ft)</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Desviación (°)</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Dirección</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">TVO (ft)</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Desp. Horizontal (ft)</th>
+                      <TH align="left">Profundidad (ft)</TH>
+                      <TH align="left">Desviación (°)</TH>
+                      <TH align="left">Dirección</TH>
+                      <TH align="left">TVO (ft)</TH>
+                      <TH align="left">Desp. Horizontal (ft)</TH>
                     </tr>
                   </thead>
                   <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                     {deviationHistory.map((dev, idx) => (
                       <tr key={idx}>
-                        <td className="px-4 py-2 text-sm text-gray-900 dark:text-gray-100">{dev.depth || '-'}</td>
-                        <td className="px-4 py-2 text-sm text-gray-900 dark:text-gray-100">{dev.deviation || '-'}</td>
-                        <td className="px-4 py-2 text-sm text-gray-900 dark:text-gray-100">{dev.direction || '-'}</td>
-                        <td className="px-4 py-2 text-sm text-gray-900 dark:text-gray-100">{dev.tvo || '-'}</td>
-                        <td className="px-4 py-2 text-sm text-gray-900 dark:text-gray-100">{dev.horizontalDisplacement || '-'}</td>
+                        <TD align="left">{dev.depth || '-'}</TD>
+                        <TD align="left">{dev.deviation || '-'}</TD>
+                        <TD align="left">{dev.direction || '-'}</TD>
+                        <TD align="left">{dev.tvo || '-'}</TD>
+                        <TD align="left">{dev.horizontalDisplacement || '-'}</TD>
                       </tr>
                     ))}
                   </tbody>
@@ -617,70 +507,196 @@ export default function ReportView() {
           </Card>
         )}
 
-        {/* Operations Log */}
+        {/* ================================================================
+            OPERATIONS LOG — Carousel when multiple
+            ================================================================ */}
         {operationsLog.length > 0 && (
           <Card>
             <div className="p-6">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Log de Operaciones</h3>
-              <div className="space-y-4">
-                {operationsLog.map((op, idx) => (
-                  <div key={idx} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-                    <div className="flex items-start justify-between mb-2">
-                      <div>
-                        <h4 className="font-medium text-gray-900 dark:text-gray-100">
-                          {op.operationCode || 'Operación'} #{idx + 1}
-                        </h4>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                          {op.shift ? SHIFT_LABELS[op.shift] : ''}
-                          {op.timeFrom && op.timeTo && ` • ${op.timeFrom} - ${op.timeTo}`}
-                          {op.duration && ` • Duración: ${op.duration}`}
-                        </p>
+              <SectionCarousel
+                slides={operationsLog.map((op, idx) => ({
+                  label: `${op.shift ? SHIFT_LABELS[op.shift] : ''} #${idx + 1}`,
+                  content: (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
+                        {op.operationCode && (
+                          <span className="font-medium text-gray-900 dark:text-gray-100">{op.operationCode}</span>
+                        )}
+                        {op.timeFrom && op.timeTo && (
+                          <span>{op.timeFrom} - {op.timeTo}</span>
+                        )}
+                        {op.duration && (
+                          <span>Duración: {op.duration}</span>
+                        )}
                       </div>
+                      {op.details && (
+                        <p className="text-sm text-gray-700 dark:text-gray-300">{op.details}</p>
+                      )}
                     </div>
-                    {op.details && (
-                      <p className="text-sm text-gray-700 dark:text-gray-300 mt-2">{op.details}</p>
-                    )}
-                  </div>
-                ))}
-              </div>
+                  ),
+                }))}
+              />
             </div>
           </Card>
         )}
 
-        {/* Drill String */}
+        {/* ================================================================
+            DRILL STRING
+            ================================================================ */}
         {drillString && (
           <Card>
             <div className="p-6">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Sarta de Perforación</h3>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                {drillString.size && (
-                  <div>
-                    <p className="text-gray-600 dark:text-gray-400">Tamaño</p>
-                    <p className="text-gray-900 dark:text-gray-100">{drillString.size}</p>
-                  </div>
-                )}
-                {drillString.weight && (
-                  <div>
-                    <p className="text-gray-600 dark:text-gray-400">Peso</p>
-                    <p className="text-gray-900 dark:text-gray-100">{drillString.weight}</p>
-                  </div>
-                )}
-                {drillString.grade && (
-                  <div>
-                    <p className="text-gray-600 dark:text-gray-400">Grado</p>
-                    <p className="text-gray-900 dark:text-gray-100">{drillString.grade}</p>
-                  </div>
-                )}
-                {drillString.connectionType && (
-                  <div>
-                    <p className="text-gray-600 dark:text-gray-400">Conexión</p>
-                    <p className="text-gray-900 dark:text-gray-100">{drillString.connectionType}</p>
-                  </div>
-                )}
+                <DataField label="Tamaño" value={drillString.size} />
+                <DataField label="Peso" value={drillString.weight} />
+                <DataField label="Grado" value={drillString.grade} />
+                <DataField label="Conexión" value={drillString.connectionType} />
+                <DataField label="# Sarta" value={drillString.stringNumber} />
+                <DataField label="Marca Bomba" value={drillString.pumpBrand} />
+                <DataField label="Tipo Bomba" value={drillString.pumpType} />
+                <DataField label="Longitud Encab." value={drillString.headerLength} />
               </div>
             </div>
           </Card>
         )}
       </div>
     </MainLayout>
-)};
+  );
+}
+
+// ============================================================================
+// SMALL HELPER COMPONENTS (private to this file)
+// ============================================================================
+
+/** Reusable label + value pair */
+function DataField({ label, value }: { label: string; value?: string | null }) {
+  return (
+    <div>
+      <p className="text-sm text-gray-600 dark:text-gray-400">{label}</p>
+      <p className="text-base font-medium text-gray-900 dark:text-gray-100">{value || '-'}</p>
+    </div>
+  );
+}
+
+/** Crew shift table rendered for each carousel slide */
+function CrewShiftTable({ shift }: { shift: CrewShift }) {
+  if (!shift.members || shift.members.length === 0) {
+    return <p className="text-sm text-gray-500">No hay miembros registrados</p>;
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 border border-gray-200 dark:border-gray-700 rounded">
+        <thead className="bg-gray-50 dark:bg-gray-800">
+          <tr>
+            <TH align="left">Posición</TH>
+            <TH align="left">CI</TH>
+            <TH align="left">Nombre</TH>
+            <TH align="left">Horas</TH>
+          </tr>
+        </thead>
+        <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+          {shift.members.map((member, mIdx) => (
+            <tr key={mIdx}>
+              <TD align="left">{member.position}</TD>
+              <TD align="left">{member.personnelCi || member.ci || '-'}</TD>
+              <TD align="left">{member.personnelName || member.name || '-'}</TD>
+              <TD align="left">{member.hours || '-'}</TD>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/** Table header cell */
+function TH({ children, align = 'center' }: { children: React.ReactNode; align?: 'left' | 'center' }) {
+  return (
+    <th className={`px-4 py-2 text-${align} text-xs font-medium text-gray-500 dark:text-gray-400 uppercase`}>
+      {children}
+    </th>
+  );
+}
+
+/** Table data cell */
+function TD({ children, align = 'center', className = '' }: { children: React.ReactNode; align?: 'left' | 'center'; className?: string }) {
+  return (
+    <td className={`px-4 py-2 text-sm text-gray-900 dark:text-gray-100 text-${align} ${className}`}>
+      {children}
+    </td>
+  );
+}
+
+/** Group mud records by shift and return carousel slides with a table each */
+function groupMudRecordsByShift(records: MudRecord[]) {
+  const SHIFT_ORDER: Array<MudRecord['shift']> = ['morning', 'afternoon', 'night'];
+
+  const grouped = new Map<string, MudRecord[]>();
+  for (const r of records) {
+    const key = r.shift || 'unknown';
+    if (!grouped.has(key)) grouped.set(key, []);
+    grouped.get(key)!.push(r);
+  }
+
+  // Build slides in shift order, then append any without a shift
+  const slides: Array<{ label: string; content: React.ReactNode }> = [];
+
+  for (const shift of SHIFT_ORDER) {
+    const items = grouped.get(shift!);
+    if (!items || items.length === 0) continue;
+    slides.push({
+      label: SHIFT_LABELS[shift!],
+      content: <MudRecordsTable records={items} />,
+    });
+    grouped.delete(shift!);
+  }
+
+  // Remaining (records without a recognised shift)
+  for (const [key, items] of grouped) {
+    slides.push({
+      label: key === 'unknown' ? 'Sin turno' : key,
+      content: <MudRecordsTable records={items} />,
+    });
+  }
+
+  return slides;
+}
+
+/** Table of mud records for a single shift */
+function MudRecordsTable({ records }: { records: MudRecord[] }) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 border border-gray-200 dark:border-gray-700 rounded">
+        <thead className="bg-gray-50 dark:bg-gray-800">
+          <tr>
+            <TH align="left">Hora</TH>
+            <TH>Peso (ppg)</TH>
+            <TH>Visc. (seg)</TH>
+            <TH>PVP (cps)</TH>
+            <TH>Geles</TH>
+            <TH>Filtrado</TH>
+            <TH>pH</TH>
+            <TH>Sólidos</TH>
+          </tr>
+        </thead>
+        <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+          {records.map((mud, idx) => (
+            <tr key={idx}>
+              <TD align="left">{mud.hour || '-'}</TD>
+              <TD>{mud.weight || '-'}</TD>
+              <TD>{mud.viscosity || '-'}</TD>
+              <TD>{mud.pvp || '-'}</TD>
+              <TD>{mud.gels || '-'}</TD>
+              <TD>{mud.filtrate || '-'}</TD>
+              <TD>{mud.ph || '-'}</TD>
+              <TD>{mud.solids || '-'}</TD>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}

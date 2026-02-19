@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MainLayout } from '../components/layout';
-import { Button, Card, Input, Select } from '../components/ui';
-import { Plus, Search, Eye, Edit, Trash2, CheckCircle, Clock, XCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Button, Card, Input, Select, ReportStatusBadge } from '../components/ui';
+import { Plus, Search, Eye, Edit, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useModal } from '../store/modalStore';
 import ConfirmDeleteModal from '../components/modals/ConfirmDelete';
@@ -53,7 +53,7 @@ export default function ReportList() {
     } else {
       setLoading(false);
     }
-  }, [sessionToken, currentPage, pageSize]);
+  }, [sessionToken, currentPage, pageSize, filters]);
 
   // Listen for sync events and reload reports when new data arrives
   useEffect(() => {
@@ -193,24 +193,6 @@ export default function ReportList() {
   };
 
 
-  const getStatusBadge = (status: ReportStatus) => {
-    const badges = {
-      draft: { icon: Clock, color: 'text-gray-600 bg-gray-100', label: 'Borrador' },
-      submitted: { icon: CheckCircle, color: 'text-blue-600 bg-blue-100', label: 'Enviado' },
-      approved: { icon: CheckCircle, color: 'text-green-600 bg-green-100', label: 'Aprobado' },
-      rejected: { icon: XCircle, color: 'text-red-600 bg-red-100', label: 'Rechazado' },
-    };
-
-    const badge = badges[status];
-    const Icon = badge.icon;
-
-    return (
-      <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${badge.color}`}>
-        <Icon size={14} />
-        {badge.label}
-      </span>
-    );
-  };
 
   // NUEVO: Renderizar controles de paginación
   const renderPagination = () => {
@@ -485,7 +467,7 @@ export default function ReportList() {
                         </span>
                       </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          {getStatusBadge(report.status)}
+                          <ReportStatusBadge status={report.status} />
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-center">
                           <div className="flex items-center justify-center gap-2">

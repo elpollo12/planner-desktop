@@ -33,6 +33,7 @@ import { TimeDistributionSection } from '../components/forms/TimeDistributionSec
 import { BitRecordSection } from '../components/forms/BitRecordSection';
 import { MudRecordSection } from '../components/forms/MudRecordSection';
 import { LithologySection } from '../components/forms/LithologySection';
+import { DrillStringSection } from '../components/forms/DrillStringSection';
 import { ObservationsSection } from '../components/forms/ObservationsSection';
 
 // ============================================================================
@@ -205,11 +206,7 @@ export default function ReportForm() {
     mud: <MudRecordSection />,
     lithology: <LithologySection />,
     observations: <ObservationsSection />,
-    drillString: (
-      <div className="text-center py-8 text-gray-500">
-        Sección de Sarta de Perforación (por implementar)
-      </div>
-    ),
+    drillString: <DrillStringSection />,
   };
 
   // Current active tab metadata
@@ -418,9 +415,6 @@ export default function ReportForm() {
                           {currentTab?.description}
                         </p>
                       </div>
-                    </div>
-                    <div>
-                      Completacion
                     </div>
                   </div>
                   <div className="p-6">

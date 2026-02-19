@@ -46,7 +46,10 @@ export function useReportSave({
     (sectionId: TabId): boolean => {
       switch (sectionId) {
         case 'drillString':
-          return !!(formData.drillString && Object.keys(formData.drillString).length > 0);
+          return !!(
+            formData.drillString &&
+            Object.values(formData.drillString).some((v) => typeof v === 'string' && v.trim() !== '')
+          );
 
         case 'crew':
           return !!(formData.crew?.shifts?.some((s) => s.members.length > 0));
@@ -95,12 +98,17 @@ export function useReportSave({
 
   const saveDrillString = async (reportId: string) => {
     if (!sessionToken || !formData.drillString) return;
+    // Skip save if all fields are empty
+    const hasValue = Object.values(formData.drillString).some(
+      (v) => typeof v === 'string' && v.trim() !== '',
+    );
+    if (!hasValue) return;
     await drillStringApi.save(sessionToken, reportId, formData.drillString);
   };
 
   /**
    * Save Crew section
-   * Strategy: DELETE ALL + INSERT ALL to avoid duplicates
+   * Strategy: DELETE ALL + INSERT ALL (parallel) to avoid duplicates
    */
   const saveCrew = async (reportId: string) => {
     if (!sessionToken) return;
@@ -114,18 +122,14 @@ export function useReportSave({
     }
 
     if (formData.crew?.shifts) {
-      for (const shift of formData.crew.shifts) {
-        if (!shift.shift) {
-          console.warn('Skipping shift without shift type:', shift);
-          continue;
-        }
-
-        if (shift.members && shift.members.length > 0) {
-          const validMembers = shift.members.filter(
+      const shiftTasks = formData.crew.shifts
+        .filter((shift) => shift.shift)
+        .map((shift) => {
+          const validMembers = (shift.members || []).filter(
             (member) => member.position && member.position.trim() !== '',
           );
 
-          if (validMembers.length === 0) continue;
+          if (validMembers.length === 0) return null;
 
           const cleanShift = {
             shift: shift.shift,
@@ -140,15 +144,17 @@ export function useReportSave({
             })),
           };
 
-          await crewApi.createShift(sessionToken, reportId, cleanShift);
-        }
-      }
+          return crewApi.createShift(sessionToken, reportId, cleanShift);
+        })
+        .filter(Boolean);
+
+      await Promise.all(shiftTasks);
     }
   };
 
   /**
    * Save Bit Records section
-   * Strategy: DELETE ALL + INSERT ALL to avoid duplicates
+   * Strategy: DELETE ALL + INSERT ALL (parallel) to avoid duplicates
    */
   const saveBits = async (reportId: string) => {
     if (!sessionToken) return;
@@ -162,9 +168,11 @@ export function useReportSave({
     }
 
     if (formData.bitRecords?.records && formData.bitRecords.records.length > 0) {
-      for (const record of formData.bitRecords.records) {
-        await bitRecordsApi.create(sessionToken, reportId, record);
-      }
+      await Promise.all(
+        formData.bitRecords.records.map((record) =>
+          bitRecordsApi.create(sessionToken, reportId, record),
+        ),
+      );
     }
   };
 
@@ -204,68 +212,92 @@ export function useReportSave({
 
   /**
    * Save Mud Records section
-   * Strategy: DELETE ALL + INSERT ALL to avoid duplicates
+   * Strategy: DELETE ALL + INSERT ALL (parallel) to avoid duplicates
    */
   const saveMud = async (reportId: string) => {
     if (!sessionToken) return;
 
     if (reportId) {
       try {
-        await mudApi.deleteAllRecords(sessionToken, reportId);
-        await mudApi.deleteAllAdditives(sessionToken, reportId);
+        await Promise.all([
+          mudApi.deleteAllRecords(sessionToken, reportId),
+          mudApi.deleteAllAdditives(sessionToken, reportId),
+        ]);
       } catch (error) {
         console.warn('Could not delete existing mud data:', error);
       }
     }
 
+    const tasks: Promise<unknown>[] = [];
+
     if (formData.mudRecords?.records && formData.mudRecords.records.length > 0) {
-      for (const record of formData.mudRecords.records) {
-        await mudApi.createRecord(sessionToken, reportId, record);
-      }
+      tasks.push(
+        ...formData.mudRecords.records.map((record) =>
+          mudApi.createRecord(sessionToken, reportId, record),
+        ),
+      );
     }
 
     if (formData.mudRecords?.additives && formData.mudRecords.additives.length > 0) {
-      for (const additive of formData.mudRecords.additives) {
-        await mudApi.createAdditive(sessionToken, reportId, additive);
-      }
+      tasks.push(
+        ...formData.mudRecords.additives.map((additive) =>
+          mudApi.createAdditive(sessionToken, reportId, additive),
+        ),
+      );
+    }
+
+    if (tasks.length > 0) {
+      await Promise.all(tasks);
     }
   };
 
   /**
    * Save Lithology section
-   * Strategy: DELETE ALL + INSERT ALL to avoid duplicates
+   * Strategy: DELETE ALL + INSERT ALL (parallel) to avoid duplicates
    */
   const saveLithology = async (reportId: string) => {
     if (!sessionToken) return;
 
     if (reportId) {
       try {
-        await drillingParamsApi.deleteAll(sessionToken, reportId);
-        await deviationApi.deleteAll(sessionToken, reportId);
+        await Promise.all([
+          drillingParamsApi.deleteAll(sessionToken, reportId),
+          deviationApi.deleteAll(sessionToken, reportId),
+        ]);
       } catch (error) {
         console.warn('Could not delete existing lithology data:', error);
       }
     }
 
+    const tasks: Promise<unknown>[] = [];
+
     if (
       formData.lithology?.drillingParameters &&
       formData.lithology.drillingParameters.length > 0
     ) {
-      for (const param of formData.lithology.drillingParameters) {
-        await drillingParamsApi.create(sessionToken, reportId, param);
-      }
+      tasks.push(
+        ...formData.lithology.drillingParameters.map((param) =>
+          drillingParamsApi.create(sessionToken, reportId, param),
+        ),
+      );
     }
 
     if (formData.lithology?.deviationHistory && formData.lithology.deviationHistory.length > 0) {
-      for (const deviation of formData.lithology.deviationHistory) {
-        await deviationApi.create(sessionToken, reportId, deviation);
-      }
+      tasks.push(
+        ...formData.lithology.deviationHistory.map((deviation) =>
+          deviationApi.create(sessionToken, reportId, deviation),
+        ),
+      );
+    }
+
+    if (tasks.length > 0) {
+      await Promise.all(tasks);
     }
   };
 
   /**
    * Save Observations section
-   * Strategy: DELETE ALL + INSERT ALL to avoid duplicates
+   * Strategy: DELETE ALL + INSERT ALL (parallel) to avoid duplicates
    */
   const saveObservations = async (reportId: string) => {
     if (!sessionToken) return;
@@ -279,9 +311,11 @@ export function useReportSave({
     }
 
     if (formData.observations?.operations && formData.observations.operations.length > 0) {
-      for (const operation of formData.observations.operations) {
-        await operationsLogApi.create(sessionToken, reportId, operation);
-      }
+      await Promise.all(
+        formData.observations.operations.map((operation) =>
+          operationsLogApi.create(sessionToken, reportId, operation),
+        ),
+      );
     }
   };
 
