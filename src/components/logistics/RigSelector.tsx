@@ -10,7 +10,7 @@ interface RigSelectorProps {
   onSelect: (rigId: string, rigName: string) => void;
 }
 
-export function RigSelector({ rigs, selectedRigId, selectedRigName, loading, onSelect }: RigSelectorProps) {
+export function RigSelector({ rigs, selectedRigId, selectedRigName: _selectedRigName, loading, onSelect }: RigSelectorProps) {
   // Loading state
   if (loading) {
     return (
