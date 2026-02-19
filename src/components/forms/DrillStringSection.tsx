@@ -89,7 +89,7 @@ export function DrillStringSection() {
                       <Input
                         {...register(`drillString.components.${index}.pieceName`)}
                         placeholder="Ej: Drill Pipe, HWDP, Drill Collar..."
-                        className="!py-1.5"
+                        className="py-1.5!"
                       />
                     </td>
                     <td className="px-4 py-1">
@@ -100,7 +100,7 @@ export function DrillStringSection() {
                           valueAsNumber: true,
                         })}
                         placeholder="0.00"
-                        className="!py-1.5"
+                        className="py-1.5!"
                       />
                     </td>
                     <td className="px-4 py-2 text-center">
@@ -129,19 +129,6 @@ export function DrillStringSection() {
                 </tr>
               </tfoot>
             </table>
-          </div>
-
-          {/* Add more button below table */}
-          <div className="mt-3 flex justify-end">
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              onClick={addComponent}
-              icon={<Plus size={16} />}
-            >
-              Agregar Pieza
-            </Button>
           </div>
         </>
       )}
