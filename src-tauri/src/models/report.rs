@@ -402,7 +402,7 @@ impl Report {
         let now = chrono::Utc::now().to_rfc3339();
 
         conn.execute(
-            "UPDATE reports SET status = ?1, submitted_at = ?2, updated_at = ?3 WHERE id = ?4",
+            "UPDATE reports SET status = ?1, submitted_at = ?2, approved_at = NULL, approved_by = NULL, rejected_at = NULL, rejection_reason = NULL, updated_at = ?3 WHERE id = ?4",
             params!["submitted", &now, &now, report_id],
         )?;
 
@@ -433,6 +433,27 @@ impl Report {
         conn.execute(
             "UPDATE reports SET status = ?1, approved_by = ?2, rejected_at = ?3, rejection_reason = ?4, updated_at = ?5 WHERE id = ?6",
             params!["rejected", &rejected_by, &now, &reason, &now, report_id],
+        )?;
+
+        Report::get_by_id(conn, report_id)
+    }
+
+    /// Reopen a rejected report back to draft so the creator can fix and resubmit
+    /// (rejected → draft)
+    pub fn reopen(conn: &Connection, report_id: &str) -> Result<Report, AppError> {
+        let report = Report::get_by_id(conn, report_id)?;
+
+        if report.status != "rejected" {
+            return Err(AppError::ValidationError(
+                "Only rejected reports can be reopened".to_string(),
+            ));
+        }
+
+        let now = chrono::Utc::now().to_rfc3339();
+
+        conn.execute(
+            "UPDATE reports SET status = ?1, rejection_reason = NULL, rejected_at = NULL, updated_at = ?2 WHERE id = ?3",
+            params!["draft", &now, report_id],
         )?;
 
         Report::get_by_id(conn, report_id)

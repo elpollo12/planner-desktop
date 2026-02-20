@@ -10,6 +10,7 @@ interface DashboardStats {
   drafts: number;
   submitted: number;
   approved: number;
+  rejected: number;
 }
 
 export default function Dashboard() {
@@ -20,6 +21,7 @@ export default function Dashboard() {
     drafts: 0,
     submitted: 0,
     approved: 0,
+    rejected: 0,
   });
   const [loading, setLoading] = useState(true);
 
@@ -49,6 +51,7 @@ export default function Dashboard() {
         drafts: response.reports.filter(r => r.status === 'draft').length,
         submitted: response.reports.filter(r => r.status === 'submitted').length,
         approved: response.reports.filter(r => r.status === 'approved').length,
+        rejected: response.reports.filter(r => r.status === 'rejected').length,
       };
 
       setStats(newStats);
@@ -69,20 +72,22 @@ export default function Dashboard() {
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {[
-          { label: 'Reportes Totales', value: stats.total, color: 'bg-blue-500' },
-          { label: 'Borradores', value: stats.drafts, color: 'bg-yellow-500' },
-          { label: 'Enviados', value: stats.submitted, color: 'bg-purple-500' },
-          { label: 'Aprobados', value: stats.approved, color: 'bg-green-500' },
+          { label: 'Reportes Totales', value: stats.total, color: 'bg-blue-500', href: '/reports' },
+          { label: 'Borradores', value: stats.drafts, color: 'bg-yellow-500', href: '/reports' },
+          { label: 'Pendientes', value: stats.submitted, color: 'bg-purple-500', href: (user.role === 'supervisor' || user.role === 'admin') ? '/approvals' : '/reports' },
+          { label: 'Aprobados', value: stats.approved, color: 'bg-green-500', href: '/reports' },
         ].map((stat) => (
-          <Card key={stat.label} className="p-0! overflow-hidden">
-            <div className={`h-2 ${stat.color}`} />
-            <div className="p-6">
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">{stat.label}</p>
-              <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-                {loading ? '...' : stat.value}
-              </p>
-            </div>
-          </Card>
+          <div key={stat.label} onClick={() => navigate(stat.href)} className="cursor-pointer hover:shadow-md transition-shadow rounded-lg">
+            <Card className="p-0! overflow-hidden">
+              <div className={`h-2 ${stat.color}`} />
+              <div className="p-6">
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">{stat.label}</p>
+                <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+                  {loading ? '...' : stat.value}
+                </p>
+              </div>
+            </Card>
+          </div>
         ))}
       </div>
 
@@ -111,6 +116,21 @@ export default function Dashboard() {
             <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Ver Reportes</h3>
             <p className="text-sm text-gray-600 dark:text-gray-400">Consultar reportes existentes</p>
           </button>
+
+          {(user.role === 'supervisor' || user.role === 'admin') && (
+            <button
+              onClick={() => navigate('/approvals')}
+              className="p-6 border-2 border-dashed cursor-pointer border-gray-300 dark:border-gray-600 rounded-lg hover:bg-blue-50 dark:hover:bg-gray-700 transition text-left"
+              onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--color-primary-500)'}
+              onMouseLeave={(e) => e.currentTarget.style.borderColor = ''}
+            >
+              <div className="text-2xl mb-2">✅</div>
+              <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Aprobaciones</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                {stats.submitted > 0 ? `${stats.submitted} pendiente${stats.submitted !== 1 ? 's' : ''}` : 'Revisar reportes enviados'}
+              </p>
+            </button>
+          )}
 
           {user.role === 'admin' && (
             <button

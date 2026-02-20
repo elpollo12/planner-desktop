@@ -28,6 +28,10 @@ export interface Report {
   status: ReportStatus;
   createdBy: string;
   approvedBy?: string;
+  submittedAt?: string;
+  approvedAt?: string;
+  rejectedAt?: string;
+  rejectionReason?: string;
   createdAt: string;
   updatedAt: string;
   synced: boolean;
@@ -222,7 +226,45 @@ export interface CreateReportInput {
 export interface ReportFilters {
   status?: ReportStatus;
   wellNumber?: string;
+  rigNumber?: string;
   dateFrom?: string;
   dateTo?: string;
   createdBy?: string;
+}
+
+// ── Report Reviews (Approval Audit Trail) ──────────────────────────────────
+
+// Acciones posibles en una revisión
+export type ReviewAction = 'approved' | 'rejected' | 'revision_requested' | 'comment' | 'resubmitted';
+
+// Labels para UI
+export const REVIEW_ACTION_LABELS: Record<ReviewAction, string> = {
+  approved: 'Aprobado',
+  rejected: 'Rechazado',
+  revision_requested: 'Revisión solicitada',
+  comment: 'Comentario',
+  resubmitted: 'Reenviado',
+};
+
+// Colores para UI (matching ReportStatusBadge style)
+export const REVIEW_ACTION_COLORS: Record<ReviewAction, string> = {
+  approved: 'text-green-600 bg-green-100 dark:bg-green-900/30 dark:text-green-400',
+  rejected: 'text-red-600 bg-red-100 dark:bg-red-900/30 dark:text-red-400',
+  revision_requested: 'text-yellow-600 bg-yellow-100 dark:bg-yellow-900/30 dark:text-yellow-400',
+  comment: 'text-blue-600 bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400',
+  resubmitted: 'text-purple-600 bg-purple-100 dark:bg-purple-900/30 dark:text-purple-400',
+};
+
+// Entrada individual del historial de revisión
+export interface ReportReview {
+  id: string;
+  reportId: string;
+  reviewerId: string;
+  action: ReviewAction;
+  comment?: string;
+  previousStatus?: string;
+  newStatus?: string;
+  createdAt: string;
+  updatedAt: string;
+  isDeleted: boolean;
 }

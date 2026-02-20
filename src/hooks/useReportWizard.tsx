@@ -93,7 +93,7 @@ export function useReportWizard({
     if (user.role === 'admin') return true;
     if (user.role === 'supervisor') return true;
     if (user.role === 'operator') {
-      return existingReport.status === 'draft' && existingReport.createdBy === user.id;
+      return (existingReport.status === 'draft' || existingReport.status === 'rejected') && existingReport.createdBy === user.id;
     }
     return false;
   }, [existingReport, user]);

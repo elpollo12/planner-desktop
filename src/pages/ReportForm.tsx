@@ -159,6 +159,10 @@ export default function ReportForm() {
 
     // Submit if requested
     if (opts.submit) {
+      // If report was rejected, reopen to draft first
+      if (existingReport?.status === 'rejected') {
+        await reportsApi.reopen(sessionToken, currentReportId);
+      }
       await reportsApi.submit(sessionToken, currentReportId);
     }
 

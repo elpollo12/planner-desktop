@@ -409,6 +409,11 @@ export default function ReportList() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <ReportStatusBadge status={report.status} />
+                          {report.status === 'rejected' && report.rejectionReason && (
+                            <p className="mt-1 text-xs text-red-600 dark:text-red-400 max-w-[200px] truncate" title={report.rejectionReason}>
+                              {report.rejectionReason}
+                            </p>
+                          )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-900 dark:text-gray-100">{formatDateDMY(report.createdAt?.split('T')[0])}</div>

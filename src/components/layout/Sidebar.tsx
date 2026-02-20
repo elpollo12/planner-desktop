@@ -5,6 +5,7 @@ import { useAuthStore } from '../../store/authStore';
 import { useAppSettingsStore } from '../../store/appSettingsStore';
 import { Button } from '../ui';
 import {
+  ClipboardCheck,
   Forklift,
   LayoutDashboard,
   List,
@@ -38,6 +39,12 @@ export function Sidebar({ className = '' }: SidebarProps) {
       href: '/reports',
       icon: List,
       show: true,
+    },
+    {
+      name: 'Aprobaciones',
+      href: '/approvals',
+      icon: ClipboardCheck,
+      show: user?.role === 'supervisor' || user?.role === 'admin',
     },
     {
       name: 'Logística',

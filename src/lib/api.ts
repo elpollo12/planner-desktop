@@ -17,6 +17,7 @@ import type {
   Report,
   CreateReportInput,
   ReportFilters,
+  ReportReview,
   DrillStringComponent,
   CrewShift,
   BitRecord,
@@ -141,12 +142,27 @@ export const reportsApi = {
   reject: (sessionToken: string, reportId: string, reason: string) =>
     invoke<Report>('reject_report', { sessionToken, reportId, reason }),
 
+  reopen: (sessionToken: string, reportId: string) =>
+    invoke<Report>('reopen_report', { sessionToken, reportId }),
+
   // Last report snapshot (pre-fill template per rig)
   getLastSnapshot: (sessionToken: string, rigId: string) =>
     invoke<LastReportSnapshot | null>('get_last_report_snapshot', { sessionToken, rigId }),
 
   updateSnapshot: (sessionToken: string, reportId: string) =>
     invoke<void>('update_report_snapshot', { sessionToken, reportId }),
+};
+
+// ============================================================================
+// Report Reviews Commands (Approval Audit Trail)
+// ============================================================================
+
+export const reportReviewsApi = {
+  create: (sessionToken: string, reportId: string, action: string, comment?: string) =>
+    invoke<ReportReview>('create_report_review', { sessionToken, reportId, action, comment }),
+
+  list: (sessionToken: string, reportId: string) =>
+    invoke<ReportReview[]>('list_report_reviews', { sessionToken, reportId }),
 };
 
 // ============================================================================

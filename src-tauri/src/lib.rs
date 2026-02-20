@@ -69,6 +69,7 @@ pub fn run() {
             commands::reports::submit_report,
             commands::reports::approve_report,
             commands::reports::reject_report,
+            commands::reports::reopen_report,
 
             // Drill string commands
             commands::drill_string::create_drill_string_component,
@@ -222,6 +223,10 @@ pub fn run() {
             // Last report snapshot commands
             commands::last_report_snapshot::get_last_report_snapshot,
             commands::last_report_snapshot::update_report_snapshot,
+
+            // Report reviews commands (approval audit trail)
+            commands::report_reviews::create_report_review,
+            commands::report_reviews::list_report_reviews,
 
             // Debug commands
             commands::debug::debug_list_all_rigs,

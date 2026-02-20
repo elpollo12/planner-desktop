@@ -1,5 +1,6 @@
 use crate::auth::{check_permission, get_session};
 use crate::models::report::{CreateReportRequest, Report, ReportFilters, UpdateReportRequest};
+use crate::models::report_review::ReportReview;
 use crate::models::user::{User, UserRole};
 use crate::state::AppState;
 use serde::Serialize;
@@ -198,7 +199,22 @@ pub async fn approve_report(
         .lock()
         .map_err(|e| format!("Failed to lock database: {}", e))?;
 
-    let updated_report = Report::approve(&conn, &report_id, session.user_id).map_err(|e| e.to_string())?;
+    // Get current status before transition
+    let current_report = Report::get_by_id(&conn, &report_id).map_err(|e| e.to_string())?;
+    let previous_status = current_report.status.clone();
+
+    let updated_report = Report::approve(&conn, &report_id, session.user_id.clone()).map_err(|e| e.to_string())?;
+
+    // Create audit trail entry
+    let _ = ReportReview::create(
+        &conn,
+        &report_id,
+        &session.user_id,
+        "approved",
+        None,
+        Some(&previous_status),
+        Some("approved"),
+    );
 
     Ok(updated_report)
 }
@@ -219,7 +235,22 @@ pub async fn reject_report(
         .lock()
         .map_err(|e| format!("Failed to lock database: {}", e))?;
 
-    let updated_report = Report::reject(&conn, &report_id, session.user_id, reason).map_err(|e| e.to_string())?;
+    // Get current status before transition
+    let current_report = Report::get_by_id(&conn, &report_id).map_err(|e| e.to_string())?;
+    let previous_status = current_report.status.clone();
+
+    let updated_report = Report::reject(&conn, &report_id, session.user_id.clone(), reason.clone()).map_err(|e| e.to_string())?;
+
+    // Create audit trail entry
+    let _ = ReportReview::create(
+        &conn,
+        &report_id,
+        &session.user_id,
+        "rejected",
+        Some(&reason),
+        Some(&previous_status),
+        Some("rejected"),
+    );
 
     Ok(updated_report)
 }
@@ -241,4 +272,43 @@ pub async fn get_report_completeness(
         .map_err(|e| e.to_string())?;
 
     Ok(completeness)
+}
+
+#[tauri::command]
+pub async fn reopen_report(
+    session_token: String,
+    report_id: String,
+    state: State<'_, AppState>,
+) -> Result<Report, String> {
+    let session = get_session(&session_token, &state).map_err(|e| e.to_string())?;
+    let user_role = UserRole::from_str(&session.role).map_err(|e| e.to_string())?;
+
+    let conn = state
+        .db
+        .lock()
+        .map_err(|e| format!("Failed to lock database: {}", e))?;
+
+    let report = Report::get_by_id(&conn, &report_id).map_err(|e| e.to_string())?;
+
+    // Only the creator or supervisor+ can reopen
+    if user_role == UserRole::Operator && report.created_by.as_deref() != Some(&session.user_id) {
+        return Err("Permission denied: You can only reopen your own reports".to_string());
+    }
+
+    let previous_status = report.status.clone();
+
+    let updated_report = Report::reopen(&conn, &report_id).map_err(|e| e.to_string())?;
+
+    // Create audit trail entry
+    let _ = ReportReview::create(
+        &conn,
+        &report_id,
+        &session.user_id,
+        "resubmitted",
+        Some("Report reopened for corrections"),
+        Some(&previous_status),
+        Some("draft"),
+    );
+
+    Ok(updated_report)
 }

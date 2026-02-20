@@ -211,6 +211,17 @@ const SYNC_TABLES: &[TableDef] = &[
         parent_col: Some("report_id"),
     },
     TableDef {
+        name: "report_reviews",
+        columns: &[
+            "id", "report_id", "reviewer_id", "action", "comment",
+            "previous_status", "new_status", "created_at", "updated_at",
+            "is_deleted",
+        ],
+        id_col: "id",
+        has_updated_at: true,
+        parent_col: Some("report_id"),
+    },
+    TableDef {
         name: "user_preferences",
         columns: &[
             "id", "user_id", "theme_mode", "created_at", "updated_at",
@@ -835,7 +846,20 @@ CREATE TABLE IF NOT EXISTS logistics_requests (
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
   is_deleted INTEGER DEFAULT 0
-)
+);
+
+CREATE TABLE IF NOT EXISTS report_reviews (
+  id TEXT PRIMARY KEY,
+  report_id TEXT NOT NULL,
+  reviewer_id TEXT NOT NULL,
+  action TEXT NOT NULL,
+  comment TEXT,
+  previous_status TEXT,
+  new_status TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  is_deleted INTEGER DEFAULT 0
+);
 "#;
 
 /// Migrations to apply to existing Turso databases (add missing columns/tables)
@@ -890,6 +914,12 @@ const REMOTE_MIGRATIONS: &[&str] = &[
     "CREATE TABLE IF NOT EXISTS last_report_snapshot (id TEXT PRIMARY KEY, rig_id TEXT NOT NULL, report_number INTEGER NOT NULL, well_number TEXT, api_number TEXT, contract TEXT, contractor TEXT, operator TEXT, field_district TEXT, municipality TEXT, rig_number TEXT, company TEXT, supervisor_24h TEXT, crew_data TEXT, time_distribution_data TEXT, bit_records_data TEXT, mud_records_data TEXT, mud_additives_data TEXT, drilling_params_data TEXT, deviation_data TEXT, operations_log_data TEXT, drill_string_data TEXT, source_report_id TEXT, updated_by TEXT, updated_at TEXT NOT NULL, UNIQUE(rig_id))",
     // V28: drill_string_components replaces drill_string
     "CREATE TABLE IF NOT EXISTS drill_string_components (id TEXT PRIMARY KEY, report_id TEXT, entry_number INTEGER NOT NULL DEFAULT 0, piece_name TEXT, length REAL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)",
+    // V30: report_reviews table + reports approval columns
+    "CREATE TABLE IF NOT EXISTS report_reviews (id TEXT PRIMARY KEY, report_id TEXT NOT NULL, reviewer_id TEXT NOT NULL, action TEXT NOT NULL, comment TEXT, previous_status TEXT, new_status TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, is_deleted INTEGER DEFAULT 0)",
+    "ALTER TABLE reports ADD COLUMN submitted_at TEXT",
+    "ALTER TABLE reports ADD COLUMN approved_at TEXT",
+    "ALTER TABLE reports ADD COLUMN rejected_at TEXT",
+    "ALTER TABLE reports ADD COLUMN rejection_reason TEXT",
 ];
 
 /// Initialize the remote Turso database with the same schema

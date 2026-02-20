@@ -25,6 +25,7 @@ pub mod logistics_materials;
 pub mod logistics_requests;
 pub mod license;
 pub mod last_report_snapshot;
+pub mod report_reviews;
 
 // Re-export all command handlers for Tauri
 // Allow unused imports as these are registered in main.rs
@@ -80,3 +81,5 @@ pub use logistics_requests::*;
 pub use license::*;
 #[allow(unused_imports)]
 pub use last_report_snapshot::*;
+#[allow(unused_imports)]
+pub use report_reviews::*;

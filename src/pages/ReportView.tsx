@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { MainLayout } from '../components/layout';
 import { Button, Card, ReportStatusBadge, SectionCarousel } from '../components/ui';
-import { ArrowLeft, Edit, CheckCircle, XCircle, FileDown, FileSpreadsheet, Calendar, User as UserIcon } from 'lucide-react';
+import { ArrowLeft, Edit, CheckCircle, XCircle, FileDown, FileSpreadsheet, Calendar, User as UserIcon, Send } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
+import { useModal } from '../store/modalStore';
 import {
   reportsApi,
   crewApi,
@@ -18,6 +19,10 @@ import {
 } from '../lib/api';
 import { saveDDRReport } from '../lib/reportExport';
 import type { ReportBranding } from '../lib/logisticsExport';
+import ApproveReportModal from '../components/modals/ApproveReportModal';
+import RejectReportModal from '../components/modals/RejectReportModal';
+import ReviewTimeline from '../components/reports/ReviewTimeline';
+import { backgroundPush } from '../lib/syncHelper';
 import { useAppSettingsStore } from '../store/appSettingsStore';
 import { DEFAULT_APP_SETTINGS } from '../types/appSettings';
 import { toast } from '../lib/toast';
@@ -46,6 +51,7 @@ export default function ReportView() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { sessionToken, user } = useAuthStore();
+  const { openModal, closeModal } = useModal();
 
   const [report, setReport] = useState<Report | null>(null);
   const [crewShifts, setCrewShifts] = useState<CrewShift[]>([]);
@@ -59,6 +65,8 @@ export default function ReportView() {
   const [operationsLog, setOperationsLog] = useState<OperationsLog[]>([]);
   const [creatorName, setCreatorName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [reviewRefreshKey, setReviewRefreshKey] = useState(0);
+  const [viewTab, setViewTab] = useState<'report' | 'review'>('report');
 
   useEffect(() => {
     loadReport();
@@ -110,36 +118,65 @@ export default function ReportView() {
 
   // ── Actions ──────────────────────────────────────────────────────────────
 
-  const handleApprove = async () => {
-    if (!sessionToken || !id) return;
-    try {
-      await reportsApi.approve(sessionToken, id);
-      toast.success('Reporte aprobado exitosamente');
-      loadReport();
-    } catch (error) {
-      console.error('Error approving report:', error);
-      toast.error('Error al aprobar el reporte');
-    }
+  const handleApprove = () => {
+    if (!sessionToken || !id || !report) return;
+    const label = `DDR #${report.reportNumber} · ${report.wellNumber || 'Sin pozo'} · ${report.rigNumber || 'Sin taladro'}`;
+    openModal(
+      <ApproveReportModal
+        reportLabel={label}
+        onConfirm={async () => {
+          await reportsApi.approve(sessionToken, id);
+          closeModal();
+          toast.success('Reporte aprobado exitosamente');
+          backgroundPush(sessionToken);
+          setReviewRefreshKey((k) => k + 1);
+          loadReport();
+        }}
+      />,
+      { title: 'Aprobar Reporte', size: 'md' },
+    );
   };
 
-  const handleReject = async () => {
+  const handleReject = () => {
+    if (!sessionToken || !id || !report) return;
+    const label = `DDR #${report.reportNumber} · ${report.wellNumber || 'Sin pozo'} · ${report.rigNumber || 'Sin taladro'}`;
+    openModal(
+      <RejectReportModal
+        reportLabel={label}
+        onConfirm={async (reason) => {
+          await reportsApi.reject(sessionToken, id, reason);
+          closeModal();
+          toast.success('Reporte rechazado');
+          backgroundPush(sessionToken);
+          setReviewRefreshKey((k) => k + 1);
+          loadReport();
+        }}
+      />,
+      { title: 'Rechazar Reporte', size: 'md' },
+    );
+  };
+
+  const handleSubmit = async () => {
     if (!sessionToken || !id) return;
-    const reason = window.prompt('Motivo del rechazo:');
-    if (!reason) return;
     try {
-      await reportsApi.reject(sessionToken, id, reason);
-      toast.success('Reporte rechazado');
+      // If rejected, reopen to draft first, then submit
+      if (report?.status === 'rejected') {
+        await reportsApi.reopen(sessionToken, id);
+      }
+      await reportsApi.submit(sessionToken, id);
+      toast.success('Reporte enviado para aprobación');
+      backgroundPush(sessionToken);
       loadReport();
     } catch (error) {
-      console.error('Error rejecting report:', error);
-      toast.error('Error al rechazar el reporte');
+      console.error('Error submitting report:', error);
+      toast.error('Error al enviar el reporte');
     }
   };
 
   const canEdit = () => {
     if (!report || !user) return false;
     if (user.role === 'admin') return true;
-    if (report.status === 'draft' && report.createdBy === user.id) return true;
+    if ((report.status === 'draft' || report.status === 'rejected') && report.createdBy === user.id) return true;
     return false;
   };
 
@@ -147,6 +184,13 @@ export default function ReportView() {
     if (!report || !user) return false;
     if (report.status !== 'submitted') return false;
     return user.role === 'supervisor' || user.role === 'admin';
+  };
+
+  const canSubmit = () => {
+    if (!report || !user) return false;
+    if (report.status !== 'draft' && report.status !== 'rejected') return false;
+    if (user.role === 'supervisor' || user.role === 'admin') return true;
+    return report.createdBy === user.id;
   };
 
   const appSettings = useAppSettingsStore((s) => s.settings);
@@ -235,21 +279,6 @@ export default function ReportView() {
           <Button variant="outline" onClick={() => handleExport('excel')} icon={<FileSpreadsheet size={16} />}>
             Excel
           </Button>
-          {canEdit() && (
-            <Button variant="primary" onClick={() => navigate(`/reports/edit/${id}`)} icon={<Edit size={16} />}>
-              Editar
-            </Button>
-          )}
-          {canApprove() && (
-            <>
-              <Button variant="primary" onClick={handleApprove} icon={<CheckCircle size={16} />} className="bg-green-600 hover:bg-green-700">
-                Aprobar
-              </Button>
-              <Button variant="outline" onClick={handleReject} icon={<XCircle size={16} />} className="text-red-600 hover:bg-red-50">
-                Rechazar
-              </Button>
-            </>
-          )}
         </div>
       }
     >
@@ -301,6 +330,60 @@ export default function ReportView() {
             <span>Creado por <span className="font-medium text-gray-700 dark:text-gray-300">{creatorName || report.createdBy || '-'}</span></span>
           </div>
         </div>
+
+        {/* ================================================================
+            TAB BAR + ACTION BUTTONS
+            ================================================================ */}
+        <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700">
+          {/* Tabs — left */}
+          <div className="flex gap-1">
+            {[
+              { key: 'report' as const, label: 'Reporte' },
+              { key: 'review' as const, label: 'Revisión' },
+            ].map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setViewTab(tab.key)}
+                className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors cursor-pointer ${
+                  viewTab === tab.key
+                    ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Action buttons — right */}
+          <div className="flex items-center gap-2 pb-1">
+            {canEdit() && (
+              <Button variant="outline" size="sm" onClick={() => navigate(`/reports/edit/${id}`)} icon={<Edit size={14} />}>
+                Editar
+              </Button>
+            )}
+            {canSubmit() && (
+              <Button variant="primary" size="sm" onClick={handleSubmit} icon={<Send size={14} />}>
+                Enviar
+              </Button>
+            )}
+            {canApprove() && (
+              <>
+                <Button variant="success" size="sm" onClick={handleApprove} icon={<CheckCircle size={14} />}>
+                  Aprobar
+                </Button>
+                <Button variant="danger" size="sm" onClick={handleReject} icon={<XCircle size={14} />}>
+                  Rechazar
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* ================================================================
+            TAB: REPORTE — Report data sections
+            ================================================================ */}
+        {viewTab === 'report' && (<>
 
         {/* ================================================================
             GENERAL DATA CARDS
@@ -591,6 +674,53 @@ export default function ReportView() {
             </div>
           </Card>
         )}
+
+        </>)}
+
+        {/* ================================================================
+            TAB: REVISIÓN — Review & approval history
+            ================================================================ */}
+        {viewTab === 'review' && (
+          <div className="space-y-6">
+            {/* Rejection reason banner */}
+            {report.status === 'rejected' && report.rejectionReason && (
+              <div className="flex items-start gap-3 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                <XCircle size={20} className="text-red-500 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-red-800 dark:text-red-300">Motivo del rechazo</p>
+                  <p className="text-sm text-red-700 dark:text-red-400 mt-1 whitespace-pre-wrap">{report.rejectionReason}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Status summary */}
+            <Card>
+              <div className="p-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Estado del Reporte</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <DataField label="Estado Actual" value={
+                    report.status === 'draft' ? 'Borrador' :
+                    report.status === 'submitted' ? 'Enviado — Pendiente de aprobación' :
+                    report.status === 'approved' ? 'Aprobado' :
+                    report.status === 'rejected' ? 'Rechazado' : report.status
+                  } />
+                  {report.submittedAt && <DataField label="Fecha de Envío" value={formatDateTime(report.submittedAt)} />}
+                  {report.approvedAt && <DataField label="Fecha de Aprobación" value={formatDateTime(report.approvedAt)} />}
+                  {report.rejectedAt && <DataField label="Fecha de Rechazo" value={formatDateTime(report.rejectedAt)} />}
+                </div>
+              </div>
+            </Card>
+
+            {/* Timeline */}
+            <Card>
+              <div className="p-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Historial de Revisiones</h3>
+                <ReviewTimeline reportId={report.id} refreshKey={reviewRefreshKey} />
+              </div>
+            </Card>
+          </div>
+        )}
+
       </div>
     </MainLayout>
   );
