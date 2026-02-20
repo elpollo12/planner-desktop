@@ -12,7 +12,8 @@ const routeNames: Record<string, string> = {
   'new': 'Nuevo',
   'edit': 'Editar',
   'view': 'Ver',
-  'logistics' : 'Logística'
+  'logistics' : 'Logística',
+  'approvals': 'Aprobaciones'
 }
 
 export const BreadCrumps = () => {

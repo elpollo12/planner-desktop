@@ -35,16 +35,16 @@ export function Sidebar({ className = '' }: SidebarProps) {
       show: true,
     },
     {
-      name: 'Reportes',
-      href: '/reports',
-      icon: List,
-      show: true,
-    },
-    {
       name: 'Aprobaciones',
       href: '/approvals',
       icon: ClipboardCheck,
       show: user?.role === 'supervisor' || user?.role === 'admin',
+    },
+    {
+      name: 'Reportes',
+      href: '/reports',
+      icon: List,
+      show: true,
     },
     {
       name: 'Logística',

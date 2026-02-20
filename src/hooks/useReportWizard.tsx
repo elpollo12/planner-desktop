@@ -91,9 +91,11 @@ export function useReportWizard({
   const canEdit = useMemo(() => {
     if (!existingReport || !user) return true;
     if (user.role === 'admin') return true;
-    if (user.role === 'supervisor') return true;
+    if (user.role === 'supervisor') {
+      return existingReport.status === 'draft' || existingReport.status === 'rejected';
+    }
     if (user.role === 'operator') {
-      return (existingReport.status === 'draft' || existingReport.status === 'rejected') && existingReport.createdBy === user.id;
+      return (existingReport.status === 'draft' || existingReport.status === 'rejected' || existingReport.status === 'submitted') && existingReport.createdBy === user.id;
     }
     return false;
   }, [existingReport, user]);

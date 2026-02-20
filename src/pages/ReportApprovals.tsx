@@ -204,8 +204,8 @@ export default function ReportApprovals() {
     openModal(
       <ApproveReportModal
         reportLabel={label}
-        onConfirm={async (_comment) => {
-          await reportsApi.approve(sessionToken!, report.id);
+        onConfirm={async (comment) => {
+          await reportsApi.approve(sessionToken!, report.id, comment);
           closeModal();
           toast.success('Reporte aprobado exitosamente');
           backgroundPush(sessionToken!);
@@ -272,11 +272,10 @@ export default function ReportApprovals() {
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`relative px-4 py-2 text-sm font-medium rounded-md transition-all ${
-                activeTab === tab.key
+              className={`relative px-4 py-2 text-sm font-medium rounded-md transition-all ${activeTab === tab.key
                   ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
                   : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-              }`}
+                }`}
             >
               {tab.label}
               {tab.key === 'pending' && pendingCount > 0 && (
@@ -291,37 +290,38 @@ export default function ReportApprovals() {
         {/* ── Filters (history tab only) ────────────────────────────── */}
         {activeTab === 'history' && (
           <Card>
-            <div className="p-4 flex flex-wrap items-end gap-4">
-              <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+            <div className=" flex-col flex-wrap items-end gap-4">
+              <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-40 mb-2">
                 <Filter size={16} />
                 <span>Filtros</span>
               </div>
-              <div className="w-48">
-                <Select
-                  value={historyStatus}
-                  onChange={(e) => setHistoryStatus(e.target.value)}
-                  placeholder="Todos los estados"
-                  options={[
-                    { value: '', label: 'Todos' },
-                    { value: 'approved', label: 'Aprobados' },
-                    { value: 'rejected', label: 'Rechazados' },
-                  ]}
-                />
-              </div>
-              <div className="w-48">
-                <Select
-                  value={filterRig}
-                  onChange={(e) => setFilterRig(e.target.value)}
-                  placeholder="Todos los taladros"
-                  options={[
-                    { value: '', label: 'Todos los taladros' },
-                    ...rigs.map((r) => ({ value: r.name, label: r.name })),
-                  ]}
-                />
-              </div>
+              <div className='flex items-center gap-2 text-sm"'>
+                <div className="w-48">
+                  <Select
+                    value={historyStatus}
+                    onChange={(e) => setHistoryStatus(e.target.value)}
+                    placeholder="Todos los estados"
+                    options={[
+                      { value: '', label: 'Todos' },
+                      { value: 'approved', label: 'Aprobados' },
+                      { value: 'rejected', label: 'Rechazados' },
+                    ]}
+                  />
+                </div>
+                <div className="w-48">
+                  <Select
+                    value={filterRig}
+                    onChange={(e) => setFilterRig(e.target.value)}
+                    placeholder="Todos los taladros"
+                    options={[
+                      { value: '', label: 'Todos los taladros' },
+                      ...rigs.map((r) => ({ value: r.name, label: r.name })),
+                    ]}
+                  />
+                </div>
               {(historyStatus || filterRig) && (
                 <Button
-                  variant="ghost"
+                  variant="danger"
                   size="sm"
                   onClick={() => {
                     setHistoryStatus('');
@@ -332,6 +332,7 @@ export default function ReportApprovals() {
                   Limpiar
                 </Button>
               )}
+              </div>
             </div>
           </Card>
         )}
@@ -487,13 +488,12 @@ export default function ReportApprovals() {
                         key={index}
                         onClick={() => typeof page === 'number' && setCurrentPage(page)}
                         disabled={page === '...'}
-                        className={`px-3 py-1 rounded text-sm font-medium ${
-                          page === currentPage
+                        className={`px-3 py-1 rounded text-sm font-medium ${page === currentPage
                             ? 'bg-blue-600 text-white'
                             : page === '...'
                               ? 'cursor-default text-gray-400'
                               : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                        }`}
+                          }`}
                       >
                         {page}
                       </button>

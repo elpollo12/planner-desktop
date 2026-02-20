@@ -428,7 +428,13 @@ export default function ReportList() {
                             >
                               <Eye size={18} />
                             </button>
-                            {(report.status === 'draft' || user?.role === 'supervisor' || user?.role === 'admin') && (
+                            {(() => {
+                              if (!user) return false;
+                              if (user.role === 'admin') return true;
+                              if (user.role === 'supervisor' && (report.status === 'draft' || report.status === 'rejected')) return true;
+                              if (report.createdBy === user.id && (report.status === 'draft' || report.status === 'rejected' || report.status === 'submitted')) return true;
+                              return false;
+                            })() && (
                               <button
                                 onClick={() => navigate(`/reports/edit/${report.id}`)}
                                 className="p-1 text-yellow-600 hover:text-yellow-900 dark:text-yellow-400 dark:hover:text-yellow-300 cursor-pointer"
@@ -437,7 +443,12 @@ export default function ReportList() {
                                 <Edit size={18} />
                               </button>
                             )}
-                            {(user?.role === 'supervisor' || user?.role === 'admin') && (
+                            {(() => {
+                              if (!user) return false;
+                              if (user.role === 'admin' || user.role === 'supervisor') return true;
+                              if (report.createdBy === user.id && (report.status === 'draft' || report.status === 'submitted')) return true;
+                              return false;
+                            })() && (
                               <button
                                 onClick={() => handleDelete(report)}
                                 className="p-1 text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 cursor-pointer"

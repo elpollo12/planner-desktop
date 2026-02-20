@@ -136,8 +136,8 @@ export const reportsApi = {
   submit: (sessionToken: string, reportId: string) =>
     invoke<Report>('submit_report', { sessionToken, reportId }),
 
-  approve: (sessionToken: string, reportId: string) =>
-    invoke<Report>('approve_report', { sessionToken, reportId }),
+  approve: (sessionToken: string, reportId: string, comment?: string) =>
+    invoke<Report>('approve_report', { sessionToken, reportId, comment: comment || null }),
 
   reject: (sessionToken: string, reportId: string, reason: string) =>
     invoke<Report>('reject_report', { sessionToken, reportId, reason }),

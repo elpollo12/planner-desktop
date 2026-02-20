@@ -399,6 +399,13 @@ impl Report {
 
     /// Submit report (draft → submitted)
     pub fn submit(conn: &Connection, report_id: &str) -> Result<Report, AppError> {
+        let report = Report::get_by_id(conn, report_id)?;
+        if report.status != "draft" {
+            return Err(AppError::ValidationError(
+                "Only draft reports can be submitted".to_string(),
+            ));
+        }
+
         let now = chrono::Utc::now().to_rfc3339();
 
         conn.execute(
@@ -411,6 +418,13 @@ impl Report {
 
     /// Approve report (submitted → approved)
     pub fn approve(conn: &Connection, report_id: &str, approved_by: String) -> Result<Report, AppError> {
+        let report = Report::get_by_id(conn, report_id)?;
+        if report.status != "submitted" {
+            return Err(AppError::ValidationError(
+                "Only submitted reports can be approved".to_string(),
+            ));
+        }
+
         let now = chrono::Utc::now().to_rfc3339();
 
         conn.execute(
@@ -425,34 +439,41 @@ impl Report {
     pub fn reject(
         conn: &Connection,
         report_id: &str,
-        rejected_by: String,
+        _rejected_by: String,
         reason: String,
     ) -> Result<Report, AppError> {
-        let now = chrono::Utc::now().to_rfc3339();
-
-        conn.execute(
-            "UPDATE reports SET status = ?1, approved_by = ?2, rejected_at = ?3, rejection_reason = ?4, updated_at = ?5 WHERE id = ?6",
-            params!["rejected", &rejected_by, &now, &reason, &now, report_id],
-        )?;
-
-        Report::get_by_id(conn, report_id)
-    }
-
-    /// Reopen a rejected report back to draft so the creator can fix and resubmit
-    /// (rejected → draft)
-    pub fn reopen(conn: &Connection, report_id: &str) -> Result<Report, AppError> {
         let report = Report::get_by_id(conn, report_id)?;
-
-        if report.status != "rejected" {
+        if report.status != "submitted" {
             return Err(AppError::ValidationError(
-                "Only rejected reports can be reopened".to_string(),
+                "Only submitted reports can be rejected".to_string(),
             ));
         }
 
         let now = chrono::Utc::now().to_rfc3339();
 
         conn.execute(
-            "UPDATE reports SET status = ?1, rejection_reason = NULL, rejected_at = NULL, updated_at = ?2 WHERE id = ?3",
+            "UPDATE reports SET status = ?1, rejected_at = ?2, rejection_reason = ?3, updated_at = ?4 WHERE id = ?5",
+            params!["rejected", &now, &reason, &now, report_id],
+        )?;
+
+        Report::get_by_id(conn, report_id)
+    }
+
+    /// Reopen a report back to draft so it can be edited and resubmitted
+    /// (rejected/approved/submitted → draft)
+    pub fn reopen(conn: &Connection, report_id: &str) -> Result<Report, AppError> {
+        let report = Report::get_by_id(conn, report_id)?;
+
+        if report.status == "draft" {
+            return Err(AppError::ValidationError(
+                "Report is already a draft".to_string(),
+            ));
+        }
+
+        let now = chrono::Utc::now().to_rfc3339();
+
+        conn.execute(
+            "UPDATE reports SET status = ?1, rejection_reason = NULL, rejected_at = NULL, approved_at = NULL, approved_by = NULL, submitted_at = NULL, updated_at = ?2 WHERE id = ?3",
             params!["draft", &now, report_id],
         )?;
 
@@ -462,10 +483,13 @@ impl Report {
     /// Check if user can edit report
     pub fn can_edit(report: &Report, user_id: &str, user_role: &UserRole) -> bool {
         match user_role {
-            UserRole::Admin | UserRole::Supervisor => true,
+            UserRole::Admin => true,
+            UserRole::Supervisor => {
+                report.status == "draft" || report.status == "rejected"
+            }
             UserRole::Operator => {
-                // Operators can only edit their own draft reports
-                report.status == "draft" && report.created_by.as_deref() == Some(user_id)
+                (report.status == "draft" || report.status == "rejected" || report.status == "submitted")
+                    && report.created_by.as_deref() == Some(user_id)
             }
         }
     }

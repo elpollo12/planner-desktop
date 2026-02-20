@@ -66,7 +66,6 @@ export default function ReportForm() {
   });
 
   const {
-    handleSubmit: hookFormSubmit,
     formState: { errors, isDirty },
   } = methods;
 
@@ -146,6 +145,12 @@ export default function ReportForm() {
     // Create or update
     if (currentReportId) {
       await reportsApi.update(sessionToken, currentReportId, reportData);
+      // If saving as draft and report was not already draft, reopen to draft
+      if (!opts.submit && existingReport?.status && existingReport.status !== 'draft') {
+        await reportsApi.reopen(sessionToken, currentReportId);
+        // Refresh existingReport so subsequent saves don't try to reopen again
+        await loadReport(currentReportId);
+      }
       if (!opts.submit) toast.success('Reporte actualizado');
     } else {
       const newReport = await reportsApi.create(sessionToken, reportData);
@@ -159,8 +164,8 @@ export default function ReportForm() {
 
     // Submit if requested
     if (opts.submit) {
-      // If report was rejected, reopen to draft first
-      if (existingReport?.status === 'rejected') {
+      // If report is not already draft, reopen to draft first then submit
+      if (existingReport?.status && existingReport.status !== 'draft') {
         await reportsApi.reopen(sessionToken, currentReportId);
       }
       await reportsApi.submit(sessionToken, currentReportId);
@@ -190,10 +195,10 @@ export default function ReportForm() {
     }
   };
 
-  const onSubmit = async (data: CompleteReportData) => {
+  const handleSubmitReport = async () => {
     setIsSubmitting(true);
     try {
-      await persistReport(data, { submit: true });
+      await persistReport(formData, { submit: true });
     } catch (error) {
       console.error('Error submitting report:', error);
       toast.error(`Error al enviar el reporte: ${error}`);
@@ -241,7 +246,7 @@ export default function ReportForm() {
 
   return (
     <FormProvider {...methods}>
-      <form onSubmit={hookFormSubmit(onSubmit)} onKeyDown={handleFormKeyDown}>
+      <form onSubmit={(e) => e.preventDefault()} onKeyDown={handleFormKeyDown}>
         <MainLayout
           title={isEditMode ? 'Editar Reporte DDR' : 'Nuevo Reporte DDR'}
           subtitle={
@@ -270,7 +275,8 @@ export default function ReportForm() {
 
                   <Button
                     variant="primary"
-                    type="submit"
+                    type="button"
+                    onClick={handleSubmitReport}
                     loading={isSubmitting}
                     disabled={!canEdit}
                     icon={<Send size={16} />}
@@ -452,7 +458,8 @@ export default function ReportForm() {
                   </Button>
                   <Button
                     variant="primary"
-                    type="submit"
+                    type="button"
+                    onClick={handleSubmitReport}
                     loading={isSubmitting}
                     disabled={!canEdit}
                     className="flex-1"

@@ -145,13 +145,28 @@ pub async fn delete_report(
     report_id: String,
     state: State<'_, AppState>,
 ) -> Result<(), String> {
-    // Only supervisor+ can delete reports
-    check_permission(&session_token, UserRole::Supervisor, &state).map_err(|e| e.to_string())?;
+    let session = get_session(&session_token, &state).map_err(|e| e.to_string())?;
+    let user_role = UserRole::from_str(&session.role).map_err(|e| e.to_string())?;
 
     let conn = state
         .db
         .lock()
         .map_err(|e| format!("Failed to lock database: {}", e))?;
+
+    let report = Report::get_by_id(&conn, &report_id).map_err(|e| e.to_string())?;
+
+    // Permission check: admin/supervisor can delete any, operator can delete own draft/submitted
+    let can_delete = match user_role {
+        UserRole::Admin | UserRole::Supervisor => true,
+        UserRole::Operator => {
+            (report.status == "draft" || report.status == "submitted")
+                && report.created_by.as_deref() == Some(&session.user_id)
+        }
+    };
+
+    if !can_delete {
+        return Err("Permission denied: You cannot delete this report".to_string());
+    }
 
     Report::delete(&conn, &report_id).map_err(|e| e.to_string())?;
 
@@ -188,6 +203,7 @@ pub async fn submit_report(
 pub async fn approve_report(
     session_token: String,
     report_id: String,
+    comment: Option<String>,
     state: State<'_, AppState>,
 ) -> Result<Report, String> {
     // Only supervisor+ can approve
@@ -206,15 +222,15 @@ pub async fn approve_report(
     let updated_report = Report::approve(&conn, &report_id, session.user_id.clone()).map_err(|e| e.to_string())?;
 
     // Create audit trail entry
-    let _ = ReportReview::create(
+    ReportReview::create(
         &conn,
         &report_id,
         &session.user_id,
         "approved",
-        None,
+        comment.as_deref(),
         Some(&previous_status),
         Some("approved"),
-    );
+    ).map_err(|e| format!("Failed to create review audit: {}", e))?;
 
     Ok(updated_report)
 }
@@ -242,7 +258,7 @@ pub async fn reject_report(
     let updated_report = Report::reject(&conn, &report_id, session.user_id.clone(), reason.clone()).map_err(|e| e.to_string())?;
 
     // Create audit trail entry
-    let _ = ReportReview::create(
+    ReportReview::create(
         &conn,
         &report_id,
         &session.user_id,
@@ -250,7 +266,7 @@ pub async fn reject_report(
         Some(&reason),
         Some(&previous_status),
         Some("rejected"),
-    );
+    ).map_err(|e| format!("Failed to create review audit: {}", e))?;
 
     Ok(updated_report)
 }
@@ -305,7 +321,7 @@ pub async fn reopen_report(
         &report_id,
         &session.user_id,
         "resubmitted",
-        Some("Report reopened for corrections"),
+        Some("Reporte reabierto para correcciones"),
         Some(&previous_status),
         Some("draft"),
     );

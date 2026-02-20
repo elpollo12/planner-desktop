@@ -400,8 +400,9 @@ export function useReportSave({
       ];
 
       // Process all sections in parallel
+      // Only save sections that have data — skip empty sections to avoid deleting existing data
       const tasks = sectionsToProcess
-        .filter((section) => section.hasData || reportId)
+        .filter((section) => section.hasData)
         .map(async (section) => {
           try {
             await section.saveFn();

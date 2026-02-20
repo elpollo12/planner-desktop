@@ -67,6 +67,7 @@ export default function ReportView() {
   const [loading, setLoading] = useState(true);
   const [reviewRefreshKey, setReviewRefreshKey] = useState(0);
   const [viewTab, setViewTab] = useState<'report' | 'review'>('report');
+  const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
     loadReport();
@@ -124,8 +125,8 @@ export default function ReportView() {
     openModal(
       <ApproveReportModal
         reportLabel={label}
-        onConfirm={async () => {
-          await reportsApi.approve(sessionToken, id);
+        onConfirm={async (comment?: string) => {
+          await reportsApi.approve(sessionToken, id, comment);
           closeModal();
           toast.success('Reporte aprobado exitosamente');
           backgroundPush(sessionToken);
@@ -157,10 +158,11 @@ export default function ReportView() {
   };
 
   const handleSubmit = async () => {
-    if (!sessionToken || !id) return;
+    if (!sessionToken || !id || actionLoading) return;
+    setActionLoading(true);
     try {
-      // If rejected, reopen to draft first, then submit
-      if (report?.status === 'rejected') {
+      // If not already draft, reopen to draft first, then submit
+      if (report?.status && report.status !== 'draft') {
         await reportsApi.reopen(sessionToken, id);
       }
       await reportsApi.submit(sessionToken, id);
@@ -170,13 +172,19 @@ export default function ReportView() {
     } catch (error) {
       console.error('Error submitting report:', error);
       toast.error('Error al enviar el reporte');
+    } finally {
+      setActionLoading(false);
     }
   };
 
   const canEdit = () => {
     if (!report || !user) return false;
+    // Admin can edit any report in any status
     if (user.role === 'admin') return true;
-    if ((report.status === 'draft' || report.status === 'rejected') && report.createdBy === user.id) return true;
+    // Supervisor can edit draft or rejected
+    if (user.role === 'supervisor' && (report.status === 'draft' || report.status === 'rejected')) return true;
+    // Operator can edit own draft, rejected, or submitted
+    if ((report.status === 'draft' || report.status === 'rejected' || report.status === 'submitted') && report.createdBy === user.id) return true;
     return false;
   };
 
@@ -188,9 +196,13 @@ export default function ReportView() {
 
   const canSubmit = () => {
     if (!report || !user) return false;
-    if (report.status !== 'draft' && report.status !== 'rejected') return false;
-    if (user.role === 'supervisor' || user.role === 'admin') return true;
-    return report.createdBy === user.id;
+    // Admin can resubmit from any non-submitted status (including approved)
+    if (user.role === 'admin' && report.status !== 'submitted') return true;
+    // Supervisor can submit draft or rejected
+    if (user.role === 'supervisor' && (report.status === 'draft' || report.status === 'rejected')) return true;
+    // Operator can submit own draft or rejected
+    if ((report.status === 'draft' || report.status === 'rejected') && report.createdBy === user.id) return true;
+    return false;
   };
 
   const appSettings = useAppSettingsStore((s) => s.settings);
@@ -344,9 +356,9 @@ export default function ReportView() {
               <button
                 key={tab.key}
                 onClick={() => setViewTab(tab.key)}
-                className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors cursor-pointer ${
+                className={`px-4 py-2.5 text-sm font-medium border-b transition-colors cursor-pointer ${
                   viewTab === tab.key
-                    ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+                    ? 'border-primary-500! text-primary-600 dark:text-primary-400'
                     : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
                 }`}
               >
@@ -363,7 +375,7 @@ export default function ReportView() {
               </Button>
             )}
             {canSubmit() && (
-              <Button variant="primary" size="sm" onClick={handleSubmit} icon={<Send size={14} />}>
+              <Button variant="primary" size="sm" onClick={handleSubmit} disabled={actionLoading} loading={actionLoading} icon={<Send size={14} />}>
                 Enviar
               </Button>
             )}

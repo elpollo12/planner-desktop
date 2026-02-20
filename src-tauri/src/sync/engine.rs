@@ -380,7 +380,13 @@ fn collect_parent_ids_from_table_data(table_data: &[TableData]) -> std::collecti
 
 /// Delete stale child rows from local DB for all parent relationships in the batch.
 /// Must be called BEFORE writing new data.
-fn cleanup_local_child_rows(conn: &Connection, parent_map: &std::collections::HashMap<&str, HashSet<String>>) -> Result<(), String> {
+/// Only deletes child rows for tables that are actually present in the batch,
+/// to avoid wiping sibling tables that share the same parent_col.
+fn cleanup_local_child_rows(
+    conn: &Connection,
+    parent_map: &std::collections::HashMap<&str, HashSet<String>>,
+    tables_in_batch: &HashSet<&str>,
+) -> Result<(), String> {
     for (parent_col, parent_ids) in parent_map {
         if parent_ids.is_empty() {
             continue;
@@ -393,7 +399,7 @@ fn cleanup_local_child_rows(conn: &Connection, parent_map: &std::collections::Ha
         let ids: Vec<&str> = parent_ids.iter().map(|s| s.as_str()).collect();
 
         // Special case: crew_members is a grandchild of report_id via crew_shifts
-        if *parent_col == "report_id" {
+        if *parent_col == "report_id" && tables_in_batch.contains("crew_shifts") {
             let crew_members_sql = format!(
                 "DELETE FROM crew_members WHERE crew_shift_id IN (SELECT id FROM crew_shifts WHERE report_id IN ({}))",
                 placeholders
@@ -402,9 +408,9 @@ fn cleanup_local_child_rows(conn: &Connection, parent_map: &std::collections::Ha
                 .map_err(|e| format!("Failed to cleanup crew_members: {}", e))?;
         }
 
-        // Delete all direct child tables matching this parent_col
+        // Only delete from child tables that are actually in the current batch
         for table_def in SYNC_TABLES.iter() {
-            if table_def.parent_col == Some(parent_col) {
+            if table_def.parent_col == Some(parent_col) && tables_in_batch.contains(table_def.name) {
                 let sql = format!(
                     "DELETE FROM {} WHERE {} IN ({})",
                     table_def.name, parent_col, placeholders
@@ -414,14 +420,18 @@ fn cleanup_local_child_rows(conn: &Connection, parent_map: &std::collections::Ha
             }
         }
 
-        println!("[Sync] Cleaned up local child rows for {} {}(s)", parent_ids.len(), parent_col);
+        println!("[Sync] Cleaned up local child rows for {} {}(s) (tables: {:?})", parent_ids.len(), parent_col, tables_in_batch);
     }
     Ok(())
 }
 
 /// Delete stale child rows from Turso for all parent relationships in the batch.
 /// Must be called BEFORE pushing new data.
-async fn cleanup_turso_child_rows(client: &TursoClient, parent_map: &std::collections::HashMap<&str, HashSet<String>>) -> Result<(), String> {
+async fn cleanup_turso_child_rows(
+    client: &TursoClient,
+    parent_map: &std::collections::HashMap<&str, HashSet<String>>,
+    tables_in_batch: &HashSet<&str>,
+) -> Result<(), String> {
     let mut batch: Vec<(String, Vec<TursoValue>)> = Vec::new();
 
     for (parent_col, parent_ids) in parent_map {
@@ -438,7 +448,7 @@ async fn cleanup_turso_child_rows(client: &TursoClient, parent_map: &std::collec
             .collect();
 
         // Special case: crew_members grandchild
-        if *parent_col == "report_id" {
+        if *parent_col == "report_id" && tables_in_batch.contains("crew_shifts") {
             batch.push((
                 format!(
                     "DELETE FROM crew_members WHERE crew_shift_id IN (SELECT id FROM crew_shifts WHERE report_id IN ({}))",
@@ -448,9 +458,9 @@ async fn cleanup_turso_child_rows(client: &TursoClient, parent_map: &std::collec
             ));
         }
 
-        // Delete all direct child tables matching this parent_col
+        // Only delete from child tables that are actually in the current batch
         for table_def in SYNC_TABLES.iter() {
-            if table_def.parent_col == Some(parent_col) {
+            if table_def.parent_col == Some(parent_col) && tables_in_batch.contains(table_def.name) {
                 batch.push((
                     format!("DELETE FROM {} WHERE {} IN ({})", table_def.name, parent_col, placeholders),
                     params.clone(),
@@ -458,7 +468,7 @@ async fn cleanup_turso_child_rows(client: &TursoClient, parent_map: &std::collec
             }
         }
 
-        println!("[Sync] Cleaned up Turso child rows for {} {}(s)", parent_ids.len(), parent_col);
+        println!("[Sync] Cleaned up Turso child rows for {} {}(s) (tables: {:?})", parent_ids.len(), parent_col, tables_in_batch);
     }
 
     if !batch.is_empty() {
@@ -1099,8 +1109,13 @@ pub fn write_pulled_data(
         .map_err(|e| format!("Failed to disable foreign keys: {}", e))?;
 
     // Clean up stale child rows before writing to prevent duplicates
+    // Only clean tables that are actually in this batch to avoid wiping unrelated sibling data
     let parent_map = collect_parent_ids_from_indexed(table_results);
-    cleanup_local_child_rows(conn, &parent_map)?;
+    let tables_in_batch: HashSet<&str> = table_results.iter()
+        .filter(|(_, rows)| !rows.is_empty())
+        .map(|(idx, _)| SYNC_TABLES[*idx].name)
+        .collect();
+    cleanup_local_child_rows(conn, &parent_map, &tables_in_batch)?;
 
     let mut total: u32 = 0;
 
@@ -1346,7 +1361,11 @@ pub async fn push_data_to_turso(
 
     // Clean up stale child rows in Turso before pushing to prevent duplicates
     let parent_map = collect_parent_ids_from_table_data(&table_data);
-    if let Err(e) = cleanup_turso_child_rows(client, &parent_map).await {
+    let tables_in_push: HashSet<&str> = table_data.iter()
+        .filter(|d| !d.rows.is_empty())
+        .map(|d| SYNC_TABLES[d.table_index].name)
+        .collect();
+    if let Err(e) = cleanup_turso_child_rows(client, &parent_map, &tables_in_push).await {
         println!("[Sync] Warning: cleanup_turso_child_rows failed: {}", e);
         errors.push(format!("Cleanup warning: {}", e));
     }
