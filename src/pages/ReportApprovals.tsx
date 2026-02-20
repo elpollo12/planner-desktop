@@ -396,13 +396,6 @@ export default function ReportApprovals() {
                         <span>Rechazado: {formatDateTime(report.rejectedAt)}</span>
                       )}
                     </div>
-
-                    {/* Show rejection reason inline for history */}
-                    {report.status === 'rejected' && report.rejectionReason && (
-                      <div className="mt-1 px-2 py-1 bg-red-50 dark:bg-red-900/20 rounded text-xs text-red-700 dark:text-red-300">
-                        <span className="font-medium">Motivo:</span> {report.rejectionReason}
-                      </div>
-                    )}
                   </div>
 
                   {/* Right: Actions */}
