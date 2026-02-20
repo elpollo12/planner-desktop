@@ -1,4 +1,4 @@
-import { Link, useLocation, useParams } from "react-router-dom"
+import { Link, useLocation, useParams, useSearchParams } from "react-router-dom"
 import { useState, useEffect } from "react"
 import { useAuthStore } from "../../store/authStore"
 import { reportsApi } from "../../lib/api"
@@ -16,11 +16,20 @@ const routeNames: Record<string, string> = {
   'approvals': 'Aprobaciones'
 }
 
+// Map of ?from values to their display info
+const fromOverrides: Record<string, { displayName: string; link: string }> = {
+  'approvals': { displayName: 'Aprobaciones', link: '/approvals' },
+}
+
 export const Breadcrumbs = () => {
   const location = useLocation()
   const params = useParams()
+  const [searchParams] = useSearchParams()
   const { sessionToken } = useAuthStore()
   const [reportName, setReportName] = useState<string | null>(null)
+
+  // Read ?from param for origin override
+  const fromParam = searchParams.get('from')
 
   // Detectar si estamos en una ruta de reporte con ID
   const isReportRoute = location.pathname.includes('/reports/view/') || 
@@ -48,6 +57,10 @@ export const Breadcrumbs = () => {
   const segments = location.pathname.split('/').filter((crumb) => crumb !== '')
   
   const crumbs: Array<{ displayName: string; link: string; isLast: boolean }> = []
+
+  // Check if first segment should be overridden by ?from param
+  // e.g. /reports/view/:id?from=approvals → replace "Reportes" with "Aprobaciones"
+  const override = fromParam ? fromOverrides[fromParam] : null
   
   for (let i = 0; i < segments.length; i++) {
     const segment = segments[i]
@@ -69,6 +82,21 @@ export const Breadcrumbs = () => {
     
     // Si es un UUID sin contexto, skip
     if (isUUID) {
+      continue
+    }
+
+    // Override the first segment (e.g. "reports") when ?from is present
+    if (i === 0 && override) {
+      const hasUUIDNext = i < segments.length - 1 && 
+                         segments[i + 1].includes('-') && 
+                         segments[i + 1].length > 20
+      const isLast = i === segments.length - 1 || hasUUIDNext
+
+      crumbs.push({
+        displayName: override.displayName,
+        link: override.link,
+        isLast,
+      })
       continue
     }
     

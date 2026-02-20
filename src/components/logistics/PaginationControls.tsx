@@ -81,7 +81,7 @@ export function PaginationControls({
                 disabled={page === '...'}
                 className={`px-3 py-1 rounded text-sm font-medium
                   ${page === currentPage
-                    ? 'bg-blue-600 text-white'
+                    ? 'bg-primary-600 text-white'
                     : page === '...'
                       ? 'cursor-default text-gray-400'
                       : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'

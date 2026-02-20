@@ -267,14 +267,14 @@ export default function ReportApprovals() {
     >
       <div className="space-y-6 max-w-7xl mx-auto">
         {/* ── Tabs ──────────────────────────────────────────────────── */}
-        <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-1 w-fit">
+        <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 border border-primary-200 rounded-lg p-1 w-fit">
           {TABS.map((tab) => (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
               className={`relative px-4 py-2 text-sm font-medium rounded-md transition-all ${activeTab === tab.key
-                  ? 'bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
-                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                  ? 'bg-gray-50 dark:bg-gray-700 text-primary-500 dark:text-gray-100 shadow-sm'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:cursor-pointer'
                 }`}
             >
               {tab.label}
@@ -403,7 +403,7 @@ export default function ReportApprovals() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => navigate(`/reports/view/${report.id}`)}
+                      onClick={() => navigate(`/reports/view/${report.id}?from=approvals`)}
                       icon={<Eye size={14} />}
                     >
                       Ver
@@ -471,7 +471,7 @@ export default function ReportApprovals() {
                   <button
                     onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                     disabled={currentPage <= 1}
-                    className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 hover:cursor-pointer disabled:cursor-not-allowed"
                   >
                     <ChevronLeft size={16} />
                   </button>
@@ -482,10 +482,10 @@ export default function ReportApprovals() {
                         onClick={() => typeof page === 'number' && setCurrentPage(page)}
                         disabled={page === '...'}
                         className={`px-3 py-1 rounded text-sm font-medium ${page === currentPage
-                            ? 'bg-blue-600 text-white'
+                            ? 'bg-primary-600 text-white'
                             : page === '...'
                               ? 'cursor-default text-gray-400'
-                              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                              : 'text-gray-700 cursor-pointer dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                           }`}
                       >
                         {page}
@@ -495,7 +495,7 @@ export default function ReportApprovals() {
                   <button
                     onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                     disabled={currentPage >= totalPages}
-                    className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 hover:cursor-pointer disabled:cursor-not-allowed"
                   >
                     <ChevronRight size={16} />
                   </button>

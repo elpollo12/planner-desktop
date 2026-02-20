@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { MainLayout } from '../components/layout';
 import { Button, Card, ReportStatusBadge, SectionCarousel } from '../components/ui';
 import { ArrowLeft, Edit, CheckCircle, XCircle, FileDown, FileSpreadsheet, Calendar, User as UserIcon, Send } from 'lucide-react';
@@ -50,8 +50,13 @@ function sortByShift<T extends { shift?: string }>(items: T[]): T[] {
 export default function ReportView() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { sessionToken, user } = useAuthStore();
   const { openModal, closeModal } = useModal();
+
+  // Determine back destination based on ?from query param
+  const fromPage = searchParams.get('from');
+  const backPath = fromPage === 'approvals' ? '/approvals' : '/reports';
 
   const [report, setReport] = useState<Report | null>(null);
   const [crewShifts, setCrewShifts] = useState<CrewShift[]>([]);
@@ -267,7 +272,7 @@ export default function ReportView() {
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <p className="text-gray-500 mb-4">Reporte no encontrado</p>
-            <Button onClick={() => navigate('/reports')}>Volver a Reportes</Button>
+            <Button onClick={() => navigate(backPath)}>Volver</Button>
           </div>
         </div>
       </MainLayout>
@@ -282,7 +287,7 @@ export default function ReportView() {
       subtitle={`${report.wellNumber || 'Sin pozo'} · ${report.rigNumber || 'Sin taladro'}`}
       headerActions={
         <div className="flex gap-2 flex-wrap">
-          <Button variant="outline" onClick={() => navigate('/reports')} icon={<ArrowLeft size={16} />}>
+          <Button variant="outline" onClick={() => navigate(backPath)} icon={<ArrowLeft size={16} />}>
             Volver
           </Button>
           <Button variant="outline" onClick={() => handleExport('pdf')} icon={<FileDown size={16} />}>
