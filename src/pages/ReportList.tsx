@@ -70,6 +70,9 @@ export default function ReportList() {
   // Debounced version — drives the actual API query (400ms delay)
   const debouncedFilters = useDebouncedValue(filters, 200);
 
+  // Sync-triggered refresh counter (avoids stale closures)
+  const [syncVersion, setSyncVersion] = useState(0);
+
   // Reset to page 1 whenever debounced filters change
   const [filtersVersion, setFiltersVersion] = useState(0);
   useEffect(() => {
@@ -91,22 +94,20 @@ export default function ReportList() {
       setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionToken, currentPage, pageSize, filtersVersion]);
+  }, [sessionToken, currentPage, pageSize, filtersVersion, syncVersion]);
 
   // ── Load rigs once ─────────────────────────────────────────────────────
   useEffect(() => {
     if (sessionToken) loadRigs();
   }, [sessionToken]);
 
-  // ── Sync event listener ────────────────────────────────────────────────
+  // ── Sync event listener — bump version to trigger reload via useEffect ──
   useEffect(() => {
     const unsubscribe = syncEvents.subscribe(() => {
-      console.log('[ReportList] Sync event received, reloading...');
-      loadReports();
-      loadRigs();
+      console.log('[ReportList] Sync event received, bumping version...');
+      setSyncVersion((v) => v + 1);
     });
     return unsubscribe;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ── API calls ──────────────────────────────────────────────────────────

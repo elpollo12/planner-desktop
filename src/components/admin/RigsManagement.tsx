@@ -26,16 +26,19 @@ export default function RigsManagement() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterArea, setFilterArea] = useState<string>('');
 
+  // Sync-triggered refresh counter (avoids stale closures)
+  const [syncVersion, setSyncVersion] = useState(0);
+
   // Cargar taladros y áreas
   useEffect(() => {
     loadData();
-  }, [includeInactive]);
+  }, [includeInactive, syncVersion]);
 
-  // Listen for sync events and reload rigs when new data arrives
+  // Listen for sync events — bump version to trigger reload via useEffect
   useEffect(() => {
     const unsubscribe = syncEvents.subscribe(() => {
-      console.log('[RigsManagement] Sync event received, reloading rigs...');
-      loadData();
+      console.log('[RigsManagement] Sync event received, bumping version...');
+      setSyncVersion((v) => v + 1);
     });
 
     return unsubscribe;

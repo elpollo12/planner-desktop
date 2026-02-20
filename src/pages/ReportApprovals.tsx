@@ -56,12 +56,15 @@ export default function ReportApprovals() {
   const [historyStatus, setHistoryStatus] = useState<string>('');
   const [filterRig, setFilterRig] = useState<string>('');
 
+  // Sync-triggered refresh counter (avoids stale closures)
+  const [syncVersion, setSyncVersion] = useState(0);
+
   // ── Load on mount & tab/page change ────────────────────────────────────
   useEffect(() => {
     if (sessionToken) {
       loadReports();
     }
-  }, [sessionToken, activeTab, currentPage, historyStatus, filterRig]);
+  }, [sessionToken, activeTab, currentPage, historyStatus, filterRig, syncVersion]);
 
   useEffect(() => {
     if (sessionToken) loadRigs();
@@ -70,13 +73,12 @@ export default function ReportApprovals() {
   // Always keep pending count updated
   useEffect(() => {
     if (sessionToken) loadPendingCount();
-  }, [sessionToken]);
+  }, [sessionToken, syncVersion]);
 
-  // Sync event listener
+  // Sync event listener — bump version to trigger reload via useEffect
   useEffect(() => {
     const unsub = syncEvents.subscribe(() => {
-      loadReports();
-      loadPendingCount();
+      setSyncVersion((v) => v + 1);
     });
     return unsub;
   }, []);

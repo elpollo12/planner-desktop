@@ -46,8 +46,10 @@ export function useAutoSync() {
         console.warn('[AutoSync] Completed with errors:', result.errors);
       }
 
-      // Always notify listeners so UI refreshes (settings, reports, etc.)
-      syncEvents.emit();
+      // Only notify listeners when new data was actually pulled
+      if (result.recordsPulled > 0) {
+        syncEvents.emit();
+      }
     } catch (error) {
       console.error('[AutoSync] Error:', error);
     }

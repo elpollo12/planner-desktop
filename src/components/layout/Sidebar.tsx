@@ -20,7 +20,7 @@ interface SidebarProps {
 export function Sidebar({ className = '' }: SidebarProps) {
   const location = useLocation();
   const { user, logout } = useAuthStore();
-  const { settings } = useAppSettingsStore();
+  const logoPath = useAppSettingsStore((s) => s.settings?.logoPath ?? null);
   const [appVersion, setAppVersion] = useState('');
 
   useEffect(() => {
@@ -85,10 +85,10 @@ export function Sidebar({ className = '' }: SidebarProps) {
     >
       {/* Logo/Brand — height matches Header component (py-4) */}
       <div className="h-15 px-6 border-b border-gray-200 dark:border-gray-700 flex items-center">
-        {settings?.logoPath ? (
+        {logoPath ? (
           <div className="flex items-center justify-center w-full">
             <img
-              src={settings.logoPath}
+              src={logoPath}
               alt="Logo de la empresa"
               className="max-h-12 w-auto object-contain"
             />
