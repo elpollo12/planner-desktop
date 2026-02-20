@@ -36,7 +36,7 @@ export function RigSelector({ rigs, selectedRigId, selectedRigName: _selectedRig
   // Single rig — show fixed label (no dropdown)
   if (rigs.length === 1) {
     return (
-      <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
+      <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-primary-200 dark:border-gray-700">
         <OilRigIcon size={18} className="text-gray-500 dark:text-gray-400" />
         <div className="flex items-center gap-2">
           <span className="text-sm text-gray-500 dark:text-gray-400">Taladro:</span>
@@ -51,7 +51,7 @@ export function RigSelector({ rigs, selectedRigId, selectedRigName: _selectedRig
 
   // Multiple rigs — dropdown selector
   return (
-    <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-primary-300 dark:border-gray-700">
+    <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-primary-200 dark:border-gray-700">
       <OilRigIcon size={18} className="text-gray-500 dark:text-gray-400 shrink-0" />
       <span className="text-sm text-gray-500 dark:text-gray-400 shrink-0">Taladro:</span>
       <div className="relative">
