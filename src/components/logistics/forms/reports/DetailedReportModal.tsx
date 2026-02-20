@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
@@ -235,7 +235,7 @@ function StepSectionPicker({
               className={`flex items-center gap-3 px-4 py-3 rounded-xl border-2 text-left transition-all duration-150 cursor-pointer ${
                 isSelected
                   ? `${cfg.bg} border-current ${cfg.color} ring-1 ${cfg.ring} shadow-sm`
-                  : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800/50'
+                  : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800/50'
               }`}
             >
               <div
@@ -443,7 +443,7 @@ function StepConfigureExport({
             <input
               type="date"
               {...register('periodStart')}
-              className={`w-full px-4 py-2.5 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 ${
+              className={`w-full px-4 py-2.5 border rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 ${
                 errors.periodStart ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
               }`}
             />
@@ -458,7 +458,7 @@ function StepConfigureExport({
             <input
               type="date"
               {...register('periodEnd')}
-              className={`w-full px-4 py-2.5 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 ${
+              className={`w-full px-4 py-2.5 border rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 ${
                 errors.periodEnd ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
               }`}
             />
@@ -570,7 +570,7 @@ function StepConfigureExport({
                           return (
                             <label
                               key={mat.id}
-                              className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer"
+                              className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700/50 cursor-pointer"
                             >
                               <input
                                 type="checkbox"
@@ -627,7 +627,7 @@ function StepConfigureExport({
                   ([key, label]) => (
                     <label
                       key={key}
-                      className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer transition-colors"
+                      className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700/50 cursor-pointer transition-colors"
                     >
                       <input
                         type="checkbox"

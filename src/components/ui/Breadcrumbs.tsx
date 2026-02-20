@@ -16,7 +16,7 @@ const routeNames: Record<string, string> = {
   'approvals': 'Aprobaciones'
 }
 
-export const BreadCrumps = () => {
+export const Breadcrumbs = () => {
   const location = useLocation()
   const params = useParams()
   const { sessionToken } = useAuthStore()

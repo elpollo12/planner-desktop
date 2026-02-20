@@ -1,4 +1,4 @@
-import { ChevronDown, AlertTriangle, Loader2 } from 'lucide-react';
+﻿import { ChevronDown, AlertTriangle, Loader2 } from 'lucide-react';
 import type { RigWithArea } from '@/types/rig';
 import { OilRigIcon } from '../ui/icons/OilRigIcon';
 
@@ -61,7 +61,7 @@ export function RigSelector({ rigs, selectedRigId, selectedRigName: _selectedRig
             const rig = rigs.find((r) => r.id === e.target.value);
             if (rig) onSelect(rig.id, rig.name);
           }}
-          className="appearance-none bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md pl-3 pr-8 py-1.5 text-sm font-medium text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 cursor-pointer hover:border-gray-400 dark:hover:border-gray-500 transition-colors"
+          className="appearance-none bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md pl-3 pr-8 py-1.5 text-sm font-medium text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 cursor-pointer hover:border-gray-400 dark:hover:border-gray-500 transition-colors"
         >
           <option value="" disabled>
             Seleccionar taladro...

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+﻿import { useState, useEffect, useMemo } from 'react';
 import { Package, Trash2 } from 'lucide-react';
 import { useModal } from '../../store/modalStore';
 import { Button } from '../ui';
@@ -148,7 +148,7 @@ export default function MaterialsCatalogModal() {
                   <th className="px-4 py-2.5 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Acciones</th>
                 </tr>
               </thead>
-              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+              <tbody className="bg-gray-50 dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                 {paginatedRows.map((r) => {
                   const isConfirming = confirmDeleteId === r.id;
                   const isDeleting = deletingId === r.id;
@@ -160,7 +160,7 @@ export default function MaterialsCatalogModal() {
                     : 'text-gray-900 dark:text-gray-100';
 
                   return (
-                    <tr key={r.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <tr key={r.id} className="hover:bg-gray-100 dark:hover:bg-gray-700">
                       <td className="px-4 py-3">
                         <div className="text-sm font-medium text-gray-900 dark:text-gray-100">{capitalize(r.name)}</div>
                         {r.description && (
@@ -184,7 +184,7 @@ export default function MaterialsCatalogModal() {
                             <button
                               onClick={() => setConfirmDeleteId(null)}
                               disabled={isDeleting}
-                              className="px-2 py-1 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 rounded disabled:opacity-50"
+                              className="px-2 py-1 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-1000 rounded disabled:opacity-50"
                             >
                               No
                             </button>

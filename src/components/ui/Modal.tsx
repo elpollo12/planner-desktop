@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from "react";
+﻿import { useEffect, useCallback } from "react";
 import { useModalStore } from "../../store";
 import { X } from "lucide-react";
 import { Button } from "./Button";
@@ -96,7 +96,7 @@ export const Modal = () => {
         onClick={handleOutsideClick}
       >
         <div
-          className={`relative bg-white dark:bg-gray-800 flex flex-col rounded-lg shadow-xl w-full max-h-[90vh] ${sizeClasses[size]} transform transition-all duration-300 ${
+          className={`relative bg-gray-50 dark:bg-gray-800 flex flex-col rounded-lg shadow-xl w-full max-h-[90vh] ${sizeClasses[size]} transform transition-all duration-300 ${
             isOpen ? 'scale-100 opacity-100' : 'scale-95 opacity-0'
           } ${className}`}
           role="dialog"

@@ -1,4 +1,4 @@
-import { forwardRef, type SelectHTMLAttributes, type ReactNode } from 'react';
+﻿import { forwardRef, type SelectHTMLAttributes, type ReactNode } from 'react';
 import { ChevronDown } from 'lucide-react';
 
 interface SelectOption {
@@ -18,7 +18,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
   ({ label, error, options, placeholder, className = '', children, ...props }, ref) => {
     const baseSelectStyles = `
       w-full px-3 py-2.5 pr-10
-      bg-white dark:bg-gray-800
+      bg-gray-50 dark:bg-gray-800
       border rounded-lg
       text-gray-900 dark:text-gray-100 text-sm
       appearance-none

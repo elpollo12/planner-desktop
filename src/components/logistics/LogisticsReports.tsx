@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { Button, Card } from '../ui';
 import {
   FileText, Search, Droplets, Fuel, Container,
@@ -134,7 +134,7 @@ export function LogisticsReports({ rigId, rigName }: { rigId: string; rigName: s
                   type="date"
                   value={periodStart}
                   onChange={(e) => setPeriodStart(e.target.value)}
-                  className="text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                  className="text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                 />
               </div>
               <div>
@@ -143,7 +143,7 @@ export function LogisticsReports({ rigId, rigName }: { rigId: string; rigName: s
                   type="date"
                   value={periodEnd}
                   onChange={(e) => setPeriodEnd(e.target.value)}
-                  className="text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                  className="text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                 />
               </div>
               <div>
@@ -151,7 +151,7 @@ export function LogisticsReports({ rigId, rigName }: { rigId: string; rigName: s
                 <select
                   value={activeSection}
                   onChange={(e) => handleSectionChange(e.target.value as Section)}
-                  className="text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500"
+                  className="text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500"
                 >
                   {SECTIONS.map((s) => (
                     <option key={s.value} value={s.value}>{s.label}</option>

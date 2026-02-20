@@ -1,4 +1,4 @@
-import { useFormContext, useFieldArray } from 'react-hook-form';
+﻿import { useFormContext, useFieldArray } from 'react-hook-form';
 import { Button, Input } from '../ui';
 import { Plus, Trash2 } from 'lucide-react';
 import type { CompleteReportData } from '../../schemas';
@@ -79,7 +79,7 @@ export function DrillStringSection() {
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+              <tbody className="bg-gray-50 dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                 {fields.map((field, index) => (
                   <tr key={field.id}>
                     <td className="px-4 py-2 text-sm font-medium text-gray-500 dark:text-gray-400">

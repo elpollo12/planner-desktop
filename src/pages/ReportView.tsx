@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { MainLayout } from '../components/layout';
 import { Button, Card, ReportStatusBadge, SectionCarousel } from '../components/ui';
@@ -450,7 +450,7 @@ export default function ReportView() {
                       <TH>Total</TH>
                     </tr>
                   </thead>
-                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                  <tbody className="bg-gray-50 dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                     {timeDistributions.map((td, idx) => (
                       <tr key={idx}>
                         <TD align="left">{td.operationCode?.name || td.operationCodeId}</TD>
@@ -527,7 +527,7 @@ export default function ReportView() {
                       <TH align="left">Cantidad</TH>
                     </tr>
                   </thead>
-                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                  <tbody className="bg-gray-50 dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                     {mudAdditives.map((additive, idx) => (
                       <tr key={idx}>
                         <TD align="left">{additive.shift ? SHIFT_LABELS[additive.shift] : '-'}</TD>
@@ -596,7 +596,7 @@ export default function ReportView() {
                       <TH align="left">Desp. Horizontal (ft)</TH>
                     </tr>
                   </thead>
-                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                  <tbody className="bg-gray-50 dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                     {deviationHistory.map((dev, idx) => (
                       <tr key={idx}>
                         <TD align="left">{dev.depth || '-'}</TD>
@@ -663,7 +663,7 @@ export default function ReportView() {
                       <TH>Longitud (ft)</TH>
                     </tr>
                   </thead>
-                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                  <tbody className="bg-gray-50 dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                     {drillStringComponents.map((comp) => (
                       <tr key={comp.id}>
                         <TD align="left">{comp.entryNumber}</TD>
@@ -769,7 +769,7 @@ function CrewShiftTable({ shift }: { shift: CrewShift }) {
             <TH align="left">Horas</TH>
           </tr>
         </thead>
-        <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+        <tbody className="bg-gray-50 dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
           {shift.members.map((member, mIdx) => (
             <tr key={mIdx}>
               <TD align="left">{member.position}</TD>
@@ -854,7 +854,7 @@ function MudRecordsTable({ records }: { records: MudRecord[] }) {
             <TH>Sólidos</TH>
           </tr>
         </thead>
-        <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+        <tbody className="bg-gray-50 dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
           {records.map((mud, idx) => (
             <tr key={idx}>
               <TD align="left">{mud.hour || '-'}</TD>

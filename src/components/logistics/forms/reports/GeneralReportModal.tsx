@@ -1,4 +1,4 @@
-import { useForm, Controller } from 'react-hook-form';
+﻿import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { FolderArchive, FileSpreadsheet, FileText, Files } from 'lucide-react';
 import { useModalStore } from '@/store';
@@ -136,7 +136,7 @@ export function GeneralReportModal({ rigId, rigName, periodStart, periodEnd }: G
             <input
               type="date"
               {...register('periodStart')}
-              className={`w-full px-4 py-2.5 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 ${
+              className={`w-full px-4 py-2.5 border rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 ${
                 errors.periodStart ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
               }`}
             />
@@ -149,7 +149,7 @@ export function GeneralReportModal({ rigId, rigName, periodStart, periodEnd }: G
             <input
               type="date"
               {...register('periodEnd')}
-              className={`w-full px-4 py-2.5 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 ${
+              className={`w-full px-4 py-2.5 border rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 ${
                 errors.periodEnd ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
               }`}
             />
@@ -201,7 +201,7 @@ export function GeneralReportModal({ rigId, rigName, periodStart, periodEnd }: G
             {SECTION_OPTIONS.map((sec) => (
               <label
                 key={sec.key}
-                className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer transition-colors"
+                className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700/50 cursor-pointer transition-colors"
               >
                 <input
                   type="checkbox"

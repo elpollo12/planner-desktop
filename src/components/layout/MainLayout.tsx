@@ -1,7 +1,7 @@
 import React from 'react';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
-import { BreadCrumps } from '../ui';
+import { Breadcrumbs } from '../ui';
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -26,8 +26,8 @@ export function MainLayout({
         {/* Header */}
         <Header title={title} subtitle={subtitle} actions={headerActions} />
         
-        <div className="px-6 py-2 bg-gray-50 dark:bg-gray-900 relative z-10">
-          <BreadCrumps />
+        <div className="px-6 py-2 bg-gray-100 dark:bg-gray-900 relative z-10">
+          <Breadcrumbs />
         </div>
 
         {/* Page Content */}

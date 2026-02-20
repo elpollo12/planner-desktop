@@ -1,4 +1,4 @@
-import { Fuel } from 'lucide-react';
+﻿import { Fuel } from 'lucide-react';
 import { fuelApi } from '@/lib/api';
 import { fuelMovementSchema, type FuelMovementForm } from '@/schemas';
 import { MovementFormTab } from '../MovementFormTab';
@@ -46,7 +46,7 @@ export function CombustibleConsumoTab({ rigId, onSuccess }: CombustibleConsumoTa
                 step="0.01"
                 min="0"
                 {...register('amount', { valueAsNumber: true })}
-                className={`w-full pl-10 pr-4 py-2.5 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                className={`w-full pl-10 pr-4 py-2.5 border rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
                   errors.amount ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
                 }`}
                 placeholder="0.00"
@@ -59,7 +59,7 @@ export function CombustibleConsumoTab({ rigId, onSuccess }: CombustibleConsumoTa
             <textarea
               {...register('notes')}
               rows={3}
-              className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500"
+              className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500"
               placeholder="Observaciones adicionales..."
             />
           </div>

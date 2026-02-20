@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+﻿import { useState, useEffect, useRef } from 'react';
 import { toast } from 'react-toastify';
 import { Plus, Pencil, Trash2, Search, Upload, X, Building2 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
@@ -409,7 +409,7 @@ export default function OperatorsManagement() {
                 key={operator.id}
                 className={`border rounded-lg p-4 ${
                   operator.active
-                    ? 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'
+                    ? 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800'
                     : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 opacity-60'
                 }`}
               >
@@ -431,7 +431,7 @@ export default function OperatorsManagement() {
                     <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-1">
                       <button
                         onClick={() => triggerLogoUpload(operator.id)}
-                        className="p-1 bg-white rounded-full hover:bg-gray-100"
+                        className="p-1 bg-gray-50 rounded-full hover:bg-gray-100"
                         title="Subir logo"
                       >
                         <Upload className="w-4 h-4 text-gray-700" />
@@ -439,7 +439,7 @@ export default function OperatorsManagement() {
                       {operator.logoPath && (
                         <button
                           onClick={() => handleRemoveLogo(operator.id)}
-                          className="p-1 bg-white rounded-full hover:bg-gray-100"
+                          className="p-1 bg-gray-50 rounded-full hover:bg-gray-100"
                           title="Eliminar logo"
                         >
                           <X className="w-4 h-4 text-red-600" />

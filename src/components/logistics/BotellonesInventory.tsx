@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { Button } from '../ui';
 import { ArrowUpDown, FileText, Trash2, Plus, Minus, Eye } from 'lucide-react';
 import { useModalStore } from '../../store';
@@ -118,9 +118,9 @@ export function BotellonesInventory({ rigId }: BotellonesInventoryProps) {
             <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Acciones</th>
           </tr>
         </thead>
-        <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+        <tbody className="bg-gray-50 dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
           {movements.map((m) => (
-            <tr key={m.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+            <tr key={m.id} className="hover:bg-gray-100 dark:hover:bg-gray-700">
               <td className="px-6 py-4 whitespace-nowrap">
                 <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
                   m.movementType === 'entry'

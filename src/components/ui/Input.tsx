@@ -1,4 +1,4 @@
-import { forwardRef, type InputHTMLAttributes } from 'react';
+﻿import { forwardRef, type InputHTMLAttributes } from 'react';
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string;
@@ -11,7 +11,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
   ({ label, error, helperText, className = '', allowSubmitOnEnter = false, onKeyDown, ...props }, ref) => {
     const baseInputStyles = `
       w-full px-3 py-2.5
-      bg-white dark:bg-gray-800
+      bg-gray-50 dark:bg-gray-800
       border rounded-lg
       text-gray-900 dark:text-gray-100 text-sm
       placeholder:text-gray-400 dark:placeholder:text-gray-500

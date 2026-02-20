@@ -7,7 +7,7 @@ export { Table } from './Table';
 export { Modal } from './Modal';
 export { Tabs, TabPanel } from './Tabs';
 export type { Tab } from './Tabs';
-export { BreadCrumps } from './BreadCrumps';
+export { Breadcrumbs } from './Breadcrumbs';
 export { AutoSaveIndicator, AutoSaveIndicatorCompact } from './AutoSaveIndicator';
 export { Badge } from './Badge';
 export type { BadgeVariant, BadgeSize } from './Badge';

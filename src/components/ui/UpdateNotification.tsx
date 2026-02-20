@@ -1,4 +1,4 @@
-import { X, Download, RefreshCw } from 'lucide-react';
+﻿import { X, Download, RefreshCw } from 'lucide-react';
 import { useUpdateChecker } from '../../hooks/useUpdateChecker';
 
 export function UpdateNotification() {
@@ -28,7 +28,7 @@ export function UpdateNotification() {
               </span>
               <button
                 onClick={downloadAndInstall}
-                className="ml-2 px-3 py-1 text-xs font-semibold bg-white text-primary-700 rounded hover:bg-gray-100 transition-colors shrink-0"
+                className="ml-2 px-3 py-1 text-xs font-semibold bg-gray-50 text-primary-700 rounded hover:bg-gray-100 transition-colors shrink-0"
               >
                 Actualizar
               </button>
@@ -44,7 +44,7 @@ export function UpdateNotification() {
                 </span>
                 <div className="flex-1 h-2 bg-primary-400 rounded-full overflow-hidden min-w-[100px]">
                   <div
-                    className="h-full bg-white rounded-full transition-all duration-300"
+                    className="h-full bg-gray-50 rounded-full transition-all duration-300"
                     style={{ width: `${state.progress}%` }}
                   />
                 </div>
@@ -60,7 +60,7 @@ export function UpdateNotification() {
               </span>
               <button
                 onClick={installAndRelaunch}
-                className="ml-2 px-3 py-1 text-xs font-semibold bg-white text-primary-700 rounded hover:bg-gray-100 transition-colors shrink-0"
+                className="ml-2 px-3 py-1 text-xs font-semibold bg-gray-50 text-primary-700 rounded hover:bg-gray-100 transition-colors shrink-0"
               >
                 Reiniciar ahora
               </button>
@@ -74,7 +74,7 @@ export function UpdateNotification() {
               </span>
               <button
                 onClick={checkForUpdate}
-                className="ml-2 px-3 py-1 text-xs font-semibold bg-white text-primary-700 rounded hover:bg-gray-100 transition-colors shrink-0"
+                className="ml-2 px-3 py-1 text-xs font-semibold bg-gray-50 text-primary-700 rounded hover:bg-gray-100 transition-colors shrink-0"
               >
                 Reintentar
               </button>

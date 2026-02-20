@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+﻿import { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { RigWithArea, CreateRigInput, Area, RigPersonnel, CreateRigPersonnelInput } from '@/types/rig';
@@ -328,7 +328,7 @@ function RigPersonnelSection({ rigId }: { rigId: string }) {
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+            <tbody className="bg-gray-50 dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               {/* New row for adding */}
               {newRow && (
                 <tr className="bg-blue-50 dark:bg-blue-900/20">

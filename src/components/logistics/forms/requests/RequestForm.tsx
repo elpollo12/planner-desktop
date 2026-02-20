@@ -1,4 +1,4 @@
-import { useForm } from 'react-hook-form';
+﻿import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ClipboardSignature } from 'lucide-react';
 import { useModalStore } from '@/store';
@@ -93,7 +93,7 @@ export function RequestForm({ rigId, onSuccess, defaultType, materials = [] }: R
                   }), { keepErrors: false });
                 },
               })}
-              className={`w-full px-4 py-2.5 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 ${
+              className={`w-full px-4 py-2.5 border rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 ${
                 errors.requestType ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
               }`}
             >
@@ -116,7 +116,7 @@ export function RequestForm({ rigId, onSuccess, defaultType, materials = [] }: R
                 step={type === 'fuel' ? '0.01' : '1'}
                 min="0"
                 {...register('quantity', { valueAsNumber: true })}
-                className={`w-full px-4 py-2.5 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 ${
+                className={`w-full px-4 py-2.5 border rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 ${
                   errors.quantity ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
                 }`}
                 placeholder="0"
@@ -133,7 +133,7 @@ export function RequestForm({ rigId, onSuccess, defaultType, materials = [] }: R
                 </label>
                 <select
                   {...register('materialId')}
-                  className={`w-full px-4 py-2.5 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 ${
+                  className={`w-full px-4 py-2.5 border rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 ${
                     errors.materialId ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
                   }`}
                 >
@@ -153,7 +153,7 @@ export function RequestForm({ rigId, onSuccess, defaultType, materials = [] }: R
                   step="0.01"
                   min="0"
                   {...register('quantity', { valueAsNumber: true })}
-                  className={`w-full px-4 py-2.5 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 ${
+                  className={`w-full px-4 py-2.5 border rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 ${
                     errors.quantity ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
                   }`}
                   placeholder="0"
@@ -171,7 +171,7 @@ export function RequestForm({ rigId, onSuccess, defaultType, materials = [] }: R
               <input
                 type="text"
                 {...register('actionRequested')}
-                className={`w-full px-4 py-2.5 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 ${
+                className={`w-full px-4 py-2.5 border rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 ${
                   errors.actionRequested ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
                 }`}
                 placeholder="Ej: Limpieza de cisterna..."
@@ -185,7 +185,7 @@ export function RequestForm({ rigId, onSuccess, defaultType, materials = [] }: R
             <textarea
               {...register('notes')}
               rows={3}
-              className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500"
+              className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500"
               placeholder="Observaciones adicionales..."
             />
             {errors.notes && <p className="mt-1 text-sm text-red-500">{errors.notes.message}</p>}

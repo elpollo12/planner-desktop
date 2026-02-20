@@ -1,4 +1,4 @@
-import { Package } from 'lucide-react';
+﻿import { Package } from 'lucide-react';
 import { materialsApi } from '@/lib/api';
 import { materialMovementSchema, type MaterialMovementForm } from '@/schemas';
 import { MovementFormTab } from '../MovementFormTab';
@@ -66,7 +66,7 @@ export function MaterialesConsumoTab({ rigId, onSuccess, materials }: Props) {
                   step="0.01"
                   min="0"
                   {...register('quantity', { valueAsNumber: true })}
-                  className={`w-full pl-10 pr-4 py-2.5 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                  className={`w-full pl-10 pr-4 py-2.5 border rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
                     errors.quantity ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
                   }`}
                   placeholder="0.00"
@@ -79,7 +79,7 @@ export function MaterialesConsumoTab({ rigId, onSuccess, materials }: Props) {
               <textarea
                 {...register('notes')}
                 rows={3}
-                className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500"
+                className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500"
                 placeholder="Observaciones adicionales..."
               />
             </div>

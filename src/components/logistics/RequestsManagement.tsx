@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { Card } from '../ui';
 import { CheckCircle, XCircle, Clock, AlertCircle, Eye, Trash2 } from 'lucide-react';
 import { useModalStore } from '../../store';
@@ -146,7 +146,7 @@ export function RequestsManagement({ rigId }: RequestsManagementProps) {
         <div className="flex items-center gap-2">
           <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Tipo:</label>
           <select value={filterType} onChange={(e) => { setFilterType(e.target.value); setCurrentPage(1); }}
-            className="text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+            className="text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100">
             <option value="">Todos</option>
             {Object.entries(REQUEST_TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
@@ -154,7 +154,7 @@ export function RequestsManagement({ rigId }: RequestsManagementProps) {
         <div className="flex items-center gap-2">
           <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Estado:</label>
           <select value={filterStatus} onChange={(e) => { setFilterStatus(e.target.value); setCurrentPage(1); }}
-            className="text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+            className="text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100">
             <option value="">Todos</option>
             {Object.entries(REQUEST_STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
@@ -184,13 +184,13 @@ export function RequestsManagement({ rigId }: RequestsManagementProps) {
                     <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Acciones</th>
                   </tr>
                 </thead>
-                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                <tbody className="bg-gray-50 dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                   {requests.map((r) => {
                     const transitions = canManage ? canTransition(r.status) : [];
                     const showDelete = canDeleteRequest(r);
 
                     return (
-                      <tr key={r.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                      <tr key={r.id} className="hover:bg-gray-100 dark:hover:bg-gray-700">
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                           {REQUEST_TYPE_LABELS[r.requestType]}
                         </td>

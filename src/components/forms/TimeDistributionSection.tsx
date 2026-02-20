@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { useFormContext, useFieldArray } from 'react-hook-form';
 import { Button, Input } from '../ui';
 import { Plus, Trash2, AlertCircle } from 'lucide-react';
@@ -156,17 +156,17 @@ export function TimeDistributionSection() {
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+            <tbody className="bg-gray-50 dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               {fields.map((field, index) => {
                 const row = distributions[index] || {};
                 const rowTotal = (row.hoursShift1 || 0) + (row.hoursShift2 || 0) + (row.hoursShift3 || 0);
                 
                 return (
-                  <tr key={field.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                  <tr key={field.id} className="hover:bg-gray-100 dark:hover:bg-gray-700">
                     <td className="px-4 py-3">
                       <select
                         {...register(`timeDistribution.distributions.${index}.operationCodeId`)}
-                        className="w-full min-w-62.5 px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-sm"
+                        className="w-full min-w-62.5 px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-sm"
                       >
                         <option value="">Seleccionar operación...</option>
                         {operationCodes.map((code) => (

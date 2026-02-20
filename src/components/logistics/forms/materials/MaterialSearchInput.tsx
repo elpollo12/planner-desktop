@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+﻿import { useState, useRef, useEffect } from 'react';
 import { Search } from 'lucide-react';
 import { capitalize } from '@/lib/stringUtils';
 import type { Material } from '@/types/logistics';
@@ -77,14 +77,14 @@ export function MaterialSearchInput({ materials, value, onChange, error }: Mater
           value={query}
           onChange={(e) => handleInputChange(e.target.value)}
           onFocus={handleFocus}
-          className={`w-full pl-10 pr-4 py-2.5 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-transparent ${borderColor}`}
+          className={`w-full pl-10 pr-4 py-2.5 border rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-transparent ${borderColor}`}
           placeholder="Buscar material..."
           autoComplete="off"
         />
       </div>
 
       {isOpen && (
-        <div className="absolute z-50 w-full mt-1 max-h-48 overflow-y-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg">
+        <div className="absolute z-50 w-full mt-1 max-h-48 overflow-y-auto bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg">
           {filtered.length === 0 ? (
             <div className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
               No se encontraron materiales
