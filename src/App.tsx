@@ -21,6 +21,8 @@ import Logistics from './pages/Logistics';
 import Incidents from './pages/Incidents';
 import ReportApprovals from './pages/ReportApprovals';
 import LicenseActivation from './pages/LicenseActivation';
+import Forbidden from './pages/Forbidden';
+import { RoleGuard } from './components/guards';
 import './App.css';
 
 // Protected Route Component
@@ -170,18 +172,18 @@ function App() {
         <Route
           path="/approvals"
           element={
-            <ProtectedRoute>
+            <RoleGuard minRole="supervisor">
               <ReportApprovals />
-            </ProtectedRoute>
+            </RoleGuard>
           }
         />
 
         <Route
           path="/admin"
           element={
-            <ProtectedRoute>
+            <RoleGuard minRole="admin">
               <AdminPanel />
-            </ProtectedRoute>
+            </RoleGuard>
           }
         /> 
         <Route
@@ -202,6 +204,7 @@ function App() {
           }
         />
 
+        <Route path="/forbidden" element={<Forbidden />} />
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </>

@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { MainLayout } from '../components/layout';
 import { Card } from '../components/ui';
@@ -11,6 +12,70 @@ interface DashboardStats {
   submitted: number;
   approved: number;
   rejected: number;
+}
+
+const PAGE_SIZE = 3;
+
+interface QuickAction {
+  icon: string;
+  title: string;
+  description: string;
+  href: string;
+}
+
+function QuickActionsCarousel({ actions }: { actions: QuickAction[] }) {
+  const navigate = useNavigate();
+  const [page, setPage] = useState(0);
+  const totalPages = Math.ceil(actions.length / PAGE_SIZE);
+  const showArrows = actions.length > PAGE_SIZE;
+
+  const visibleActions = actions.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
+
+  return (
+    <Card>
+      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Acciones Rápidas</h3>
+      <div className="flex items-center gap-3">
+        {showArrows && (
+          <button
+            type="button"
+            onClick={() => setPage((p) => p - 1)}
+            disabled={page === 0}
+            className="shrink-0 p-2 rounded-full border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400
+                       hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          >
+            <ChevronLeft size={20} />
+          </button>
+        )}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 flex-1 min-w-0">
+          {visibleActions.map((action) => (
+            <button
+              key={action.href}
+              onClick={() => navigate(action.href)}
+              className="p-6 border-2 border-dashed cursor-pointer border-gray-300 dark:border-gray-600 rounded-lg
+                         hover:bg-primary-50 dark:hover:bg-gray-700 transition text-left"
+              onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--color-primary-500)'}
+              onMouseLeave={(e) => e.currentTarget.style.borderColor = ''}
+            >
+              <div className="text-2xl mb-2">{action.icon}</div>
+              <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">{action.title}</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">{action.description}</p>
+            </button>
+          ))}
+        </div>
+        {showArrows && (
+          <button
+            type="button"
+            onClick={() => setPage((p) => p + 1)}
+            disabled={page >= totalPages - 1}
+            className="shrink-0 p-2 rounded-full border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400
+                       hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          >
+            <ChevronRight size={20} />
+          </button>
+        )}
+      </div>
+    </Card>
+  );
 }
 
 export default function Dashboard() {
@@ -62,6 +127,33 @@ export default function Dashboard() {
     }
   };
 
+  const quickActions = useMemo(() => {
+    const actions = [
+      { icon: '📝', title: 'Nuevo Reporte', description: 'Crear un nuevo DDR', href: '/reports/new' },
+      { icon: '📊', title: 'Ver Reportes', description: 'Consultar reportes existentes', href: '/reports' },
+      { icon: '⚠️', title: 'Incidencias', description: 'Registrar y consultar incidencias', href: '/incidents' },
+    ];
+
+    if (user?.role === 'supervisor' || user?.role === 'admin') {
+      actions.push({
+        icon: '✅',
+        title: 'Aprobaciones',
+        description: stats.submitted > 0
+          ? `${stats.submitted} pendiente${stats.submitted !== 1 ? 's' : ''}`
+          : 'Revisar reportes enviados',
+        href: '/approvals',
+      });
+    }
+
+    if (user?.role === 'admin') {
+      actions.push({ icon: '👥', title: 'Usuarios', description: 'Gestionar usuarios del sistema', href: '/admin/' });
+    }
+
+    actions.push({ icon: '🚚', title: 'Logística', description: 'Gestión de recursos y materiales', href: '/logistics' });
+
+    return actions;
+  }, [user?.role, stats.submitted]);
+
   if (!user) return null;
 
   return (
@@ -91,72 +183,8 @@ export default function Dashboard() {
         ))}
       </div>
 
-      {/* Quick Actions */}
-      <Card title="Acciones Rápidas">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <button
-            onClick={() => navigate('/reports/new')}
-            className="p-6 border-2 border-dashed cursor-pointer border-gray-300 dark:border-gray-600 rounded-lg hover:bg-blue-50 dark:hover:bg-gray-700 transition text-left"
-            style={{ ['--hover-border' as string]: 'var(--color-primary-500)' }}
-            onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--color-primary-500)'}
-            onMouseLeave={(e) => e.currentTarget.style.borderColor = ''}
-          >
-            <div className="text-2xl mb-2">📝</div>
-            <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Nuevo Reporte</h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400">Crear un nuevo DDR</p>
-          </button>
-
-          <button
-            onClick={() => navigate('/reports')}
-            className="p-6 border-2 border-dashed cursor-pointer border-gray-300 dark:border-gray-600 rounded-lg hover:bg-blue-50 dark:hover:bg-gray-700 transition text-left"
-            onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--color-primary-500)'}
-            onMouseLeave={(e) => e.currentTarget.style.borderColor = ''}
-          >
-            <div className="text-2xl mb-2">📊</div>
-            <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Ver Reportes</h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400">Consultar reportes existentes</p>
-          </button>
-
-          {(user.role === 'supervisor' || user.role === 'admin') && (
-            <button
-              onClick={() => navigate('/approvals')}
-              className="p-6 border-2 border-dashed cursor-pointer border-gray-300 dark:border-gray-600 rounded-lg hover:bg-blue-50 dark:hover:bg-gray-700 transition text-left"
-              onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--color-primary-500)'}
-              onMouseLeave={(e) => e.currentTarget.style.borderColor = ''}
-            >
-              <div className="text-2xl mb-2">✅</div>
-              <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Aprobaciones</h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                {stats.submitted > 0 ? `${stats.submitted} pendiente${stats.submitted !== 1 ? 's' : ''}` : 'Revisar reportes enviados'}
-              </p>
-            </button>
-          )}
-
-          {user.role === 'admin' && (
-            <button
-              onClick={() => navigate('/admin/')}
-              className="p-6 border-2 border-dashed cursor-pointer border-gray-300 dark:border-gray-600 rounded-lg hover:bg-blue-50 dark:hover:bg-gray-700 transition text-left"
-              onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--color-primary-500)'}
-              onMouseLeave={(e) => e.currentTarget.style.borderColor = ''}
-            >
-              <div className="text-2xl mb-2">👥</div>
-              <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Usuarios</h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Gestionar usuarios del sistema</p>
-            </button>
-          )}
-
-          <button
-            onClick={() => navigate('/incidents')}
-            className="p-6 border-2 border-dashed cursor-pointer border-gray-300 dark:border-gray-600 rounded-lg hover:bg-blue-50 dark:hover:bg-gray-700 transition text-left"
-            onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--color-primary-500)'}
-            onMouseLeave={(e) => e.currentTarget.style.borderColor = ''}
-          >
-            <div className="text-2xl mb-2">⚠️</div>
-            <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Incidencias</h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400">Registrar y consultar incidencias</p>
-          </button>
-        </div>
-      </Card>
+      {/* Quick Actions Carousel */}
+      <QuickActionsCarousel actions={quickActions} />
 
       {/* Recent Activity */}
       <Card title="Actividad Reciente" className="mt-6">

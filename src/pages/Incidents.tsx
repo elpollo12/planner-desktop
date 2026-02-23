@@ -1,15 +1,11 @@
-import { useState } from 'react';
 import { MainLayout } from '../components/layout';
 import { Card } from '../components/ui';
-import { AlertTriangle, PackageOpen } from 'lucide-react';
-import { useAuthStore } from '../store/authStore';
-import { Navigate } from 'react-router-dom';
+import { PackageOpen } from 'lucide-react';
 import { useIncidentsRigs } from '../hooks/useIncidentsRigs';
 import { RigSelector } from '../components/logistics/RigSelector';
 import { IncidentsList } from '../components/incidents/IncidentsList';
 
 export default function IncidentsPage() {
-  const { user, isAuthenticated } = useAuthStore();
   const {
     accessibleRigs,
     selectedRigId,
@@ -17,10 +13,6 @@ export default function IncidentsPage() {
     loading: rigsLoading,
     setSelectedRig,
   } = useIncidentsRigs();
-
-  if (!isAuthenticated || !user) {
-    return <Navigate to="/login" replace />;
-  }
 
   return (
     <MainLayout title="Incidencias" subtitle="Registro de incidencias por taladro">

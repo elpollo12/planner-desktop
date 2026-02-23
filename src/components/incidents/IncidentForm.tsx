@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Button, Select } from '../ui';
+import { useState, useMemo } from 'react';
+import { Button, SearchableSelect } from '../ui';
 import { useModal } from '../../store/modalStore';
 import { useCreateIncident, useRigPersonnel, useIncidentTypes } from '../../hooks/useIncidents';
 import { toast } from 'react-toastify';
@@ -19,7 +19,17 @@ export function IncidentForm({ rigId }: IncidentFormProps) {
   const [description, setDescription] = useState('');
   const [selectedPersonnelIds, setSelectedPersonnelIds] = useState<string[]>([]);
 
-  const typeOptions = incidentTypes.map((t) => ({ value: t.id, label: t.name }));
+  // Sort alphabetically, but "Otro" always last
+  const typeOptions = useMemo(() => {
+    const sorted = [...incidentTypes].sort((a, b) => {
+      const aIsOtro = a.name.toLowerCase() === 'otro';
+      const bIsOtro = b.name.toLowerCase() === 'otro';
+      if (aIsOtro && !bIsOtro) return 1;
+      if (!aIsOtro && bIsOtro) return -1;
+      return a.name.localeCompare(b.name, 'es');
+    });
+    return sorted.map((t) => ({ value: t.id, label: t.name }));
+  }, [incidentTypes]);
 
   const togglePersonnel = (id: string) => {
     setSelectedPersonnelIds((prev) =>
@@ -54,13 +64,13 @@ export function IncidentForm({ rigId }: IncidentFormProps) {
 
   return (
     <div className="space-y-5">
-      {/* Incident Type */}
-      <Select
+      {/* Incident Type - Searchable */}
+      <SearchableSelect
         label="Tipo de Incidencia"
-        placeholder="Seleccionar tipo..."
+        placeholder="Buscar o seleccionar tipo..."
         value={incidentType}
-        onChange={(e) => setIncidentType(e.target.value)}
         options={typeOptions}
+        onChange={setIncidentType}
         required
       />
 

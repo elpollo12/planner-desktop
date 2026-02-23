@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useAuthStore } from '../../store/authStore';
 import { useModal } from '../../store/modalStore';
 import { useIncidentsList, useDeleteIncident, useIncidentTypes } from '../../hooks/useIncidents';
@@ -18,14 +18,12 @@ interface IncidentsListProps {
   rigName: string | null;
 }
 
-const PAGE_SIZE = 10;
-
 export function IncidentsList({ rigId, rigName }: IncidentsListProps) {
   const { user } = useAuthStore();
   const { openModal } = useModal();
 
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(PAGE_SIZE);
+  const [pageSize, setPageSize] = useState(5);
   const [typeFilter, setTypeFilter] = useState('');
 
   const { data: incidentTypes = [] } = useIncidentTypes();
@@ -36,11 +34,20 @@ export function IncidentsList({ rigId, rigName }: IncidentsListProps) {
   const total = data?.total ?? 0;
   const totalPages = data?.totalPages ?? 0;
 
-  // Build filter options from dynamic types
-  const typeFilterOptions = [
-    { value: '', label: 'Todos los tipos' },
-    ...incidentTypes.map((t) => ({ value: t.id, label: t.name })),
-  ];
+  // Build filter options: alphabetical, "Otro" last
+  const typeFilterOptions = useMemo(() => {
+    const sorted = [...incidentTypes].sort((a, b) => {
+      const aIsOtro = a.name.toLowerCase() === 'otro';
+      const bIsOtro = b.name.toLowerCase() === 'otro';
+      if (aIsOtro && !bIsOtro) return 1;
+      if (!aIsOtro && bIsOtro) return -1;
+      return a.name.localeCompare(b.name, 'es');
+    });
+    return [
+      { value: '', label: 'Todos los tipos' },
+      ...sorted.map((t) => ({ value: t.id, label: t.name })),
+    ];
+  }, [incidentTypes]);
 
   // Map type ID → record for badge rendering
   const typeMap = new Map(incidentTypes.map((t) => [t.id, t]));
@@ -102,7 +109,7 @@ export function IncidentsList({ rigId, rigName }: IncidentsListProps) {
             value={typeFilter}
             onChange={(e) => { setTypeFilter(e.target.value); setPage(1); }}
             options={typeFilterOptions}
-            className="!w-auto min-w-[180px]"
+            className="w-auto! min-w-45"
           />
           <Button
             variant="outline"

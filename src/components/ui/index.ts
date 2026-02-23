@@ -3,6 +3,8 @@ export { Card } from './Card';
 export { Input } from './Input';
 export { DateInput } from './DateInput';
 export { Select } from './Select';
+export { SearchableSelect } from './SearchableSelect';
+export type { SearchableSelectOption } from './SearchableSelect';
 export { Table } from './Table';
 export { Modal } from './Modal';
 export { Tabs, TabPanel } from './Tabs';

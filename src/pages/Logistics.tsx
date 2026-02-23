@@ -11,7 +11,6 @@ import {
   PackageOpen,
 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
-import { Navigate } from 'react-router-dom';
 import { useLogisticsRigs } from '../hooks/useLogisticsRigs';
 import { usePendingRequestsCount } from '../hooks/useLogistics';
 import { RigSelector } from '../components/logistics/RigSelector';
@@ -26,15 +25,11 @@ import { RequestsManagement } from '../components/logistics/RequestsManagement';
 type LogisticsTab = 'botellones' | 'combustible' | 'materiales' | 'vacuum' | 'solicitudes' | 'reportes';
 
 export default function LogisticsPage() {
-  const { user, isAuthenticated } = useAuthStore();
+  const { user } = useAuthStore();
   const { accessibleRigs, selectedRigId, selectedRigName, loading: rigsLoading, setSelectedRig } = useLogisticsRigs();
   const [activeTab, setActiveTab] = useState<LogisticsTab>('botellones');
 
   const { data: pendingCount = 0 } = usePendingRequestsCount(selectedRigId ?? '');
-
-  if (!isAuthenticated || !user) {
-    return <Navigate to="/login" replace />;
-  }
 
   const isOperator = user?.role === 'operator';
 
