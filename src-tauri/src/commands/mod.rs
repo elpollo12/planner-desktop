@@ -23,6 +23,7 @@ pub mod logistics_fuel;
 pub mod logistics_vacuum;
 pub mod logistics_materials;
 pub mod logistics_requests;
+pub mod incidents;
 pub mod license;
 pub mod last_report_snapshot;
 pub mod report_reviews;
@@ -77,6 +78,8 @@ pub use logistics_vacuum::*;
 pub use logistics_materials::*;
 #[allow(unused_imports)]
 pub use logistics_requests::*;
+#[allow(unused_imports)]
+pub use incidents::*;
 #[allow(unused_imports)]
 pub use license::*;
 #[allow(unused_imports)]

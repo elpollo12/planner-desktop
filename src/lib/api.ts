@@ -679,3 +679,21 @@ export const licenseApi = {
   deactivate: () =>
     invoke<void>('deactivate_license'),
 };
+
+// ============================================================================
+// Incidents Commands
+// ============================================================================
+
+export const incidentsApi = {
+  create: (sessionToken: string, rigId: string, input: import('../types/incident').CreateIncidentInput) =>
+    invoke<import('../types/incident').IncidentWithPersonnel>('create_incident', { sessionToken, rigId, input }),
+
+  list: (sessionToken: string, rigId: string, incidentType?: string, page?: number, pageSize?: number) =>
+    invoke<import('../types/incident').PaginatedIncidents>('list_incidents', { sessionToken, rigId, incidentType, page, pageSize }),
+
+  get: (sessionToken: string, incidentId: string) =>
+    invoke<import('../types/incident').IncidentWithPersonnel>('get_incident', { sessionToken, incidentId }),
+
+  delete: (sessionToken: string, incidentId: string) =>
+    invoke<void>('delete_incident', { sessionToken, incidentId }),
+};

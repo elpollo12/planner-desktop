@@ -295,6 +295,29 @@ const SYNC_TABLES: &[TableDef] = &[
         parent_col: None,
     },
     // =========================================================================
+    // INCIDENTS MODULE
+    // =========================================================================
+    TableDef {
+        name: "incidents",
+        columns: &[
+            "id", "rig_id", "incident_type", "description",
+            "created_by", "created_at", "updated_at", "is_deleted",
+        ],
+        id_col: "id",
+        has_updated_at: true,
+        parent_col: None,
+    },
+    TableDef {
+        name: "incident_personnel",
+        columns: &[
+            "id", "incident_id", "personnel_id",
+            "created_at", "updated_at",
+        ],
+        id_col: "id",
+        has_updated_at: true,
+        parent_col: Some("incident_id"),
+    },
+    // =========================================================================
     // SNAPSHOTS
     // =========================================================================
     TableDef {

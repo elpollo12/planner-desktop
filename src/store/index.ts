@@ -3,3 +3,4 @@ export { useModalStore } from './modalStore';
 export { usePreferencesStore } from './preferencesStore';
 export { useAppSettingsStore } from './appSettingsStore';
 export { useLogisticsStore } from './logisticsStore';
+export { useIncidentsStore } from './incidentsStore';

@@ -222,6 +222,12 @@ pub fn run() {
             commands::logistics_requests::get_logistics_report,
             commands::logistics_requests::get_detailed_logistics_report,
 
+            // Incidents
+            commands::incidents::create_incident,
+            commands::incidents::list_incidents,
+            commands::incidents::get_incident,
+            commands::incidents::delete_incident,
+
             // License commands
             commands::license::activate_license,
             commands::license::get_license_status,
