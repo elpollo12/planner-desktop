@@ -147,8 +147,14 @@ export function useReportSave({
       const shiftTasks = formData.crew.shifts
         .filter((shift) => shift.shift)
         .map((shift) => {
+          // A member is valid if it has personnelId OR a non-empty position.
+          // Previously we only checked position, which caused members selected
+          // from the personnel dropdown (with personnelId but empty/undefined
+          // defaultPosition) to be silently discarded.
           const validMembers = (shift.members || []).filter(
-            (member) => member.position && member.position.trim() !== '',
+            (member) =>
+              (member.personnelId && member.personnelId.trim() !== '') ||
+              (member.position && member.position.trim() !== ''),
           );
 
           if (validMembers.length === 0) return null;
@@ -160,8 +166,8 @@ export function useReportSave({
             members: validMembers.map((member) => ({
               personnelId: member.personnelId || undefined,
               position: member.position || '',
-              ci: member.personnelId ? undefined : member.ci || undefined,
-              name: member.personnelId ? undefined : member.name || undefined,
+              ci: member.personnelId ? undefined : (member as any).ci || undefined,
+              name: member.personnelId ? undefined : (member as any).name || undefined,
               hours: member.hours || undefined,
             })),
           };
@@ -399,8 +405,13 @@ export function useReportSave({
         },
       ];
 
-      // Process all sections in parallel
-      // Only save sections that have data — skip empty sections to avoid deleting existing data
+      // Process sections that have data in the form.
+      // The merge in useReportWizard guarantees that data loaded from the backend
+      // is always present in the form state, so hasSectionData will be true for
+      // any section that had data at load time OR was edited by the user.
+      // Sections that are truly empty (no backend data AND no user edits) are
+      // skipped to avoid accidentally deleting backend data if the loader failed
+      // silently for that section.
       const tasks = sectionsToProcess
         .filter((section) => section.hasData)
         .map(async (section) => {

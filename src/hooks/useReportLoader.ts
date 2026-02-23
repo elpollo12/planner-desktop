@@ -95,24 +95,42 @@ export function useReportLoader(
             })),
           },
           crew: {
-            shifts:
-              crewShifts.length > 0
-                ? crewShifts.map((shift) => ({
-                    shift: shift.shift,
-                    shiftStart: shift.shiftStart,
-                    shiftEnd: shift.shiftEnd,
-                    members: shift.members
-                      .filter((member) => member.personnelId)
+            shifts: (() => {
+              // Build a map of loaded shifts keyed by shift type
+              const shiftMap = new Map<string, typeof crewShifts[number]>();
+              for (const s of crewShifts) {
+                shiftMap.set(s.shift, s);
+              }
+
+              // Always produce exactly 3 shifts (morning, afternoon, night)
+              // so the form structure stays consistent with the schema.
+              const defaultShifts = DEFAULT_REPORT_VALUES.crew!.shifts;
+              return defaultShifts.map((defaultShift) => {
+                const loaded = shiftMap.get(defaultShift.shift);
+                if (loaded) {
+                  return {
+                    shift: loaded.shift,
+                    shiftStart: loaded.shiftStart || defaultShift.shiftStart,
+                    shiftEnd: loaded.shiftEnd || defaultShift.shiftEnd,
+                    members: loaded.members
+                      // Accept members that have personnelId OR position
+                      .filter((member) => member.personnelId || member.position)
                       .map((member) => ({
-                        personnelId: member.personnelId,
+                        personnelId: member.personnelId || '',
                         position: member.position || '',
                         hours: member.hours,
                       })),
-                  }))
-                : DEFAULT_REPORT_VALUES.crew!.shifts,
+                  };
+                }
+                // No data from backend for this shift — use default (empty members)
+                return { ...defaultShift };
+              });
+            })(),
           },
           bitRecords: {
-            records: bitRecords,
+            // Strip backend-only fields (id, reportId, timestamps) so that
+            // re-creating records after deleteAll doesn't send stale IDs.
+            records: (bitRecords || []).map(({ id, reportId: _rid, createdAt, updatedAt, synced, ...rest }: any) => rest),
           },
           timeDistribution: {
             distributions: timeDistributions.map((td) => ({
@@ -123,18 +141,18 @@ export function useReportLoader(
             })),
           },
           mudRecords: {
-            records: mudRecords || [],
-            additives: (mudAdditives || []).map((a) => ({
-              ...a,
-              additiveType: a.additiveType ?? '',
+            records: (mudRecords || []).map(({ id, reportId: _rid, createdAt, updatedAt, synced, ...rest }: any) => rest),
+            additives: (mudAdditives || []).map(({ id, reportId: _rid, createdAt, updatedAt, synced, ...rest }: any) => ({
+              ...rest,
+              additiveType: rest.additiveType ?? '',
             })),
           },
           lithology: {
-            drillingParameters: drillingParams || [],
-            deviationHistory: deviationHistory || [],
+            drillingParameters: (drillingParams || []).map(({ id, reportId: _rid, createdAt, updatedAt, synced, ...rest }: any) => rest),
+            deviationHistory: (deviationHistory || []).map(({ id, reportId: _rid, createdAt, updatedAt, synced, ...rest }: any) => rest),
           },
           observations: {
-            operations: operationsLog || [],
+            operations: (operationsLog || []).map(({ id, reportId: _rid, createdAt, updatedAt, synced, ...rest }: any) => rest),
           },
         };
 

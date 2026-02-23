@@ -150,7 +150,39 @@ export function useReportWizard({
       if (isEditMode && id && sessionToken) {
         const data = await loadReport(id);
         if (data) {
-          methods.reset(data);
+          // Merge loaded data with defaults so every section has a complete structure.
+          // Using reset() with partial data would leave missing sections as undefined,
+          // causing hasSectionData() to misfire and saveAllSections() to skip them.
+          const merged: Partial<CompleteReportData> = {
+            ...DEFAULT_REPORT_VALUES,
+            ...data,
+            header: {
+              ...DEFAULT_REPORT_VALUES.header!,
+              ...data.header!,
+            },
+            crew: data.crew?.shifts?.some(s => s.members.length > 0)
+              ? data.crew
+              : DEFAULT_REPORT_VALUES.crew,
+            timeDistribution: data.timeDistribution?.distributions?.length
+              ? data.timeDistribution
+              : DEFAULT_REPORT_VALUES.timeDistribution,
+            bitRecords: data.bitRecords?.records?.length
+              ? data.bitRecords
+              : DEFAULT_REPORT_VALUES.bitRecords,
+            mudRecords: (data.mudRecords?.records?.length || data.mudRecords?.additives?.length)
+              ? data.mudRecords
+              : DEFAULT_REPORT_VALUES.mudRecords,
+            lithology: (data.lithology?.drillingParameters?.length || data.lithology?.deviationHistory?.length)
+              ? data.lithology
+              : DEFAULT_REPORT_VALUES.lithology,
+            observations: data.observations?.operations?.length
+              ? data.observations
+              : DEFAULT_REPORT_VALUES.observations,
+            drillString: data.drillString?.components?.length
+              ? data.drillString
+              : DEFAULT_REPORT_VALUES.drillString,
+          };
+          methods.reset(merged, { keepDefaultValues: false });
           setWizardStep('sections');
         } else {
           navigate('/reports');

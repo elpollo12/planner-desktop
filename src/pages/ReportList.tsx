@@ -1,12 +1,13 @@
 ﻿import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MainLayout } from '../components/layout';
-import { Button, Card, Input, Select, ReportStatusBadge } from '../components/ui';
-import { Plus, Eye, Edit, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Button, Card, Input, Select, ReportStatusBadge, PaginationControls } from '../components/ui';
+import { Plus, Eye, Edit, Trash2 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useModal } from '../store/modalStore';
 import ConfirmDeleteModal from '../components/modals/ConfirmDelete';
 import { reportsApi, rigsApi } from '../lib/api';
+import { canEditReport, canDeleteReport } from '../lib/reportPermissions';
 
 import { toast } from '../lib/toast';
 import { backgroundPush } from '../lib/syncHelper';
@@ -158,21 +159,9 @@ export default function ReportList() {
 
   // ── Pagination handlers ────────────────────────────────────────────────
 
-  const handlePreviousPage = () => {
-    if (currentPage > 1) setCurrentPage(currentPage - 1);
-  };
-
-  const handleNextPage = () => {
-    if (currentPage < totalPages) setCurrentPage(currentPage + 1);
-  };
-
   const handlePageSizeChange = (newSize: number) => {
     setPageSize(newSize);
     setCurrentPage(1);
-  };
-
-  const handleGoToPage = (page: number) => {
-    if (page >= 1 && page <= totalPages) setCurrentPage(page);
   };
 
   // ── Delete handler ─────────────────────────────────────────────────────
@@ -204,93 +193,6 @@ export default function ReportList() {
         onConfirm={onConfirm}
       />,
       { title: '¿Eliminar reporte?', size: 'sm', showCloseButton: true },
-    );
-  };
-
-  // ── Pagination renderer ────────────────────────────────────────────────
-
-  const renderPagination = () => {
-    if (totalPages <= 1) return null;
-
-    const startItem = (currentPage - 1) * pageSize + 1;
-    const endItem = Math.min(currentPage * pageSize, totalReports);
-
-    const getPageNumbers = () => {
-      const pages: (number | string)[] = [];
-      const maxVisible = 5;
-
-      if (totalPages <= maxVisible) {
-        for (let i = 1; i <= totalPages; i++) pages.push(i);
-      } else if (currentPage <= 3) {
-        for (let i = 1; i <= 4; i++) pages.push(i);
-        pages.push('...', totalPages);
-      } else if (currentPage >= totalPages - 2) {
-        pages.push(1, '...');
-        for (let i = totalPages - 3; i <= totalPages; i++) pages.push(i);
-      } else {
-        pages.push(1, '...');
-        for (let i = currentPage - 1; i <= currentPage + 1; i++) pages.push(i);
-        pages.push('...', totalPages);
-      }
-      return pages;
-    };
-
-    return (
-      <div className="border-t border-gray-200 dark:border-gray-700 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-700 dark:text-gray-300">
-              Mostrando <span className="font-medium">{startItem}</span> - <span className="font-medium">{endItem}</span> de{' '}
-              <span className="font-medium">{totalReports}</span> reportes
-            </span>
-            <select
-              value={pageSize}
-              onChange={(e) => handlePageSizeChange(Number(e.target.value))}
-              className="text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-            >
-              <option value={5}>5 por página</option>
-              <option value={10}>10 por página</option>
-              <option value={50}>50 por página</option>
-              <option value={100}>100 por página</option>
-            </select>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handlePreviousPage}
-              disabled={currentPage === 1}
-              className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <ChevronLeft size={16} />
-            </button>
-            <div className="flex items-center gap-1">
-              {getPageNumbers().map((page, index) => (
-                <button
-                  key={index}
-                  onClick={() => typeof page === 'number' && handleGoToPage(page)}
-                  disabled={page === '...'}
-                  className={`px-3 py-1 rounded text-sm font-medium ${
-                    page === currentPage
-                      ? 'bg-primary-600 text-white'
-                      : page === '...'
-                        ? 'cursor-default text-gray-400'
-                        : 'text-gray-700 cursor-pointer dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                  }`}
-                >
-                  {page}
-                </button>
-              ))}
-            </div>
-            <button
-              onClick={handleNextPage}
-              disabled={currentPage === totalPages}
-              className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 hover:cursor-pointer disabled:cursor-not-allowed"
-            >
-              <ChevronRight size={16} />
-            </button>
-          </div>
-        </div>
-      </div>
     );
   };
 
@@ -424,13 +326,7 @@ export default function ReportList() {
                             >
                               <Eye size={18} />
                             </button>
-                            {(() => {
-                              if (!user) return false;
-                              if (user.role === 'admin') return true;
-                              if (user.role === 'supervisor' && (report.status === 'draft' || report.status === 'rejected')) return true;
-                              if (report.createdBy === user.id && (report.status === 'draft' || report.status === 'rejected' || report.status === 'submitted')) return true;
-                              return false;
-                            })() && (
+                            {canEditReport(user, report) && (
                               <button
                                 onClick={() => navigate(`/reports/edit/${report.id}`)}
                                 className="p-1 text-yellow-600 hover:text-yellow-900 dark:text-yellow-400 dark:hover:text-yellow-300 cursor-pointer"
@@ -439,12 +335,7 @@ export default function ReportList() {
                                 <Edit size={18} />
                               </button>
                             )}
-                            {(() => {
-                              if (!user) return false;
-                              if (user.role === 'admin' || user.role === 'supervisor') return true;
-                              if (report.createdBy === user.id && (report.status === 'draft' || report.status === 'submitted')) return true;
-                              return false;
-                            })() && (
+                            {canDeleteReport(user, report) && (
                               <button
                                 onClick={() => handleDelete(report)}
                                 className="p-1 text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 cursor-pointer"
@@ -460,7 +351,16 @@ export default function ReportList() {
                   </tbody>
                 </table>
               </div>
-              {renderPagination()}
+              <PaginationControls
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={totalReports}
+                pageSize={pageSize}
+                itemLabel="reportes"
+                pageSizeOptions={[5, 10, 50, 100]}
+                onPageChange={setCurrentPage}
+                onPageSizeChange={handlePageSizeChange}
+              />
             </>
           )}
         </Card>

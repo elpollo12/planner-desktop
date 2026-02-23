@@ -7,7 +7,7 @@ import { usersApi } from '../../lib/api';
 import { toast } from 'react-toastify';
 import { formatDateDMY, formatTimeHM } from '../../lib/dateUtils';
 import { useLogisticsRequests, useMaterialsCatalog, useUpdateRequestStatus, useDeleteLogisticsRequest } from '../../hooks/useLogistics';
-import { PaginationControls } from './PaginationControls';
+import { PaginationControls } from '../ui';
 import { REQUEST_TYPE_LABELS, REQUEST_STATUS_LABELS } from '../../types/logistics';
 import { capitalize } from '../../lib/stringUtils';
 import MovementDetailModal, { buildRequestFields } from '../modals/MovementDetail';

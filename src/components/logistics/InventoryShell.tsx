@@ -1,5 +1,5 @@
 import { Card } from '../ui';
-import { PaginationControls } from './PaginationControls';
+import { PaginationControls } from '../ui';
 
 interface PaginationConfig {
   currentPage: number;

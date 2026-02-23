@@ -1,8 +1,7 @@
 ﻿import { useState, useEffect, useMemo } from 'react';
 import { Package, Trash2 } from 'lucide-react';
 import { useModal } from '../../store/modalStore';
-import { Button } from '../ui';
-import { PaginationControls } from '../logistics/PaginationControls';
+import { Button, PaginationControls } from '../ui';
 import { materialsApi, usersApi } from '../../lib/api';
 import { useAuthStore } from '../../store/authStore';
 import { useLogisticsStore } from '../../store/logisticsStore';

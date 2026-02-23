@@ -225,6 +225,8 @@ export interface CreateReportInput {
 // Filtros para listado de reportes
 export interface ReportFilters {
   status?: ReportStatus;
+  /** Multiple statuses for combined queries (e.g. ['approved', 'rejected']) */
+  statuses?: ReportStatus[];
   wellNumber?: string;
   rigNumber?: string;
   dateFrom?: string;

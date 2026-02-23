@@ -75,3 +75,22 @@ export function getTodayDMY(): string {
   const y = today.getFullYear();
   return `${d}/${m}/${y}`;
 }
+
+/**
+ * Format an ISO datetime string to dd/mm/yyyy HH:mm
+ */
+export function formatDateTime(isoStr: string | null | undefined): string {
+  if (!isoStr) return '-';
+  try {
+    const d = new Date(isoStr);
+    if (isNaN(d.getTime())) return '-';
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    const hours = String(d.getHours()).padStart(2, '0');
+    const mins = String(d.getMinutes()).padStart(2, '0');
+    return `${day}/${month}/${year} ${hours}:${mins}`;
+  } catch {
+    return '-';
+  }
+}

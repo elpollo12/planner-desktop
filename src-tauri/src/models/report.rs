@@ -102,6 +102,8 @@ pub struct ReportFilters {
     pub date_from: Option<String>,
     pub date_to: Option<String>,
     pub status: Option<String>,
+    /// Multiple statuses for combined queries (e.g. ["approved", "rejected"])
+    pub statuses: Option<Vec<String>>,
     pub created_by: Option<String>,
     pub well_number: Option<String>,
     pub rig_number: Option<String>,
@@ -270,6 +272,16 @@ impl Report {
             query.push_str(clause);
             count_query.push_str(clause);
             params_vec.push(Box::new(status.clone()));
+        } else if let Some(ref statuses) = filters.statuses {
+            if !statuses.is_empty() {
+                let placeholders: Vec<&str> = statuses.iter().map(|_| "?").collect();
+                let clause = format!(" AND status IN ({})", placeholders.join(","));
+                query.push_str(&clause);
+                count_query.push_str(&clause);
+                for s in statuses {
+                    params_vec.push(Box::new(s.clone()));
+                }
+            }
         }
 
         if let Some(ref created_by) = filters.created_by {

@@ -26,7 +26,8 @@ import { backgroundPush } from '../lib/syncHelper';
 import { useAppSettingsStore } from '../store/appSettingsStore';
 import { DEFAULT_APP_SETTINGS } from '../types/appSettings';
 import { toast } from '../lib/toast';
-import { formatDateDMY } from '../lib/dateUtils';
+import { formatDateDMY, formatDateTime } from '../lib/dateUtils';
+import { canEditReport, canApproveReport, canSubmitReport } from '../lib/reportPermissions';
 import type {
   Report,
   CrewShift,
@@ -182,33 +183,9 @@ export default function ReportView() {
     }
   };
 
-  const canEdit = () => {
-    if (!report || !user) return false;
-    // Admin can edit any report in any status
-    if (user.role === 'admin') return true;
-    // Supervisor can edit draft or rejected
-    if (user.role === 'supervisor' && (report.status === 'draft' || report.status === 'rejected')) return true;
-    // Operator can edit own draft, rejected, or submitted
-    if ((report.status === 'draft' || report.status === 'rejected' || report.status === 'submitted') && report.createdBy === user.id) return true;
-    return false;
-  };
-
-  const canApprove = () => {
-    if (!report || !user) return false;
-    if (report.status !== 'submitted') return false;
-    return user.role === 'supervisor' || user.role === 'admin';
-  };
-
-  const canSubmit = () => {
-    if (!report || !user) return false;
-    // Admin can resubmit from any non-submitted status (including approved)
-    if (user.role === 'admin' && report.status !== 'submitted') return true;
-    // Supervisor can submit draft or rejected
-    if (user.role === 'supervisor' && (report.status === 'draft' || report.status === 'rejected')) return true;
-    // Operator can submit own draft or rejected
-    if ((report.status === 'draft' || report.status === 'rejected') && report.createdBy === user.id) return true;
-    return false;
-  };
+  const canEdit = () => canEditReport(user, report);
+  const canApprove = () => canApproveReport(user, report);
+  const canSubmit = () => canSubmitReport(user, report);
 
   const appSettings = useAppSettingsStore((s) => s.settings);
 
@@ -236,22 +213,6 @@ export default function ReportView() {
       console.error('Error exporting report:', error);
       toast.error(`Error al exportar: ${error instanceof Error ? error.message : 'Error desconocido'}`);
     }
-  };
-
-  // ── Helpers for date display ─────────────────────────────────────────────
-
-  const formatDateTime = (isoStr: string | null | undefined): string => {
-    if (!isoStr) return '-';
-    try {
-      const d = new Date(isoStr);
-      if (isNaN(d.getTime())) return '-';
-      const day = String(d.getDate()).padStart(2, '0');
-      const month = String(d.getMonth() + 1).padStart(2, '0');
-      const year = d.getFullYear();
-      const hours = String(d.getHours()).padStart(2, '0');
-      const mins = String(d.getMinutes()).padStart(2, '0');
-      return `${day}/${month}/${year} ${hours}:${mins}`;
-    } catch { return '-'; }
   };
 
   // ── Loading / Not found ──────────────────────────────────────────────────

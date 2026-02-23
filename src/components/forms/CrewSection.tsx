@@ -59,11 +59,11 @@ function ShiftMembers({
   const handlePersonnelSelect = (index: number, personnelId: string) => {
     const person = personnel.find((p) => p.id === personnelId);
     if (person) {
-      setValue(`crew.shifts.${shiftIndex}.members.${index}.personnelId` as any, personnelId);
-      setValue(`crew.shifts.${shiftIndex}.members.${index}.position` as any, person.defaultPosition);
+      setValue(`crew.shifts.${shiftIndex}.members.${index}.personnelId` as any, personnelId, { shouldDirty: true });
+      setValue(`crew.shifts.${shiftIndex}.members.${index}.position` as any, person.defaultPosition || '', { shouldDirty: true });
     } else {
-      setValue(`crew.shifts.${shiftIndex}.members.${index}.personnelId` as any, '');
-      setValue(`crew.shifts.${shiftIndex}.members.${index}.position` as any, '');
+      setValue(`crew.shifts.${shiftIndex}.members.${index}.personnelId` as any, '', { shouldDirty: true });
+      setValue(`crew.shifts.${shiftIndex}.members.${index}.position` as any, '', { shouldDirty: true });
     }
   };
 

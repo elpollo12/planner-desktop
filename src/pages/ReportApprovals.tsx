@@ -1,13 +1,11 @@
 ﻿import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MainLayout } from '../components/layout';
-import { Button, Card, Select, ReportStatusBadge } from '../components/ui';
+import { Button, Card, Select, ReportStatusBadge, PaginationControls } from '../components/ui';
 import {
   Eye,
   CheckCircle,
   XCircle,
-  ChevronLeft,
-  ChevronRight,
   Filter,
 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
@@ -18,7 +16,7 @@ import RejectReportModal from '../components/modals/RejectReportModal';
 import { toast } from '../lib/toast';
 import { backgroundPush } from '../lib/syncHelper';
 import { syncEvents } from '../lib/syncEvents';
-import { formatDateDMY } from '../lib/dateUtils';
+import { formatDateDMY, formatDateTime } from '../lib/dateUtils';
 import type { Report, ReportStatus } from '../types/report';
 import type { RigWithArea } from '../types';
 
@@ -119,29 +117,17 @@ export default function ReportApprovals() {
         setTotalPages(response.total_pages);
         resolveCreatorNames(response.reports);
       } else {
-        // History without status filter — fetch approved + rejected in parallel
-        const [approvedRes, rejectedRes] = await Promise.all([
-          reportsApi.list(sessionToken, { status: 'approved', rigNumber: filterRig || undefined }, 1, 1000),
-          reportsApi.list(sessionToken, { status: 'rejected', rigNumber: filterRig || undefined }, 1, 1000),
-        ]);
-
-        // Merge, sort by most recent first, then paginate client-side
-        const all = [...approvedRes.reports, ...rejectedRes.reports]
-          .sort((a, b) => {
-            const dateA = a.updatedAt || a.createdAt || '';
-            const dateB = b.updatedAt || b.createdAt || '';
-            return dateB.localeCompare(dateA);
-          });
-
-        const total = all.length;
-        const totalPgs = Math.ceil(total / pageSize) || 1;
-        const start = (currentPage - 1) * pageSize;
-        const paged = all.slice(start, start + pageSize);
-
-        setReports(paged);
-        setTotalReports(total);
-        setTotalPages(totalPgs);
-        resolveCreatorNames(paged);
+        // History without status filter — server-side paginated with multiple statuses
+        const response: PaginatedReportsResponse = await reportsApi.list(
+          sessionToken,
+          { statuses: ['approved', 'rejected'], rigNumber: filterRig || undefined },
+          currentPage,
+          pageSize,
+        );
+        setReports(response.reports);
+        setTotalReports(response.total);
+        setTotalPages(response.total_pages);
+        resolveCreatorNames(response.reports);
       }
     } catch (error) {
       console.error('Error loading reports:', error);
@@ -238,22 +224,6 @@ export default function ReportApprovals() {
   };
 
   // ── Helpers ────────────────────────────────────────────────────────────
-
-  const formatDateTime = (isoStr: string | null | undefined): string => {
-    if (!isoStr) return '-';
-    try {
-      const d = new Date(isoStr);
-      if (isNaN(d.getTime())) return '-';
-      const day = String(d.getDate()).padStart(2, '0');
-      const month = String(d.getMonth() + 1).padStart(2, '0');
-      const year = d.getFullYear();
-      const hours = String(d.getHours()).padStart(2, '0');
-      const mins = String(d.getMinutes()).padStart(2, '0');
-      return `${day}/${month}/${year} ${hours}:${mins}`;
-    } catch {
-      return '-';
-    }
-  };
 
   const TABS: { key: TabKey; label: string }[] = [
     { key: 'pending', label: 'Pendientes' },
@@ -438,74 +408,17 @@ export default function ReportApprovals() {
         )}
 
         {/* ── Pagination ────────────────────────────────────────────── */}
-        {!loading && totalPages > 1 && (() => {
-          const startItem = (currentPage - 1) * pageSize + 1;
-          const endItem = Math.min(currentPage * pageSize, totalReports);
-
-          const getPageNumbers = () => {
-            const pages: (number | string)[] = [];
-            const maxVisible = 5;
-            if (totalPages <= maxVisible) {
-              for (let i = 1; i <= totalPages; i++) pages.push(i);
-            } else if (currentPage <= 3) {
-              for (let i = 1; i <= 4; i++) pages.push(i);
-              pages.push('...', totalPages);
-            } else if (currentPage >= totalPages - 2) {
-              pages.push(1, '...');
-              for (let i = totalPages - 3; i <= totalPages; i++) pages.push(i);
-            } else {
-              pages.push(1, '...');
-              for (let i = currentPage - 1; i <= currentPage + 1; i++) pages.push(i);
-              pages.push('...', totalPages);
-            }
-            return pages;
-          };
-
-          return (
-            <div className="border-t border-gray-200 dark:border-gray-700 py-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-700 dark:text-gray-300">
-                  Mostrando <span className="font-medium">{startItem}</span> - <span className="font-medium">{endItem}</span> de{' '}
-                  <span className="font-medium">{totalReports}</span> reportes
-                </span>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                    disabled={currentPage <= 1}
-                    className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 hover:cursor-pointer disabled:cursor-not-allowed"
-                  >
-                    <ChevronLeft size={16} />
-                  </button>
-                  <div className="flex items-center gap-1">
-                    {getPageNumbers().map((page, index) => (
-                      <button
-                        key={index}
-                        onClick={() => typeof page === 'number' && setCurrentPage(page)}
-                        disabled={page === '...'}
-                        className={`px-3 py-1 rounded text-sm font-medium ${page === currentPage
-                            ? 'bg-primary-600 text-white'
-                            : page === '...'
-                              ? 'cursor-default text-gray-400'
-                              : 'text-gray-700 cursor-pointer dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                          }`}
-                      >
-                        {page}
-                      </button>
-                    ))}
-                  </div>
-                  <button
-                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                    disabled={currentPage >= totalPages}
-                    className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 hover:cursor-pointer disabled:cursor-not-allowed"
-                  >
-                    <ChevronRight size={16} />
-                  </button>
-                </div>
-              </div>
-            </div>
-          );
-        })()}
+        {!loading && (
+          <PaginationControls
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={totalReports}
+            pageSize={pageSize}
+            itemLabel="reportes"
+            pageSizeOptions={false}
+            onPageChange={setCurrentPage}
+          />
+        )}
       </div>
     </MainLayout>
   );

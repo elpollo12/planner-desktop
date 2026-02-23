@@ -13,3 +13,4 @@ export { Badge } from './Badge';
 export type { BadgeVariant, BadgeSize } from './Badge';
 export { ReportStatusBadge } from './ReportStatusBadge';
 export { SectionCarousel } from './SectionCarousel';
+export { PaginationControls } from './PaginationControls';

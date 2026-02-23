@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { CheckCircle, XCircle, MessageSquare, RotateCcw, AlertTriangle } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { reportReviewsApi, usersApi } from '../../lib/api';
+import { formatDateTime } from '../../lib/dateUtils';
 import type { ReportReview, ReviewAction } from '../../types/report';
 import { REVIEW_ACTION_LABELS } from '../../types/report';
 
@@ -37,21 +38,6 @@ const ACTION_CONFIG: Record<ReviewAction, {
     dotColor: 'bg-purple-500 text-white',
   },
 };
-
-function formatDateTime(isoStr: string): string {
-  try {
-    const d = new Date(isoStr);
-    if (isNaN(d.getTime())) return '-';
-    const day = String(d.getDate()).padStart(2, '0');
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const year = d.getFullYear();
-    const hours = String(d.getHours()).padStart(2, '0');
-    const mins = String(d.getMinutes()).padStart(2, '0');
-    return `${day}/${month}/${year} ${hours}:${mins}`;
-  } catch {
-    return '-';
-  }
-}
 
 export default function ReviewTimeline({ reportId, refreshKey }: ReviewTimelineProps) {
   const { sessionToken } = useAuthStore();
