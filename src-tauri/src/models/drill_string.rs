@@ -104,4 +104,29 @@ impl DrillStringComponent {
         )?;
         Ok(())
     }
+
+    pub fn save_bulk(
+        conn: &Connection,
+        report_id: &str,
+        components: &[CreateDrillStringComponentRequest],
+    ) -> Result<Vec<DrillStringComponent>, AppError> {
+        let now = chrono::Utc::now().to_rfc3339();
+
+        conn.execute(
+            "DELETE FROM drill_string_components WHERE report_id = ?1",
+            params![report_id],
+        )?;
+
+        for (index, comp) in components.iter().enumerate() {
+            let id = uuid::Uuid::new_v4().to_string();
+            let entry_number = (index + 1) as i64;
+            conn.execute(
+                "INSERT INTO drill_string_components (id, report_id, entry_number, piece_name, length, created_at, updated_at)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+                params![&id, report_id, entry_number, &comp.piece_name, &comp.length, &now, &now],
+            )?;
+        }
+
+        DrillStringComponent::list_by_report(conn, report_id)
+    }
 }

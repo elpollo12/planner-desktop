@@ -72,17 +72,20 @@ pub fn run() {
             commands::reports::reopen_report,
 
             // Drill string commands
+            commands::drill_string::save_drill_string_components,
             commands::drill_string::create_drill_string_component,
             commands::drill_string::list_drill_string_components,
             commands::drill_string::delete_all_drill_string_components,
 
             // Crew commands
+            commands::crew::save_crew_shifts,
             commands::crew::create_crew_shift,
             commands::crew::list_crew_shifts,
             commands::crew::delete_crew_shift,
             commands::crew::delete_all_crew_shifts,
 
             // Bit records commands
+            commands::bit_records::save_bit_records,
             commands::bit_records::create_bit_record,
             commands::bit_records::list_bit_records,
             commands::bit_records::update_bit_record,
@@ -97,6 +100,7 @@ pub fn run() {
             commands::operation_codes::delete_operation_code,
 
             // Mud commands
+            commands::mud::save_mud_data,
             commands::mud::create_mud_record,
             commands::mud::list_mud_records,
             commands::mud::create_mud_additive,
@@ -110,16 +114,19 @@ pub fn run() {
             commands::time_distribution::delete_all_time_distributions,
 
             // Drilling parameters commands
+            commands::drilling_params::save_drilling_parameters,
             commands::drilling_params::create_drilling_parameter,
             commands::drilling_params::list_drilling_parameters,
             commands::drilling_params::delete_all_drilling_parameters,
 
             // Deviation commands
+            commands::deviation::save_deviation_records,
             commands::deviation::create_deviation_record,
             commands::deviation::list_deviation_records,
             commands::deviation::delete_all_deviation_records,
 
             // Operations log commands
+            commands::operations_log::save_operation_logs,
             commands::operations_log::create_operation_log,
             commands::operations_log::list_operation_logs,
             commands::operations_log::delete_all_operation_logs,

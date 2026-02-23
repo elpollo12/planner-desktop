@@ -170,6 +170,9 @@ export const reportReviewsApi = {
 // ============================================================================
 
 export const drillStringApi = {
+  saveBulk: (sessionToken: string, reportId: string, data: Array<{ pieceName: string; length?: number }>) =>
+    invoke<DrillStringComponent[]>('save_drill_string_components', { sessionToken, reportId, data }),
+
   create: (sessionToken: string, reportId: string, data: { pieceName: string; length?: number }) =>
     invoke<DrillStringComponent>('create_drill_string_component', { sessionToken, reportId, data }),
 
@@ -185,6 +188,9 @@ export const drillStringApi = {
 // ============================================================================
 
 export const crewApi = {
+  saveBulk: (sessionToken: string, reportId: string, data: Array<{ shift: string; shiftStart?: string; shiftEnd?: string; members: Array<{ personnelId?: string; position: string; hours?: number }> }>) =>
+    invoke<CrewShift[]>('save_crew_shifts', { sessionToken, reportId, data }),
+
   createShift: (sessionToken: string, reportId: string, data: { shift: string; shiftStart?: string; shiftEnd?: string; members: Array<{ personnelId?: string; position: string; ci?: string; name?: string; hours?: number }> }) =>
     invoke<CrewShift>('create_crew_shift', { sessionToken, reportId, data }),
 
@@ -203,6 +209,9 @@ export const crewApi = {
 // ============================================================================
 
 export const bitRecordsApi = {
+  saveBulk: (sessionToken: string, reportId: string, data: Array<Partial<BitRecord>>) =>
+    invoke<BitRecord[]>('save_bit_records', { sessionToken, reportId, data }),
+
   create: (sessionToken: string, reportId: string, data: Partial<BitRecord>) =>
     invoke<BitRecord>('create_bit_record', { sessionToken, reportId, data }),
 
@@ -244,6 +253,9 @@ export const operationCodesApi = {
 // ============================================================================
 
 export const mudApi = {
+  saveBulk: (sessionToken: string, reportId: string, data: { records: Array<Partial<MudRecord>>; additives: Array<Partial<MudAdditive>> }) =>
+    invoke<{ records: MudRecord[]; additives: MudAdditive[] }>('save_mud_data', { sessionToken, reportId, data }),
+
   createRecord: (sessionToken: string, reportId: string, data: Partial<MudRecord>) =>
     invoke<MudRecord>('create_mud_record', { sessionToken, reportId, data }),
 
@@ -295,6 +307,9 @@ export const timeDistributionApi = {
 // ============================================================================
 
 export const drillingParamsApi = {
+  saveBulk: (sessionToken: string, reportId: string, data: Array<Partial<DrillingParameters>>) =>
+    invoke<DrillingParameters[]>('save_drilling_parameters', { sessionToken, reportId, data }),
+
   create: (sessionToken: string, reportId: string, data: Partial<DrillingParameters>) =>
     invoke<DrillingParameters>('create_drilling_parameter', { sessionToken, reportId, data }),
 
@@ -310,6 +325,9 @@ export const drillingParamsApi = {
 // ============================================================================
 
 export const deviationApi = {
+  saveBulk: (sessionToken: string, reportId: string, data: Array<Partial<DeviationHistory>>) =>
+    invoke<DeviationHistory[]>('save_deviation_records', { sessionToken, reportId, data }),
+
   create: (sessionToken: string, reportId: string, data: Partial<DeviationHistory>) =>
     invoke<DeviationHistory>('create_deviation_record', { sessionToken, reportId, data }),
 
@@ -325,6 +343,9 @@ export const deviationApi = {
 // ============================================================================
 
 export const operationsLogApi = {
+  saveBulk: (sessionToken: string, reportId: string, data: Array<Partial<OperationsLog>>) =>
+    invoke<OperationsLog[]>('save_operation_logs', { sessionToken, reportId, data }),
+
   create: (sessionToken: string, reportId: string, data: Partial<OperationsLog>) =>
     invoke<OperationsLog>('create_operation_log', { sessionToken, reportId, data }),
 

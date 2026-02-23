@@ -103,4 +103,30 @@ impl DeviationRecord {
         conn.execute("DELETE FROM deviation_history WHERE report_id = ?1", params![report_id])?;
         Ok(())
     }
+
+    pub fn save_bulk(
+        conn: &Connection,
+        report_id: &str,
+        records: &[CreateDeviationRecordRequest],
+    ) -> Result<Vec<DeviationRecord>, AppError> {
+        let now = chrono::Utc::now().to_rfc3339();
+
+        conn.execute("DELETE FROM deviation_history WHERE report_id = ?1", params![report_id])?;
+
+        for data in records {
+            let id = uuid::Uuid::new_v4().to_string();
+            conn.execute(
+                "INSERT INTO deviation_history (id, report_id, depth, deviation, direction, tvo, horizontal_displacement, created_at, updated_at)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+                params![
+                    &id, report_id,
+                    &data.depth, &data.deviation, &data.direction,
+                    &data.tvo, &data.horizontal_displacement,
+                    &now, &now
+                ],
+            )?;
+        }
+
+        DeviationRecord::list_by_report(conn, report_id)
+    }
 }

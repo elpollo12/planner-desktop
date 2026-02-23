@@ -135,4 +135,31 @@ impl DrillingParameter {
         conn.execute("DELETE FROM drilling_parameters WHERE report_id = ?1", params![report_id])?;
         Ok(())
     }
+
+    pub fn save_bulk(
+        conn: &Connection,
+        report_id: &str,
+        parameters: &[CreateDrillingParameterRequest],
+    ) -> Result<Vec<DrillingParameter>, AppError> {
+        let now = chrono::Utc::now().to_rfc3339();
+
+        conn.execute("DELETE FROM drilling_parameters WHERE report_id = ?1", params![report_id])?;
+
+        for data in parameters {
+            let id = uuid::Uuid::new_v4().to_string();
+            conn.execute(
+                "INSERT INTO drilling_parameters (id, report_id, shift, depth_from, depth_to, core_number, rotary_rpm, bit_weight, pump_pressure, pump_number, pump_liner, pump_spm, total_gpm, method_used, lithology_notes, created_at, updated_at)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17)",
+                params![
+                    &id, report_id,
+                    &data.shift, &data.depth_from, &data.depth_to, &data.core_number,
+                    &data.rotary_rpm, &data.bit_weight, &data.pump_pressure, &data.pump_number,
+                    &data.pump_liner, &data.pump_spm, &data.total_gpm, &data.method_used,
+                    &data.lithology_notes, &now, &now
+                ],
+            )?;
+        }
+
+        DrillingParameter::list_by_report(conn, report_id)
+    }
 }

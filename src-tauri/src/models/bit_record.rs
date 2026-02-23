@@ -171,4 +171,31 @@ impl BitRecord {
         conn.execute("DELETE FROM bit_records WHERE report_id = ?1", params![report_id])?;
         Ok(())
     }
+
+    pub fn save_bulk(
+        conn: &Connection,
+        report_id: &str,
+        records: &[CreateBitRecordRequest],
+    ) -> Result<Vec<BitRecord>, AppError> {
+        let now = chrono::Utc::now().to_rfc3339();
+
+        conn.execute("DELETE FROM bit_records WHERE report_id = ?1", params![report_id])?;
+
+        for data in records {
+            let id = uuid::Uuid::new_v4().to_string();
+            conn.execute(
+                "INSERT INTO bit_records (id, report_id, shift, size, manufacturer_code, brand, bit_type, serial_number, jets, tfa, depth_out, depth_in, footage, hours_total, dp_tubos, kelly, created_at, updated_at)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18)",
+                params![
+                    &id, report_id,
+                    &data.shift, &data.size, &data.manufacturer_code, &data.brand,
+                    &data.bit_type, &data.serial_number, &data.jets, &data.tfa,
+                    &data.depth_out, &data.depth_in, &data.footage, &data.hours_total,
+                    &data.dp_tubos, &data.kelly, &now, &now
+                ],
+            )?;
+        }
+
+        BitRecord::list_by_report(conn, report_id)
+    }
 }

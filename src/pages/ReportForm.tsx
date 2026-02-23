@@ -51,7 +51,7 @@ export default function ReportForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Report loader hook
-  const { existingReport, isLoadingReport, loadReport } = useReportLoader(sessionToken);
+  const { existingReport, isLoadingReport, failedSections, loadReport } = useReportLoader(sessionToken);
 
   // Report state
   const [reportId, setReportId] = useState<string | null>(id || null);
@@ -77,6 +77,7 @@ export default function ReportForm() {
   const { saveAllSections, hasSectionData } = useReportSave({
     sessionToken,
     formData,
+    failedSections,
   });
 
   // Wizard navigation hook
@@ -369,7 +370,8 @@ export default function ReportForm() {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       {WIZARD_TABS.map((tab) => {
                         const isActive = activeTab === tab.id;
-                        const summary = getSectionSummary(tab.id);
+                        const isFailed = failedSections.has(tab.id);
+                        const summary = isFailed ? '⚠ Error al cargar' : getSectionSummary(tab.id);
 
                         return (
                           <button
@@ -378,9 +380,11 @@ export default function ReportForm() {
                             onClick={() => setActiveTab(tab.id)}
                             className={`
                               p-4 rounded-lg border-2 text-left transition-all
-                              ${isActive
-                                ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/10'
-                                : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                              ${isFailed
+                                ? 'border-amber-400 dark:border-amber-600 bg-amber-50 dark:bg-amber-900/10'
+                                : isActive
+                                  ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/10'
+                                  : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
                               }
                             `}
                           >
@@ -394,14 +398,16 @@ export default function ReportForm() {
                                 <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">
                                   {tab.description}
                                 </p>
-                                <p className={`text-xs font-medium ${summary !== 'Sin datos'
-                                    ? 'text-green-600 dark:text-green-400'
-                                    : 'text-gray-500 dark:text-gray-500'
+                                <p className={`text-xs font-medium ${isFailed
+                                    ? 'text-amber-600 dark:text-amber-400'
+                                    : summary !== 'Sin datos'
+                                      ? 'text-green-600 dark:text-green-400'
+                                      : 'text-gray-500 dark:text-gray-500'
                                   }`}>
                                   {summary}
                                 </p>
                               </div>
-                              {isActive && (
+                              {isActive && !isFailed && (
                                 <CheckCircle2 className="text-primary-500 shrink-0" size={20} />
                               )}
                             </div>

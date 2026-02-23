@@ -20,6 +20,8 @@ import type { TabId } from '../types/reportForm';
 interface UseReportSaveOptions {
   sessionToken: string | null;
   formData: CompleteReportData;
+  /** Sections that failed to load — must be skipped during save to prevent data loss */
+  failedSections?: Set<TabId>;
 }
 
 interface UseReportSaveReturn {
@@ -36,6 +38,7 @@ interface UseReportSaveReturn {
 export function useReportSave({
   sessionToken,
   formData,
+  failedSections = new Set(),
 }: UseReportSaveOptions): UseReportSaveReturn {
 
   // ==========================================================================
@@ -99,252 +102,135 @@ export function useReportSave({
 
   /**
    * Save Drill String section
-   * Strategy: DELETE ALL + INSERT ALL (parallel) to avoid duplicates
+   * Strategy: Single bulk endpoint (DELETE ALL + INSERT ALL on backend)
    */
   const saveDrillString = async (reportId: string) => {
     if (!sessionToken) return;
-
-    if (reportId) {
-      try {
-        await drillStringApi.deleteAll(sessionToken, reportId);
-      } catch (error) {
-        console.warn('Could not delete existing drill string components:', error);
-      }
-    }
 
     const validComponents = (formData.drillString?.components || []).filter(
       (c) => c.pieceName && c.pieceName.trim() !== '',
     );
 
-    if (validComponents.length > 0) {
-      await Promise.all(
-        validComponents.map((comp) =>
-          drillStringApi.create(sessionToken, reportId, {
-            pieceName: comp.pieceName,
-            length: comp.length,
-          }),
-        ),
-      );
-    }
+    await drillStringApi.saveBulk(sessionToken, reportId,
+      validComponents.map((comp) => ({
+        pieceName: comp.pieceName,
+        length: comp.length,
+      })),
+    );
   };
 
   /**
    * Save Crew section
-   * Strategy: DELETE ALL + INSERT ALL (parallel) to avoid duplicates
+   * Strategy: Single bulk endpoint (DELETE ALL + INSERT ALL on backend, CASCADE deletes members)
    */
   const saveCrew = async (reportId: string) => {
     if (!sessionToken) return;
 
-    if (reportId) {
-      try {
-        await crewApi.deleteAllShifts(sessionToken, reportId);
-      } catch (error) {
-        console.warn('Could not delete existing shifts:', error);
-      }
-    }
+    const validShifts = (formData.crew?.shifts || [])
+      .filter((shift) => shift.shift)
+      .map((shift) => {
+        const validMembers = (shift.members || []).filter(
+          (member) =>
+            (member.personnelId && member.personnelId.trim() !== '') ||
+            (member.position && member.position.trim() !== ''),
+        );
 
-    if (formData.crew?.shifts) {
-      const shiftTasks = formData.crew.shifts
-        .filter((shift) => shift.shift)
-        .map((shift) => {
-          // A member is valid if it has personnelId OR a non-empty position.
-          // Previously we only checked position, which caused members selected
-          // from the personnel dropdown (with personnelId but empty/undefined
-          // defaultPosition) to be silently discarded.
-          const validMembers = (shift.members || []).filter(
-            (member) =>
-              (member.personnelId && member.personnelId.trim() !== '') ||
-              (member.position && member.position.trim() !== ''),
-          );
+        return {
+          shift: shift.shift,
+          shiftStart: shift.shiftStart,
+          shiftEnd: shift.shiftEnd,
+          members: validMembers.map((member) => ({
+            personnelId: member.personnelId || undefined,
+            position: member.position || '',
+            hours: member.hours || undefined,
+          })),
+        };
+      })
+      .filter((shift) => shift.members.length > 0);
 
-          if (validMembers.length === 0) return null;
-
-          const cleanShift = {
-            shift: shift.shift,
-            shiftStart: shift.shiftStart,
-            shiftEnd: shift.shiftEnd,
-            members: validMembers.map((member) => ({
-              personnelId: member.personnelId || undefined,
-              position: member.position || '',
-              ci: member.personnelId ? undefined : (member as any).ci || undefined,
-              name: member.personnelId ? undefined : (member as any).name || undefined,
-              hours: member.hours || undefined,
-            })),
-          };
-
-          return crewApi.createShift(sessionToken, reportId, cleanShift);
-        })
-        .filter(Boolean);
-
-      await Promise.all(shiftTasks);
-    }
+    await crewApi.saveBulk(sessionToken, reportId, validShifts);
   };
 
   /**
    * Save Bit Records section
-   * Strategy: DELETE ALL + INSERT ALL (parallel) to avoid duplicates
+   * Strategy: Single bulk endpoint (DELETE ALL + INSERT ALL on backend)
    */
   const saveBits = async (reportId: string) => {
     if (!sessionToken) return;
 
-    if (reportId) {
-      try {
-        await bitRecordsApi.deleteAll(sessionToken, reportId);
-      } catch (error) {
-        console.warn('Could not delete existing bit records:', error);
-      }
-    }
-
-    if (formData.bitRecords?.records && formData.bitRecords.records.length > 0) {
-      await Promise.all(
-        formData.bitRecords.records.map((record) =>
-          bitRecordsApi.create(sessionToken, reportId, record),
-        ),
-      );
-    }
+    const records = formData.bitRecords?.records || [];
+    await bitRecordsApi.saveBulk(sessionToken, reportId, records);
   };
 
   /**
    * Save Time Distribution section
-   * Strategy: DELETE ALL + INSERT ALL to avoid duplicates
+   * Strategy: Single bulk endpoint (DELETE ALL + INSERT ALL on backend)
    */
   const saveTime = async (reportId: string) => {
     if (!sessionToken) return;
 
-    if (reportId) {
-      try {
-        await timeDistributionApi.deleteAll(sessionToken, reportId);
-      } catch (error) {
-        console.warn('Could not delete existing time distributions:', error);
-      }
-    }
+    const validDistributions = (formData.timeDistribution?.distributions || [])
+      .filter((dist) => dist.operationCodeId && dist.operationCodeId.trim() !== '')
+      .map((dist) => ({
+        operationCodeId: dist.operationCodeId,
+        hoursShift1: typeof dist.hoursShift1 === 'number' ? dist.hoursShift1 : 0,
+        hoursShift2: typeof dist.hoursShift2 === 'number' ? dist.hoursShift2 : 0,
+        hoursShift3: typeof dist.hoursShift3 === 'number' ? dist.hoursShift3 : 0,
+      }));
 
-    if (
-      formData.timeDistribution?.distributions &&
-      formData.timeDistribution.distributions.length > 0
-    ) {
-      const validDistributions = formData.timeDistribution.distributions
-        .filter((dist) => dist.operationCodeId && dist.operationCodeId.trim() !== '')
-        .map((dist) => ({
-          operationCodeId: dist.operationCodeId,
-          hoursShift1: typeof dist.hoursShift1 === 'number' ? dist.hoursShift1 : 0,
-          hoursShift2: typeof dist.hoursShift2 === 'number' ? dist.hoursShift2 : 0,
-          hoursShift3: typeof dist.hoursShift3 === 'number' ? dist.hoursShift3 : 0,
-        }));
-
-      if (validDistributions.length > 0) {
-        await timeDistributionApi.saveBulk(sessionToken, reportId, validDistributions);
-      }
-    }
+    await timeDistributionApi.saveBulk(sessionToken, reportId, validDistributions);
   };
 
   /**
-   * Save Mud Records section
-   * Strategy: DELETE ALL + INSERT ALL (parallel) to avoid duplicates
+   * Save Mud Records section (records + additives)
+   * Strategy: Single bulk endpoint (DELETE ALL + INSERT ALL on backend for both tables)
    */
   const saveMud = async (reportId: string) => {
     if (!sessionToken) return;
 
-    if (reportId) {
-      try {
-        await Promise.all([
-          mudApi.deleteAllRecords(sessionToken, reportId),
-          mudApi.deleteAllAdditives(sessionToken, reportId),
-        ]);
-      } catch (error) {
-        console.warn('Could not delete existing mud data:', error);
-      }
-    }
-
-    const tasks: Promise<unknown>[] = [];
-
-    if (formData.mudRecords?.records && formData.mudRecords.records.length > 0) {
-      tasks.push(
-        ...formData.mudRecords.records.map((record) =>
-          mudApi.createRecord(sessionToken, reportId, record),
-        ),
-      );
-    }
-
-    if (formData.mudRecords?.additives && formData.mudRecords.additives.length > 0) {
-      tasks.push(
-        ...formData.mudRecords.additives.map((additive) =>
-          mudApi.createAdditive(sessionToken, reportId, additive),
-        ),
-      );
-    }
-
-    if (tasks.length > 0) {
-      await Promise.all(tasks);
-    }
+    await mudApi.saveBulk(sessionToken, reportId, {
+      records: formData.mudRecords?.records || [],
+      additives: formData.mudRecords?.additives || [],
+    });
   };
 
   /**
-   * Save Lithology section
-   * Strategy: DELETE ALL + INSERT ALL (parallel) to avoid duplicates
+   * Save Lithology section (drilling parameters + deviation history)
+   * Strategy: Two bulk endpoints in parallel
    */
   const saveLithology = async (reportId: string) => {
     if (!sessionToken) return;
 
-    if (reportId) {
-      try {
-        await Promise.all([
-          drillingParamsApi.deleteAll(sessionToken, reportId),
-          deviationApi.deleteAll(sessionToken, reportId),
-        ]);
-      } catch (error) {
-        console.warn('Could not delete existing lithology data:', error);
-      }
-    }
-
     const tasks: Promise<unknown>[] = [];
 
-    if (
-      formData.lithology?.drillingParameters &&
-      formData.lithology.drillingParameters.length > 0
-    ) {
-      tasks.push(
-        ...formData.lithology.drillingParameters.map((param) =>
-          drillingParamsApi.create(sessionToken, reportId, param),
-        ),
-      );
-    }
+    tasks.push(
+      drillingParamsApi.saveBulk(
+        sessionToken,
+        reportId,
+        formData.lithology?.drillingParameters || [],
+      ),
+    );
 
-    if (formData.lithology?.deviationHistory && formData.lithology.deviationHistory.length > 0) {
-      tasks.push(
-        ...formData.lithology.deviationHistory.map((deviation) =>
-          deviationApi.create(sessionToken, reportId, deviation),
-        ),
-      );
-    }
+    tasks.push(
+      deviationApi.saveBulk(
+        sessionToken,
+        reportId,
+        formData.lithology?.deviationHistory || [],
+      ),
+    );
 
-    if (tasks.length > 0) {
-      await Promise.all(tasks);
-    }
+    await Promise.all(tasks);
   };
 
   /**
    * Save Observations section
-   * Strategy: DELETE ALL + INSERT ALL (parallel) to avoid duplicates
+   * Strategy: Single bulk endpoint (DELETE ALL + INSERT ALL on backend)
    */
   const saveObservations = async (reportId: string) => {
     if (!sessionToken) return;
 
-    if (reportId) {
-      try {
-        await operationsLogApi.deleteAll(sessionToken, reportId);
-      } catch (error) {
-        console.warn('Could not delete existing operations:', error);
-      }
-    }
-
-    if (formData.observations?.operations && formData.observations.operations.length > 0) {
-      await Promise.all(
-        formData.observations.operations.map((operation) =>
-          operationsLogApi.create(sessionToken, reportId, operation),
-        ),
-      );
-    }
+    const operations = formData.observations?.operations || [];
+    await operationsLogApi.saveBulk(sessionToken, reportId, operations);
   };
 
   // ==========================================================================
@@ -405,15 +291,19 @@ export function useReportSave({
         },
       ];
 
-      // Process sections that have data in the form.
-      // The merge in useReportWizard guarantees that data loaded from the backend
-      // is always present in the form state, so hasSectionData will be true for
-      // any section that had data at load time OR was edited by the user.
-      // Sections that are truly empty (no backend data AND no user edits) are
-      // skipped to avoid accidentally deleting backend data if the loader failed
-      // silently for that section.
+      // Skip sections that:
+      // 1. Have no data (empty in form AND never loaded from backend)
+      // 2. Failed to load — saving would overwrite existing data with empty arrays
+      const skippedFailed = sectionsToProcess.filter((s) => failedSections.has(s.id));
+      if (skippedFailed.length > 0) {
+        console.warn(
+          `⚠ Skipping ${skippedFailed.length} section(s) that failed to load:`,
+          skippedFailed.map((s) => s.name).join(', '),
+        );
+      }
+
       const tasks = sectionsToProcess
-        .filter((section) => section.hasData)
+        .filter((section) => section.hasData && !failedSections.has(section.id))
         .map(async (section) => {
           try {
             await section.saveFn();

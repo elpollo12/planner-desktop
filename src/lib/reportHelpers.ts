@@ -177,13 +177,13 @@ export function buildFormFromSnapshot(snapshot: LastReportSnapshot): Partial<Com
     header: {
       reportNumber: snapshot.reportNumber + 1,
       reportDate: new Date().toISOString().split('T')[0],
-      wellNumber: snapshot.wellNumber ?? '',
+      wellNumber: '', // Intentionally blank — forces user to confirm/enter well name
       apiNumber: snapshot.apiNumber ?? '',
       contract: snapshot.contract ?? '',
       contractor: snapshot.contractor ?? '',
       operator: snapshot.operator ?? '',
       fieldDistrict: snapshot.fieldDistrict ?? '',
-      municipality: snapshot.municipality ?? '',
+      municipality: '',  // Field removed from UI, kept for schema compatibility
       rigNumber: snapshot.rigNumber ?? '',
       supervisor24h: snapshot.supervisor24h ?? '',
     },

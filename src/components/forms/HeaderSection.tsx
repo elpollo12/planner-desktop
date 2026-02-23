@@ -214,25 +214,55 @@ export function HeaderSection({ isEditMode = false }: HeaderSectionProps) {
           error={errors.header?.contract?.message}
         />
 
-        <Select
-          label="Contratista"
-          {...register('header.contractor')}
-          options={contractorOptions}
-          error={errors.header?.contractor?.message}
+        <Controller
+          name="header.contractor"
+          control={control}
+          render={({ field }) => (
+            <Select
+              label="Contratista"
+              value={field.value}
+              onChange={field.onChange}
+              onBlur={field.onBlur}
+              name={field.name}
+              ref={field.ref}
+              options={contractorOptions}
+              error={errors.header?.contractor?.message}
+            />
+          )}
         />
 
-        <Select
-          label="Operador"
-          {...register('header.operator')}
-          options={operatorOptions}
-          error={errors.header?.operator?.message}
+        <Controller
+          name="header.operator"
+          control={control}
+          render={({ field }) => (
+            <Select
+              label="Operador"
+              value={field.value}
+              onChange={field.onChange}
+              onBlur={field.onBlur}
+              name={field.name}
+              ref={field.ref}
+              options={operatorOptions}
+              error={errors.header?.operator?.message}
+            />
+          )}
         />
 
-        <Select
-          label="Campo o Distrito"
-          {...register('header.fieldDistrict')}
-          options={areaOptions}
-          error={errors.header?.fieldDistrict?.message}
+        <Controller
+          name="header.fieldDistrict"
+          control={control}
+          render={({ field }) => (
+            <Select
+              label="Campo o Distrito"
+              value={field.value}
+              onChange={field.onChange}
+              onBlur={field.onBlur}
+              name={field.name}
+              ref={field.ref}
+              options={areaOptions}
+              error={errors.header?.fieldDistrict?.message}
+            />
+          )}
         />
 
         {/* Rig selector: controlled in edit mode to intercept changes */}
