@@ -18,6 +18,7 @@ import ReportView from './pages/ReportView';
 import AdminPanel from './pages/AdminPanel';
 import { UpdateNotification } from './components/ui/UpdateNotification';
 import Logistics from './pages/Logistics';
+import Incidents from './pages/Incidents';
 import ReportApprovals from './pages/ReportApprovals';
 import LicenseActivation from './pages/LicenseActivation';
 import './App.css';
@@ -188,6 +189,15 @@ function App() {
           element={
             <ProtectedRoute>
               <Logistics />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/incidents"
+          element={
+            <ProtectedRoute>
+              <Incidents />
             </ProtectedRoute>
           }
         />

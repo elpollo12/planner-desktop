@@ -11,6 +11,7 @@ import {
   List,
   LogOut,
   Shield,
+  AlertTriangle,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -50,6 +51,12 @@ export function Sidebar({ className = '' }: SidebarProps) {
       name: 'Logística',
       href: '/logistics',
       icon: Forklift,
+      show: true,
+    },
+    {
+      name: 'Incidencias',
+      href: '/incidents',
+      icon: AlertTriangle,
       show: true,
     },
     {

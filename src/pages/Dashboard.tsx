@@ -144,6 +144,17 @@ export default function Dashboard() {
               <p className="text-sm text-gray-600 dark:text-gray-400">Gestionar usuarios del sistema</p>
             </button>
           )}
+
+          <button
+            onClick={() => navigate('/incidents')}
+            className="p-6 border-2 border-dashed cursor-pointer border-gray-300 dark:border-gray-600 rounded-lg hover:bg-blue-50 dark:hover:bg-gray-700 transition text-left"
+            onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--color-primary-500)'}
+            onMouseLeave={(e) => e.currentTarget.style.borderColor = ''}
+          >
+            <div className="text-2xl mb-2">⚠️</div>
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Incidencias</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Registrar y consultar incidencias</p>
+          </button>
         </div>
       </Card>
 
