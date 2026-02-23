@@ -1,18 +1,17 @@
 import { useState } from 'react';
 import { useAuthStore } from '../../store/authStore';
 import { useModal } from '../../store/modalStore';
-import { useIncidentsList, useDeleteIncident } from '../../hooks/useIncidents';
-import { INCIDENT_TYPE_LABELS } from '../../types/incident';
-import type { IncidentType } from '../../types/incident';
+import { useIncidentsList, useDeleteIncident, useIncidentTypes } from '../../hooks/useIncidents';
 import { IncidentTypeBadge } from './IncidentTypeBadge';
 import { IncidentForm } from './IncidentForm';
 import { IncidentDetail } from './IncidentDetail';
+import IncidentTypesCatalogModal from './IncidentTypesCatalogModal';
 import ConfirmDeleteModal from '../modals/ConfirmDelete';
 import { Button, Select } from '../ui';
 import { PaginationControls } from '../ui/PaginationControls';
 import { formatDateTime } from '../../lib/dateUtils';
 import { toast } from 'react-toastify';
-import { Plus, Eye, Trash2, Loader2, AlertTriangle } from 'lucide-react';
+import { Plus, Eye, Trash2, Loader2, AlertTriangle, Settings } from 'lucide-react';
 
 interface IncidentsListProps {
   rigId: string;
@@ -20,10 +19,6 @@ interface IncidentsListProps {
 }
 
 const PAGE_SIZE = 10;
-const TYPE_FILTER_OPTIONS = [
-  { value: '', label: 'Todos los tipos' },
-  ...Object.entries(INCIDENT_TYPE_LABELS).map(([value, label]) => ({ value, label })),
-];
 
 export function IncidentsList({ rigId, rigName }: IncidentsListProps) {
   const { user } = useAuthStore();
@@ -33,12 +28,22 @@ export function IncidentsList({ rigId, rigName }: IncidentsListProps) {
   const [pageSize, setPageSize] = useState(PAGE_SIZE);
   const [typeFilter, setTypeFilter] = useState('');
 
+  const { data: incidentTypes = [] } = useIncidentTypes();
   const { data, isLoading } = useIncidentsList(rigId, typeFilter, page, pageSize);
   const deleteMutation = useDeleteIncident(rigId);
 
   const incidents = data?.data ?? [];
   const total = data?.total ?? 0;
   const totalPages = data?.totalPages ?? 0;
+
+  // Build filter options from dynamic types
+  const typeFilterOptions = [
+    { value: '', label: 'Todos los tipos' },
+    ...incidentTypes.map((t) => ({ value: t.id, label: t.name })),
+  ];
+
+  // Map type ID → record for badge rendering
+  const typeMap = new Map(incidentTypes.map((t) => [t.id, t]));
 
   const handleCreate = () => {
     openModal(<IncidentForm rigId={rigId} />, {
@@ -72,6 +77,22 @@ export function IncidentsList({ rigId, rigName }: IncidentsListProps) {
     );
   };
 
+  const handleOpenTypesCatalog = () => {
+    openModal(<IncidentTypesCatalogModal />, {
+      title: 'Tipos de Incidencia',
+      size: 'xl',
+      showCloseButton: true,
+    });
+  };
+
+  const renderTypeBadge = (typeId: string) => {
+    const typeRecord = typeMap.get(typeId);
+    if (typeRecord) {
+      return <IncidentTypeBadge name={typeRecord.name} color={typeRecord.color} />;
+    }
+    return <IncidentTypeBadge name={typeId} color="gray" />;
+  };
+
   return (
     <div className="space-y-4">
       {/* Toolbar */}
@@ -80,9 +101,17 @@ export function IncidentsList({ rigId, rigName }: IncidentsListProps) {
           <Select
             value={typeFilter}
             onChange={(e) => { setTypeFilter(e.target.value); setPage(1); }}
-            options={TYPE_FILTER_OPTIONS}
+            options={typeFilterOptions}
             className="!w-auto min-w-[180px]"
           />
+          <Button
+            variant="outline"
+            size="sm"
+            icon={<Settings size={15} />}
+            onClick={handleOpenTypesCatalog}
+          >
+            Ver tipos
+          </Button>
           <span className="text-sm text-gray-500 dark:text-gray-400">
             {total} incidencia{total !== 1 ? 's' : ''}
           </span>
@@ -138,7 +167,7 @@ export function IncidentsList({ rigId, rigName }: IncidentsListProps) {
                     className="border-b border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
                   >
                     <td className="py-3 px-4">
-                      <IncidentTypeBadge type={incident.incidentType as IncidentType} />
+                      {renderTypeBadge(incident.incidentType)}
                     </td>
                     <td className="py-3 px-4 max-w-xs">
                       <p className="text-gray-900 dark:text-gray-100 truncate">

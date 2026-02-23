@@ -1,11 +1,14 @@
-import { useIncidentDetail } from '../../hooks/useIncidents';
+import { useIncidentDetail, useIncidentTypes } from '../../hooks/useIncidents';
 import { IncidentTypeBadge } from './IncidentTypeBadge';
 import { formatDateTime } from '../../lib/dateUtils';
 import { Button } from '../ui';
 import { useModal } from '../../store/modalStore';
+import { useAuthStore } from '../../store/authStore';
+import { useAppSettingsStore } from '../../store/appSettingsStore';
+import { DEFAULT_APP_SETTINGS } from '../../types/appSettings';
 import { exportIncidentPdf } from '../../lib/incidentExport';
+import type { ReportBranding } from '../../lib/logisticsExport';
 import { Loader2, FileDown, User, Calendar, FileText } from 'lucide-react';
-import type { IncidentType } from '../../types/incident';
 
 interface IncidentDetailProps {
   incidentId: string;
@@ -15,7 +18,10 @@ interface IncidentDetailProps {
 
 export function IncidentDetail({ incidentId, rigName }: IncidentDetailProps) {
   const { closeModal } = useModal();
+  const { user } = useAuthStore();
+  const appSettings = useAppSettingsStore((s) => s.settings);
   const { data, isLoading, error } = useIncidentDetail(incidentId);
+  const { data: incidentTypes = [] } = useIncidentTypes();
 
   if (isLoading) {
     return (
@@ -33,10 +39,23 @@ export function IncidentDetail({ incidentId, rigName }: IncidentDetailProps) {
     );
   }
 
+  const typeRecord = incidentTypes.find((t) => t.id === data.incidentType);
+  const typeName = typeRecord?.name ?? data.incidentType;
+  const typeColor = typeRecord?.color ?? 'gray';
+
   const handleExportPdf = () => {
+    const branding: ReportBranding = {
+      logoBase64: appSettings?.logoPath ?? null,
+      primaryColor: appSettings?.primaryColor ?? DEFAULT_APP_SETTINGS.primaryColor,
+      rigName: rigName ?? '',
+      userName: user?.fullName ?? '',
+    };
+
     exportIncidentPdf({
       incident: data,
       rigName: rigName ?? 'N/A',
+      typeName,
+      branding,
     });
   };
 
@@ -48,7 +67,7 @@ export function IncidentDetail({ incidentId, rigName }: IncidentDetailProps) {
           <FileText size={18} className="text-gray-400 mt-0.5 shrink-0" />
           <div>
             <p className="text-xs text-gray-500 dark:text-gray-400">Tipo</p>
-            <IncidentTypeBadge type={data.incidentType as IncidentType} size="md" />
+            <IncidentTypeBadge name={typeName} color={typeColor} size="md" />
           </div>
         </div>
         <div className="flex items-start gap-3">

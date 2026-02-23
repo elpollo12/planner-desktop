@@ -17,6 +17,7 @@ pub mod app_settings;
 pub mod rig_personnel;
 pub mod logistics;
 pub mod incident;
+pub mod incident_type;
 pub mod last_report_snapshot;
 pub mod report_review;
 
@@ -60,6 +61,8 @@ pub use rig_personnel::*;
 pub use logistics::*;
 #[allow(unused_imports)]
 pub use incident::*;
+#[allow(unused_imports)]
+pub use incident_type::*;
 #[allow(unused_imports)]
 pub use last_report_snapshot::*;
 #[allow(unused_imports)]

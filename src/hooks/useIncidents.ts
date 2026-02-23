@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../store/authStore';
-import { incidentsApi, rigPersonnelApi } from '../lib/api';
-import type { CreateIncidentInput } from '../types/incident';
+import { incidentsApi, incidentTypesApi, rigPersonnelApi } from '../lib/api';
+import type { CreateIncidentInput, CreateIncidentTypeInput } from '../types/incident';
 
 // ============================================================================
 // QUERY KEY FACTORY
@@ -18,6 +18,8 @@ export const incidentKeys = {
 
   personnel: (rigId: string) =>
     ['incidents', rigId, 'personnel'] as const,
+
+  types: () => ['incident-types'] as const,
 };
 
 // ============================================================================
@@ -99,6 +101,44 @@ export function useDeleteIncident(rigId: string) {
       incidentsApi.delete(sessionToken!, incidentId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: incidentKeys.all(rigId) });
+    },
+  });
+}
+
+// ============================================================================
+// INCIDENT TYPES
+// ============================================================================
+
+export function useIncidentTypes() {
+  const { sessionToken } = useAuthStore();
+  return useQuery({
+    queryKey: incidentKeys.types(),
+    queryFn: () => incidentTypesApi.list(sessionToken!),
+    enabled: !!sessionToken,
+    staleTime: 1000 * 60 * 10, // 10 min
+  });
+}
+
+export function useCreateIncidentType() {
+  const { sessionToken } = useAuthStore();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CreateIncidentTypeInput) =>
+      incidentTypesApi.create(sessionToken!, input),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: incidentKeys.types() });
+    },
+  });
+}
+
+export function useDeleteIncidentType() {
+  const { sessionToken } = useAuthStore();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (typeId: string) =>
+      incidentTypesApi.delete(sessionToken!, typeId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: incidentKeys.types() });
     },
   });
 }

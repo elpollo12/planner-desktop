@@ -298,6 +298,16 @@ const SYNC_TABLES: &[TableDef] = &[
     // INCIDENTS MODULE
     // =========================================================================
     TableDef {
+        name: "incident_types",
+        columns: &[
+            "id", "name", "color", "sort_order",
+            "created_by", "created_at", "updated_at", "is_deleted",
+        ],
+        id_col: "id",
+        has_updated_at: true,
+        parent_col: None,
+    },
+    TableDef {
         name: "incidents",
         columns: &[
             "id", "rig_id", "incident_type", "description",

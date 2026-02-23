@@ -697,3 +697,18 @@ export const incidentsApi = {
   delete: (sessionToken: string, incidentId: string) =>
     invoke<void>('delete_incident', { sessionToken, incidentId }),
 };
+
+// ============================================================================
+// Incident Types Commands
+// ============================================================================
+
+export const incidentTypesApi = {
+  list: (sessionToken: string) =>
+    invoke<import('../types/incident').IncidentTypeRecord[]>('list_incident_types', { sessionToken }),
+
+  create: (sessionToken: string, input: import('../types/incident').CreateIncidentTypeInput) =>
+    invoke<import('../types/incident').IncidentTypeRecord>('create_incident_type', { sessionToken, input }),
+
+  delete: (sessionToken: string, typeId: string) =>
+    invoke<void>('delete_incident_type', { sessionToken, typeId }),
+};

@@ -21,10 +21,6 @@ fn total_pages(total: i64, page_size: i64) -> i64 {
     if total == 0 { 0 } else { (total as f64 / page_size as f64).ceil() as i64 }
 }
 
-const VALID_TYPES: &[&str] = &[
-    "safety", "mechanical", "operational", "environmental", "hse", "other",
-];
-
 // ============================================================================
 // CREATE INCIDENT
 // ============================================================================
@@ -47,8 +43,13 @@ pub async fn create_incident(
         return Err("No tienes acceso a este taladro".to_string());
     }
 
-    // Validate incident type
-    if !VALID_TYPES.contains(&input.incident_type.as_str()) {
+    // Validate incident type exists
+    let type_exists: bool = conn.query_row(
+        "SELECT COUNT(*) > 0 FROM incident_types WHERE id = ?1 AND is_deleted = 0",
+        params![input.incident_type],
+        |row| row.get(0),
+    ).map_err(|e| e.to_string())?;
+    if !type_exists {
         return Err(format!("Tipo de incidencia inválido: {}", input.incident_type));
     }
 

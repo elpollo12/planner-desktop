@@ -1,9 +1,7 @@
 import { useState } from 'react';
 import { Button, Select } from '../ui';
 import { useModal } from '../../store/modalStore';
-import { useCreateIncident, useRigPersonnel } from '../../hooks/useIncidents';
-import { INCIDENT_TYPE_LABELS } from '../../types/incident';
-import type { IncidentType } from '../../types/incident';
+import { useCreateIncident, useRigPersonnel, useIncidentTypes } from '../../hooks/useIncidents';
 import { toast } from 'react-toastify';
 import { Loader2 } from 'lucide-react';
 
@@ -11,18 +9,17 @@ interface IncidentFormProps {
   rigId: string;
 }
 
-const INCIDENT_TYPE_OPTIONS = Object.entries(INCIDENT_TYPE_LABELS).map(
-  ([value, label]) => ({ value, label })
-);
-
 export function IncidentForm({ rigId }: IncidentFormProps) {
   const { closeModal } = useModal();
   const createMutation = useCreateIncident(rigId);
   const { data: personnel = [], isLoading: loadingPersonnel } = useRigPersonnel(rigId);
+  const { data: incidentTypes = [] } = useIncidentTypes();
 
   const [incidentType, setIncidentType] = useState<string>('');
   const [description, setDescription] = useState('');
   const [selectedPersonnelIds, setSelectedPersonnelIds] = useState<string[]>([]);
+
+  const typeOptions = incidentTypes.map((t) => ({ value: t.id, label: t.name }));
 
   const togglePersonnel = (id: string) => {
     setSelectedPersonnelIds((prev) =>
@@ -42,7 +39,7 @@ export function IncidentForm({ rigId }: IncidentFormProps) {
 
     try {
       await createMutation.mutateAsync({
-        incidentType: incidentType as IncidentType,
+        incidentType,
         description: description.trim(),
         personnelIds: selectedPersonnelIds,
       });
@@ -63,7 +60,7 @@ export function IncidentForm({ rigId }: IncidentFormProps) {
         placeholder="Seleccionar tipo..."
         value={incidentType}
         onChange={(e) => setIncidentType(e.target.value)}
-        options={INCIDENT_TYPE_OPTIONS}
+        options={typeOptions}
         required
       />
 

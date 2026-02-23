@@ -228,6 +228,11 @@ pub fn run() {
             commands::incidents::get_incident,
             commands::incidents::delete_incident,
 
+            // Incident Types
+            commands::incident_types::list_incident_types,
+            commands::incident_types::create_incident_type,
+            commands::incident_types::delete_incident_type,
+
             // License commands
             commands::license::activate_license,
             commands::license::get_license_status,

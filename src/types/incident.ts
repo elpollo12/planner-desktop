@@ -1,25 +1,37 @@
 // ============================================================================
-// TIPOS DE INCIDENCIAS
+// TIPOS DE INCIDENCIA (dinámicos desde la tabla incident_types)
 // ============================================================================
 
-export type IncidentType = 'safety' | 'mechanical' | 'operational' | 'environmental' | 'hse' | 'other';
+/** Tipo de incidencia dinámico (viene de la tabla incident_types) */
+export interface IncidentTypeRecord {
+  id: string;
+  name: string;
+  color: string;
+  sortOrder: number;
+  createdBy?: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
-export const INCIDENT_TYPE_LABELS: Record<IncidentType, string> = {
-  safety: 'Seguridad',
-  mechanical: 'Mecánica',
-  operational: 'Operacional',
-  environmental: 'Ambiental',
-  hse: 'HSE',
-  other: 'Otro',
-};
+export interface CreateIncidentTypeInput {
+  name: string;
+  color?: string;
+  sortOrder?: number;
+}
 
-export const INCIDENT_TYPE_COLORS: Record<IncidentType, string> = {
-  safety: 'red',
-  mechanical: 'orange',
-  operational: 'blue',
-  environmental: 'green',
-  hse: 'purple',
-  other: 'gray',
+/** Colores válidos para badges */
+export const INCIDENT_TYPE_BADGE_COLORS = [
+  'red', 'orange', 'blue', 'green', 'purple', 'gray', 'yellow',
+] as const;
+
+export const INCIDENT_TYPE_COLOR_LABELS: Record<string, string> = {
+  red: 'Rojo',
+  orange: 'Naranja',
+  blue: 'Azul',
+  green: 'Verde',
+  purple: 'Morado',
+  gray: 'Gris',
+  yellow: 'Amarillo',
 };
 
 // --- Incidencia base (listado) ---
@@ -27,7 +39,7 @@ export const INCIDENT_TYPE_COLORS: Record<IncidentType, string> = {
 export interface Incident {
   id: string;
   rigId: string;
-  incidentType: IncidentType;
+  incidentType: string;
   description: string;
   createdBy: string;
   createdByName?: string;
@@ -54,7 +66,7 @@ export interface IncidentWithPersonnel extends Incident {
 // --- Input para crear ---
 
 export interface CreateIncidentInput {
-  incidentType: IncidentType;
+  incidentType: string;
   description: string;
   personnelIds: string[];
 }
