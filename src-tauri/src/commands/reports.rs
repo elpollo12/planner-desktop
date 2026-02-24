@@ -400,6 +400,16 @@ pub async fn reopen_report(
         return Err("Permission denied: You can only reopen your own reports".to_string());
     }
 
+    // Supervisors cannot reopen approved reports — only admin can
+    if user_role == UserRole::Supervisor && report.status == "approved" {
+        return Err("Permission denied: Only administrators can reopen approved reports".to_string());
+    }
+
+    // Operators cannot reopen approved or submitted reports
+    if user_role == UserRole::Operator && (report.status == "approved" || report.status == "submitted") {
+        return Err("Permission denied: Contact a supervisor to reopen this report".to_string());
+    }
+
     let previous_status = report.status.clone();
 
     let updated_report = Report::reopen(&conn, &report_id).map_err(|e| e.to_string())?;

@@ -173,10 +173,17 @@ export default function ReportView() {
 
   const handleSubmit = async () => {
     if (!sessionToken || !id || actionLoading) return;
+
+    // Guard: only draft or rejected reports can be submitted from this view
+    if (report?.status !== 'draft' && report?.status !== 'rejected') {
+      toast.error('Solo reportes en borrador o rechazados pueden ser enviados');
+      return;
+    }
+
     setActionLoading(true);
     try {
-      // If not already draft, reopen to draft first, then submit
-      if (report?.status && report.status !== 'draft') {
+      // If rejected, reopen to draft first so backend accepts the submit
+      if (report.status === 'rejected') {
         await reportsApi.reopen(sessionToken, id);
       }
       await reportsApi.submit(sessionToken, id);

@@ -69,7 +69,7 @@ export function useReportWizard({
 
   // ── State ──────────────────────────────────────────────────────────────
   const [wizardStep, setWizardStep] = useState<WizardStep>('rig');
-  const [activeTab, setActiveTab] = useState<TabId>('crew');
+  const [activeTab, setActiveTab] = useState<TabId>('none');
   const [accessibleRigs, setAccessibleRigs] = useState<RigWithArea[]>([]);
   const [selectedRigId, setSelectedRigId] = useState<string>('');
   const [isLoadingRigs, setIsLoadingRigs] = useState(false);

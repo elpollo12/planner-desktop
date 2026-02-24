@@ -6,6 +6,15 @@ import type { User } from '../types';
 // ============================================================================
 // Single source of truth for all report-related permission checks.
 // Must stay in sync with backend (src-tauri/src/models/report.rs).
+//
+// PERMISSION POLICY (agreed 2025):
+//   Submit:  Only draft or rejected → submitted. Approved reports CANNOT
+//            be re-submitted without an explicit admin reopen first.
+//   Edit:    Admin always. Supervisor: draft/rejected. Operator: own draft/rejected/submitted.
+//   Delete:  Admin/Supervisor always (soft-delete). Operator: own draft/submitted.
+//   Approve: Only supervisor/admin when status is 'submitted'.
+//   Reopen:  Admin: any non-draft. Supervisor: submitted/rejected (NOT approved).
+//            Operator: own rejected only.
 // ============================================================================
 
 /**
@@ -36,15 +45,16 @@ export function canDeleteReport(user: User | null, report: Report | null): boole
 
 /**
  * Can the user submit (or resubmit) this report?
- * - Admin: any non-submitted status (including approved)
+ * - Admin: draft or rejected (approved reports must NOT be re-submitted without explicit reopen)
  * - Supervisor: draft or rejected
  * - Operator: own draft or rejected
  */
 export function canSubmitReport(user: User | null, report: Report | null): boolean {
   if (!user || !report) return false;
-  if (user.role === 'admin' && report.status !== 'submitted') return true;
-  if (user.role === 'supervisor' && (report.status === 'draft' || report.status === 'rejected')) return true;
-  if ((report.status === 'draft' || report.status === 'rejected') && report.createdBy === user.id) return true;
+  const submittable = report.status === 'draft' || report.status === 'rejected';
+  if (!submittable) return false;
+  if (user.role === 'admin' || user.role === 'supervisor') return true;
+  if (report.createdBy === user.id) return true;
   return false;
 }
 

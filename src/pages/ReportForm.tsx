@@ -10,6 +10,7 @@ import {
   Send,
   ChevronLeft,
   CheckCircle2,
+  Trash2,
 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useModal } from '../store/modalStore';
@@ -78,6 +79,7 @@ export default function ReportForm() {
     sessionToken,
     formData,
     failedSections,
+    isEditMode,
   });
 
   // Wizard navigation hook
@@ -141,17 +143,12 @@ export default function ReportForm() {
     }
 
     let currentReportId = reportId;
+    const originalStatus = existingReport?.status ?? null;
     const reportData = transformFormToReportData(data);
 
-    // Create or update
+    // ── Phase 1: Save data (header + sections) — no status changes yet ──
     if (currentReportId) {
       await reportsApi.update(sessionToken, currentReportId, reportData);
-      // If saving as draft and report was not already draft, reopen to draft
-      if (!opts.submit && existingReport?.status && existingReport.status !== 'draft') {
-        await reportsApi.reopen(sessionToken, currentReportId);
-        // Refresh existingReport so subsequent saves don't try to reopen again
-        await loadReport(currentReportId);
-      }
       if (!opts.submit) toast.success('Reporte actualizado');
     } else {
       const newReport = await reportsApi.create(sessionToken, reportData);
@@ -160,19 +157,45 @@ export default function ReportForm() {
       if (!opts.submit) toast.success('Reporte guardado como borrador');
     }
 
-    // Save all sections
     await saveAllSections(currentReportId);
 
-    // Submit if requested
-    if (opts.submit) {
-      // If report is not already draft, reopen to draft first then submit
-      if (existingReport?.status && existingReport.status !== 'draft') {
-        await reportsApi.reopen(sessionToken, currentReportId);
-      }
-      await reportsApi.submit(sessionToken, currentReportId);
+    // ── Phase 2: Status transitions — only after data is safely persisted ──
+    const needsReopen = originalStatus !== null && originalStatus !== 'draft';
+    let didReopen = false;
+
+    // Safety guard: approved reports should not be re-submitted through this flow
+    if (opts.submit && originalStatus === 'approved') {
+      toast.error('Un reporte aprobado no puede ser re-enviado directamente. Contacta a un administrador.');
+      return;
     }
 
-    // Snapshot (non-blocking)
+    if (opts.submit) {
+      // Submit flow: reopen to draft if needed, then submit
+      if (needsReopen) {
+        await reportsApi.reopen(sessionToken, currentReportId);
+        didReopen = true;
+      }
+      try {
+        await reportsApi.submit(sessionToken, currentReportId);
+      } catch (submitError) {
+        // Submit failed after reopen — report is stuck in draft
+        console.error('[ReportForm] Submit failed after reopen:', submitError);
+        toast.error(
+          'Los datos se guardaron pero el envío falló. El reporte quedó como borrador. Intenta enviarlo de nuevo.',
+        );
+        // Refresh so UI reflects the actual draft state
+        await loadReport(currentReportId).catch(() => {});
+        // Don't rethrow — data IS saved, only the status transition failed
+        return;
+      }
+    } else if (needsReopen) {
+      // Draft save flow: reopen to draft so it can be re-edited
+      await reportsApi.reopen(sessionToken, currentReportId);
+      didReopen = true;
+      await loadReport(currentReportId);
+    }
+
+    // ── Phase 3: Cleanup (non-blocking) ──
     await reportsApi.updateSnapshot(sessionToken, currentReportId).catch((err) =>
       console.warn('[ReportForm] Snapshot update failed (non-blocking):', err),
     );
@@ -221,6 +244,39 @@ export default function ReportForm() {
 
   // Current active tab metadata
   const currentTab = WIZARD_TABS.find(t => t.id === activeTab);
+
+  // Clear all data from the active section, resetting it to defaults
+  const handleClearSection = () => {
+    const defaults = DEFAULT_REPORT_VALUES;
+    const sectionName = currentTab?.label ?? 'Sección';
+    switch (activeTab) {
+      case 'crew':
+        methods.setValue('crew', defaults.crew!, { shouldDirty: true });
+        break;
+      case 'time':
+        methods.setValue('timeDistribution', defaults.timeDistribution!, { shouldDirty: true });
+        break;
+      case 'bits':
+        methods.setValue('bitRecords', defaults.bitRecords!, { shouldDirty: true });
+        break;
+      case 'mud':
+        methods.setValue('mudRecords', defaults.mudRecords!, { shouldDirty: true });
+        break;
+      case 'lithology':
+        methods.setValue('lithology', defaults.lithology!, { shouldDirty: true });
+        break;
+      case 'observations':
+        methods.setValue('observations', defaults.observations!, { shouldDirty: true });
+        break;
+      case 'drillString':
+        methods.setValue('drillString', defaults.drillString!, { shouldDirty: true });
+        break;
+      default:
+        return;
+    }
+    setActiveTab('none');
+    toast.success(`Sección "${sectionName}" ha sido borrada exitosamente`);
+  };
 
   const handleFormKeyDown = (e: React.KeyboardEvent<HTMLFormElement>) => {
     if (e.key === 'Enter' && e.target instanceof HTMLInputElement) {
@@ -419,6 +475,31 @@ export default function ReportForm() {
                 </Card>
 
                 {/* Active Section Content */}
+                {activeTab === 'none' ? (
+                  <Card>
+                    <div className="flex flex-col items-center justify-center py-16 text-center">
+                      <span className="text-4xl mb-4">📋</span>
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                        Selecciona una pestaña para ingresar datos
+                      </h3>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        Elige una de las secciones de arriba para comenzar a llenar la información del reporte.
+                      </p>
+                    </div>
+                                      <div className='flex justify-end items-end'>
+                  <Button
+                    variant="danger"
+                    size='lg'
+                    type="button"
+                    className='flex justify-center items-center'
+                    onClick={handleCancel}
+                    icon={<ChevronLeft size={20} />}
+                  >
+                    Cancelar
+                  </Button>
+                  </div>
+                  </Card>
+                ) : (
                 <Card>
                   <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -432,6 +513,19 @@ export default function ReportForm() {
                         </p>
                       </div>
                     </div>
+                    {hasSectionData(activeTab) && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        type="button"
+                        onClick={handleClearSection}
+                        disabled={!canEdit}
+                        icon={<Trash2 size={14} />}
+                        className="text-red-600 border-red-300 hover:bg-red-50 dark:text-red-400 dark:border-red-700 dark:hover:bg-red-900/20"
+                      >
+                        Limpiar sección
+                      </Button>
+                    )}
                   </div>
                   <div className="p-6">
                     {TAB_COMPONENTS[activeTab] ?? null}
@@ -449,6 +543,7 @@ export default function ReportForm() {
                   </Button>
                   </div>
                 </Card>
+                )}
 
                 {/* Bottom Actions (Mobile) */}
                 <div className="flex gap-3 justify-end lg:hidden pb-6">

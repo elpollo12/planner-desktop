@@ -493,6 +493,11 @@ impl Report {
     }
 
     /// Check if user can edit report
+    /// PERMISSION POLICY: Must stay in sync with frontend (src/lib/reportPermissions.ts).
+    ///   Submit:  Only draft or rejected → submitted. Approved reports CANNOT
+    ///            be re-submitted without an explicit admin reopen first.
+    ///   Reopen:  Admin: any non-draft. Supervisor: submitted/rejected (NOT approved).
+    ///            Operator: own rejected only.
     pub fn can_edit(report: &Report, user_id: &str, user_role: &UserRole) -> bool {
         match user_role {
             UserRole::Admin => true,

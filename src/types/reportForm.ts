@@ -7,8 +7,8 @@ import type { CompleteReportData } from '../schemas';
 /** Steps of the report creation/editing wizard */
 export type WizardStep = 'rig' | 'header' | 'sections';
 
-/** Identifiers for each fillable section tab */
-export type TabId = 'crew' | 'time' | 'bits' | 'mud' | 'lithology' | 'observations' | 'drillString';
+/** Identifiers for each fillable section tab. 'none' = no section selected (default landing). */
+export type TabId = 'crew' | 'time' | 'bits' | 'mud' | 'lithology' | 'observations' | 'drillString' | 'none';
 
 /** Metadata for a section tab in the wizard UI */
 export interface WizardTab {
