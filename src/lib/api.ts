@@ -712,3 +712,36 @@ export const incidentTypesApi = {
   delete: (sessionToken: string, typeId: string) =>
     invoke<void>('delete_incident_type', { sessionToken, typeId }),
 };
+
+// ============================================================================
+// Notifications Commands
+// ============================================================================
+
+export const notificationsApi = {
+  list: (
+    sessionToken: string,
+    category?: string,
+    isRead?: boolean,
+    page?: number,
+    pageSize?: number,
+  ) =>
+    invoke<import('../types/notification').PaginatedNotifications>('list_notifications', {
+      sessionToken,
+      category: category || null,
+      isRead: isRead ?? null,
+      page,
+      pageSize,
+    }),
+
+  getUnreadCount: (sessionToken: string) =>
+    invoke<number>('get_unread_count', { sessionToken }),
+
+  markRead: (sessionToken: string, notificationId: string) =>
+    invoke<void>('mark_notification_read', { sessionToken, notificationId }),
+
+  markAllRead: (sessionToken: string) =>
+    invoke<void>('mark_all_notifications_read', { sessionToken }),
+
+  delete: (sessionToken: string, notificationId: string) =>
+    invoke<void>('delete_notification', { sessionToken, notificationId }),
+};

@@ -1,6 +1,7 @@
 use crate::auth::get_session;
 use crate::models::logistics::*;
 use crate::models::user::User;
+use crate::notification_helper;
 use crate::state::AppState;
 use rusqlite::params;
 use tauri::State;
@@ -70,6 +71,21 @@ pub async fn create_logistics_request(
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, 'requested', ?7, ?8, ?9, ?10, ?11)",
         params![id, rig_id, input.request_type, input.quantity, input.action_requested, input.material_id, input.notes, session.user_id, now, now, now],
     ).map_err(|e| e.to_string())?;
+
+    // --- Notification: operator created a logistics request ---
+    let type_label = match input.request_type.as_str() {
+        "water_bottles" => "Botellones",
+        "fuel" => "Combustible",
+        "material" => "Material",
+        "vacuum" => "Cisterna",
+        _ => &input.request_type,
+    };
+    notification_helper::notify_action(
+        &conn, &session, "logistics", "request_created",
+        &format!("Nueva petición: {}", type_label),
+        &format!("Petición de {} creada", type_label),
+        Some(&id), Some("logistics_request"), Some(&rig_id),
+    );
 
     get_request_by_id(&conn, &id)
 }
@@ -175,11 +191,31 @@ pub async fn update_logistics_request_status(
     };
     if !valid { return Err(format!("Transición de estado inválida: {} -> {}", current_status, input.status)); }
 
+    // Get the original requester to notify them
+    let requested_by: String = conn.query_row(
+        "SELECT requested_by FROM logistics_requests WHERE id = ?1",
+        params![request_id], |row| row.get(0),
+    ).map_err(|e| e.to_string())?;
+
     let now = chrono::Utc::now().to_rfc3339();
     conn.execute(
         "UPDATE logistics_requests SET status = ?1, status_changed_by = ?2, status_changed_at = ?3, updated_at = ?4 WHERE id = ?5",
         params![input.status, session.user_id, now, now, request_id],
     ).map_err(|e| e.to_string())?;
+
+    // --- Notification: notify the requester about status change ---
+    let status_label = match input.status.as_str() {
+        "pending" => "en revisión",
+        "approved" => "aprobada",
+        "rejected" => "rechazada",
+        _ => &input.status,
+    };
+    notification_helper::notify_user(
+        &conn, &session, &requested_by, "logistics", "request_status_changed",
+        &format!("Petición {}", status_label),
+        &format!("Tu petición fue marcada como {}", status_label),
+        Some(&request_id), Some("logistics_request"), rig_id.as_deref(),
+    );
 
     get_request_by_id(&conn, &request_id)
 }

@@ -28,6 +28,7 @@ pub mod incident_types;
 pub mod license;
 pub mod last_report_snapshot;
 pub mod report_reviews;
+pub mod notifications;
 
 // Re-export all command handlers for Tauri
 // Allow unused imports as these are registered in main.rs
@@ -89,3 +90,5 @@ pub use license::*;
 pub use last_report_snapshot::*;
 #[allow(unused_imports)]
 pub use report_reviews::*;
+#[allow(unused_imports)]
+pub use notifications::*;

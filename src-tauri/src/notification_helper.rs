@@ -61,6 +61,10 @@ fn notify_action_inner(
         None => None,
     };
 
+    // Resolve actor full name (session only has username)
+    let actor_name = get_user_full_name(conn, &session.user_id)
+        .unwrap_or_else(|| session.username.clone());
+
     // Determine recipients based on actor role
     let recipients = resolve_recipients(conn, session, rig_id)?;
 
@@ -74,7 +78,7 @@ fn notify_action_inner(
         let input = CreateNotificationInput {
             recipient_id: recipient_id.clone(),
             actor_id: session.user_id.clone(),
-            actor_name: session.username.clone(),
+            actor_name: actor_name.clone(),
             category: category.to_string(),
             action_type: action_type.to_string(),
             title: title.to_string(),
@@ -138,12 +142,16 @@ fn notify_user_inner(
         None => None,
     };
 
+    // Resolve actor full name
+    let actor_name = get_user_full_name(conn, &session.user_id)
+        .unwrap_or_else(|| session.username.clone());
+
     let now = chrono::Utc::now().to_rfc3339();
 
     let input = CreateNotificationInput {
         recipient_id: recipient_id.to_string(),
         actor_id: session.user_id.clone(),
-        actor_name: session.username.clone(),
+        actor_name,
         category: category.to_string(),
         action_type: action_type.to_string(),
         title: title.to_string(),
@@ -216,14 +224,20 @@ fn get_supervisors_and_admins_for_rig(
 
     let mut stmt = conn.prepare(query)?;
 
-    let rows = match rig_id {
-        Some(rid) => stmt.query_map(params![exclude_user_id, rid], |row| row.get::<_, String>(0))?,
-        None => stmt.query_map(params![exclude_user_id], |row| row.get::<_, String>(0))?,
-    };
-
     let mut recipients = Vec::new();
-    for row in rows {
-        recipients.push(row?);
+    match rig_id {
+        Some(rid) => {
+            let rows = stmt.query_map(params![exclude_user_id, rid], |row| row.get::<_, String>(0))?;
+            for row in rows {
+                recipients.push(row?);
+            }
+        }
+        None => {
+            let rows = stmt.query_map(params![exclude_user_id], |row| row.get::<_, String>(0))?;
+            for row in rows {
+                recipients.push(row?);
+            }
+        }
     }
 
     Ok(recipients)
@@ -237,6 +251,27 @@ fn get_rig_name(conn: &Connection, rig_id: &str) -> Result<String, AppError> {
         |row| row.get(0),
     )?;
     Ok(name)
+}
+
+/// Get user full_name by ID. Returns None if not found.
+fn get_user_full_name(conn: &Connection, user_id: &str) -> Option<String> {
+    conn.query_row(
+        "SELECT full_name FROM users WHERE id = ?1",
+        params![user_id],
+        |row| row.get::<_, String>(0),
+    )
+    .ok()
+}
+
+/// Resolve a rig name to its ID. Used for reports which store rig_number (name) 
+/// instead of rig_id (UUID).
+pub fn resolve_rig_id_by_name(conn: &Connection, rig_name: &str) -> Option<String> {
+    conn.query_row(
+        "SELECT id FROM rigs WHERE name = ?1 AND (is_deleted IS NULL OR is_deleted = 0)",
+        params![rig_name],
+        |row| row.get::<_, String>(0),
+    )
+    .ok()
 }
 
 /// Insert a single notification row into the database

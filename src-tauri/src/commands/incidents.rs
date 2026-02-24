@@ -1,6 +1,7 @@
 use crate::auth::get_session;
 use crate::models::incident::*;
 use crate::models::user::User;
+use crate::notification_helper;
 use crate::state::AppState;
 use rusqlite::params;
 use tauri::State;
@@ -107,6 +108,14 @@ pub async fn create_incident(
         params![session.user_id],
         |row| row.get(0),
     ).ok();
+
+    // --- Notification: incident created ---
+    notification_helper::notify_action(
+        &conn, &session, "incident", "incident_created",
+        "Nueva incidencia registrada",
+        "Se registró una nueva incidencia",
+        Some(&id), Some("incident"), Some(&rig_id),
+    );
 
     Ok(IncidentWithPersonnel {
         incident: Incident {

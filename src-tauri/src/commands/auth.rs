@@ -1,5 +1,6 @@
 use crate::auth::{get_session, verify_password};
 use crate::models::user::User;
+use crate::notification_helper;
 use crate::state::{self, AppState, SessionInfo};
 use serde::{Deserialize, Serialize};
 use tauri::State;
@@ -67,6 +68,10 @@ pub async fn login(
 
     // Persist session to SQLite
     state::save_session_to_db(&conn, &session_token, &session_info);
+
+    // Cleanup old read notifications (> 30 days) — silent, non-blocking
+    notification_helper::cleanup_old_notifications(&conn);
+
     drop(conn);
 
     // Return response

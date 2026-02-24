@@ -26,6 +26,7 @@ export * from './appSettings';
 export { type UserRole, type CreateUserInput, type UpdateUserInput } from './user';
 export * from './logistics';
 export * from './incident';
+export * from './notification';
 
 export interface LoginResponse {
   sessionToken: string;

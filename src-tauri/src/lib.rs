@@ -247,6 +247,13 @@ pub fn run() {
             commands::report_reviews::create_report_review,
             commands::report_reviews::list_report_reviews,
 
+            // Notifications commands
+            commands::notifications::list_notifications,
+            commands::notifications::get_unread_count,
+            commands::notifications::mark_notification_read,
+            commands::notifications::mark_all_notifications_read,
+            commands::notifications::delete_notification,
+
             // Debug commands
             commands::debug::debug_list_all_rigs,
             commands::debug::debug_get_sync_info,

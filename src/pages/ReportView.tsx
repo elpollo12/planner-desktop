@@ -2,7 +2,7 @@
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { MainLayout } from '../components/layout';
 import { Button, Card, ReportStatusBadge, SectionCarousel } from '../components/ui';
-import { ArrowLeft, Edit, CheckCircle, XCircle, FileDown, FileSpreadsheet, Calendar, User as UserIcon, Send } from 'lucide-react';
+import { ArrowLeft, Edit, CheckCircle, XCircle, FileDown, FileSpreadsheet, Calendar, User as UserIcon, Send, ShieldAlert } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useModal } from '../store/modalStore';
 import {
@@ -71,11 +71,14 @@ export default function ReportView() {
   const [operationsLog, setOperationsLog] = useState<OperationsLog[]>([]);
   const [creatorName, setCreatorName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [accessDenied, setAccessDenied] = useState(false);
   const [reviewRefreshKey, setReviewRefreshKey] = useState(0);
   const [viewTab, setViewTab] = useState<'report' | 'review'>('report');
   const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
+    setAccessDenied(false);
+    setReport(null);
     loadReport();
   }, [id]);
 
@@ -116,8 +119,13 @@ export default function ReportView() {
           .catch(() => setCreatorName(null));
       }
     } catch (error) {
-      console.error('Error loading report:', error);
-      toast.error('Error al cargar el reporte');
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      if (errorMsg.includes('Permiso denegado') || errorMsg.includes('Permission denied')) {
+        setAccessDenied(true);
+      } else {
+        console.error('Error loading report:', error);
+        toast.error('Error al cargar el reporte');
+      }
     } finally {
       setLoading(false);
     }
@@ -227,6 +235,31 @@ export default function ReportView() {
     );
   }
 
+  if (accessDenied) {
+    return (
+      <MainLayout title="Acceso restringido" subtitle="No tienes permiso para ver este reporte">
+        <div className="flex items-center justify-center ">
+          <Card className="text-center w-full">
+            <div className="flex justify-center mb-4">
+              <div className="p-3 bg-amber-100 dark:bg-amber-900/30 rounded-full">
+                <ShieldAlert size={32} className="text-amber-500" />
+              </div>
+            </div>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+              Acceso restringido
+            </h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+              No tienes permiso para ver este reporte. Es posible que ya no tengas acceso al taladro asociado.
+            </p>
+            <Button onClick={() => navigate('/dashboard')} icon={<ArrowLeft size={16} />}>
+              Volver al inicio
+            </Button>
+          </Card>
+        </div>
+      </MainLayout>
+    );
+  }
+
   if (!report) {
     return (
       <MainLayout title="Reporte no encontrado">
@@ -251,10 +284,14 @@ export default function ReportView() {
           <Button variant="outline" onClick={() => navigate(backPath)} icon={<ArrowLeft size={16} />}>
             Volver
           </Button>
-          <Button variant="outline" onClick={() => handleExport('pdf')} icon={<FileDown size={16} />}>
+          <Button variant="primary" size='sm'  onClick={() => handleExport('pdf')} icon={<FileDown size={16} />}
+            className='bg-red-600! hover:bg-red-400! border-2 hover:border-white!'
+          >
             PDF
           </Button>
-          <Button variant="outline" onClick={() => handleExport('excel')} icon={<FileSpreadsheet size={16} />}>
+          <Button variant="primary" size='sm' onClick={() => handleExport('excel')} icon={<FileSpreadsheet size={16} />}
+            className='bg-green-600! hover:bg-green-400! border-2 hover:border-white!'
+          >
             Excel
           </Button>
         </div>

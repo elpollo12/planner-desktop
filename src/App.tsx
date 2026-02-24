@@ -8,7 +8,9 @@ import { usePreferencesStore } from './store/preferencesStore';
 import { useAppSettingsStore } from './store/appSettingsStore';
 import { useThemeApplicator } from './hooks/useThemeApplicator';
 import { useAutoSync } from './hooks/useAutoSync';
+import { useUnreadCount, notificationKeys } from './hooks/useNotifications';
 import { syncEvents } from './lib/syncEvents';
+import { queryClient } from './lib/queryClient';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import ReportForm from './pages/ReportForm';
@@ -53,6 +55,9 @@ function App() {
   // Auto-sync with Turso cloud (for admin users)
   useAutoSync();
 
+  // Poll unread notifications count (every 30s while authenticated)
+  useUnreadCount();
+
   // Load company settings on startup (public, no auth required)
   useEffect(() => {
     loadSettings().catch((error) => {
@@ -66,6 +71,8 @@ function App() {
       loadSettings().catch((error) => {
         console.error('Error reloading settings after sync:', error);
       });
+      // Refresh notifications after sync pull (new notifications from other instances)
+      queryClient.invalidateQueries({ queryKey: notificationKeys.all() });
     });
     return unsubscribe;
   }, []);
