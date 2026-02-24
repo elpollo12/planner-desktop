@@ -253,6 +253,13 @@ pub fn run() {
             commands::notifications::mark_notification_read,
             commands::notifications::mark_all_notifications_read,
             commands::notifications::delete_notification,
+            commands::notifications::get_notification_retention_days,
+            commands::notifications::set_notification_retention_days,
+
+            // Admin Statistics
+            commands::admin_stats::get_admin_activity_stats,
+            commands::admin_stats::get_admin_logistics_stats,
+            commands::admin_stats::get_admin_incidents_stats,
 
             // Debug commands
             commands::debug::debug_list_all_rigs,

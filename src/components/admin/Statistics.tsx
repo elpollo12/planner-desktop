@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Card } from '../ui';
-import { FileText, Users, Clock, CheckCircle, XCircle, TrendingUp } from 'lucide-react';
+import { FileText, Users, Clock, CheckCircle, XCircle, TrendingUp, Package, AlertTriangle } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { reportsApi, usersApi } from '../../lib/api';
+import { ActivityChart, LogisticsMetrics, IncidentsMetrics } from './stats';
 
 export function Statistics() {
   const { sessionToken } = useAuthStore();
@@ -127,6 +128,14 @@ export function Statistics() {
         </Card>
       </div>
 
+      {/* Activity Chart — replaces the old placeholder */}
+      <Card>
+        <div className="p-6">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Actividad Reciente</h3>
+          <ActivityChart />
+        </div>
+      </Card>
+
       {/* Reports by Status */}
       <Card>
         <div className="p-6">
@@ -213,15 +222,25 @@ export function Statistics() {
         </div>
       </Card>
 
-      {/* Performance Chart Placeholder */}
+      {/* Logistics Metrics — NEW */}
       <Card>
         <div className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-6">Resumen de Actividad</h3>
-          <div className="text-center py-12 text-gray-500">
-            <TrendingUp className="mx-auto mb-4 text-gray-400" size={48} />
-            <p>Gráfico de actividad por implementar</p>
-            <p className="text-sm mt-2">Próximamente: Reportes por día, semana y mes</p>
+          <div className="flex items-center gap-2 mb-4">
+            <Package className="text-emerald-500" size={22} />
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Métricas de Logística</h3>
           </div>
+          <LogisticsMetrics />
+        </div>
+      </Card>
+
+      {/* Incidents Metrics — NEW */}
+      <Card>
+        <div className="p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <AlertTriangle className="text-orange-500" size={22} />
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Métricas de Incidencias</h3>
+          </div>
+          <IncidentsMetrics />
         </div>
       </Card>
     </div>

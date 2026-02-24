@@ -1,10 +1,12 @@
-import { useState } from 'react';
-import { CheckCheck, Loader2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { CheckCheck, Loader2, Settings } from 'lucide-react';
 import {
   useNotificationsList,
   useMarkAllNotificationsRead,
 } from '../../hooks/useNotifications';
 import { useNotificationsStore } from '../../store/notificationsStore';
+import { useAuthStore } from '../../store/authStore';
+import { notificationsApi } from '../../lib/api';
 import { NotificationItem } from './NotificationItem';
 import type { NotificationCategory } from '../../types/notification';
 
@@ -15,13 +17,47 @@ const CATEGORIES: { key: NotificationCategory | ''; label: string }[] = [
   { key: 'report', label: 'Reportes' },
 ];
 
+const RETENTION_OPTIONS = [
+  { value: 5, label: '5 días' },
+  { value: 15, label: '15 días' },
+  { value: 30, label: '30 días' },
+  { value: 120, label: '120 días' },
+  { value: 0, label: 'Indefinido' },
+];
+
 export function NotificationPanel() {
   const [activeCategory, setActiveCategory] = useState<NotificationCategory | ''>('');
   const [page, setPage] = useState(1);
+  const [showSettings, setShowSettings] = useState(false);
+  const [retentionDays, setRetentionDays] = useState<number | null>(null);
+  const [savingRetention, setSavingRetention] = useState(false);
   const closePanel = useNotificationsStore((s) => s.closePanel);
+  const user = useAuthStore((s) => s.user);
+  const sessionToken = useAuthStore((s) => s.sessionToken);
+  const isAdmin = user?.role === 'admin';
 
   const { data, isLoading } = useNotificationsList(activeCategory, undefined, page, 15);
   const markAllRead = useMarkAllNotificationsRead();
+
+  // Load retention days when settings opened
+  useEffect(() => {
+    if (showSettings && sessionToken && retentionDays === null) {
+      notificationsApi.getRetentionDays(sessionToken).then(setRetentionDays).catch(() => {});
+    }
+  }, [showSettings, sessionToken]);
+
+  const handleRetentionChange = async (value: number) => {
+    if (!sessionToken) return;
+    setSavingRetention(true);
+    try {
+      await notificationsApi.setRetentionDays(sessionToken, value);
+      setRetentionDays(value);
+    } catch {
+      // ignore
+    } finally {
+      setSavingRetention(false);
+    }
+  };
 
   const notifications = data?.data ?? [];
   const totalPages = data?.totalPages ?? 0;
@@ -44,17 +80,51 @@ export function NotificationPanel() {
             </span>
           )}
         </h3>
-        {unreadCount > 0 && (
-          <button
-            onClick={() => markAllRead.mutate()}
-            disabled={markAllRead.isPending}
-            className="text-xs text-primary-500 hover:text-primary-600 dark:hover:text-primary-400 font-medium flex items-center gap-1 transition-colors"
-          >
-            <CheckCheck size={14} />
-            Marcar todas
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {unreadCount > 0 && (
+            <button
+              onClick={() => markAllRead.mutate()}
+              disabled={markAllRead.isPending}
+              className="text-xs text-primary-500 hover:text-primary-600 dark:hover:text-primary-400 font-medium flex items-center gap-1 transition-colors"
+            >
+              <CheckCheck size={14} />
+              Marcar todas
+            </button>
+          )}
+          {isAdmin && (
+            <button
+              onClick={() => setShowSettings((s) => !s)}
+              className={`p-1 rounded transition-colors ${showSettings ? 'text-primary-500 bg-primary-50 dark:bg-primary-900/30' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}
+              title="Configuración de retención"
+            >
+              <Settings size={14} />
+            </button>
+          )}
+        </div>
       </div>
+
+      {/* Retention settings (admin only) */}
+      {showSettings && isAdmin && (
+        <div className="px-4 py-2.5 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-750">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-xs text-gray-600 dark:text-gray-400 whitespace-nowrap">
+              Borrar leídas tras:
+            </span>
+            <select
+              value={retentionDays ?? 5}
+              onChange={(e) => handleRetentionChange(Number(e.target.value))}
+              disabled={savingRetention || retentionDays === null}
+              className="text-xs border border-gray-300 dark:border-gray-600 rounded-md px-2 py-1 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:ring-1 focus:ring-primary-500 focus:border-primary-500 disabled:opacity-50"
+            >
+              {RETENTION_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      )}
 
       {/* Category tabs */}
       <div className="flex border-b border-gray-200 dark:border-gray-700 px-2">

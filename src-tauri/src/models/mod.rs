@@ -21,6 +21,7 @@ pub mod incident_type;
 pub mod last_report_snapshot;
 pub mod report_review;
 pub mod notification;
+pub mod admin_stats;
 
 // Re-export commonly used types
 // Allow unused imports as these are exposed for library consumers
@@ -70,3 +71,5 @@ pub use last_report_snapshot::*;
 pub use report_review::*;
 #[allow(unused_imports)]
 pub use notification::*;
+#[allow(unused_imports)]
+pub use admin_stats::*;

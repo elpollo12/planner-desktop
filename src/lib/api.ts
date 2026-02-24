@@ -57,7 +57,6 @@ import type {
   LogisticsReport,
   PaginatedResponse,
 } from '../types/logistics';
-
 export interface PaginatedReportsResponse {
   reports: Report[];
   total: number;
@@ -744,4 +743,25 @@ export const notificationsApi = {
 
   delete: (sessionToken: string, notificationId: string) =>
     invoke<void>('delete_notification', { sessionToken, notificationId }),
+
+  getRetentionDays: (sessionToken: string) =>
+    invoke<number>('get_notification_retention_days', { sessionToken }),
+
+  setRetentionDays: (sessionToken: string, days: number) =>
+    invoke<void>('set_notification_retention_days', { sessionToken, days }),
+};
+
+// ============================================================================
+// Admin Statistics Commands
+// ============================================================================
+
+export const adminStatsApi = {
+  getActivityStats: (sessionToken: string, days?: number) =>
+    invoke<ActivityStats>('get_admin_activity_stats', { sessionToken, days: days ?? null }),
+
+  getLogisticsStats: (sessionToken: string, days?: number) =>
+    invoke<LogisticsAdminStats>('get_admin_logistics_stats', { sessionToken, days: days ?? null }),
+
+  getIncidentsStats: (sessionToken: string, days?: number) =>
+    invoke<IncidentsAdminStats>('get_admin_incidents_stats', { sessionToken, days: days ?? null }),
 };

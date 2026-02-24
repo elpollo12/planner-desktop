@@ -185,13 +185,6 @@ export default function Dashboard() {
 
       {/* Quick Actions Carousel */}
       <QuickActionsCarousel actions={quickActions} />
-
-      {/* Recent Activity */}
-      <Card title="Actividad Reciente" className="mt-6">
-        <div className="text-center py-12 text-gray-500 dark:text-gray-400">
-          <p className="text-sm">No hay actividad reciente</p>
-        </div>
-      </Card>
     </MainLayout>
   );
 }

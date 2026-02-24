@@ -8,6 +8,7 @@ pub struct AppSettings {
     pub primary_color: String,
     pub secondary_color: String,
     pub logo_path: Option<String>,
+    pub notification_retention_days: i32,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -26,15 +27,16 @@ impl AppSettings {
             primary_color: row.get(1)?,
             secondary_color: row.get(2)?,
             logo_path: row.get(3)?,
-            created_at: row.get(4)?,
-            updated_at: row.get(5)?,
+            notification_retention_days: row.get(4)?,
+            created_at: row.get(5)?,
+            updated_at: row.get(6)?,
         })
     }
 
     /// Get app settings (singleton - always returns the single row)
     pub fn get(conn: &Connection) -> rusqlite::Result<Self> {
         conn.query_row(
-            "SELECT id, primary_color, secondary_color, logo_path, created_at, updated_at
+            "SELECT id, primary_color, secondary_color, logo_path, notification_retention_days, created_at, updated_at
              FROM app_settings WHERE id = 1",
             [],
             Self::from_row,

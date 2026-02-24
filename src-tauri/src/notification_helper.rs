@@ -310,11 +310,26 @@ fn insert_notification(
     Ok(())
 }
 
-/// Cleanup old notifications (> 30 days, already read).
-/// Call this periodically (e.g., on login or sync).
+/// Cleanup old notifications based on configured retention days.
+/// Reads `notification_retention_days` from `app_settings`.
+/// 0 = indefinite (no cleanup). Call this periodically (e.g., on login).
 pub fn cleanup_old_notifications(conn: &Connection) {
+    // Read retention days from app_settings
+    let retention_days: i64 = conn
+        .query_row(
+            "SELECT notification_retention_days FROM app_settings WHERE id = 1",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap_or(5);
+
+    // 0 means indefinite — skip cleanup
+    if retention_days == 0 {
+        return;
+    }
+
     let cutoff = chrono::Utc::now()
-        .checked_sub_signed(chrono::Duration::days(30))
+        .checked_sub_signed(chrono::Duration::days(retention_days))
         .map(|dt| dt.to_rfc3339());
 
     if let Some(cutoff_date) = cutoff {

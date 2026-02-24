@@ -1,6 +1,6 @@
-use crate::auth::get_session;
+use crate::auth::{check_permission, get_session};
 use crate::models::notification::{Notification, PaginatedNotifications};
-use crate::models::user::User;
+use crate::models::user::{User, UserRole};
 use crate::state::AppState;
 use rusqlite::params;
 use tauri::State;
@@ -355,6 +355,56 @@ pub async fn delete_notification(
     if affected == 0 {
         return Err("Notificación no encontrada".to_string());
     }
+
+    Ok(())
+}
+
+// ============================================================================
+// RETENTION SETTINGS (admin only)
+// ============================================================================
+
+#[tauri::command]
+pub async fn get_notification_retention_days(
+    session_token: String,
+    state: State<'_, AppState>,
+) -> Result<i32, String> {
+    let _session = get_session(&session_token, &state).map_err(|e| e.to_string())?;
+
+    let conn = state.db.lock().map_err(|e| format!("DB lock: {}", e))?;
+
+    let days: i32 = conn
+        .query_row(
+            "SELECT notification_retention_days FROM app_settings WHERE id = 1",
+            [],
+            |row| row.get(0),
+        )
+        .map_err(|e| e.to_string())?;
+
+    Ok(days)
+}
+
+#[tauri::command]
+pub async fn set_notification_retention_days(
+    session_token: String,
+    days: i32,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    let _session = check_permission(&session_token, UserRole::Admin, &state)
+        .map_err(|e| e.to_string())?;
+
+    // Validate allowed values: 0 (indefinite), 5, 15, 30, 120
+    if ![0, 5, 15, 30, 120].contains(&days) {
+        return Err("Valor no permitido. Use: 5, 15, 30, 120 o 0 (indefinido)".to_string());
+    }
+
+    let conn = state.db.lock().map_err(|e| format!("DB lock: {}", e))?;
+    let now = chrono::Utc::now().to_rfc3339();
+
+    conn.execute(
+        "UPDATE app_settings SET notification_retention_days = ?1, updated_at = ?2 WHERE id = 1",
+        params![days, now],
+    )
+    .map_err(|e| e.to_string())?;
 
     Ok(())
 }

@@ -18,7 +18,7 @@ const SYNC_TABLES: &[TableDef] = &[
         name: "app_settings",
         columns: &[
             "id", "primary_color", "secondary_color", "logo_path",
-            "created_at", "updated_at",
+            "notification_retention_days", "created_at", "updated_at",
         ],
         id_col: "id",
         has_updated_at: true,
@@ -1016,6 +1016,10 @@ const REMOTE_MIGRATIONS: &[&str] = &[
     "ALTER TABLE reports ADD COLUMN approved_at TEXT",
     "ALTER TABLE reports ADD COLUMN rejected_at TEXT",
     "ALTER TABLE reports ADD COLUMN rejection_reason TEXT",
+    // V33: notifications table
+    "CREATE TABLE IF NOT EXISTS notifications (id TEXT PRIMARY KEY, recipient_id TEXT NOT NULL, actor_id TEXT NOT NULL, actor_name TEXT NOT NULL, category TEXT NOT NULL CHECK(category IN ('logistics','incident','report')), action_type TEXT NOT NULL, title TEXT NOT NULL, message TEXT NOT NULL, reference_id TEXT, reference_type TEXT CHECK(reference_type IN ('logistics_request','incident','report')), rig_id TEXT, rig_name TEXT, is_read INTEGER NOT NULL DEFAULT 0, read_at TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, is_deleted INTEGER NOT NULL DEFAULT 0)",
+    // V34: notification_retention_days in app_settings
+    "ALTER TABLE app_settings ADD COLUMN notification_retention_days INTEGER NOT NULL DEFAULT 5",
 ];
 
 /// Initialize the remote Turso database with the same schema
@@ -1861,6 +1865,58 @@ pub fn purge_local_soft_deleted(conn: &Connection, retention_days: i64) -> Resul
         }
     }
 
+    // 7. Purge notifications
+    if let Ok(count) = conn.execute(
+        "DELETE FROM notifications WHERE is_deleted = 1 AND updated_at < ?1",
+        rusqlite::params![&threshold_str],
+    ) {
+        if count > 0 {
+            total_purged += count as u32;
+            println!("[Sync] Purged {} deleted notification(s)", count);
+        }
+    }
+
+    // 8. Purge incidents (child tables first, then parent)
+    // incident_personnel is child of incidents
+    {
+        let incident_ids: Vec<String> = {
+            let mut stmt = conn.prepare(
+                "SELECT id FROM incidents WHERE is_deleted = 1 AND updated_at < ?1"
+            ).map_err(|e| format!("Prepare failed: {}", e))?;
+            let ids = stmt.query_map(rusqlite::params![&threshold_str], |row| row.get(0))
+                .map_err(|e| format!("Query failed: {}", e))?;
+            ids.filter_map(|r| r.ok()).collect()
+        };
+
+        if !incident_ids.is_empty() {
+            let placeholders = incident_ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
+            let params: Vec<&dyn rusqlite::ToSql> = incident_ids.iter().map(|id| id as &dyn rusqlite::ToSql).collect();
+
+            let sql = format!("DELETE FROM incident_personnel WHERE incident_id IN ({})", placeholders);
+            if let Ok(count) = conn.execute(&sql, params.as_slice()) {
+                total_purged += count as u32;
+            }
+
+            let sql = format!("DELETE FROM incidents WHERE id IN ({})", placeholders);
+            if let Ok(count) = conn.execute(&sql, params.as_slice()) {
+                total_purged += count as u32;
+            }
+
+            println!("[Sync] Purged {} deleted incident(s) and their personnel", incident_ids.len());
+        }
+    }
+
+    // incident_types (no children)
+    if let Ok(count) = conn.execute(
+        "DELETE FROM incident_types WHERE is_deleted = 1 AND updated_at < ?1",
+        rusqlite::params![&threshold_str],
+    ) {
+        if count > 0 {
+            total_purged += count as u32;
+            println!("[Sync] Purged {} deleted incident_type(s)", count);
+        }
+    }
+
     conn.execute("PRAGMA foreign_keys = ON", [])
         .map_err(|e| format!("Failed to re-enable FK: {}", e))?;
 
@@ -1972,6 +2028,26 @@ pub async fn purge_turso_soft_deleted(client: &TursoClient, retention_days: i64)
             vec![TursoValue::Text(threshold_str.clone())],
         ));
     }
+
+    // 7. Notifications
+    batch.push((
+        "DELETE FROM notifications WHERE is_deleted = 1 AND updated_at < ?1".to_string(),
+        vec![TursoValue::Text(threshold_str.clone())],
+    ));
+
+    // 8. Incidents (child first: incident_personnel, then incidents, then incident_types)
+    batch.push((
+        "DELETE FROM incident_personnel WHERE incident_id IN (SELECT id FROM incidents WHERE is_deleted = 1 AND updated_at < ?1)".to_string(),
+        vec![TursoValue::Text(threshold_str.clone())],
+    ));
+    batch.push((
+        "DELETE FROM incidents WHERE is_deleted = 1 AND updated_at < ?1".to_string(),
+        vec![TursoValue::Text(threshold_str.clone())],
+    ));
+    batch.push((
+        "DELETE FROM incident_types WHERE is_deleted = 1 AND updated_at < ?1".to_string(),
+        vec![TursoValue::Text(threshold_str.clone())],
+    ));
 
     client.execute_batch(batch).await?;
 
