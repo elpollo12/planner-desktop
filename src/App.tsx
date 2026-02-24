@@ -23,7 +23,9 @@ import Incidents from './pages/Incidents';
 import ReportApprovals from './pages/ReportApprovals';
 import LicenseActivation from './pages/LicenseActivation';
 import Forbidden from './pages/Forbidden';
+import Profile from './pages/Profile';
 import { RoleGuard } from './components/guards';
+import { canViewReport } from './lib/permissions';
 import './App.css';
 
 // Protected Route Component
@@ -130,52 +132,52 @@ function App() {
         <Route
           path="/dashboard"
           element={
-            <ProtectedRoute>
+            <RoleGuard module="dashboard">
               <Dashboard />
-            </ProtectedRoute>
+            </RoleGuard>
           }
         />
 
         <Route
           path="/reports/new"
           element={
-            <ProtectedRoute>
+            <RoleGuard module="reports">
               <ReportForm />
-            </ProtectedRoute>
+            </RoleGuard>
           }
         />
 
         <Route
           path="/reports/edit/:id"
           element={
-            <ProtectedRoute>
+            <RoleGuard module="reports">
               <ReportForm />
-            </ProtectedRoute>
+            </RoleGuard>
           }
         />
 
         <Route
           path="/reports/view/:id"
           element={
-            <ProtectedRoute>
+            <RoleGuard check={canViewReport}>
               <ReportView />
-            </ProtectedRoute>
+            </RoleGuard>
           }
         />
 
         <Route
           path="/reports"
           element={
-            <ProtectedRoute>
+            <RoleGuard module="reports">
               <ReportList />
-            </ProtectedRoute>
+            </RoleGuard>
           }
         />
 
         <Route
           path="/approvals"
           element={
-            <RoleGuard minRole="supervisor">
+            <RoleGuard module="approvals">
               <ReportApprovals />
             </RoleGuard>
           }
@@ -184,7 +186,7 @@ function App() {
         <Route
           path="/admin"
           element={
-            <RoleGuard minRole="admin">
+            <RoleGuard module="admin">
               <AdminPanel />
             </RoleGuard>
           }
@@ -192,17 +194,26 @@ function App() {
         <Route
           path="/logistics"
           element={
-            <ProtectedRoute>
+            <RoleGuard module="logistics">
               <Logistics />
-            </ProtectedRoute>
+            </RoleGuard>
           }
         />
 
         <Route
           path="/incidents"
           element={
-            <ProtectedRoute>
+            <RoleGuard module="incidents">
               <Incidents />
+            </RoleGuard>
+          }
+        />
+
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <Profile />
             </ProtectedRoute>
           }
         />

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { Edit, Plus, Search } from 'lucide-react';
-import { usersApi, rigsApi } from '@/lib/api';
+import { usersApi, rigsApi, modulePermissionsApi } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 import { backgroundPush } from '@/lib/syncHelper';
 import { useModal } from '@/store/modalStore';
@@ -59,9 +59,10 @@ export function UsersManagement() {
       <UsersForm
         rigs={rigs}
         supervisors={activeSupervisors}
+        sessionToken={sessionToken!}
         onSubmit={async (data) => {
           try {
-            await usersApi.create(sessionToken!, {
+            const created = await usersApi.create(sessionToken!, {
               username: data.username!,
               password: data.password!,
               fullName: data.fullName,
@@ -71,6 +72,10 @@ export function UsersManagement() {
               assignedRigIds: data.hasAllRigs ? [] : data.assignedRigIds,
               supervisorId: data.supervisorId,
             });
+            // Save module permissions if provided (non-admin)
+            if (data.modulePermissions && data.role !== 'admin' && created?.id) {
+              await modulePermissionsApi.save(sessionToken!, created.id, data.modulePermissions);
+            }
             toast.success('Usuario creado exitosamente');
             closeModal();
             loadData();
@@ -97,6 +102,7 @@ export function UsersManagement() {
         supervisors={activeSupervisors}
         isEditing={true}
         currentUserId={currentUser?.id}
+        sessionToken={sessionToken!}
         onSubmit={async (data) => {
           try {
             await usersApi.update(sessionToken!, user.id, {
@@ -108,6 +114,10 @@ export function UsersManagement() {
               assignedRigIds: data.hasAllRigs ? [] : data.assignedRigIds,
               supervisorId: data.role === 'operator' ? (data.supervisorId || null) : null,
             });
+            // Save module permissions if provided (non-admin)
+            if (data.modulePermissions && data.role !== 'admin') {
+              await modulePermissionsApi.save(sessionToken!, user.id, data.modulePermissions);
+            }
             toast.success('Usuario actualizado exitosamente');
             closeModal();
             loadData();
@@ -119,7 +129,7 @@ export function UsersManagement() {
       />,
       {
         title: `Editar Usuario: ${user.username}`,
-        size: 'lg',
+        size: 'xl',
         showCloseButton: true,
       }
     );

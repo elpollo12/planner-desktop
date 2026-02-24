@@ -1,9 +1,11 @@
 import { useNavigate } from 'react-router-dom';
-import { ShieldAlert, ArrowLeft, LayoutDashboard } from 'lucide-react';
+import { ShieldAlert, ArrowLeft, LayoutDashboard, LogOut } from 'lucide-react';
 import { Button, Card } from '../components/ui';
+import { useAuthStore } from '../store/authStore';
 
 export default function Forbidden() {
   const navigate = useNavigate();
+  const { logout, isAuthenticated } = useAuthStore();
 
   return (
     <div
@@ -31,10 +33,10 @@ export default function Forbidden() {
 
         {/* Message */}
         <p className="text-lg text-gray-600 dark:text-gray-400 mb-2">
-          No tienes permisos para acceder a esta página
+          No tienes acceso a esta sección
         </p>
         <p className="text-sm text-gray-500 dark:text-gray-500 mb-8">
-          Código de error: <span className="font-mono font-semibold">403 Forbidden</span>
+          Tu cuenta no tiene permisos para este módulo. Si necesitas acceso, solicítalo a un administrador.
         </p>
 
         {/* Actions */}
@@ -53,11 +55,20 @@ export default function Forbidden() {
           >
             Volver Atrás
           </Button>
+          {isAuthenticated && (
+            <Button
+              variant="danger"
+              icon={<LogOut size={16} />}
+              onClick={logout}
+            >
+              Cerrar Sesión
+            </Button>
+          )}
         </div>
 
         {/* Help text */}
         <p className="text-xs text-gray-400 dark:text-gray-600 mt-8">
-          Si crees que deberías tener acceso, contacta al administrador del sistema.
+          Los permisos de acceso son configurados por el administrador desde el panel de usuarios.
         </p>
       </Card>
     </div>

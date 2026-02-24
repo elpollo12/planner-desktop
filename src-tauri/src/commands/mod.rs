@@ -30,6 +30,7 @@ pub mod last_report_snapshot;
 pub mod report_reviews;
 pub mod notifications;
 pub mod admin_stats;
+pub mod module_permissions;
 
 // Re-export all command handlers for Tauri
 // Allow unused imports as these are registered in main.rs
@@ -95,3 +96,5 @@ pub use report_reviews::*;
 pub use notifications::*;
 #[allow(unused_imports)]
 pub use admin_stats::*;
+#[allow(unused_imports)]
+pub use module_permissions::*;

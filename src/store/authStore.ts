@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { User, LoginResponse } from '../types';
+import type { User, LoginResponse, ModulePermissions } from '../types';
 import { invoke } from '@tauri-apps/api/core';
+import { modulePermissionsApi } from '../lib/api';
 import { useLogisticsStore } from './logisticsStore';
 import { queryClient } from '../lib/queryClient';
 
@@ -35,8 +36,20 @@ export const useAuthStore = create<AuthState>()(
             password,
           });
 
+          // Load granular module permissions for non-admin users
+          let modulePermissions: ModulePermissions | undefined;
+          if (response.user.role !== 'admin') {
+            try {
+              modulePermissions = await modulePermissionsApi.getMine(
+                response.sessionToken,
+              ) as ModulePermissions;
+            } catch (e) {
+              console.error('Failed to load module permissions:', e);
+            }
+          }
+
           set({
-            user: response.user,
+            user: { ...response.user, modulePermissions },
             sessionToken: response.sessionToken,
             isAuthenticated: true,
             isLoading: false,
@@ -111,8 +124,18 @@ export const useAuthStore = create<AuthState>()(
             return;
           }
 
+          // Load granular module permissions for non-admin users
+          let modulePermissions: ModulePermissions | undefined;
+          if (user.role !== 'admin') {
+            try {
+              modulePermissions = await modulePermissionsApi.getMine(sessionToken)  as ModulePermissions;
+            } catch (e) {
+              console.error('Failed to load module permissions:', e);
+            }
+          }
+
           set({
-            user,
+            user: { ...user, modulePermissions },
             isAuthenticated: true,
             isLoading: false,
             error: null,

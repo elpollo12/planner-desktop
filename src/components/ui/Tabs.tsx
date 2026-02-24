@@ -26,6 +26,7 @@ export function Tabs({ tabs, activeTab, onTabChange, children }: TabsProps) {
 
             return (
               <button
+                type="button"
                 key={tab.id}
                 onClick={() => !isDisabled && onTabChange(tab.id)}
                 disabled={isDisabled}

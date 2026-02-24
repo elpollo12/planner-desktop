@@ -99,6 +99,18 @@ export const usersApi = {
 
   delete: (sessionToken: string, userId: string) =>
     invoke<void>('delete_user', { sessionToken, userId }),
+
+  /** Admin resets a user's password (no current password required) */
+  adminChangePassword: (sessionToken: string, userId: string, newPassword: string) =>
+    invoke<void>('admin_change_password', { sessionToken, userId, newPassword }),
+
+  /** Verify user's current password without changing it */
+  verifyOwnPassword: (sessionToken: string, currentPassword: string) =>
+    invoke<boolean>('verify_own_password', { sessionToken, currentPassword }),
+
+  /** User changes their own password (requires current password) */
+  changeOwnPassword: (sessionToken: string, currentPassword: string, newPassword: string) =>
+    invoke<void>('change_own_password', { sessionToken, currentPassword, newPassword }),
 };
 
 // ============================================================================
@@ -764,4 +776,22 @@ export const adminStatsApi = {
 
   getIncidentsStats: (sessionToken: string, days?: number) =>
     invoke<IncidentsAdminStats>('get_admin_incidents_stats', { sessionToken, days: days ?? null }),
+};
+
+// ============================================================================
+// Module Permissions Commands (granular per-user access)
+// ============================================================================
+
+export const modulePermissionsApi = {
+  /** Get resolved permissions for the current user (called at login/revalidation) */
+  getMine: (sessionToken: string) =>
+    invoke<Record<string, boolean>>('get_my_module_permissions', { sessionToken }),
+
+  /** Get resolved permissions for a specific user (admin only) */
+  getForUser: (sessionToken: string, userId: string) =>
+    invoke<Record<string, boolean>>('get_user_module_permissions', { sessionToken, userId }),
+
+  /** Save permission overrides for a user (admin only) */
+  save: (sessionToken: string, userId: string, permissions: Record<string, boolean>) =>
+    invoke<void>('save_user_module_permissions', { sessionToken, userId, permissions }),
 };

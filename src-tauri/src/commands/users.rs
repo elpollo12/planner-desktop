@@ -1,4 +1,4 @@
-use crate::auth::{check_permission, get_session, hash_password};
+use crate::auth::{check_permission, get_session, hash_password, verify_password};
 use crate::models::user::{CreateUserRequest, UpdateUserRequest, User, UserRole, UserWithRigs};
 use crate::state::AppState;
 use tauri::State;
@@ -110,6 +110,111 @@ pub async fn delete_user(
         .map_err(|e| format!("Failed to lock database: {}", e))?;
 
     User::delete(&conn, &user_id).map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
+/// Admin resets a user's password (no current password required)
+#[tauri::command]
+pub async fn admin_change_password(
+    session_token: String,
+    user_id: String,
+    new_password: String,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    check_permission(&session_token, UserRole::Admin, &state)
+        .map_err(|e| e.to_string())?;
+
+    if new_password.len() < 4 {
+        return Err("La contraseña debe tener al menos 4 caracteres".to_string());
+    }
+
+    let password_hash = hash_password(&new_password).map_err(|e| e.to_string())?;
+
+    let conn = state
+        .db
+        .lock()
+        .map_err(|e| format!("Failed to lock database: {}", e))?;
+
+    conn.execute(
+        "UPDATE users SET password_hash = ?1, updated_at = ?2 WHERE id = ?3",
+        rusqlite::params![&password_hash, chrono::Utc::now().to_rfc3339(), &user_id],
+    )
+    .map_err(|e| format!("Database error: {}", e))?;
+
+    Ok(())
+}
+
+/// Verify user's current password without changing it
+#[tauri::command]
+pub async fn verify_own_password(
+    session_token: String,
+    current_password: String,
+    state: State<'_, AppState>,
+) -> Result<bool, String> {
+    let session = get_session(&session_token, &state).map_err(|e| e.to_string())?;
+
+    let conn = state
+        .db
+        .lock()
+        .map_err(|e| format!("Failed to lock database: {}", e))?;
+
+    let current_hash: String = conn
+        .query_row(
+            "SELECT password_hash FROM users WHERE id = ?1",
+            rusqlite::params![&session.user_id],
+            |row| row.get(0),
+        )
+        .map_err(|e| format!("Database error: {}", e))?;
+
+    let valid = verify_password(&current_password, &current_hash)
+        .map_err(|e| e.to_string())?;
+
+    Ok(valid)
+}
+
+/// User changes their own password (requires current password)
+#[tauri::command]
+pub async fn change_own_password(
+    session_token: String,
+    current_password: String,
+    new_password: String,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    let session = get_session(&session_token, &state).map_err(|e| e.to_string())?;
+
+    if new_password.len() < 4 {
+        return Err("La contraseña debe tener al menos 4 caracteres".to_string());
+    }
+
+    let conn = state
+        .db
+        .lock()
+        .map_err(|e| format!("Failed to lock database: {}", e))?;
+
+    // Get current password hash
+    let current_hash: String = conn
+        .query_row(
+            "SELECT password_hash FROM users WHERE id = ?1",
+            rusqlite::params![&session.user_id],
+            |row| row.get(0),
+        )
+        .map_err(|e| format!("Database error: {}", e))?;
+
+    // Verify current password
+    let valid = verify_password(&current_password, &current_hash)
+        .map_err(|e| e.to_string())?;
+    if !valid {
+        return Err("Contraseña actual incorrecta".to_string());
+    }
+
+    let new_hash = hash_password(&new_password).map_err(|e| e.to_string())?;
+
+    conn.execute(
+        "UPDATE users SET password_hash = ?1, updated_at = ?2 WHERE id = ?3",
+        rusqlite::params![&new_hash, chrono::Utc::now().to_rfc3339(), &session.user_id],
+    )
+    .map_err(|e| format!("Database error: {}", e))?;
 
     Ok(())
 }

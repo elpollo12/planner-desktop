@@ -60,6 +60,9 @@ pub fn run() {
             commands::users::get_user,
             commands::users::update_user,
             commands::users::delete_user,
+            commands::users::admin_change_password,
+            commands::users::verify_own_password,
+            commands::users::change_own_password,
 
             // Report commands
             commands::reports::create_report,
@@ -260,6 +263,11 @@ pub fn run() {
             commands::admin_stats::get_admin_activity_stats,
             commands::admin_stats::get_admin_logistics_stats,
             commands::admin_stats::get_admin_incidents_stats,
+
+            // Module Permissions (granular per-user access)
+            commands::module_permissions::get_my_module_permissions,
+            commands::module_permissions::get_user_module_permissions,
+            commands::module_permissions::save_user_module_permissions,
 
             // Debug commands
             commands::debug::debug_list_all_rigs,

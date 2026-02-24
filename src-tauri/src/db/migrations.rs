@@ -3,6 +3,7 @@ use refinery::embed_migrations;
 use rusqlite::Connection;
 
 // Embed the migration files at compile time
+// Force recompile when migration files change
 embed_migrations!("migrations");
 
 pub fn run_migrations(conn: &mut Connection) -> Result<(), AppError> {

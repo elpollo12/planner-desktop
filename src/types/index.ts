@@ -1,3 +1,5 @@
+import type { ModulePermissions } from './user';
+
 // User types
 export interface User {
   id: string;
@@ -11,6 +13,8 @@ export interface User {
   lastLogin?: string;
   createdAt: string;
   updatedAt: string;
+  /** Resolved module permissions (role defaults + overrides). Loaded after login. */
+  modulePermissions?: ModulePermissions;
 }
 
 export interface UserWithRigs extends User {
@@ -23,7 +27,7 @@ export * from './preferences';
 export * from './sync';
 export * from './operator';
 export * from './appSettings';
-export { type UserRole, type CreateUserInput, type UpdateUserInput } from './user';
+export { type UserRole, type CreateUserInput, type UpdateUserInput, type AppModule, type ModulePermissions, APP_MODULES, MODULE_LABELS, MODULE_DEFAULTS, PERMISSION_MODULES } from './user';
 export * from './logistics';
 export * from './incident';
 export * from './notification';
