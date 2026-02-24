@@ -84,15 +84,16 @@ export function NotificationItem({ notification, onNavigate }: NotificationItemP
     <div
       onClick={handleClick}
       className={`
-        group flex items-start gap-3 px-4 py-3 cursor-pointer transition-colors border-b border-gray-100 dark:border-gray-700/50 last:border-b-0
+        group flex items-start gap-3 px-4 py-3 cursor-pointer transition-all duration-200 border-b border-gray-100 dark:border-gray-700/50 last:border-b-0
+        hover:bg-primary-100 dark:hover:bg-gray-600
         ${notification.isRead
-          ? 'bg-transparent hover:bg-gray-50 dark:hover:bg-gray-750'
-          : 'bg-primary-50/50 dark:bg-primary-900/10 hover:bg-primary-50 dark:hover:bg-primary-900/20'
+          ? 'bg-transparent'
+          : 'bg-primary-50/50! dark:bg-primary-900/10'
         }
       `}
     >
       {/* Category icon */}
-      <div className={`mt-0.5 flex-shrink-0 ${config.color}`}>
+      <div className={`mt-0.5 shrink-0 ${config.color}`}>
         <Icon size={18} />
       </div>
 
@@ -102,7 +103,7 @@ export function NotificationItem({ notification, onNavigate }: NotificationItemP
           <p className={`text-sm leading-snug ${notification.isRead ? 'text-gray-700 dark:text-gray-300' : 'text-gray-900 dark:text-gray-100 font-medium'}`}>
             {notification.title}
           </p>
-          <span className="text-[10px] text-gray-400 flex-shrink-0 mt-0.5">
+          <span className="text-[10px] text-gray-400 shrink-0 mt-0.5">
             {timeAgo(notification.createdAt)}
           </span>
         </div>
@@ -119,7 +120,7 @@ export function NotificationItem({ notification, onNavigate }: NotificationItemP
       </div>
 
       {/* Unread dot + delete */}
-      <div className="flex flex-col items-center gap-1 flex-shrink-0 mt-0.5">
+      <div className="flex flex-col items-center gap-1 shrink-0 mt-0.5">
         {!notification.isRead && (
           <span className="w-2 h-2 bg-primary-500 rounded-full" />
         )}

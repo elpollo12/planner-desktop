@@ -33,7 +33,7 @@ export function NotificationPanel() {
   };
 
   return (
-    <div className="absolute right-0 top-full mt-2 w-96 max-h-[520px] bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 z-50 flex flex-col overflow-hidden">
+    <div className="absolute right-0 top-full mt-2 w-96 max-h-130 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 z-50 flex flex-col overflow-hidden">
       {/* Header */}
       <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
         <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
