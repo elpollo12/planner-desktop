@@ -24,6 +24,9 @@ export * from './sync';
 export * from './operator';
 export * from './appSettings';
 export { type UserRole, type CreateUserInput, type UpdateUserInput } from './user';
+export * from './logistics';
+export * from './incident';
+export * from './notification';
 
 export interface LoginResponse {
   sessionToken: string;
@@ -81,10 +84,31 @@ export interface CreateReportRequest {
   supervisor_24h?: string;
 }
 
-export interface ReportFilters {
-  date_from?: string;
-  date_to?: string;
-  status?: string;
-  created_by?: string;
-  well_number?: string;
+// Last report snapshot (pre-fill template per rig)
+export interface LastReportSnapshot {
+  id: string;
+  rigId: string;
+  reportNumber: number;
+  wellNumber?: string;
+  apiNumber?: string;
+  contract?: string;
+  contractor?: string;
+  operator?: string;
+  fieldDistrict?: string;
+  municipality?: string;
+  rigNumber?: string;
+  company?: string;
+  supervisor24h?: string;
+  crewData?: string;            // JSON string
+  timeDistributionData?: string; // JSON string
+  bitRecordsData?: string;       // JSON string
+  mudRecordsData?: string;       // JSON string
+  mudAdditivesData?: string;     // JSON string
+  drillingParamsData?: string;   // JSON string
+  deviationData?: string;        // JSON string
+  operationsLogData?: string;    // JSON string
+  drillStringData?: string;      // JSON string
+  sourceReportId?: string;
+  updatedBy?: string;
+  updatedAt: string;
 }

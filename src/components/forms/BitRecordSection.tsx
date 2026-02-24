@@ -1,4 +1,4 @@
-import { useFormContext, useFieldArray } from 'react-hook-form';
+﻿import { useFormContext, useFieldArray } from 'react-hook-form';
 import { Button, Input, Select } from '../ui';
 import { Plus, Trash2 } from 'lucide-react';
 import type { CompleteReportData } from '../../schemas';
@@ -66,7 +66,7 @@ export function BitRecordSection() {
       ) : (
         <div className="space-y-6">
           {fields.map((field, index) => (
-            <div key={field.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-6 bg-white dark:bg-gray-800">
+            <div key={field.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-6 bg-gray-50 dark:bg-gray-800">
               <div className="flex justify-between items-center mb-4">
                 <h4 className="font-medium text-gray-900 dark:text-gray-100">Mecha #{index + 1}</h4>
                 <Button

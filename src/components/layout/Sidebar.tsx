@@ -5,11 +5,13 @@ import { useAuthStore } from '../../store/authStore';
 import { useAppSettingsStore } from '../../store/appSettingsStore';
 import { Button } from '../ui';
 import {
+  ClipboardCheck,
   Forklift,
   LayoutDashboard,
   List,
   LogOut,
   Shield,
+  AlertTriangle,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -19,7 +21,7 @@ interface SidebarProps {
 export function Sidebar({ className = '' }: SidebarProps) {
   const location = useLocation();
   const { user, logout } = useAuthStore();
-  const { settings } = useAppSettingsStore();
+  const logoPath = useAppSettingsStore((s) => s.settings?.logoPath ?? null);
   const [appVersion, setAppVersion] = useState('');
 
   useEffect(() => {
@@ -34,6 +36,12 @@ export function Sidebar({ className = '' }: SidebarProps) {
       show: true,
     },
     {
+      name: 'Aprobaciones',
+      href: '/approvals',
+      icon: ClipboardCheck,
+      show: user?.role === 'supervisor' || user?.role === 'admin',
+    },
+    {
       name: 'Reportes',
       href: '/reports',
       icon: List,
@@ -43,6 +51,12 @@ export function Sidebar({ className = '' }: SidebarProps) {
       name: 'Logística',
       href: '/logistics',
       icon: Forklift,
+      show: true,
+    },
+    {
+      name: 'Incidencias',
+      href: '/incidents',
+      icon: AlertTriangle,
       show: true,
     },
     {
@@ -74,14 +88,14 @@ export function Sidebar({ className = '' }: SidebarProps) {
 
   return (
     <aside
-      className={`w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col ${className}`}
+      className={`w-64 bg-gray-50 dark:bg-gray-800 border-r border-primary-200 dark:border-gray-700 flex flex-col ${className}`}
     >
       {/* Logo/Brand — height matches Header component (py-4) */}
-      <div className="h-15 px-6 border-b border-gray-200 dark:border-gray-700 flex items-center">
-        {settings?.logoPath ? (
+      <div className="h-15 px-6 border-b border-primary-200 dark:border-gray-700 flex items-center">
+        {logoPath ? (
           <div className="flex items-center justify-center w-full">
             <img
-              src={settings.logoPath}
+              src={logoPath}
               alt="Logo de la empresa"
               className="max-h-12 w-auto object-contain"
             />

@@ -1,58 +1,65 @@
 use crate::auth::get_session;
 use crate::models::logistics::*;
+use crate::models::user::User;
+use crate::notification_helper;
 use crate::state::AppState;
 use rusqlite::params;
 use tauri::State;
 use uuid::Uuid;
 
-// ============================================================================
-// SOLICITUDES DE LOGÍSTICA - Commands
-// ============================================================================
+fn paginate(page: Option<i64>, page_size: Option<i64>) -> (i64, i64, i64) {
+    let page = page.unwrap_or(1).max(1);
+    let page_size = page_size.unwrap_or(20).clamp(1, 100);
+    let offset = (page - 1) * page_size;
+    (page, page_size, offset)
+}
+
+fn total_pages(total: i64, page_size: i64) -> i64 {
+    if total == 0 { 0 } else { (total as f64 / page_size as f64).ceil() as i64 }
+}
 
 #[tauri::command]
 pub async fn create_logistics_request(
-    session_token: String,
-    input: CreateLogisticsRequest,
-    state: State<'_, AppState>,
+    session_token: String, rig_id: String, input: CreateLogisticsRequest, state: State<'_, AppState>,
 ) -> Result<LogisticsRequest, String> {
     let session = get_session(&session_token, &state).map_err(|e| e.to_string())?;
 
     let conn = state.db.lock().map_err(|e| format!("Failed to lock database: {}", e))?;
+    let has_access = User::has_rig_access(&conn, &session.user_id, &rig_id).map_err(|e| e.to_string())?;
+    if !has_access {
+        return Err("No tienes acceso a este taladro".to_string());
+    }
 
-    // Validate request type
     match input.request_type.as_str() {
-        "water_bottles" | "fuel" | "water_tank" | "consumable" => {}
-        _ => return Err(format!("Invalid request type: {}", input.request_type)),
+        "water_bottles" | "fuel" | "material" | "vacuum" => {}
+        _ => return Err(format!("Tipo de solicitud inválido: {}", input.request_type)),
     }
 
-    // Validate priority
-    match input.priority.as_str() {
-        "low" | "medium" | "high" | "urgent" => {}
-        _ => return Err(format!("Invalid priority: {}", input.priority)),
-    }
-
-    if input.quantity <= 0.0 {
-        return Err("Quantity must be greater than 0".to_string());
-    }
-
-    // If type is consumable, validate consumable_id exists
-    if input.request_type == "consumable" {
-        match &input.consumable_id {
-            Some(cid) => {
-                let exists: bool = conn
-                    .query_row(
-                        "SELECT COUNT(*) > 0 FROM logistics_consumables WHERE id = ?1",
-                        params![cid],
-                        |row| row.get(0),
-                    )
-                    .map_err(|e| e.to_string())?;
-
-                if !exists {
-                    return Err("Consumable not found".to_string());
-                }
+    match input.request_type.as_str() {
+        "water_bottles" | "fuel" => {
+            if input.quantity.is_none() || input.quantity.unwrap_or(0.0) <= 0.0 {
+                return Err("La cantidad es requerida y debe ser mayor a 0".to_string());
             }
-            None => return Err("consumable_id is required for consumable requests".to_string()),
         }
+        "material" => {
+            if input.quantity.is_none() || input.quantity.unwrap_or(0.0) <= 0.0 {
+                return Err("La cantidad es requerida y debe ser mayor a 0".to_string());
+            }
+            if input.material_id.is_none() { return Err("Debe seleccionar un material".to_string()); }
+        }
+        "vacuum" => {
+            if input.action_requested.as_ref().map_or(true, |a| a.trim().is_empty()) {
+                return Err("La acción solicitada es requerida".to_string());
+            }
+        }
+        _ => {}
+    }
+
+    if let Some(ref mid) = input.material_id {
+        let exists: bool = conn.query_row(
+            "SELECT COUNT(*) > 0 FROM logistics_materials WHERE id = ?1 AND is_deleted = 0", params![mid], |row| row.get(0),
+        ).map_err(|e| e.to_string())?;
+        if !exists { return Err("Material no encontrado".to_string()); }
     }
 
     let id = Uuid::new_v4().to_string();
@@ -60,523 +67,517 @@ pub async fn create_logistics_request(
 
     conn.execute(
         "INSERT INTO logistics_requests
-         (id, request_type, consumable_id, quantity, unit, description, priority, status,
-          requested_by, requested_at, created_at, updated_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 'pending', ?8, ?9, ?10, ?11)",
-        params![
-            id,
-            input.request_type,
-            input.consumable_id,
-            input.quantity,
-            input.unit,
-            input.description,
-            input.priority,
-            session.user_id,
-            now,
-            now,
-            now,
-        ],
-    )
-    .map_err(|e| e.to_string())?;
+         (id, rig_id, request_type, quantity, action_requested, material_id, status, notes, requested_by, requested_at, created_at, updated_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, 'requested', ?7, ?8, ?9, ?10, ?11)",
+        params![id, rig_id, input.request_type, input.quantity, input.action_requested, input.material_id, input.notes, session.user_id, now, now, now],
+    ).map_err(|e| e.to_string())?;
 
-    // Return the created request
+    // --- Notification: operator created a logistics request ---
+    let type_label = match input.request_type.as_str() {
+        "water_bottles" => "Botellones",
+        "fuel" => "Combustible",
+        "material" => "Material",
+        "vacuum" => "Cisterna",
+        _ => &input.request_type,
+    };
+    notification_helper::notify_action(
+        &conn, &session, "logistics", "request_created",
+        &format!("Nueva petición: {}", type_label),
+        &format!("Petición de {} creada", type_label),
+        Some(&id), Some("logistics_request"), Some(&rig_id),
+    );
+
     get_request_by_id(&conn, &id)
 }
 
 #[tauri::command]
 pub async fn list_logistics_requests(
     session_token: String,
+    rig_id: String,
     request_type: Option<String>,
     status: Option<String>,
-    limit: Option<i32>,
+    page: Option<i64>,
+    page_size: Option<i64>,
     state: State<'_, AppState>,
-) -> Result<Vec<LogisticsRequest>, String> {
-    get_session(&session_token, &state).map_err(|e| e.to_string())?;
+) -> Result<PaginatedResponse<LogisticsRequest>, String> {
+    let session = get_session(&session_token, &state).map_err(|e| e.to_string())?;
 
     let conn = state.db.lock().map_err(|e| format!("Failed to lock database: {}", e))?;
+    let has_access = User::has_rig_access(&conn, &session.user_id, &rig_id).map_err(|e| e.to_string())?;
+    if !has_access {
+        return Err("No tienes acceso a este taladro".to_string());
+    }
 
-    let mut conditions = Vec::new();
-    let mut param_values: Vec<Box<dyn rusqlite::types::ToSql>> = Vec::new();
-    let mut idx = 1;
+    let mut conditions = vec!["rig_id = ?1".to_string(), "is_deleted = 0".to_string()];
+    let mut param_values: Vec<Box<dyn rusqlite::types::ToSql>> = vec![Box::new(rig_id.clone())];
+    let mut idx = 2;
+
+    // Operators can only see their own requests
+    if session.role == "operator" {
+        conditions.push(format!("requested_by = ?{}", idx));
+        param_values.push(Box::new(session.user_id.clone())); idx += 1;
+    }
 
     if let Some(ref rt) = request_type {
         conditions.push(format!("request_type = ?{}", idx));
-        param_values.push(Box::new(rt.clone()));
-        idx += 1;
+        param_values.push(Box::new(rt.clone())); idx += 1;
     }
-
     if let Some(ref s) = status {
         conditions.push(format!("status = ?{}", idx));
         param_values.push(Box::new(s.clone()));
-        // idx += 1; // Not needed since it's the last param before LIMIT
     }
 
-    let where_clause = if conditions.is_empty() {
-        String::new()
-    } else {
-        format!("WHERE {}", conditions.join(" AND "))
-    };
+    let where_clause = format!("WHERE {}", conditions.join(" AND "));
 
-    let query = format!(
-        "SELECT id, request_type, consumable_id, quantity, unit, description, priority, status,
-                requested_by, approved_by, completed_by, rejection_reason,
-                requested_at, approved_at, completed_at, rejected_at, cancelled_at,
-                created_at, updated_at
-         FROM logistics_requests
-         {}
-         ORDER BY
-           CASE priority
-             WHEN 'urgent' THEN 1
-             WHEN 'high' THEN 2
-             WHEN 'medium' THEN 3
-             WHEN 'low' THEN 4
-           END,
-           requested_at DESC
-         LIMIT {}",
-        where_clause,
-        limit.unwrap_or(100)
+    let count_query = format!("SELECT COUNT(*) FROM logistics_requests {}", where_clause);
+    let count_refs: Vec<&dyn rusqlite::types::ToSql> = param_values.iter().map(|p| p.as_ref()).collect();
+    let total: i64 = conn.query_row(&count_query, count_refs.as_slice(), |row| row.get(0)).map_err(|e| e.to_string())?;
+
+    let (pg, ps, offset) = paginate(page, page_size);
+
+    let data_query = format!(
+        "SELECT id, rig_id, request_type, quantity, action_requested, material_id, status, notes,
+                requested_by, status_changed_by, requested_at, status_changed_at, created_at, updated_at
+         FROM logistics_requests {} ORDER BY requested_at DESC LIMIT {} OFFSET {}",
+        where_clause, ps, offset
     );
 
-    let mut stmt = conn.prepare(&query).map_err(|e| e.to_string())?;
+    let mut stmt = conn.prepare(&data_query).map_err(|e| e.to_string())?;
+    let data_refs: Vec<&dyn rusqlite::types::ToSql> = param_values.iter().map(|p| p.as_ref()).collect();
 
-    let params_refs: Vec<&dyn rusqlite::types::ToSql> =
-        param_values.iter().map(|p| p.as_ref()).collect();
-
-    let requests = stmt
-        .query_map(params_refs.as_slice(), |row| {
-            Ok(LogisticsRequest {
-                id: row.get(0)?,
-                request_type: row.get(1)?,
-                consumable_id: row.get(2)?,
-                quantity: row.get(3)?,
-                unit: row.get(4)?,
-                description: row.get(5)?,
-                priority: row.get(6)?,
-                status: row.get(7)?,
-                requested_by: row.get(8)?,
-                approved_by: row.get(9)?,
-                completed_by: row.get(10)?,
-                rejection_reason: row.get(11)?,
-                requested_at: row.get(12)?,
-                approved_at: row.get(13)?,
-                completed_at: row.get(14)?,
-                rejected_at: row.get(15)?,
-                cancelled_at: row.get(16)?,
-                created_at: row.get(17)?,
-                updated_at: row.get(18)?,
-            })
+    let rows = stmt.query_map(data_refs.as_slice(), |row| {
+        Ok(LogisticsRequest {
+            id: row.get(0)?, rig_id: row.get(1)?, request_type: row.get(2)?, quantity: row.get(3)?,
+            action_requested: row.get(4)?, material_id: row.get(5)?, status: row.get(6)?,
+            notes: row.get(7)?, requested_by: row.get(8)?, status_changed_by: row.get(9)?,
+            requested_at: row.get(10)?, status_changed_at: row.get(11)?,
+            created_at: row.get(12)?, updated_at: row.get(13)?,
         })
-        .map_err(|e| e.to_string())?;
+    }).map_err(|e| e.to_string())?;
 
-    let mut result = Vec::new();
-    for request in requests {
-        result.push(request.map_err(|e| e.to_string())?);
-    }
+    let mut data = Vec::new();
+    for row in rows { data.push(row.map_err(|e| e.to_string())?); }
 
-    Ok(result)
+    Ok(PaginatedResponse { data, total, page: pg, page_size: ps, total_pages: total_pages(total, ps) })
 }
 
 #[tauri::command]
 pub async fn update_logistics_request_status(
-    session_token: String,
-    request_id: String,
-    input: UpdateLogisticsRequestStatus,
-    state: State<'_, AppState>,
+    session_token: String, request_id: String, input: UpdateRequestStatus, state: State<'_, AppState>,
 ) -> Result<LogisticsRequest, String> {
     let session = get_session(&session_token, &state).map_err(|e| e.to_string())?;
+    match session.role.as_str() { "supervisor" | "admin" => {} _ => return Err("No tienes permisos para cambiar el estado de solicitudes".to_string()), }
+    match input.status.as_str() { "requested" | "pending" | "approved" | "rejected" => {} _ => return Err(format!("Estado inválido: {}", input.status)), }
 
     let conn = state.db.lock().map_err(|e| format!("Failed to lock database: {}", e))?;
 
-    // Validate new status
-    match input.status.as_str() {
-        "approved" | "rejected" | "completed" | "cancelled" => {}
-        _ => return Err(format!("Invalid status: {}", input.status)),
+    // Verify rig access
+    let (current_status, rig_id): (String, Option<String>) = conn.query_row(
+        "SELECT status, rig_id FROM logistics_requests WHERE id = ?1 AND is_deleted = 0",
+        params![request_id], |row| Ok((row.get(0)?, row.get(1)?)),
+    ).map_err(|_| "Solicitud no encontrada".to_string())?;
+
+    if let Some(ref rid) = rig_id {
+        let has_access = User::has_rig_access(&conn, &session.user_id, rid).map_err(|e| e.to_string())?;
+        if !has_access {
+            return Err("No tienes acceso a este taladro".to_string());
+        }
     }
 
-    // Get current request to validate transition
-    let current_status: String = conn
-        .query_row(
-            "SELECT status FROM logistics_requests WHERE id = ?1",
-            params![request_id],
-            |row| row.get(0),
-        )
-        .map_err(|e| e.to_string())?;
-
-    // Validate status transitions
-    let valid_transition = match (current_status.as_str(), input.status.as_str()) {
-        ("pending", "approved") => true,
-        ("pending", "rejected") => true,
-        ("pending", "cancelled") => true,
-        ("approved", "completed") => true,
-        ("approved", "cancelled") => true,
+    let valid = match (current_status.as_str(), input.status.as_str()) {
+        ("requested", "pending") | ("requested", "approved") | ("requested", "rejected") => true,
+        ("pending", "approved") | ("pending", "rejected") => true,
         _ => false,
     };
+    if !valid { return Err(format!("Transición de estado inválida: {} -> {}", current_status, input.status)); }
 
-    if !valid_transition {
-        return Err(format!(
-            "Invalid status transition: {} -> {}",
-            current_status, input.status
-        ));
-    }
+    // Get the original requester to notify them
+    let requested_by: String = conn.query_row(
+        "SELECT requested_by FROM logistics_requests WHERE id = ?1",
+        params![request_id], |row| row.get(0),
+    ).map_err(|e| e.to_string())?;
 
     let now = chrono::Utc::now().to_rfc3339();
+    conn.execute(
+        "UPDATE logistics_requests SET status = ?1, status_changed_by = ?2, status_changed_at = ?3, updated_at = ?4 WHERE id = ?5",
+        params![input.status, session.user_id, now, now, request_id],
+    ).map_err(|e| e.to_string())?;
 
-    match input.status.as_str() {
-        "approved" => {
-            conn.execute(
-                "UPDATE logistics_requests
-                 SET status = 'approved', approved_by = ?1, approved_at = ?2, updated_at = ?3
-                 WHERE id = ?4",
-                params![session.user_id, now, now, request_id],
-            )
-            .map_err(|e| e.to_string())?;
-        }
-        "rejected" => {
-            let reason = input
-                .rejection_reason
-                .as_deref()
-                .unwrap_or("No reason provided");
-
-            conn.execute(
-                "UPDATE logistics_requests
-                 SET status = 'rejected', rejection_reason = ?1, rejected_at = ?2, updated_at = ?3
-                 WHERE id = ?4",
-                params![reason, now, now, request_id],
-            )
-            .map_err(|e| e.to_string())?;
-        }
-        "completed" => {
-            conn.execute(
-                "UPDATE logistics_requests
-                 SET status = 'completed', completed_by = ?1, completed_at = ?2, updated_at = ?3
-                 WHERE id = ?4",
-                params![session.user_id, now, now, request_id],
-            )
-            .map_err(|e| e.to_string())?;
-        }
-        "cancelled" => {
-            conn.execute(
-                "UPDATE logistics_requests
-                 SET status = 'cancelled', cancelled_at = ?1, updated_at = ?2
-                 WHERE id = ?3",
-                params![now, now, request_id],
-            )
-            .map_err(|e| e.to_string())?;
-        }
-        _ => {}
-    }
+    // --- Notification: notify the requester about status change ---
+    let status_label = match input.status.as_str() {
+        "pending" => "en revisión",
+        "approved" => "aprobada",
+        "rejected" => "rechazada",
+        _ => &input.status,
+    };
+    notification_helper::notify_user(
+        &conn, &session, &requested_by, "logistics", "request_status_changed",
+        &format!("Petición {}", status_label),
+        &format!("Tu petición fue marcada como {}", status_label),
+        Some(&request_id), Some("logistics_request"), rig_id.as_deref(),
+    );
 
     get_request_by_id(&conn, &request_id)
 }
 
 #[tauri::command]
-pub async fn get_pending_requests_count(
-    session_token: String,
-    state: State<'_, AppState>,
-) -> Result<i32, String> {
-    get_session(&session_token, &state).map_err(|e| e.to_string())?;
-
+pub async fn delete_logistics_request(
+    session_token: String, request_id: String, state: State<'_, AppState>,
+) -> Result<(), String> {
+    let session = get_session(&session_token, &state).map_err(|e| e.to_string())?;
     let conn = state.db.lock().map_err(|e| format!("Failed to lock database: {}", e))?;
 
-    let count: i32 = conn
-        .query_row(
-            "SELECT COUNT(*) FROM logistics_requests WHERE status = 'pending'",
-            [],
-            |row| row.get(0),
+    let (requested_by, rig_id, status): (String, Option<String>, String) = conn.query_row(
+        "SELECT requested_by, rig_id, status FROM logistics_requests WHERE id = ?1 AND is_deleted = 0",
+        params![request_id], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+    ).map_err(|_| "Solicitud no encontrada".to_string())?;
+
+    // Verify rig access
+    if let Some(ref rid) = rig_id {
+        let has_access = User::has_rig_access(&conn, &session.user_id, rid).map_err(|e| e.to_string())?;
+        if !has_access {
+            return Err("No tienes acceso a este taladro".to_string());
+        }
+    }
+
+    match session.role.as_str() {
+        "admin" | "supervisor" => {}
+        _ => {
+            // Operators can only delete their own requests that are still in "requested" status
+            if requested_by != session.user_id {
+                return Err("Solo puedes eliminar solicitudes creadas por ti".to_string());
+            }
+            if status != "requested" {
+                return Err("Solo puedes eliminar solicitudes en estado 'Solicitada'".to_string());
+            }
+        }
+    }
+
+    let now = chrono::Utc::now().to_rfc3339();
+    let affected = conn
+        .execute(
+            "UPDATE logistics_requests SET is_deleted = 1, updated_at = ?1 WHERE id = ?2 AND is_deleted = 0",
+            params![now, request_id],
         )
         .map_err(|e| e.to_string())?;
+
+    if affected == 0 { return Err("Solicitud no encontrada".to_string()); }
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn get_pending_requests_count(
+    session_token: String, rig_id: String, state: State<'_, AppState>,
+) -> Result<i32, String> {
+    let session = get_session(&session_token, &state).map_err(|e| e.to_string())?;
+
+    let conn = state.db.lock().map_err(|e| format!("Failed to lock database: {}", e))?;
+    let has_access = User::has_rig_access(&conn, &session.user_id, &rig_id).map_err(|e| e.to_string())?;
+    if !has_access {
+        return Err("No tienes acceso a este taladro".to_string());
+    }
+
+    // Operators only count their own pending requests
+    let count: i32 = if session.role == "operator" {
+        conn.query_row(
+            "SELECT COUNT(*) FROM logistics_requests WHERE status IN ('requested', 'pending') AND rig_id = ?1 AND requested_by = ?2 AND is_deleted = 0",
+            params![rig_id, session.user_id], |row| row.get(0),
+        ).map_err(|e| e.to_string())?
+    } else {
+        conn.query_row(
+            "SELECT COUNT(*) FROM logistics_requests WHERE status IN ('requested', 'pending') AND rig_id = ?1 AND is_deleted = 0",
+            params![rig_id], |row| row.get(0),
+        ).map_err(|e| e.to_string())?
+    };
 
     Ok(count)
 }
 
 // ============================================================================
-// REPORTES DE LOGÍSTICA - Commands
+// REPORTES (con rig_id)
 // ============================================================================
 
 #[tauri::command]
 pub async fn get_logistics_report(
-    session_token: String,
-    period_start: String,
-    period_end: String,
-    state: State<'_, AppState>,
+    session_token: String, rig_id: String, period_start: String, period_end: String, state: State<'_, AppState>,
 ) -> Result<LogisticsReport, String> {
-    get_session(&session_token, &state).map_err(|e| e.to_string())?;
+    let session = get_session(&session_token, &state).map_err(|e| e.to_string())?;
+    match session.role.as_str() { "supervisor" | "admin" => {} _ => return Err("No tienes permisos para generar reportes".to_string()), }
 
     let conn = state.db.lock().map_err(|e| format!("Failed to lock database: {}", e))?;
-
-    // Water bottles summary
-    let water_bottles = get_water_bottles_summary(&conn, &period_start, &period_end)?;
-
-    // Fuel summary
-    let fuel = get_fuel_summary(&conn, &period_start, &period_end)?;
-
-    // Water tank summary
-    let water_tank = get_water_tank_summary(&conn, &period_start, &period_end)?;
-
-    // Consumables summary
-    let consumables = get_consumables_summary(&conn, &period_start, &period_end)?;
-
-    Ok(LogisticsReport {
-        period_start,
-        period_end,
-        water_bottles_summary: water_bottles,
-        fuel_summary: fuel,
-        water_tank_summary: water_tank,
-        consumables_summary: consumables,
-    })
-}
-
-// ============================================================================
-// Helper functions
-// ============================================================================
-
-fn get_request_by_id(
-    conn: &rusqlite::Connection,
-    id: &str,
-) -> Result<LogisticsRequest, String> {
-    let mut stmt = conn
-        .prepare(
-            "SELECT id, request_type, consumable_id, quantity, unit, description, priority, status,
-                    requested_by, approved_by, completed_by, rejection_reason,
-                    requested_at, approved_at, completed_at, rejected_at, cancelled_at,
-                    created_at, updated_at
-             FROM logistics_requests WHERE id = ?1",
-        )
-        .map_err(|e| e.to_string())?;
-
-    stmt.query_row(params![id], |row| {
-        Ok(LogisticsRequest {
-            id: row.get(0)?,
-            request_type: row.get(1)?,
-            consumable_id: row.get(2)?,
-            quantity: row.get(3)?,
-            unit: row.get(4)?,
-            description: row.get(5)?,
-            priority: row.get(6)?,
-            status: row.get(7)?,
-            requested_by: row.get(8)?,
-            approved_by: row.get(9)?,
-            completed_by: row.get(10)?,
-            rejection_reason: row.get(11)?,
-            requested_at: row.get(12)?,
-            approved_at: row.get(13)?,
-            completed_at: row.get(14)?,
-            rejected_at: row.get(15)?,
-            cancelled_at: row.get(16)?,
-            created_at: row.get(17)?,
-            updated_at: row.get(18)?,
-        })
-    })
-    .map_err(|e| e.to_string())
-}
-
-fn get_water_bottles_summary(
-    conn: &rusqlite::Connection,
-    start: &str,
-    end: &str,
-) -> Result<WaterBottlesSummary, String> {
-    // Current state
-    let (current_full, current_empty): (i32, i32) = conn
-        .query_row(
-            "SELECT full_bottles, empty_bottles FROM logistics_water_bottles WHERE id = 'default'",
-            [],
-            |row| Ok((row.get(0)?, row.get(1)?)),
-        )
-        .map_err(|e| e.to_string())?;
-
-    // Period totals
-    let total_full: i32 = conn
-        .query_row(
-            "SELECT COALESCE(SUM(quantity), 0) FROM logistics_water_bottles_movements
-             WHERE movement_type = 'register_full' AND created_at BETWEEN ?1 AND ?2",
-            params![start, end],
-            |row| row.get(0),
-        )
-        .map_err(|e| e.to_string())?;
-
-    let total_empty: i32 = conn
-        .query_row(
-            "SELECT COALESCE(SUM(quantity), 0) FROM logistics_water_bottles_movements
-             WHERE movement_type = 'register_empty' AND created_at BETWEEN ?1 AND ?2",
-            params![start, end],
-            |row| row.get(0),
-        )
-        .map_err(|e| e.to_string())?;
-
-    let total_requests: i32 = conn
-        .query_row(
-            "SELECT COUNT(*) FROM logistics_requests
-             WHERE request_type = 'water_bottles' AND requested_at BETWEEN ?1 AND ?2",
-            params![start, end],
-            |row| row.get(0),
-        )
-        .map_err(|e| e.to_string())?;
-
-    Ok(WaterBottlesSummary {
-        current_full,
-        current_empty,
-        total_registered_full: total_full,
-        total_registered_empty: total_empty,
-        total_requests,
-    })
-}
-
-fn get_fuel_summary(
-    conn: &rusqlite::Connection,
-    start: &str,
-    end: &str,
-) -> Result<FuelSummary, String> {
-    let (current_reserve, current_in_use, total_consumed, unit): (f64, f64, f64, String) = conn
-        .query_row(
-            "SELECT reserve_amount, in_use_amount, consumed_amount, unit
-             FROM logistics_fuel WHERE id = 'default'",
-            [],
-            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
-        )
-        .map_err(|e| e.to_string())?;
-
-    let total_loaded: f64 = conn
-        .query_row(
-            "SELECT COALESCE(SUM(amount), 0) FROM logistics_fuel_movements
-             WHERE movement_type = 'load' AND created_at BETWEEN ?1 AND ?2",
-            params![start, end],
-            |row| row.get(0),
-        )
-        .map_err(|e| e.to_string())?;
-
-    let total_requests: i32 = conn
-        .query_row(
-            "SELECT COUNT(*) FROM logistics_requests
-             WHERE request_type = 'fuel' AND requested_at BETWEEN ?1 AND ?2",
-            params![start, end],
-            |row| row.get(0),
-        )
-        .map_err(|e| e.to_string())?;
-
-    Ok(FuelSummary {
-        current_reserve,
-        current_in_use,
-        total_consumed,
-        total_loaded,
-        total_requests,
-        unit,
-    })
-}
-
-fn get_water_tank_summary(
-    conn: &rusqlite::Connection,
-    start: &str,
-    end: &str,
-) -> Result<WaterTankSummary, String> {
-    let (current_reserve, current_in_use, total_consumed, unit): (f64, f64, f64, String) = conn
-        .query_row(
-            "SELECT reserve_amount, in_use_amount, consumed_amount, unit
-             FROM logistics_water_tank WHERE id = 'default'",
-            [],
-            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
-        )
-        .map_err(|e| e.to_string())?;
-
-    let total_refilled: f64 = conn
-        .query_row(
-            "SELECT COALESCE(SUM(amount), 0) FROM logistics_water_tank_movements
-             WHERE movement_type = 'refill' AND created_at BETWEEN ?1 AND ?2",
-            params![start, end],
-            |row| row.get(0),
-        )
-        .map_err(|e| e.to_string())?;
-
-    let total_requests: i32 = conn
-        .query_row(
-            "SELECT COUNT(*) FROM logistics_requests
-             WHERE request_type = 'water_tank' AND requested_at BETWEEN ?1 AND ?2",
-            params![start, end],
-            |row| row.get(0),
-        )
-        .map_err(|e| e.to_string())?;
-
-    Ok(WaterTankSummary {
-        current_reserve,
-        current_in_use,
-        total_consumed,
-        total_refilled,
-        total_requests,
-        unit,
-    })
-}
-
-fn get_consumables_summary(
-    conn: &rusqlite::Connection,
-    start: &str,
-    end: &str,
-) -> Result<Vec<ConsumableSummary>, String> {
-    let mut stmt = conn
-        .prepare(
-            "SELECT id, name, available_quantity, used_quantity, unit
-             FROM logistics_consumables
-             WHERE active = 1
-             ORDER BY name ASC",
-        )
-        .map_err(|e| e.to_string())?;
-
-    let consumables = stmt
-        .query_map([], |row| {
-            Ok((
-                row.get::<_, String>(0)?,
-                row.get::<_, String>(1)?,
-                row.get::<_, f64>(2)?,
-                row.get::<_, f64>(3)?,
-                row.get::<_, String>(4)?,
-            ))
-        })
-        .map_err(|e| e.to_string())?;
-
-    let mut summaries = Vec::new();
-
-    for consumable in consumables {
-        let (id, name, current_available, total_used_all, unit) =
-            consumable.map_err(|e| e.to_string())?;
-
-        let total_added: f64 = conn
-            .query_row(
-                "SELECT COALESCE(SUM(quantity), 0) FROM logistics_consumables_movements
-                 WHERE consumable_id = ?1 AND movement_type = 'add_stock'
-                 AND created_at BETWEEN ?2 AND ?3",
-                params![id, start, end],
-                |row| row.get(0),
-            )
-            .map_err(|e| e.to_string())?;
-
-        let period_used: f64 = conn
-            .query_row(
-                "SELECT COALESCE(SUM(quantity), 0) FROM logistics_consumables_movements
-                 WHERE consumable_id = ?1 AND movement_type = 'register_use'
-                 AND created_at BETWEEN ?2 AND ?3",
-                params![id, start, end],
-                |row| row.get(0),
-            )
-            .map_err(|e| e.to_string())?;
-
-        let total_requests: i32 = conn
-            .query_row(
-                "SELECT COUNT(*) FROM logistics_requests
-                 WHERE request_type = 'consumable' AND consumable_id = ?1
-                 AND requested_at BETWEEN ?2 AND ?3",
-                params![id, start, end],
-                |row| row.get(0),
-            )
-            .map_err(|e| e.to_string())?;
-
-        summaries.push(ConsumableSummary {
-            consumable_id: id,
-            name,
-            current_available,
-            total_used: period_used,
-            total_added,
-            total_requests,
-            unit,
-        });
+    let has_access = User::has_rig_access(&conn, &session.user_id, &rig_id).map_err(|e| e.to_string())?;
+    if !has_access {
+        return Err("No tienes acceso a este taladro".to_string());
     }
 
+    let start = if period_start.contains('T') { period_start.clone() } else { format!("{}T00:00:00", period_start) };
+    let end = if period_end.contains('T') { period_end.clone() } else { format!("{}T23:59:59", period_end) };
+
+    let water_bottles = build_water_bottles_summary(&conn, &rig_id, &start, &end)?;
+    let fuel = build_fuel_summary(&conn, &rig_id, &start, &end)?;
+    let vacuum = build_vacuum_summary(&conn, &rig_id, &start, &end)?;
+    let materials = build_materials_summary(&conn, &rig_id, &start, &end)?;
+    let requests = build_requests_summary(&conn, &rig_id, &start, &end)?;
+
+    Ok(LogisticsReport { period_start, period_end, water_bottles_summary: water_bottles, fuel_summary: fuel, vacuum_summary: vacuum, materials_summary: materials, requests_summary: requests })
+}
+
+#[tauri::command]
+pub async fn get_detailed_logistics_report(
+    session_token: String,
+    rig_id: String,
+    section: String,
+    period_start: String,
+    period_end: String,
+    material_id: Option<String>,
+    state: State<'_, AppState>,
+) -> Result<DetailedLogisticsReport, String> {
+    let session = get_session(&session_token, &state).map_err(|e| e.to_string())?;
+    match session.role.as_str() {
+        "supervisor" | "admin" => {}
+        _ => return Err("No tienes permisos para generar reportes detallados".to_string()),
+    }
+
+    let conn = state.db.lock().map_err(|e| format!("Failed to lock database: {}", e))?;
+    let has_access = User::has_rig_access(&conn, &session.user_id, &rig_id).map_err(|e| e.to_string())?;
+    if !has_access {
+        return Err("No tienes acceso a este taladro".to_string());
+    }
+
+    let start = if period_start.contains('T') { period_start } else { format!("{}T00:00:00", period_start) };
+    let end = if period_end.contains('T') { period_end } else { format!("{}T23:59:59", period_end) };
+
+    match section.as_str() {
+        "water_bottles" => Ok(DetailedLogisticsReport::WaterBottles { movements: build_detailed_water_bottles(&conn, &rig_id, &start, &end)? }),
+        "fuel" => Ok(DetailedLogisticsReport::Fuel { movements: build_detailed_fuel(&conn, &rig_id, &start, &end)? }),
+        "vacuum" => Ok(DetailedLogisticsReport::Vacuum { movements: build_detailed_vacuum(&conn, &rig_id, &start, &end)? }),
+        "materials" => Ok(DetailedLogisticsReport::Materials { movements: build_detailed_materials(&conn, &rig_id, &start, &end, material_id)? }),
+        "requests" => Ok(DetailedLogisticsReport::Requests { requests: build_detailed_requests(&conn, &rig_id, &start, &end)? }),
+        _ => Err(format!("Sección inválida: {}", section)),
+    }
+}
+
+// ============================================================================
+// Helpers
+// ============================================================================
+
+fn get_request_by_id(conn: &rusqlite::Connection, id: &str) -> Result<LogisticsRequest, String> {
+    conn.query_row(
+        "SELECT id, rig_id, request_type, quantity, action_requested, material_id, status, notes,
+                requested_by, status_changed_by, requested_at, status_changed_at, created_at, updated_at
+         FROM logistics_requests WHERE id = ?1", params![id],
+        |row| Ok(LogisticsRequest {
+            id: row.get(0)?, rig_id: row.get(1)?, request_type: row.get(2)?, quantity: row.get(3)?,
+            action_requested: row.get(4)?, material_id: row.get(5)?, status: row.get(6)?,
+            notes: row.get(7)?, requested_by: row.get(8)?, status_changed_by: row.get(9)?,
+            requested_at: row.get(10)?, status_changed_at: row.get(11)?,
+            created_at: row.get(12)?, updated_at: row.get(13)?,
+        }),
+    ).map_err(|e| e.to_string())
+}
+
+fn build_water_bottles_summary(conn: &rusqlite::Connection, rig_id: &str, start: &str, end: &str) -> Result<WaterBottlesSummary, String> {
+    let total_entries: i32 = conn.query_row(
+        "SELECT COALESCE(SUM(quantity), 0) FROM logistics_water_bottles_movements WHERE movement_type = 'entry' AND rig_id = ?1 AND created_at BETWEEN ?2 AND ?3 AND is_deleted = 0",
+        params![rig_id, start, end], |row| row.get(0),
+    ).map_err(|e| e.to_string())?;
+    let total_exits: i32 = conn.query_row(
+        "SELECT COALESCE(SUM(quantity), 0) FROM logistics_water_bottles_movements WHERE movement_type = 'exit' AND rig_id = ?1 AND created_at BETWEEN ?2 AND ?3 AND is_deleted = 0",
+        params![rig_id, start, end], |row| row.get(0),
+    ).map_err(|e| e.to_string())?;
+    Ok(WaterBottlesSummary { total_entries, total_exits, net: total_entries - total_exits })
+}
+
+fn build_fuel_summary(conn: &rusqlite::Connection, rig_id: &str, start: &str, end: &str) -> Result<FuelSummary, String> {
+    let total_entries: f64 = conn.query_row(
+        "SELECT COALESCE(SUM(amount), 0) FROM logistics_fuel_movements WHERE movement_type = 'entry' AND rig_id = ?1 AND created_at BETWEEN ?2 AND ?3 AND is_deleted = 0",
+        params![rig_id, start, end], |row| row.get(0),
+    ).map_err(|e| e.to_string())?;
+    let total_exits: f64 = conn.query_row(
+        "SELECT COALESCE(SUM(amount), 0) FROM logistics_fuel_movements WHERE movement_type = 'exit' AND rig_id = ?1 AND created_at BETWEEN ?2 AND ?3 AND is_deleted = 0",
+        params![rig_id, start, end], |row| row.get(0),
+    ).map_err(|e| e.to_string())?;
+    Ok(FuelSummary { total_entries, total_exits, net: total_entries - total_exits })
+}
+
+fn build_vacuum_summary(conn: &rusqlite::Connection, rig_id: &str, start: &str, end: &str) -> Result<VacuumSummary, String> {
+    let total_actions: i32 = conn.query_row(
+        "SELECT COUNT(*) FROM logistics_vacuum_actions WHERE rig_id = ?1 AND created_at BETWEEN ?2 AND ?3 AND is_deleted = 0",
+        params![rig_id, start, end], |row| row.get(0),
+    ).map_err(|e| e.to_string())?;
+    Ok(VacuumSummary { total_actions })
+}
+
+fn build_materials_summary(conn: &rusqlite::Connection, rig_id: &str, start: &str, end: &str) -> Result<Vec<MaterialSummary>, String> {
+    let mut stmt = conn.prepare(
+        "SELECT id, name, unit FROM logistics_materials WHERE active = 1 AND is_deleted = 0 ORDER BY name ASC"
+    ).map_err(|e| e.to_string())?;
+
+    let materials = stmt.query_map([], |row| {
+        Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?, row.get::<_, String>(2)?))
+    }).map_err(|e| e.to_string())?;
+
+    let mut summaries = Vec::new();
+    for material in materials {
+        let (id, name, unit) = material.map_err(|e| e.to_string())?;
+        let total_entries: f64 = conn.query_row(
+            "SELECT COALESCE(SUM(quantity), 0) FROM logistics_materials_movements WHERE material_id = ?1 AND movement_type = 'entry' AND rig_id = ?2 AND created_at BETWEEN ?3 AND ?4 AND is_deleted = 0",
+            params![id, rig_id, start, end], |row| row.get(0),
+        ).map_err(|e| e.to_string())?;
+        let total_exits: f64 = conn.query_row(
+            "SELECT COALESCE(SUM(quantity), 0) FROM logistics_materials_movements WHERE material_id = ?1 AND movement_type = 'exit' AND rig_id = ?2 AND created_at BETWEEN ?3 AND ?4 AND is_deleted = 0",
+            params![id, rig_id, start, end], |row| row.get(0),
+        ).map_err(|e| e.to_string())?;
+        summaries.push(MaterialSummary { material_id: id, material_name: name, unit, total_entries, total_exits, net: total_entries - total_exits });
+    }
     Ok(summaries)
+}
+
+fn build_requests_summary(conn: &rusqlite::Connection, rig_id: &str, start: &str, end: &str) -> Result<RequestsSummary, String> {
+    let total: i32 = conn.query_row("SELECT COUNT(*) FROM logistics_requests WHERE rig_id = ?1 AND requested_at BETWEEN ?2 AND ?3 AND is_deleted = 0", params![rig_id, start, end], |row| row.get(0)).map_err(|e| e.to_string())?;
+    let requested: i32 = conn.query_row("SELECT COUNT(*) FROM logistics_requests WHERE rig_id = ?1 AND status = 'requested' AND requested_at BETWEEN ?2 AND ?3 AND is_deleted = 0", params![rig_id, start, end], |row| row.get(0)).map_err(|e| e.to_string())?;
+    let pending: i32 = conn.query_row("SELECT COUNT(*) FROM logistics_requests WHERE rig_id = ?1 AND status = 'pending' AND requested_at BETWEEN ?2 AND ?3 AND is_deleted = 0", params![rig_id, start, end], |row| row.get(0)).map_err(|e| e.to_string())?;
+    let approved: i32 = conn.query_row("SELECT COUNT(*) FROM logistics_requests WHERE rig_id = ?1 AND status = 'approved' AND requested_at BETWEEN ?2 AND ?3 AND is_deleted = 0", params![rig_id, start, end], |row| row.get(0)).map_err(|e| e.to_string())?;
+    let rejected: i32 = conn.query_row("SELECT COUNT(*) FROM logistics_requests WHERE rig_id = ?1 AND status = 'rejected' AND requested_at BETWEEN ?2 AND ?3 AND is_deleted = 0", params![rig_id, start, end], |row| row.get(0)).map_err(|e| e.to_string())?;
+    Ok(RequestsSummary { total, requested, pending, approved, rejected })
+}
+
+fn build_detailed_water_bottles(conn: &rusqlite::Connection, rig_id: &str, start: &str, end: &str) -> Result<Vec<DetailedMovement>, String> {
+    let mut stmt = conn.prepare(
+        "SELECT m.id, m.movement_type, m.quantity, m.notes, COALESCE(u.full_name, 'Desconocido'), m.created_at
+         FROM logistics_water_bottles_movements m
+         LEFT JOIN users u ON m.created_by = u.id
+         WHERE m.rig_id = ?1 AND m.created_at BETWEEN ?2 AND ?3 AND m.is_deleted = 0
+         ORDER BY m.created_at DESC"
+    ).map_err(|e| e.to_string())?;
+
+    let rows = stmt.query_map(params![rig_id, start, end], |row| {
+        Ok(DetailedMovement {
+            id: row.get(0)?, movement_type: Some(row.get::<_, String>(1)?),
+            quantity: Some(row.get::<_, i32>(2)? as f64), action_name: None,
+            material_name: None, material_unit: None, notes: row.get(3)?,
+            created_by_name: row.get(4)?, created_at: row.get(5)?,
+        })
+    }).map_err(|e| e.to_string())?;
+
+    let mut data = Vec::new();
+    for row in rows { data.push(row.map_err(|e| e.to_string())?); }
+    Ok(data)
+}
+
+fn build_detailed_fuel(conn: &rusqlite::Connection, rig_id: &str, start: &str, end: &str) -> Result<Vec<DetailedMovement>, String> {
+    let mut stmt = conn.prepare(
+        "SELECT m.id, m.movement_type, m.amount, m.notes, COALESCE(u.full_name, 'Desconocido'), m.created_at
+         FROM logistics_fuel_movements m
+         LEFT JOIN users u ON m.created_by = u.id
+         WHERE m.rig_id = ?1 AND m.created_at BETWEEN ?2 AND ?3 AND m.is_deleted = 0
+         ORDER BY m.created_at DESC"
+    ).map_err(|e| e.to_string())?;
+
+    let rows = stmt.query_map(params![rig_id, start, end], |row| {
+        Ok(DetailedMovement {
+            id: row.get(0)?, movement_type: Some(row.get::<_, String>(1)?),
+            quantity: Some(row.get::<_, f64>(2)?), action_name: None,
+            material_name: None, material_unit: None, notes: row.get(3)?,
+            created_by_name: row.get(4)?, created_at: row.get(5)?,
+        })
+    }).map_err(|e| e.to_string())?;
+
+    let mut data = Vec::new();
+    for row in rows { data.push(row.map_err(|e| e.to_string())?); }
+    Ok(data)
+}
+
+fn build_detailed_vacuum(conn: &rusqlite::Connection, rig_id: &str, start: &str, end: &str) -> Result<Vec<DetailedMovement>, String> {
+    let mut stmt = conn.prepare(
+        "SELECT m.id, m.action_name, m.notes, COALESCE(u.full_name, 'Desconocido'), m.created_at
+         FROM logistics_vacuum_actions m
+         LEFT JOIN users u ON m.created_by = u.id
+         WHERE m.rig_id = ?1 AND m.created_at BETWEEN ?2 AND ?3 AND m.is_deleted = 0
+         ORDER BY m.created_at DESC"
+    ).map_err(|e| e.to_string())?;
+
+    let rows = stmt.query_map(params![rig_id, start, end], |row| {
+        Ok(DetailedMovement {
+            id: row.get(0)?, movement_type: None, quantity: None,
+            action_name: Some(row.get::<_, String>(1)?),
+            material_name: None, material_unit: None, notes: row.get(2)?,
+            created_by_name: row.get(3)?, created_at: row.get(4)?,
+        })
+    }).map_err(|e| e.to_string())?;
+
+    let mut data = Vec::new();
+    for row in rows { data.push(row.map_err(|e| e.to_string())?); }
+    Ok(data)
+}
+
+fn build_detailed_materials(conn: &rusqlite::Connection, rig_id: &str, start: &str, end: &str, material_id: Option<String>) -> Result<Vec<DetailedMovement>, String> {
+    let (query, use_material_filter) = match &material_id {
+        Some(_) => (
+            "SELECT m.id, m.movement_type, m.quantity, m.notes, COALESCE(u.full_name, 'Desconocido'), m.created_at, mat.name, mat.unit
+             FROM logistics_materials_movements m
+             LEFT JOIN users u ON m.created_by = u.id
+             LEFT JOIN logistics_materials mat ON m.material_id = mat.id
+             WHERE m.rig_id = ?1 AND m.created_at BETWEEN ?2 AND ?3 AND m.material_id = ?4 AND m.is_deleted = 0
+             ORDER BY m.created_at DESC", true
+        ),
+        None => (
+            "SELECT m.id, m.movement_type, m.quantity, m.notes, COALESCE(u.full_name, 'Desconocido'), m.created_at, mat.name, mat.unit
+             FROM logistics_materials_movements m
+             LEFT JOIN users u ON m.created_by = u.id
+             LEFT JOIN logistics_materials mat ON m.material_id = mat.id
+             WHERE m.rig_id = ?1 AND m.created_at BETWEEN ?2 AND ?3 AND m.is_deleted = 0
+             ORDER BY m.created_at DESC", false
+        ),
+    };
+
+    let mut stmt = conn.prepare(query).map_err(|e| e.to_string())?;
+
+    let map_row = |row: &rusqlite::Row| -> rusqlite::Result<DetailedMovement> {
+        Ok(DetailedMovement {
+            id: row.get(0)?, movement_type: Some(row.get::<_, String>(1)?),
+            quantity: Some(row.get::<_, f64>(2)?), action_name: None,
+            material_name: row.get(6)?, material_unit: row.get(7)?,
+            notes: row.get(3)?, created_by_name: row.get(4)?, created_at: row.get(5)?,
+        })
+    };
+
+    let mut data = Vec::new();
+    if use_material_filter {
+        let mid = material_id.unwrap();
+        let rows = stmt.query_map(params![rig_id, start, end, mid], map_row).map_err(|e| e.to_string())?;
+        for row in rows { data.push(row.map_err(|e| e.to_string())?); }
+    } else {
+        let rows = stmt.query_map(params![rig_id, start, end], map_row).map_err(|e| e.to_string())?;
+        for row in rows { data.push(row.map_err(|e| e.to_string())?); }
+    }
+    Ok(data)
+}
+
+fn build_detailed_requests(conn: &rusqlite::Connection, rig_id: &str, start: &str, end: &str) -> Result<Vec<DetailedRequest>, String> {
+    let mut stmt = conn.prepare(
+        "SELECT r.id, r.request_type, r.quantity, r.action_requested, r.status, r.notes,
+                COALESCE(u1.full_name, 'Desconocido'), COALESCE(u2.full_name, NULL),
+                r.requested_at, r.status_changed_at, mat.name
+         FROM logistics_requests r
+         LEFT JOIN users u1 ON r.requested_by = u1.id
+         LEFT JOIN users u2 ON r.status_changed_by = u2.id
+         LEFT JOIN logistics_materials mat ON r.material_id = mat.id
+         WHERE r.rig_id = ?1 AND r.requested_at BETWEEN ?2 AND ?3 AND r.is_deleted = 0
+         ORDER BY r.requested_at DESC"
+    ).map_err(|e| e.to_string())?;
+
+    let rows = stmt.query_map(params![rig_id, start, end], |row| {
+        Ok(DetailedRequest {
+            id: row.get(0)?, request_type: row.get(1)?, quantity: row.get(2)?,
+            action_requested: row.get(3)?, material_name: row.get(10)?,
+            status: row.get(4)?, notes: row.get(5)?,
+            requested_by_name: row.get(6)?, status_changed_by_name: row.get(7)?,
+            requested_at: row.get(8)?, status_changed_at: row.get(9)?,
+        })
+    }).map_err(|e| e.to_string())?;
+
+    let mut data = Vec::new();
+    for row in rows { data.push(row.map_err(|e| e.to_string())?); }
+    Ok(data)
 }

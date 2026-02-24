@@ -20,10 +20,15 @@ pub mod app_settings;
 pub mod rig_personnel;
 pub mod logistics_water;
 pub mod logistics_fuel;
-pub mod logistics_tank;
-pub mod logistics_consumables;
+pub mod logistics_vacuum;
+pub mod logistics_materials;
 pub mod logistics_requests;
+pub mod incidents;
+pub mod incident_types;
 pub mod license;
+pub mod last_report_snapshot;
+pub mod report_reviews;
+pub mod notifications;
 
 // Re-export all command handlers for Tauri
 // Allow unused imports as these are registered in main.rs
@@ -70,10 +75,20 @@ pub use logistics_water::*;
 #[allow(unused_imports)]
 pub use logistics_fuel::*;
 #[allow(unused_imports)]
-pub use logistics_tank::*;
+pub use logistics_vacuum::*;
 #[allow(unused_imports)]
-pub use logistics_consumables::*;
+pub use logistics_materials::*;
 #[allow(unused_imports)]
 pub use logistics_requests::*;
 #[allow(unused_imports)]
+pub use incidents::*;
+#[allow(unused_imports)]
+pub use incident_types::*;
+#[allow(unused_imports)]
 pub use license::*;
+#[allow(unused_imports)]
+pub use last_report_snapshot::*;
+#[allow(unused_imports)]
+pub use report_reviews::*;
+#[allow(unused_imports)]
+pub use notifications::*;

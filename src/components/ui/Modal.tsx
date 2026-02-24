@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from "react";
+﻿import { useEffect, useCallback } from "react";
 import { useModalStore } from "../../store";
 import { X } from "lucide-react";
 import { Button } from "./Button";
@@ -72,11 +72,11 @@ export const Modal = () => {
   }, [onClose, closeModal]);
 
   const sizeClasses = {
-    sm: 'max-w-[24rem]',  // 24rem = 384px
-    md: 'max-w-[28rem]',  // 28rem = 448px
-    lg: 'max-w-[32rem]',  // 32rem = 512px
-    xl: 'max-w-[48rem]',  // 48rem = 768px
-    full: 'max-w-[90vw]',
+    sm: 'w-full max-w-[24rem]',  // 24rem = 384px
+    md: 'w-full max-w-[28rem]',  // 28rem = 448px
+    lg: 'w-full max-w-[32rem]',  // 32rem = 512px
+    xl: 'w-full max-w-[48rem]',  // 48rem = 768px
+    full: 'w-full max-w-[90vw]',
   };
 
   if (!isOpen) return null;
@@ -88,14 +88,15 @@ export const Modal = () => {
         className={`fixed inset-0 bg-black/50 transition-opacity ${
           isOpen ? 'opacity-100' : 'opacity-0'
         }`}
-        onClick={handleOutsideClick}
         aria-hidden="true"
       />
 
       {/* Modal Container */}
-      <div className={`fixed inset-0 z-50 flex items-center justify-center p-4`}>
+      <div className={`fixed inset-0 z-50 flex items-center justify-center p-4`}
+        onClick={handleOutsideClick}
+      >
         <div
-          className={`relative bg-white dark:bg-gray-800 flex flex-col rounded-lg shadow-xl w-full max-h-[90vh] ${sizeClasses[size]} transform transition-all duration-300 ${
+          className={`relative bg-gray-50 dark:bg-gray-800 flex flex-col rounded-lg shadow-xl w-full max-h-[90vh] ${sizeClasses[size]} transform transition-all duration-300 ${
             isOpen ? 'scale-100 opacity-100' : 'scale-95 opacity-0'
           } ${className}`}
           role="dialog"

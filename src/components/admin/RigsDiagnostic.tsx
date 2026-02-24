@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -249,7 +249,7 @@ export default function RigsDiagnostic() {
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                    <tbody className="bg-gray-50 dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                       {allRigs.map((rig) => (
                         <tr key={rig.id}>
                           <td className="px-6 py-4 whitespace-nowrap">
@@ -776,7 +776,7 @@ export default function RigsDiagnostic() {
                           </th>
                         </tr>
                       </thead>
-                      <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                      <tbody className="bg-gray-50 dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                         {tursoRigs.map((rig) => (
                           <tr key={rig.id}>
                             <td className="px-6 py-4 whitespace-nowrap">

@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -10,137 +10,31 @@ import {
   Send,
   ChevronLeft,
   CheckCircle2,
-  ChevronRight,
-  Edit2,
 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
+import { useModal } from '../store/modalStore';
 import { useAutoSave } from '../hooks/useAutoSave';
+import { useReportSave } from '../hooks/useReportSave';
+import { useReportLoader } from '../hooks/useReportLoader';
+import { useReportWizard } from '../hooks/useReportWizard';
 import { completeReportSchema, type CompleteReportData } from '../schemas';
-import {
-  reportsApi,
-  drillStringApi,
-  crewApi,
-  bitRecordsApi,
-  timeDistributionApi,
-  mudApi,
-  drillingParamsApi,
-  deviationApi,
-  operationsLogApi,
-} from '../lib/api';
+import { reportsApi } from '../lib/api';
 import { transformFormToReportData } from '../lib/reportHelpers';
 import { toast } from '../lib/toast';
-import { loadLastReportTemplate, saveLastReportTemplate } from '../lib/lastReportData';
 import { backgroundPush } from '../lib/syncHelper';
-import { formatDateDMY } from '../lib/dateUtils';
-import type { Report } from '../types/report';
+import { WIZARD_TABS, DEFAULT_REPORT_VALUES } from '../types/reportForm';
 
-// Import form sections
-import { HeaderSection } from '../components/forms/HeaderSection';
+// Import form sections & step components
+import { RigSelectionStep } from '../components/forms/RigSelectionStep';
+import { HeaderStep } from '../components/forms/HeaderStep';
+import { HeaderSummaryCard } from '../components/forms/HeaderSummaryCard';
 import { CrewSection } from '../components/forms/CrewSection';
 import { TimeDistributionSection } from '../components/forms/TimeDistributionSection';
 import { BitRecordSection } from '../components/forms/BitRecordSection';
 import { MudRecordSection } from '../components/forms/MudRecordSection';
 import { LithologySection } from '../components/forms/LithologySection';
+import { DrillStringSection } from '../components/forms/DrillStringSection';
 import { ObservationsSection } from '../components/forms/ObservationsSection';
-
-// ============================================================================
-// TYPES
-// ============================================================================
-
-type TabId = 'crew' | 'time' | 'bits' | 'mud' | 'lithology' | 'observations' | 'drillString';
-
-interface Tab {
-  id: TabId;
-  label: string;
-  icon: string;
-  description: string;
-}
-
-type WizardStep = 'header' | 'sections';
-
-// ============================================================================
-// CONSTANTS
-// ============================================================================
-
-const TABS: Tab[] = [
-  {
-    id: 'crew',
-    label: 'Cuadrilla',
-    icon: '👥',
-    description: 'Personal y turnos de trabajo'
-  },
-  {
-    id: 'time',
-    label: 'Distribución de Tiempo',
-    icon: '⏱️',
-    description: 'Horas por operación y turno'
-  },
-  {
-    id: 'bits',
-    label: 'Mechas',
-    icon: '🔩',
-    description: 'Record de brocas utilizadas'
-  },
-  {
-    id: 'mud',
-    label: 'Lodo',
-    icon: '🧪',
-    description: 'Propiedades y aditivos del lodo'
-  },
-  {
-    id: 'lithology',
-    label: 'Litología',
-    icon: '⛏️',
-    description: 'Parámetros de perforación y desviación'
-  },
-  {
-    id: 'observations',
-    label: 'Observaciones',
-    icon: '📝',
-    description: 'Bitácora de operaciones'
-  },
-  {
-    id: 'drillString',
-    label: 'Sarta de Perforación',
-    icon: '🔗',
-    description: 'Datos de la sarta'
-  },
-];
-
-const DEFAULT_VALUES: Partial<CompleteReportData> = {
-  header: {
-    reportNumber: 1,
-    reportDate: new Date().toISOString().split('T')[0],
-    wellNumber: '',
-    rigNumber: '',
-    operator: ''
-  },
-  crew: {
-    shifts: [
-      { shift: 'morning', shiftStart: '06:00', shiftEnd: '14:00', members: [] },
-      { shift: 'afternoon', shiftStart: '14:00', shiftEnd: '22:00', members: [] },
-      { shift: 'night', shiftStart: '22:00', shiftEnd: '06:00', members: [] },
-    ],
-  },
-  timeDistribution: {
-    distributions: [],
-  },
-  bitRecords: {
-    records: [],
-  },
-  mudRecords: {
-    records: [],
-    additives: [],
-  },
-  lithology: {
-    drillingParameters: [],
-    deviationHistory: [],
-  },
-  observations: {
-    operations: [],
-  },
-  drillString: {},
-};
 
 // ============================================================================
 // MAIN COMPONENT
@@ -150,18 +44,16 @@ export default function ReportForm() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { sessionToken, user } = useAuthStore();
+  const { openModal } = useModal();
 
-  // Wizard state
-  const [wizardStep, setWizardStep] = useState<WizardStep>('header');
-  const [activeTab, setActiveTab] = useState<TabId>('crew');
-
-  // Loading states
+  // Loading states (kept here because they're used in handleSaveDraft/onSubmit)
   const [isSaving, setIsSaving] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isLoadingReport, setIsLoadingReport] = useState(false);
+
+  // Report loader hook
+  const { existingReport, isLoadingReport, failedSections, loadReport } = useReportLoader(sessionToken);
 
   // Report state
-  const [existingReport, setExistingReport] = useState<Report | null>(null);
   const [reportId, setReportId] = useState<string | null>(id || null);
 
   const isEditMode = !!id;
@@ -169,470 +61,133 @@ export default function ReportForm() {
   // React Hook Form setup
   const methods = useForm<CompleteReportData>({
     resolver: zodResolver(completeReportSchema),
-    defaultValues: DEFAULT_VALUES,
+    defaultValues: DEFAULT_REPORT_VALUES,
     mode: 'onChange',
   });
 
   const {
-    handleSubmit: hookFormSubmit,
     formState: { errors, isDirty },
-    watch,
-    trigger,
   } = methods;
 
   // Watch form data
-  const formData = watch();
-  const headerData = useMemo(() => formData.header, [formData.header]);
-  // Auto-save hook (only for new reports in sections step)
-  const autoSaveEnabled = useMemo(
-    () => !isEditMode && isDirty && wizardStep === 'sections',
-    [isEditMode, isDirty, wizardStep]
-  );
+  const formData = methods.watch();
+  const headerData = formData.header;
 
+  // Report section save hook
+  const { saveAllSections, hasSectionData } = useReportSave({
+    sessionToken,
+    formData,
+    failedSections,
+  });
+
+  // Wizard navigation hook
   const {
-    clearSaved: clearAutoSave,
-  } = useAutoSave({
+    wizardStep,
+    activeTab,
+    setActiveTab,
+    accessibleRigs,
+    selectedRigId,
+    setSelectedRigId,
+    isLoadingRigs,
+    isLoadingSnapshot,
+    isHeaderValid,
+    canEdit,
+    getSectionSummary,
+    handleRigConfirmed,
+    handleBackToRig,
+    handleContinueToSections,
+    handleBackToHeader,
+  } = useReportWizard({
+    methods,
+    sessionToken,
+    user,
+    existingReport,
+    isEditMode,
+    loadReport,
+    openModal,
+    id,
+  });
+
+  // Auto-save hook (only for new reports in sections step)
+  const { clearSaved: clearAutoSave } = useAutoSave({
     data: formData,
     storageKey: 'report-draft',
     debounceMs: 2000,
-    enabled: autoSaveEnabled,
-  // DEBUG: Track renders
+    enabled: !isEditMode && isDirty && wizardStep === 'sections',
   });
 
-  // ============================================================================
-  // COMPUTED VALUES
-  // ============================================================================
-
-  /**
-   * Check if header section is complete and valid
-   */
-  const isHeaderValid = useMemo(() => {
-    if (!headerData) return false;
-
-    // Required fields
-    const hasReportNumber = headerData.reportNumber && headerData.reportNumber > 0;
-    const hasReportDate = !!headerData.reportDate;
-
-    return hasReportNumber && hasReportDate;
-  }, [headerData]);
-
-  /**
-   * Check if user can edit this report
-   */
-  const canEdit = useMemo(() => {
-    if (!existingReport || !user) return true;
-
-    if (user.role === 'admin') return true;
-    if (user.role === 'supervisor') return true;
-
-    if (user.role === 'operator') {
-      return existingReport.status === 'draft' && existingReport.createdBy === user.id;
-    }
-
-    return false;
-  }, [existingReport, user]);
-
-  /**
-   * Get section data summary
-   */
-  const getSectionSummary = useCallback((tabId: TabId): string => {
-    switch (tabId) {
-      case 'crew':
-        const memberCount = formData.crew?.shifts?.reduce(
-          (sum, shift) => sum + shift.members.length, 0
-        ) || 0;
-        return memberCount > 0 ? `${memberCount} miembros` : 'Sin datos';
-
-      case 'time':
-        const distCount = formData.timeDistribution?.distributions?.length || 0;
-        return distCount > 0 ? `${distCount} operaciones` : 'Sin datos';
-
-      case 'bits':
-        const bitCount = formData.bitRecords?.records?.length || 0;
-        return bitCount > 0 ? `${bitCount} mechas` : 'Sin datos';
-
-      case 'mud':
-        const mudCount = formData.mudRecords?.records?.length || 0;
-        return mudCount > 0 ? `${mudCount} registros` : 'Sin datos';
-
-      case 'lithology':
-        const paramCount = formData.lithology?.drillingParameters?.length || 0;
-        const devCount = formData.lithology?.deviationHistory?.length || 0;
-        return paramCount > 0 || devCount > 0
-          ? `${paramCount} parámetros, ${devCount} desviaciones`
-          : 'Sin datos';
-
-      case 'observations':
-        const opsCount = formData.observations?.operations?.length || 0;
-        return opsCount > 0 ? `${opsCount} observaciones` : 'Sin datos';
-
-      case 'drillString':
-        const hasData = formData.drillString && Object.keys(formData.drillString).length > 0;
-        return hasData ? 'Configurado' : 'Sin datos';
-
-      default:
-        return 'Sin datos';
-    }
-  }, [formData]);
-
-  // ============================================================================
-  // EFFECTS
-  // ============================================================================
-
-  /**
-   * Load existing report OR restore draft
-   */
-  useEffect(() => {
-    const loadData = async () => {
-      if (isEditMode && id && sessionToken) {
-        await loadExistingReport(id);
-        setWizardStep('sections');
-      } else if (!isEditMode && sessionToken && user) {
-        const lastCompleteReport = await loadLastCompleteReport();
-        
-        if (lastCompleteReport) {
-          methods.reset(lastCompleteReport);
-            toast.success('Datos del último reporte cargados');
-        } else {
-          const lastReportTemplate = loadLastReportTemplate();
-          if (lastReportTemplate) {
-            const newHeader = {
-              ...DEFAULT_VALUES.header,
-              ...lastReportTemplate,
-              reportDate: new Date().toISOString().split('T')[0],
-            };
-            methods.reset({ ...DEFAULT_VALUES, header: newHeader });
-            toast.info('Encabezado del último reporte cargado');
-          }
-        }
-      }
-    };
-
-    loadData();
-  }, [isEditMode, id, sessionToken, user]);
-
-  /**
-   * Validate edit permissions
-   */
-  useEffect(() => {
-    if (isEditMode && existingReport && !canEdit) {
-      toast.error('No tienes permisos para editar este reporte');
-      navigate('/reports');
-    }
-  }, [isEditMode, existingReport, canEdit, navigate]);
-
-  // ============================================================================
-  // HANDLERS - WIZARD NAVIGATION
-  // ============================================================================
-
-  /**
-   * Handle continue from header to sections
-   */
-  const handleContinueToSections = async () => {
-    const isValid = await trigger('header');
-
-    if (!isValid) {
-      toast.error('Por favor completa todos los campos obligatorios del encabezado');
-      return;
-    }
-
-    if (!isHeaderValid) {
-      toast.error('Debes completar al menos el número y fecha del reporte');
-      return;
-    }
-
-    setWizardStep('sections');
-    toast.success('Encabezado completado. Ahora selecciona una sección para llenar.');
-  };
-
-  /**
-   * Handle back to header editing
-   */
-  const handleBackToHeader = () => {
-    setWizardStep('header');
-    toast.info('Ahora puedes modificar el encabezado');
-  };
-
-  /**
-   * Handle cancel - clean localStorage and navigate back
-   */
+  // Cancel handler (needs clearAutoSave from above)
   const handleCancel = () => {
-    // Limpiar ambos localStorage
     clearAutoSave();
-    localStorage.removeItem('report-header-draft');
     navigate('/reports');
   };
 
   // ============================================================================
-  // HANDLERS - DATA LOADING
+  // HANDLERS - DATA SAVING
   // ============================================================================
 
-  const loadExistingReport = async (reportId: string) => {
-    if (!sessionToken) return;
-
-    setIsLoadingReport(true);
-    try {
-      const report = await reportsApi.get(sessionToken, reportId);
-      setExistingReport(report);
-
-      const [
-        drillString,
-        crewShifts,
-        bitRecords,
-        timeDistributions,
-        mudRecords,
-        mudAdditives,
-        drillingParams,
-        deviationHistory,
-        operationsLog,
-      ] = await Promise.all([
-        drillStringApi.get(sessionToken, reportId).catch(() => null),
-        crewApi.listShifts(sessionToken, reportId).catch(() => []),
-        bitRecordsApi.list(sessionToken, reportId).catch(() => []),
-        timeDistributionApi.list(sessionToken, reportId).catch(() => []),
-        mudApi.listRecords(sessionToken, reportId).catch(() => []),
-        mudApi.listAdditives(sessionToken, reportId).catch(() => []),
-        drillingParamsApi.list(sessionToken, reportId).catch(() => []),
-        deviationApi.list(sessionToken, reportId).catch(() => []),
-        operationsLogApi.list(sessionToken, reportId).catch(() => []),
-      ]);
-
-      const formData: Partial<CompleteReportData> = {
-        header: {
-          reportNumber: report.reportNumber,
-          reportDate: report.reportDate,
-          wellNumber: report.wellNumber ?? '',
-          apiNumber: report.apiNumber ?? '',
-          contract: report.contract ?? '',
-          contractor: report.contractor ?? '',
-          operator: report.operator ?? '',
-          fieldDistrict: report.fieldDistrict ?? '',
-          municipality: report.municipality ?? '',
-          rigNumber: report.rigNumber ?? '',
-          supervisor24h: report.supervisor24h ?? '',
-        },
-        drillString: drillString || {},
-        crew: {
-          shifts: crewShifts.length > 0
-            ? crewShifts.map(shift => ({
-                shift: shift.shift,
-                shiftStart: shift.shiftStart,
-                shiftEnd: shift.shiftEnd,
-                members: shift.members
-                  .filter(member => member.personnelId)
-                  .map(member => ({
-                    personnelId: member.personnelId,
-                    position: member.position || '',
-                    hours: member.hours
-                  }))
-              }))
-            : DEFAULT_VALUES.crew!.shifts,
-        },
-        bitRecords: {
-          records: bitRecords,
-        },
-        timeDistribution: {
-          distributions: (timeDistributions as any[]).map(td => ({
-            operationCodeId: td.operationCodeId,
-            hoursShift1: typeof td.hoursShift1 === 'number' ? td.hoursShift1 : 0,
-            hoursShift2: typeof td.hoursShift2 === 'number' ? td.hoursShift2 : 0,
-            hoursShift3: typeof td.hoursShift3 === 'number' ? td.hoursShift3 : 0,
-          })),
-        },
-        mudRecords: {
-          records: (mudRecords as any[]) || [],
-          additives: (mudAdditives as any[]) || [],
-        },
-        lithology: {
-          drillingParameters: (drillingParams as any[]) || [],
-          deviationHistory: (deviationHistory as any[]) || [],
-        },
-        observations: {
-          operations: (operationsLog as any[]) || [],
-        },
-      };
-
-      methods.reset(formData);
-
-    } catch (error) {
-      console.error('Error loading report:', error);
-      toast.error('Error al cargar el reporte');
-      navigate('/reports');
-    } finally {
-      setIsLoadingReport(false);
-    }
-  };
-
-  /**
-   * Load the last complete report from the current user
-   * This will be used to pre-fill a new report with data from the last one
-   */
-  const loadLastCompleteReport = async (): Promise<Partial<CompleteReportData> | null> => {
-    if (!sessionToken || !user) return null;
-
-    try {
-      // Get all reports from the current user
-      const reportsResponse = await reportsApi.list(sessionToken, {
-        dateFrom: undefined,
-        dateTo: undefined,
-        status: undefined,
-        createdBy: user.id,
-        wellNumber: undefined,
-      }, 1, 100);
-
-      if (reportsResponse.reports.length === 0) {
-        return null;
-      }
-
-      // Sort by date descending and get the most recent one
-      const sortedReports = [...reportsResponse.reports].sort((a, b) =>
-        new Date(b.reportDate).getTime() - new Date(a.reportDate).getTime()
-      );
-      const lastReport = sortedReports[0];
-
-
-      // Load all sections from the last report
-      const [
-        drillString,
-        crewShifts,
-        bitRecords,
-        timeDistributions,
-        mudRecords,
-        mudAdditives,
-        drillingParams,
-        deviationHistory,
-        operationsLog,
-      ] = await Promise.all([
-        drillStringApi.get(sessionToken, lastReport.id).catch(() => null),
-        crewApi.listShifts(sessionToken, lastReport.id).catch(() => []),
-        bitRecordsApi.list(sessionToken, lastReport.id).catch(() => []),
-        timeDistributionApi.list(sessionToken, lastReport.id).catch(() => []),
-        mudApi.listRecords(sessionToken, lastReport.id).catch(() => []),
-        mudApi.listAdditives(sessionToken, lastReport.id).catch(() => []),
-        drillingParamsApi.list(sessionToken, lastReport.id).catch(() => []),
-        deviationApi.list(sessionToken, lastReport.id).catch(() => []),
-        operationsLogApi.list(sessionToken, lastReport.id).catch(() => []),
-      ]);
-
-      // Build the complete form data with incremented report number and current date
-      const formData: Partial<CompleteReportData> = {
-        header: {
-          reportNumber: lastReport.reportNumber + 1, // Increment report number
-          reportDate: new Date().toISOString().split('T')[0], // Current date
-          wellNumber: lastReport.wellNumber ?? '',
-          apiNumber: lastReport.apiNumber ?? '',
-          contract: lastReport.contract ?? '',
-          contractor: lastReport.contractor ?? '',
-          operator: lastReport.operator ?? '',
-          fieldDistrict: lastReport.fieldDistrict ?? '',
-          municipality: lastReport.municipality ?? '',
-          rigNumber: lastReport.rigNumber ?? '',
-          supervisor24h: lastReport.supervisor24h ?? '',
-        },
-        drillString: drillString || {},
-        crew: {
-          shifts: crewShifts.length > 0
-            ? crewShifts.map(shift => ({
-                shift: shift.shift,
-                shiftStart: shift.shiftStart,
-                shiftEnd: shift.shiftEnd,
-                members: shift.members
-                  .filter(member => member.personnelId)
-                  .map(member => ({
-                    personnelId: member.personnelId,
-                    position: member.position || '',
-                    hours: member.hours
-                  }))
-              }))
-            : DEFAULT_VALUES.crew!.shifts,
-        },
-        bitRecords: {
-          records: bitRecords,
-        },
-        timeDistribution: {
-          distributions: (timeDistributions as any[]).map(td => ({
-            operationCodeId: td.operationCodeId,
-            hoursShift1: typeof td.hoursShift1 === 'number' ? td.hoursShift1 : 0,
-            hoursShift2: typeof td.hoursShift2 === 'number' ? td.hoursShift2 : 0,
-            hoursShift3: typeof td.hoursShift3 === 'number' ? td.hoursShift3 : 0,
-          })),
-        },
-        mudRecords: {
-          records: (mudRecords as any[]) || [],
-          additives: (mudAdditives as any[]) || [],
-        },
-        lithology: {
-          drillingParameters: (drillingParams as any[]) || [],
-          deviationHistory: (deviationHistory as any[]) || [],
-        },
-        observations: {
-          operations: (operationsLog as any[]) || [],
-        },
-      };
-
-      return formData;
-
-    } catch (error) {
-      console.error('Error loading last complete report:', error);
-      return null;
-    }
-  };
-
-  // ============================================================================
-  // HANDLERS - DATA SAVING (continuará en la siguiente parte...)
-  // ============================================================================
-
-  const handleSaveDraft = async () => {
+  /** Shared save logic: create/update report + save sections + snapshot + sync */
+  const persistReport = async (
+    data: CompleteReportData,
+    opts: { submit?: boolean } = {},
+  ): Promise<void> => {
     if (!sessionToken) {
       toast.error('No hay sesión activa');
       return;
     }
-
     if (!isHeaderValid) {
       toast.error('Completa el encabezado antes de guardar');
       return;
     }
 
+    let currentReportId = reportId;
+    const reportData = transformFormToReportData(data);
+
+    // Create or update
+    if (currentReportId) {
+      await reportsApi.update(sessionToken, currentReportId, reportData);
+      // If saving as draft and report was not already draft, reopen to draft
+      if (!opts.submit && existingReport?.status && existingReport.status !== 'draft') {
+        await reportsApi.reopen(sessionToken, currentReportId);
+        // Refresh existingReport so subsequent saves don't try to reopen again
+        await loadReport(currentReportId);
+      }
+      if (!opts.submit) toast.success('Reporte actualizado');
+    } else {
+      const newReport = await reportsApi.create(sessionToken, reportData);
+      currentReportId = newReport.id;
+      setReportId(currentReportId);
+      if (!opts.submit) toast.success('Reporte guardado como borrador');
+    }
+
+    // Save all sections
+    await saveAllSections(currentReportId);
+
+    // Submit if requested
+    if (opts.submit) {
+      // If report is not already draft, reopen to draft first then submit
+      if (existingReport?.status && existingReport.status !== 'draft') {
+        await reportsApi.reopen(sessionToken, currentReportId);
+      }
+      await reportsApi.submit(sessionToken, currentReportId);
+    }
+
+    // Snapshot (non-blocking)
+    await reportsApi.updateSnapshot(sessionToken, currentReportId).catch((err) =>
+      console.warn('[ReportForm] Snapshot update failed (non-blocking):', err),
+    );
+
+    clearAutoSave();
+    backgroundPush(sessionToken);
+
+    if (opts.submit) toast.success('Reporte enviado exitosamente');
+    navigate('/reports');
+  };
+
+  const handleSaveDraft = async () => {
     setIsSaving(true);
     try {
-      let currentReportId = reportId;
-
-      const reportData = transformFormToReportData(formData);
-
-      if (currentReportId) {
-        await reportsApi.update(sessionToken, currentReportId, reportData);
-        toast.success('Reporte actualizado');
-      } else {
-        const newReport = await reportsApi.create(sessionToken, reportData);
-        currentReportId = newReport.id;
-        setReportId(currentReportId);
-
-        // Guardar datos del reporte como plantilla para el próximo
-        saveLastReportTemplate({
-          reportNumber: formData.header.reportNumber,
-          wellNumber: formData.header.wellNumber,
-          apiNumber: formData.header.apiNumber,
-          contract: formData.header.contract,
-          contractor: formData.header.contractor,
-          operator: formData.header.operator,
-          fieldDistrict: formData.header.fieldDistrict,
-          municipality: formData.header.municipality,
-          rigNumber: formData.header.rigNumber,
-          supervisor24h: formData.header.supervisor24h,
-        });
-
-        toast.success('Reporte guardado como borrador');
-      }
-
-      await saveAllSectionsWithData(currentReportId);
-
-      clearAutoSave();
-
-      // Push changes to cloud in background
-      backgroundPush(sessionToken);
-
-      navigate('/reports');
-
+      await persistReport(formData);
     } catch (error) {
       console.error('Error saving draft:', error);
       toast.error(`Error al guardar: ${error}`);
@@ -641,56 +196,10 @@ export default function ReportForm() {
     }
   };
 
-  const onSubmit = async (data: CompleteReportData) => {
-    if (!sessionToken) {
-      toast.error('No hay sesión activa');
-      return;
-    }
-
-    if (!isHeaderValid) {
-      toast.error('Completa el encabezado antes de enviar');
-      return;
-    }
-
+  const handleSubmitReport = async () => {
     setIsSubmitting(true);
     try {
-      let currentReportId = reportId;
-
-      const reportData = transformFormToReportData(data);
-
-      if (currentReportId) {
-        await reportsApi.update(sessionToken, currentReportId, reportData);
-      } else {
-        const newReport = await reportsApi.create(sessionToken, reportData);
-        currentReportId = newReport.id;
-        setReportId(currentReportId);
-
-        // Guardar datos del reporte como plantilla para el próximo
-        saveLastReportTemplate({
-          reportNumber: data.header.reportNumber,
-          wellNumber: data.header.wellNumber,
-          apiNumber: data.header.apiNumber,
-          contract: data.header.contract,
-          contractor: data.header.contractor,
-          operator: data.header.operator,
-          fieldDistrict: data.header.fieldDistrict,
-          municipality: data.header.municipality,
-          rigNumber: data.header.rigNumber,
-          supervisor24h: data.header.supervisor24h,
-        });
-      }
-
-      await saveAllSectionsWithData(currentReportId);
-      await reportsApi.submit(sessionToken, currentReportId);
-
-      clearAutoSave();
-
-      // Push changes to cloud in background
-      backgroundPush(sessionToken);
-
-      toast.success('Reporte enviado exitosamente');
-      navigate('/reports');
-
+      await persistReport(formData, { submit: true });
     } catch (error) {
       console.error('Error submitting report:', error);
       toast.error(`Error al enviar el reporte: ${error}`);
@@ -699,448 +208,19 @@ export default function ReportForm() {
     }
   };
 
-  // ============================================================================
-  // HELPERS - SECTION SAVING (Individual functions)
-  // ============================================================================
-
-  /**
-   * Check if a section has data
-   */
-  const hasSectionData = (sectionId: TabId): boolean => {
-    switch (sectionId) {
-      case 'drillString':
-        return !!(formData.drillString && Object.keys(formData.drillString).length > 0);
-      
-      case 'crew':
-        return !!(formData.crew?.shifts?.some(s => s.members.length > 0));
-      
-      case 'bits':
-        return !!(formData.bitRecords?.records && formData.bitRecords.records.length > 0);
-      
-      case 'time':
-        return !!(
-          formData.timeDistribution?.distributions && 
-          formData.timeDistribution.distributions.length > 0 &&
-          formData.timeDistribution.distributions.some(d => d.operationCodeId && d.operationCodeId.trim() !== '')
-        );
-      
-      case 'mud':
-        return !!(
-          (formData.mudRecords?.records && formData.mudRecords.records.length > 0) ||
-          (formData.mudRecords?.additives && formData.mudRecords.additives.length > 0)
-        );
-      
-      case 'lithology':
-        return !!(
-          (formData.lithology?.drillingParameters && formData.lithology.drillingParameters.length > 0) ||
-          (formData.lithology?.deviationHistory && formData.lithology.deviationHistory.length > 0)
-        );
-      
-      case 'observations':
-        return !!(formData.observations?.operations && formData.observations.operations.length > 0);
-      
-      default:
-        return false;
-    }
+  // Section tab → component mapping
+  const TAB_COMPONENTS: Record<string, React.ReactNode> = {
+    crew: <CrewSection />,
+    time: <TimeDistributionSection />,
+    bits: <BitRecordSection />,
+    mud: <MudRecordSection />,
+    lithology: <LithologySection />,
+    observations: <ObservationsSection />,
+    drillString: <DrillStringSection />,
   };
 
-  /**
-   * Save DrillString section
-   */
-  const saveDrillString = async (reportId: string) => {
-    if (!sessionToken || !formData.drillString) return;
-    await drillStringApi.save(sessionToken, reportId, formData.drillString);
-  };
-
-  /**
-   * Save Crew section
-   * Strategy: DELETE ALL + INSERT ALL to avoid duplicates
-   */
-  const saveCrew = async (reportId: string) => {
-    if (!sessionToken) return;
-    
-    // PASO 1: Eliminar todos los shifts existentes (siempre en edit mode)
-    if (isEditMode) {
-      try {
-        await crewApi.deleteAllShifts(sessionToken, reportId);
-      } catch (error) {
-        console.warn('Could not delete existing shifts:', error);
-      }
-    }
-    
-    // PASO 2: Insertar todos los shifts del formulario (solo si hay datos)
-    if (formData.crew?.shifts) {
-      for (const shift of formData.crew.shifts) {
-        // Validar que el shift tenga los campos requeridos
-        if (!shift.shift) {
-          console.warn('Skipping shift without shift type:', shift);
-          continue;
-        }
-        
-        if (shift.members && shift.members.length > 0) {
-          // Filtrar miembros válidos (al menos con posición)
-          const validMembers = shift.members.filter(member => 
-            member.position && member.position.trim() !== ''
-          );
-          
-          if (validMembers.length === 0) {
-            continue;
-          }
-          
-          // Limpiar el objeto shift antes de enviarlo
-          const cleanShift = {
-            shift: shift.shift,
-            shiftStart: shift.shiftStart,
-            shiftEnd: shift.shiftEnd,
-            members: validMembers.map(member => ({
-              personnelId: member.personnelId || undefined,
-              position: member.position || '',
-              ci: member.personnelId ? undefined : (member.ci || undefined),
-              name: member.personnelId ? undefined : (member.name || undefined),
-              hours: member.hours || undefined
-            }))
-          };
-          
-          await crewApi.createShift(sessionToken, reportId, cleanShift);
-        }
-      }
-    }
-  };
-
-  /**
-   * Save Bit Records section
-   * Strategy: DELETE ALL + INSERT ALL to avoid duplicates
-   */
-  const saveBits = async (reportId: string) => {
-    if (!sessionToken) return;
-    
-    // PASO 1: Eliminar todos los records existentes
-    if (isEditMode) {
-      try {
-        await bitRecordsApi.deleteAll(sessionToken, reportId);
-      } catch (error) {
-        console.warn('Could not delete existing bit records:', error);
-      }
-    }
-    
-    // PASO 2: Insertar todos los records del formulario (solo si hay datos)
-    if (formData.bitRecords?.records && formData.bitRecords.records.length > 0) {
-      for (const record of formData.bitRecords.records) {
-        await bitRecordsApi.create(sessionToken, reportId, record);
-      }
-    }
-  };
-
-  /**
-   * Save Time Distribution section
-   * Strategy: DELETE ALL + INSERT ALL to avoid duplicates
-   */
-  const saveTime = async (reportId: string) => {
-    if (!sessionToken) return;
-    
-    // PASO 1: Eliminar todos los distributions existentes (siempre en edit mode)
-    if (isEditMode) {
-      try {
-        await timeDistributionApi.deleteAll(sessionToken, reportId);
-      } catch (error) {
-        console.warn('Could not delete existing time distributions:', error);
-      }
-    }
-    
-    // PASO 2: Insertar todos los distributions del formulario (solo si hay datos)
-    if (formData.timeDistribution?.distributions && formData.timeDistribution.distributions.length > 0) {
-      // Filtrar distribuciones con operationCodeId válido y limpiar datos
-      const validDistributions = formData.timeDistribution.distributions
-        .filter(dist => dist.operationCodeId && dist.operationCodeId.trim() !== '')
-        .map(dist => ({
-          operationCodeId: dist.operationCodeId,
-          hoursShift1: typeof dist.hoursShift1 === 'number' ? dist.hoursShift1 : 0,
-          hoursShift2: typeof dist.hoursShift2 === 'number' ? dist.hoursShift2 : 0,
-          hoursShift3: typeof dist.hoursShift3 === 'number' ? dist.hoursShift3 : 0,
-        }));
-      
-      // Solo guardar si hay distribuciones válidas
-      if (validDistributions.length > 0) {
-        await timeDistributionApi.saveBulk(
-          sessionToken,
-          reportId,
-          validDistributions
-        );
-      }
-    }
-  };
-
-  /**
-   * Save Mud Records section
-   * Strategy: DELETE ALL + INSERT ALL to avoid duplicates
-   */
-  const saveMud = async (reportId: string) => {
-    if (!sessionToken) return;
-    
-    // PASO 1: Eliminar todos los records y additives existentes (siempre en edit mode)
-    if (isEditMode) {
-      try {
-        await mudApi.deleteAllRecords(sessionToken, reportId);
-        await mudApi.deleteAllAdditives(sessionToken, reportId);
-      } catch (error) {
-        console.warn('Could not delete existing mud data:', error);
-      }
-    }
-    
-    // PASO 2: Insertar todos los records del formulario (solo si hay datos)
-    if (formData.mudRecords?.records && formData.mudRecords.records.length > 0) {
-      for (const record of formData.mudRecords.records) {
-        await mudApi.createRecord(sessionToken, reportId, record);
-      }
-    }
-    
-    // PASO 3: Insertar todos los additives del formulario (solo si hay datos)
-    if (formData.mudRecords?.additives && formData.mudRecords.additives.length > 0) {
-      for (const additive of formData.mudRecords.additives) {
-        await mudApi.createAdditive(sessionToken, reportId, additive);
-      }
-    }
-  };
-
-  /**
-   * Save Lithology section
-   * Strategy: DELETE ALL + INSERT ALL to avoid duplicates
-   */
-  const saveLithology = async (reportId: string) => {
-    if (!sessionToken) return;
-    
-    // PASO 1: Eliminar todos los params y deviations existentes (siempre en edit mode)
-    if (isEditMode) {
-      try {
-        await drillingParamsApi.deleteAll(sessionToken, reportId);
-        await deviationApi.deleteAll(sessionToken, reportId);
-      } catch (error) {
-        console.warn('Could not delete existing lithology data:', error);
-      }
-    }
-    
-    // PASO 2: Insertar todos los drilling parameters del formulario (solo si hay datos)
-    if (formData.lithology?.drillingParameters && formData.lithology.drillingParameters.length > 0) {
-      for (const param of formData.lithology.drillingParameters) {
-        await drillingParamsApi.create(sessionToken, reportId, param);
-      }
-    }
-    
-    // PASO 3: Insertar todos los deviation history del formulario (solo si hay datos)
-    if (formData.lithology?.deviationHistory && formData.lithology.deviationHistory.length > 0) {
-      for (const deviation of formData.lithology.deviationHistory) {
-        await deviationApi.create(sessionToken, reportId, deviation);
-      }
-    }
-  };
-
-  /**
-   * Save Observations section
-   * Strategy: DELETE ALL + INSERT ALL to avoid duplicates
-   */
-  const saveObservations = async (reportId: string) => {
-    if (!sessionToken) return;
-    
-    // PASO 1: Eliminar todos los operations existentes (siempre en edit mode)
-    if (isEditMode) {
-      try {
-        await operationsLogApi.deleteAll(sessionToken, reportId);
-      } catch (error) {
-        console.warn('Could not delete existing operations:', error);
-      }
-    }
-    
-    // PASO 2: Insertar todos los operations del formulario (solo si hay datos)
-    if (formData.observations?.operations && formData.observations.operations.length > 0) {
-      for (const operation of formData.observations.operations) {
-        await operationsLogApi.create(sessionToken, reportId, operation);
-      }
-    }
-  };
-
-  /**
-   * Save ALL sections that have data
-   * This is the MAIN function to use instead of saveActiveSection
-   */
-    const saveAllSectionsWithData = async (reportId: string) => {
-    if (!sessionToken) return;
-
-    const sectionsToProcess: Array<{ id: TabId; name: string; saveFn: () => Promise<void>; hasData: boolean }> = [];
-
-    // Detect which sections have data AND which are empty (for deletion in edit mode)
-    sectionsToProcess.push({ 
-      id: 'drillString', 
-      name: 'Sarta de Perforación', 
-      saveFn: () => saveDrillString(reportId),
-      hasData: hasSectionData('drillString')
-    });
-    sectionsToProcess.push({ 
-      id: 'crew', 
-      name: 'Cuadrilla', 
-      saveFn: () => saveCrew(reportId),
-      hasData: hasSectionData('crew')
-    });
-    sectionsToProcess.push({ 
-      id: 'bits', 
-      name: 'Mechas', 
-      saveFn: () => saveBits(reportId),
-      hasData: hasSectionData('bits')
-    });
-    sectionsToProcess.push({ 
-      id: 'time', 
-      name: 'Distribución de Tiempo', 
-      saveFn: () => saveTime(reportId),
-      hasData: hasSectionData('time')
-    });
-    sectionsToProcess.push({ 
-      id: 'mud', 
-      name: 'Lodo', 
-      saveFn: () => saveMud(reportId),
-      hasData: hasSectionData('mud')
-    });
-    sectionsToProcess.push({ 
-      id: 'lithology', 
-      name: 'Litología', 
-      saveFn: () => saveLithology(reportId),
-      hasData: hasSectionData('lithology')
-    });
-    sectionsToProcess.push({ 
-      id: 'observations', 
-      name: 'Observaciones', 
-      saveFn: () => saveObservations(reportId),
-      hasData: hasSectionData('observations')
-    });
-
-    // Process all sections
-    const errors: Array<{ section: string; error: any }> = [];
-    let savedCount = 0;
-    let deletedCount = 0;
-
-    for (const section of sectionsToProcess) {
-      try {
-        if (section.hasData) {
-          // Section has data: save it (will delete old + insert new)
-          await section.saveFn();
-          savedCount++;
-        } else if (isEditMode) {
-          // Section is empty in edit mode: just delete (cleanup)
-          await section.saveFn(); // The saveFn already handles DELETE ALL
-          deletedCount++;
-        }
-        // If new report and empty: do nothing (no data to save)
-      } catch (error) {
-        console.error(`✗ Error processing ${section.name}:`, error);
-        errors.push({ section: section.name, error });
-      }
-    }
-
-    // Report results
-    if (errors.length === 0) {
-      if (savedCount > 0 || deletedCount > 0) {
-        const messages = [];
-        if (savedCount > 0) messages.push(`${savedCount} guardada${savedCount > 1 ? 's' : ''}`);
-        if (deletedCount > 0) messages.push(`${deletedCount} limpiada${deletedCount > 1 ? 's' : ''}`);
-        toast.success(`Secciones: ${messages.join(', ')}`);
-      }
-    } else {
-      toast.error(`Error al procesar ${errors.length} sección${errors.length > 1 ? 'es' : ''}`);
-      throw new Error(`Failed to process sections: ${errors.map(e => e.section).join(', ')}`);
-    }
-  };
-
-  // ============================================================================
-  // RENDER HELPERS
-  // ============================================================================
-
-  const renderTabContent = () => {
-    switch (activeTab) {
-      case 'crew':
-        return <CrewSection />;
-      case 'time':
-        return <TimeDistributionSection />;
-      case 'bits':
-        return <BitRecordSection />;
-      case 'mud':
-        return <MudRecordSection />;
-      case 'lithology':
-        return <LithologySection />;
-      case 'observations':
-        return <ObservationsSection />;
-      case 'drillString':
-        return <div className="text-center py-8 text-gray-500">
-          Sección de Sarta de Perforación (por implementar)
-        </div>;
-      default:
-        return null;
-    }
-  };
-
-  const renderHeaderSummary = () => {
-    if (!headerData) return null;
-
-    return (
-      <Card className="bg-blue-50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800">
-        <div className="p-4">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="text-blue-600" size={20} />
-              <h3 className="font-semibold text-blue-900 dark:text-blue-100">
-                Encabezado Completado
-              </h3>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleBackToHeader}
-              icon={<Edit2 size={14} />}
-              className="border-blue-300 text-blue-700 hover:bg-blue-100 dark:border-blue-700 dark:text-blue-300"
-            >
-              Modificar
-            </Button>
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
-            <div>
-              <span className="text-gray-600 dark:text-gray-400">Reporte #:</span>
-              <span className="ml-2 font-medium text-gray-900 dark:text-gray-100">
-                {headerData.reportNumber}
-              </span>
-            </div>
-            <div>
-              <span className="text-gray-600 dark:text-gray-400">Fecha:</span>
-              <span className="ml-2 font-medium text-gray-900 dark:text-gray-100">
-                {formatDateDMY(headerData.reportDate)}
-              </span>
-            </div>
-            {headerData.wellNumber && (
-              <div>
-                <span className="text-gray-600 dark:text-gray-400">Pozo:</span>
-                <span className="ml-2 font-medium text-gray-900 dark:text-gray-100">
-                  {headerData.wellNumber}
-                </span>
-              </div>
-            )}
-            {headerData.rigNumber && (
-              <div>
-                <span className="text-gray-600 dark:text-gray-400">TAL:</span>
-                <span className="ml-2 font-medium text-gray-900 dark:text-gray-100">
-                  {headerData.rigNumber}
-                </span>
-              </div>
-            )}
-            {headerData.supervisor24h && (
-              <div>
-                <span className="text-gray-600 dark:text-gray-400">Supervisor:</span>
-                <span className="ml-2 font-medium text-gray-900 dark:text-gray-100">
-                  {headerData.supervisor24h}
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
-      </Card>
-    );
-  };
+  // Current active tab metadata
+  const currentTab = WIZARD_TABS.find(t => t.id === activeTab);
 
   const handleFormKeyDown = (e: React.KeyboardEvent<HTMLFormElement>) => {
     if (e.key === 'Enter' && e.target instanceof HTMLInputElement) {
@@ -1167,15 +247,17 @@ export default function ReportForm() {
 
   return (
     <FormProvider {...methods}>
-      <form onSubmit={hookFormSubmit(onSubmit)} onKeyDown={handleFormKeyDown}>
+      <form onSubmit={(e) => e.preventDefault()} onKeyDown={handleFormKeyDown}>
         <MainLayout
           title={isEditMode ? 'Editar Reporte DDR' : 'Nuevo Reporte DDR'}
           subtitle={
             isEditMode
               ? `Reporte #${existingReport?.reportNumber || id}`
-              : wizardStep === 'header'
-                ? 'Paso 1: Completa el encabezado del reporte'
-                : 'Paso 2: Selecciona y llena una sección'
+              : wizardStep === 'rig'
+                ? 'Paso 1: Selecciona el taladro'
+                : wizardStep === 'header'
+                  ? 'Paso 2: Completa el encabezado del reporte'
+                  : 'Paso 3: Selecciona y llena una sección'
           }
           headerActions={
             <div className="flex gap-2 items-center flex-wrap">
@@ -1194,7 +276,8 @@ export default function ReportForm() {
 
                   <Button
                     variant="primary"
-                    type="submit"
+                    type="button"
+                    onClick={handleSubmitReport}
                     loading={isSubmitting}
                     disabled={!canEdit}
                     icon={<Send size={16} />}
@@ -1208,72 +291,44 @@ export default function ReportForm() {
         >
           <div className="max-w-7xl mx-auto space-y-6">
 
-            {/* STEP 1: HEADER SECTION */}
-            {wizardStep === 'header' && (
-              <>
-                <Card>
-                  <div className="p-6">
-                    <div className="flex items-center gap-3 mb-6">
-                      <div className="flex items-center justify-center w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-bold">
-                        1
-                      </div>
-                      <div>
-                        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                          Información del Encabezado
-                        </h2>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                          Completa los datos básicos del reporte
-                        </p>
-                      </div>
-                    </div>
-
-                    <HeaderSection />
-                  </div>
-                </Card>
-
-                {/* Continue Button */}
-                <Card>
-                  <div className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                          {isHeaderValid
-                            ? '✅ Encabezado completado. Puedes continuar.'
-                            : '⚠️ Completa los campos obligatorios para continuar'
-                          }
-                        </p>
-                        {errors.header && (
-                          <p className="text-sm text-red-600 dark:text-red-400 mt-1">
-                            Hay errores en el encabezado
-                          </p>
-                        )}
-                      </div>
-                      <Button
-                        variant="primary"
-                        size="lg"
-                        onClick={handleContinueToSections}
-                        disabled={!isHeaderValid}
-                        className='flex justify-center items-center'
-                        icon={<ChevronRight size={20} />}
-                        iconPosition='right'
-                      >
-                        Continuar
-                      </Button>
-                    </div>
-                  </div>
-                </Card>
-              </>
+            {/* STEP 0: RIG SELECTION (new reports only) */}
+            {wizardStep === 'rig' && !isEditMode && (
+              <RigSelectionStep
+                accessibleRigs={accessibleRigs}
+                selectedRigId={selectedRigId}
+                isLoadingRigs={isLoadingRigs}
+                isLoadingSnapshot={isLoadingSnapshot}
+                onSelectRig={setSelectedRigId}
+                onConfirm={handleRigConfirmed}
+                onCancel={handleCancel}
+              />
             )}
 
-            {/* STEP 2: SECTIONS */}
+            {/* STEP 1: HEADER SECTION */}
+            {wizardStep === 'header' && (
+              <HeaderStep
+                isEditMode={isEditMode}
+                isHeaderValid={isHeaderValid}
+                errors={errors}
+                onBack={handleBackToRig}
+                onContinue={handleContinueToSections}
+              />
+            )}
+
+            {/* STEP 3: SECTIONS */}
             {wizardStep === 'sections' && (
               <>
                 {/* Header Summary */}
-                {renderHeaderSummary()}
+                {headerData && (
+                  <HeaderSummaryCard
+                    headerData={headerData}
+                    onEdit={handleBackToHeader}
+                  />
+                )}
 
                 {/* Sections Data Summary */}
                 {(() => {
-                  const sectionsWithData = TABS.filter(tab => hasSectionData(tab.id));
+                  const sectionsWithData = WIZARD_TABS.filter(tab => hasSectionData(tab.id));
                   if (sectionsWithData.length > 0) {
                     return (
                       <Card className="bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-800">
@@ -1313,9 +368,10 @@ export default function ReportForm() {
 
                     {/* Tabs Grid */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {TABS.map((tab) => {
+                      {WIZARD_TABS.map((tab) => {
                         const isActive = activeTab === tab.id;
-                        const summary = getSectionSummary(tab.id);
+                        const isFailed = failedSections.has(tab.id);
+                        const summary = isFailed ? '⚠ Error al cargar' : getSectionSummary(tab.id);
 
                         return (
                           <button
@@ -1324,9 +380,11 @@ export default function ReportForm() {
                             onClick={() => setActiveTab(tab.id)}
                             className={`
                               p-4 rounded-lg border-2 text-left transition-all
-                              ${isActive
-                                ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/10'
-                                : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                              ${isFailed
+                                ? 'border-amber-400 dark:border-amber-600 bg-amber-50 dark:bg-amber-900/10'
+                                : isActive
+                                  ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/10'
+                                  : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
                               }
                             `}
                           >
@@ -1340,14 +398,16 @@ export default function ReportForm() {
                                 <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">
                                   {tab.description}
                                 </p>
-                                <p className={`text-xs font-medium ${summary !== 'Sin datos'
-                                    ? 'text-green-600 dark:text-green-400'
-                                    : 'text-gray-500 dark:text-gray-500'
+                                <p className={`text-xs font-medium ${isFailed
+                                    ? 'text-amber-600 dark:text-amber-400'
+                                    : summary !== 'Sin datos'
+                                      ? 'text-green-600 dark:text-green-400'
+                                      : 'text-gray-500 dark:text-gray-500'
                                   }`}>
                                   {summary}
                                 </p>
                               </div>
-                              {isActive && (
+                              {isActive && !isFailed && (
                                 <CheckCircle2 className="text-primary-500 shrink-0" size={20} />
                               )}
                             </div>
@@ -1362,22 +422,19 @@ export default function ReportForm() {
                 <Card>
                   <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <span className="text-2xl">{TABS.find(t => t.id === activeTab)?.icon}</span>
+                      <span className="text-2xl">{currentTab?.icon}</span>
                       <div>
                         <h3 className="font-semibold text-gray-900 dark:text-gray-100">
-                          {TABS.find(t => t.id === activeTab)?.label}
+                          {currentTab?.label}
                         </h3>
                         <p className="text-sm text-gray-600 dark:text-gray-400">
-                          {TABS.find(t => t.id === activeTab)?.description}
+                          {currentTab?.description}
                         </p>
                       </div>
                     </div>
-                    <div>
-                      Completacion
-                    </div>
                   </div>
                   <div className="p-6">
-                    {renderTabContent()}
+                    {TAB_COMPONENTS[activeTab] ?? null}
                   </div>
                   <div className='flex justify-end items-end'>
                   <Button
@@ -1407,7 +464,8 @@ export default function ReportForm() {
                   </Button>
                   <Button
                     variant="primary"
-                    type="submit"
+                    type="button"
+                    onClick={handleSubmitReport}
                     loading={isSubmitting}
                     disabled={!canEdit}
                     className="flex-1"

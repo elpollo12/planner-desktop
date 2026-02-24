@@ -151,8 +151,8 @@ pub async fn sync_push(
     // Step 2: Push to Turso asynchronously (no lock held)
     let client = TursoClient::new(&credentials.database_url, &credentials.auth_token);
 
-    // Ensure remote schema/migrations are up to date
-    let _ = engine::initialize_remote_db(&client).await;
+    // Ensure remote schema/migrations are up to date (only runs once per session)
+    let _ = engine::ensure_remote_db_initialized(&client).await;
 
     let result = engine::push_data_to_turso(&client, table_data).await?;
 
@@ -190,8 +190,8 @@ pub async fn sync_pull(
     // Step 1: Pull from Turso asynchronously (no lock needed)
     let client = TursoClient::new(&credentials.database_url, &credentials.auth_token);
 
-    // Ensure remote schema/migrations are up to date
-    let _ = engine::initialize_remote_db(&client).await;
+    // Ensure remote schema/migrations are up to date (only runs once per session)
+    let _ = engine::ensure_remote_db_initialized(&client).await;
 
     let (pulled_data, mut result) =
         engine::pull_data_from_turso(&client, cfg.last_pull_at.as_deref()).await?;
@@ -203,7 +203,12 @@ pub async fn sync_pull(
             .lock()
             .map_err(|e| format!("Failed to lock database: {}", e))?;
         match engine::write_pulled_data(&conn, &pulled_data) {
-            Ok(_) => {}
+            Ok(_) => {
+                // Recalculate logistics stock cache after pulling new movement data
+                if let Err(e) = engine::recalculate_logistics_stock(&conn) {
+                    result.errors.push(format!("Stock recalculation warning: {}", e));
+                }
+            }
             Err(e) => {
                 result.success = false;
                 result.errors.push(format!("Error writing to local DB: {}", e));
@@ -233,8 +238,8 @@ pub async fn sync_full(
     let client = TursoClient::new(&credentials.database_url, &credentials.auth_token);
     let now = chrono::Utc::now().to_rfc3339();
 
-    // Ensure remote schema/migrations are up to date
-    let _ = engine::initialize_remote_db(&client).await;
+    // Ensure remote schema/migrations are up to date (only runs once per session)
+    let _ = engine::ensure_remote_db_initialized(&client).await;
 
     // === PUSH ===
     // Step 1: Read ALL local data (full sync pushes everything, not incremental)
@@ -282,6 +287,11 @@ pub async fn sync_full(
             if let Err(e) = engine::reconcile_local_with_remote(&conn, &pulled_data) {
                 pull_errors.push(format!("Reconciliation warning: {}", e));
             }
+        }
+
+        // Step 7: Recalculate logistics stock cache
+        if let Err(e) = engine::recalculate_logistics_stock(&conn) {
+            pull_errors.push(format!("Stock recalculation warning: {}", e));
         }
     }
 
@@ -344,8 +354,8 @@ pub async fn sync_incremental(
     let client = TursoClient::new(&credentials.database_url, &credentials.auth_token);
     let now = chrono::Utc::now().to_rfc3339();
 
-    // Ensure remote schema/migrations are up to date
-    let _ = engine::initialize_remote_db(&client).await;
+    // Ensure remote schema/migrations are up to date (only runs once per session)
+    let _ = engine::ensure_remote_db_initialized(&client).await;
 
     // === INCREMENTAL PUSH (only changes since last_push_at) ===
     let table_data = {
@@ -378,6 +388,11 @@ pub async fn sync_incremental(
             .map_err(|e| format!("Failed to lock database: {}", e))?;
         if let Err(e) = engine::write_pulled_data(&conn, &pulled_data) {
             pull_errors.push(format!("Error writing to local DB: {}", e));
+        }
+
+        // Recalculate logistics stock cache after pulling new movement data
+        if let Err(e) = engine::recalculate_logistics_stock(&conn) {
+            pull_errors.push(format!("Stock recalculation warning: {}", e));
         }
     }
 

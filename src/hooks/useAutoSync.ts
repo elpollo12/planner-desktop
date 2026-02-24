@@ -46,8 +46,10 @@ export function useAutoSync() {
         console.warn('[AutoSync] Completed with errors:', result.errors);
       }
 
-      // Always notify listeners so UI refreshes (settings, reports, etc.)
-      syncEvents.emit();
+      // Only notify listeners when new data was actually pulled
+      if (result.recordsPulled > 0) {
+        syncEvents.emit();
+      }
     } catch (error) {
       console.error('[AutoSync] Error:', error);
     }
@@ -63,7 +65,7 @@ export function useAutoSync() {
     // Do initial sync check after a short delay (let app settle)
     const initialTimeout = setTimeout(() => {
       doSync();
-    }, 5000);
+    }, 3000);
 
     // Check every minute if we need to sync
     // (the actual sync interval is checked inside doSync)

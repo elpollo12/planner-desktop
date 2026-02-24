@@ -8,8 +8,9 @@ import { usePreferencesStore } from './store/preferencesStore';
 import { useAppSettingsStore } from './store/appSettingsStore';
 import { useThemeApplicator } from './hooks/useThemeApplicator';
 import { useAutoSync } from './hooks/useAutoSync';
-import { backgroundPull } from './lib/syncHelper';
+import { useUnreadCount, notificationKeys } from './hooks/useNotifications';
 import { syncEvents } from './lib/syncEvents';
+import { queryClient } from './lib/queryClient';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import ReportForm from './pages/ReportForm';
@@ -17,8 +18,12 @@ import ReportList from './pages/ReportList';
 import ReportView from './pages/ReportView';
 import AdminPanel from './pages/AdminPanel';
 import { UpdateNotification } from './components/ui/UpdateNotification';
+import Logistics from './pages/Logistics';
+import Incidents from './pages/Incidents';
+import ReportApprovals from './pages/ReportApprovals';
 import LicenseActivation from './pages/LicenseActivation';
-import Logistics from './pages/Logisctics';
+import Forbidden from './pages/Forbidden';
+import { RoleGuard } from './components/guards';
 import './App.css';
 
 // Protected Route Component
@@ -50,6 +55,9 @@ function App() {
   // Auto-sync with Turso cloud (for admin users)
   useAutoSync();
 
+  // Poll unread notifications count (every 30s while authenticated)
+  useUnreadCount();
+
   // Load company settings on startup (public, no auth required)
   useEffect(() => {
     loadSettings().catch((error) => {
@@ -63,18 +71,17 @@ function App() {
       loadSettings().catch((error) => {
         console.error('Error reloading settings after sync:', error);
       });
+      // Refresh notifications after sync pull (new notifications from other instances)
+      queryClient.invalidateQueries({ queryKey: notificationKeys.all() });
     });
     return unsubscribe;
   }, []);
 
-  // Validate session on startup and pull latest data from cloud
+  // Validate session on startup
+  // (useAutoSync handles the initial pull after 5s)
   useEffect(() => {
     if (sessionToken) {
       getCurrentUser()
-        .then(() => {
-          // After successful auth, pull latest data from cloud
-          backgroundPull(sessionToken);
-        })
         .finally(() => setValidating(false));
     } else {
       setValidating(false);
@@ -166,11 +173,20 @@ function App() {
         />
 
         <Route
+          path="/approvals"
+          element={
+            <RoleGuard minRole="supervisor">
+              <ReportApprovals />
+            </RoleGuard>
+          }
+        />
+
+        <Route
           path="/admin"
           element={
-            <ProtectedRoute>
+            <RoleGuard minRole="admin">
               <AdminPanel />
-            </ProtectedRoute>
+            </RoleGuard>
           }
         /> 
         <Route
@@ -182,6 +198,16 @@ function App() {
           }
         />
 
+        <Route
+          path="/incidents"
+          element={
+            <ProtectedRoute>
+              <Incidents />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route path="/forbidden" element={<Forbidden />} />
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </>

@@ -3,6 +3,7 @@ export * from './reportSchema';
 export * from './reportSchemaExtended';
 export * from './reportSchemaFinal';
 export * from './rigSchemas';
+export * from './logisticsSchemas';
 
 import { z } from 'zod';
 import {
@@ -19,7 +20,7 @@ import {
 import {
   lithologySectionSchema,
   observationsSectionSchema,
-  drillStringSchema,
+  drillStringSectionSchema,
 } from './reportSchemaFinal';
 
 // ============================================================================
@@ -34,7 +35,7 @@ export const completeReportSchema = z.object({
   mudRecords: mudRecordSectionSchema.optional(),
   lithology: lithologySectionSchema.optional(),
   observations: observationsSectionSchema.optional(),
-  drillString: drillStringSchema.optional(),
+  drillString: drillStringSectionSchema.optional(),
 });
 
 // ============================================================================
@@ -49,4 +50,4 @@ export type BitRecordSectionData = z.infer<typeof bitRecordSectionSchema>;
 export type MudRecordSectionData = z.infer<typeof mudRecordSectionSchema>;
 export type LithologySectionData = z.infer<typeof lithologySectionSchema>;
 export type ObservationsSectionData = z.infer<typeof observationsSectionSchema>;
-export type DrillStringData = z.infer<typeof drillStringSchema>;
+export type DrillStringSectionData = z.infer<typeof drillStringSectionSchema>;

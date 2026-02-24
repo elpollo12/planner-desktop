@@ -16,6 +16,7 @@ pub struct OperationCode {
     pub created_by: Option<String>,
     pub updated_by: Option<String>,
     pub created_at: String,
+    pub updated_at: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -49,6 +50,7 @@ impl OperationCode {
             created_by: row.get(6)?,
             updated_by: row.get(7)?,
             created_at: row.get(8)?,
+            updated_at: row.get(9)?,
         })
     }
 
@@ -61,8 +63,8 @@ impl OperationCode {
         let now = chrono::Utc::now().to_rfc3339();
 
         conn.execute(
-            "INSERT INTO operation_codes (id, code, name, category, sort_order, active, created_by, created_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            "INSERT INTO operation_codes (id, code, name, category, sort_order, active, created_by, created_at, updated_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
             params![
                 &id,
                 &request.code,
@@ -71,6 +73,7 @@ impl OperationCode {
                 request.sort_order.unwrap_or(0),
                 1,
                 &created_by,
+                &now,
                 &now
             ],
         )?;
@@ -80,7 +83,7 @@ impl OperationCode {
 
     pub fn get_by_id(conn: &Connection, id: &str) -> Result<OperationCode, AppError> {
         let code = conn.query_row(
-            "SELECT id, code, name, category, sort_order, active, created_by, updated_by, created_at
+            "SELECT id, code, name, category, sort_order, active, created_by, updated_by, created_at, updated_at
              FROM operation_codes WHERE id = ?1",
             params![id],
             OperationCode::from_row,
@@ -91,10 +94,10 @@ impl OperationCode {
 
     pub fn list(conn: &Connection, active_only: bool) -> Result<Vec<OperationCode>, AppError> {
         let query = if active_only {
-            "SELECT id, code, name, category, sort_order, active, created_by, updated_by, created_at
+            "SELECT id, code, name, category, sort_order, active, created_by, updated_by, created_at, updated_at
              FROM operation_codes WHERE active = 1 AND (is_deleted IS NULL OR is_deleted = 0) ORDER BY sort_order, code"
         } else {
-            "SELECT id, code, name, category, sort_order, active, created_by, updated_by, created_at
+            "SELECT id, code, name, category, sort_order, active, created_by, updated_by, created_at, updated_at
              FROM operation_codes WHERE (is_deleted IS NULL OR is_deleted = 0) ORDER BY sort_order, code"
         };
 
@@ -139,6 +142,10 @@ impl OperationCode {
         updates.push("updated_by = ?");
         params_vec.push(Box::new(updated_by.clone()));
 
+        let now = chrono::Utc::now().to_rfc3339();
+        updates.push("updated_at = ?");
+        params_vec.push(Box::new(now));
+
         params_vec.push(Box::new(id.to_string()));
 
         let query = format!("UPDATE operation_codes SET {} WHERE id = ?", updates.join(", "));
@@ -151,9 +158,10 @@ impl OperationCode {
 
     /// Soft delete operation code (marks is_deleted = 1 so sync propagates it)
     pub fn delete(conn: &Connection, id: &str) -> Result<(), AppError> {
+        let now = chrono::Utc::now().to_rfc3339();
         conn.execute(
-            "UPDATE operation_codes SET is_deleted = 1 WHERE id = ?1",
-            params![id],
+            "UPDATE operation_codes SET is_deleted = 1, updated_at = ?1 WHERE id = ?2",
+            params![&now, id],
         )?;
         Ok(())
     }

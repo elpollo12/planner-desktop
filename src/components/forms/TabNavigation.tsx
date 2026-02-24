@@ -1,4 +1,4 @@
-import { REPORT_TABS, Tab } from './tabs';
+﻿import { REPORT_TABS, Tab } from './tabs';
 
 interface TabNavigationProps {
   activeTab: string;
@@ -12,7 +12,7 @@ export function TabNavigation({
   completedTabs = new Set() 
 }: TabNavigationProps) {
   return (
-    <div className="border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+    <div className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
       <nav className="flex overflow-x-auto">
         {REPORT_TABS.map((tab: Tab) => {
           const Icon = tab.icon;

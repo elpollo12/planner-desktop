@@ -1,4 +1,4 @@
-import { ReactNode, useState, useMemo } from 'react';
+﻿import { ReactNode, useState, useMemo } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface Column<T> {
@@ -106,7 +106,7 @@ export function Table<T>({
               ))}
             </tr>
           </thead>
-          <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+          <tbody className="bg-gray-50 dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
             {displayData.length === 0 ? (
               <tr>
                 <td
@@ -122,7 +122,7 @@ export function Table<T>({
                   key={rowIndex}
                   onClick={() => onRowClick?.(row)}
                   className={`
-                    ${striped && rowIndex % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-800/50'}
+                    ${striped && rowIndex % 2 === 0 ? 'bg-gray-50 dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-800/50'}
                     ${hoverable ? 'hover:bg-blue-50 dark:hover:bg-gray-700 transition-colors' : ''}
                     ${onRowClick ? 'cursor-pointer' : ''}
                   `}
@@ -159,13 +159,13 @@ export function Table<T>({
 
       {/* Paginación */}
       {pagination && data.length > 0 && (
-        <div className="flex-col items-center justify-center bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 sm:px-6">
+        <div className="flex-col items-center justify-center bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 sm:px-6">
           {/* Controles de navegación */}
           <div className="flex items-center gap-2 mt-2 justify-center ">
             <button
               onClick={() => handlePageChange(currentPage - 1)}
               disabled={currentPage === 1}
-              className="relative inline-flex items-center rounded-md px-3 py-2 text-sm font-semibold text-gray-900 dark:text-gray-100 ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 focus-visible:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="relative inline-flex items-center rounded-md px-3 py-2 text-sm font-semibold text-gray-900 dark:text-gray-100 ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 focus-visible:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
@@ -191,7 +191,7 @@ export function Table<T>({
                     onClick={() => handlePageChange(pageNumber)}
                     className={`relative inline-flex items-center rounded-md px-4 py-2 text-sm font-semibold ${currentPage === pageNumber
                         ? 'bg-primary-600 text-white focus-visible:outline focus-visible:outline-offset-2 focus-visible:outline-primary-600'
-                        : 'text-gray-900 dark:text-gray-100 ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
+                        : 'text-gray-900 dark:text-gray-100 ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700'
                       }`}
                   >
                     {pageNumber}
@@ -203,7 +203,7 @@ export function Table<T>({
             <button
               onClick={() => handlePageChange(currentPage + 1)}
               disabled={currentPage === totalPages}
-              className="relative inline-flex items-center rounded-md px-3 py-2 text-sm font-semibold text-gray-900 dark:text-gray-100 ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 focus-visible:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="relative inline-flex items-center rounded-md px-3 py-2 text-sm font-semibold text-gray-900 dark:text-gray-100 ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 focus-visible:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <ChevronRight className="h-4 w-4" />
             </button>
@@ -231,7 +231,7 @@ export function Table<T>({
                 id="pageSize"
                 value={pageSize}
                 onChange={(e) => handlePageSizeChange(Number(e.target.value))}
-                className="block rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100 focus:border-primary-500 focus:ring-primary-500"
+                className="block rounded-md border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100 focus:border-primary-500 focus:ring-primary-500"
               >
                 {pageSizeOptions.map((size) => (
                   <option key={size} value={size}>

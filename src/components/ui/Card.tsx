@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+﻿import type { ReactNode } from 'react';
 
 interface CardProps {
   children: ReactNode;
@@ -18,7 +18,7 @@ export function Card({
   return (
     <div
       className={`
-        bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700
+        bg-gray-50 dark:bg-gray-800 rounded-xl border border-primary-200 dark:border-gray-700
         shadow-sm transition-colors duration-100
         ${noPadding ? '' : 'p-6'}
         ${className}

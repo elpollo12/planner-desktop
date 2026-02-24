@@ -7,6 +7,7 @@ mod models;
 mod commands;
 mod sync;
 mod license;
+pub mod notification_helper;
 
 use state::AppState;
 
@@ -44,6 +45,8 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_fs::init())
         .manage(app_state)
         .invoke_handler(tauri::generate_handler![
             // Authentication commands
@@ -67,18 +70,23 @@ pub fn run() {
             commands::reports::submit_report,
             commands::reports::approve_report,
             commands::reports::reject_report,
+            commands::reports::reopen_report,
 
             // Drill string commands
-            commands::drill_string::save_drill_string,
-            commands::drill_string::get_drill_string,
+            commands::drill_string::save_drill_string_components,
+            commands::drill_string::create_drill_string_component,
+            commands::drill_string::list_drill_string_components,
+            commands::drill_string::delete_all_drill_string_components,
 
             // Crew commands
+            commands::crew::save_crew_shifts,
             commands::crew::create_crew_shift,
             commands::crew::list_crew_shifts,
             commands::crew::delete_crew_shift,
             commands::crew::delete_all_crew_shifts,
 
             // Bit records commands
+            commands::bit_records::save_bit_records,
             commands::bit_records::create_bit_record,
             commands::bit_records::list_bit_records,
             commands::bit_records::update_bit_record,
@@ -93,6 +101,7 @@ pub fn run() {
             commands::operation_codes::delete_operation_code,
 
             // Mud commands
+            commands::mud::save_mud_data,
             commands::mud::create_mud_record,
             commands::mud::list_mud_records,
             commands::mud::create_mud_additive,
@@ -106,16 +115,19 @@ pub fn run() {
             commands::time_distribution::delete_all_time_distributions,
 
             // Drilling parameters commands
+            commands::drilling_params::save_drilling_parameters,
             commands::drilling_params::create_drilling_parameter,
             commands::drilling_params::list_drilling_parameters,
             commands::drilling_params::delete_all_drilling_parameters,
 
             // Deviation commands
+            commands::deviation::save_deviation_records,
             commands::deviation::create_deviation_record,
             commands::deviation::list_deviation_records,
             commands::deviation::delete_all_deviation_records,
 
             // Operations log commands
+            commands::operations_log::save_operation_logs,
             commands::operations_log::create_operation_log,
             commands::operations_log::list_operation_logs,
             commands::operations_log::delete_all_operation_logs,
@@ -175,39 +187,72 @@ pub fn run() {
             commands::operators::get_operator_logo_data,
 
             // Logistics - Water Bottles
-            commands::logistics_water::get_water_bottles_inventory,
             commands::logistics_water::create_water_bottles_movement,
             commands::logistics_water::get_water_bottles_movements,
+            commands::logistics_water::delete_water_bottles_movement,
+            commands::logistics_water::get_water_bottles_stock,
 
             // Logistics - Fuel
-            commands::logistics_fuel::get_fuel_inventory,
             commands::logistics_fuel::create_fuel_movement,
             commands::logistics_fuel::get_fuel_movements,
+            commands::logistics_fuel::delete_fuel_movement,
+            commands::logistics_fuel::get_fuel_stock,
 
-            // Logistics - Water Tank (Vacuum)
-            commands::logistics_tank::get_water_tank_inventory,
-            commands::logistics_tank::create_water_tank_movement,
-            commands::logistics_tank::get_water_tank_movements,
+            // Logistics - Vacuum/Cisterna
+            commands::logistics_vacuum::create_vacuum_action,
+            commands::logistics_vacuum::get_vacuum_actions,
+            commands::logistics_vacuum::update_vacuum_action,
+            commands::logistics_vacuum::delete_vacuum_action,
 
-            // Logistics - Consumables
-            commands::logistics_consumables::list_consumables,
-            commands::logistics_consumables::get_consumable,
-            commands::logistics_consumables::create_consumable,
-            commands::logistics_consumables::update_consumable,
-            commands::logistics_consumables::create_consumable_movement,
-            commands::logistics_consumables::get_consumable_movements,
+            // Logistics - Materials (catalog + movements)
+            commands::logistics_materials::create_material,
+            commands::logistics_materials::list_materials,
+            commands::logistics_materials::update_material,
+            commands::logistics_materials::delete_material,
+            commands::logistics_materials::create_material_movement,
+            commands::logistics_materials::get_material_movements,
+            commands::logistics_materials::delete_material_movement,
+            commands::logistics_materials::get_material_stock,
 
             // Logistics - Requests & Reports
             commands::logistics_requests::create_logistics_request,
             commands::logistics_requests::list_logistics_requests,
             commands::logistics_requests::update_logistics_request_status,
+            commands::logistics_requests::delete_logistics_request,
             commands::logistics_requests::get_pending_requests_count,
             commands::logistics_requests::get_logistics_report,
+            commands::logistics_requests::get_detailed_logistics_report,
+
+            // Incidents
+            commands::incidents::create_incident,
+            commands::incidents::list_incidents,
+            commands::incidents::get_incident,
+            commands::incidents::delete_incident,
+
+            // Incident Types
+            commands::incident_types::list_incident_types,
+            commands::incident_types::create_incident_type,
+            commands::incident_types::delete_incident_type,
 
             // License commands
             commands::license::activate_license,
             commands::license::get_license_status,
             commands::license::deactivate_license,
+
+            // Last report snapshot commands
+            commands::last_report_snapshot::get_last_report_snapshot,
+            commands::last_report_snapshot::update_report_snapshot,
+
+            // Report reviews commands (approval audit trail)
+            commands::report_reviews::create_report_review,
+            commands::report_reviews::list_report_reviews,
+
+            // Notifications commands
+            commands::notifications::list_notifications,
+            commands::notifications::get_unread_count,
+            commands::notifications::mark_notification_read,
+            commands::notifications::mark_all_notifications_read,
+            commands::notifications::delete_notification,
 
             // Debug commands
             commands::debug::debug_list_all_rigs,

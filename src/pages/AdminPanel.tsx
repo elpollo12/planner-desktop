@@ -4,7 +4,6 @@ import { Card } from '../components/ui';
 import { Users, Bookmark, BarChart3, Activity, MapPin, Palette, Cloud, Building2, Wrench } from 'lucide-react';
 import { OilRigIcon } from '../components/ui/icons/OilRigIcon';
 import { useAuthStore } from '../store/authStore';
-import { Navigate } from 'react-router-dom';
 import { UsersManagement } from '../components/admin/UsersManagement';
 import { OperationCodesManagement } from '../components/admin/OperationCodesManagement';
 import { Statistics } from '../components/admin/Statistics';
@@ -35,11 +34,6 @@ export default function AdminPanel() {
     activityToday: 0,
   });
   const [loadingStats, setLoadingStats] = useState(true);
-
-  // Only admins can access
-  if (!user || user.role !== 'admin') {
-    return <Navigate to="/dashboard" replace />;
-  }
 
   useEffect(() => {
     if (sessionToken) {

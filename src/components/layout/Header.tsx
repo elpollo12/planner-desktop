@@ -1,6 +1,7 @@
-import { Bell, Sun, Moon } from 'lucide-react';
+import { Sun, Moon } from 'lucide-react';
 import { usePreferencesStore } from '../../store/preferencesStore';
 import { useAuthStore } from '../../store/authStore';
+import { NotificationBell } from '../notifications';
 
 interface HeaderProps {
   title?: string;
@@ -26,7 +27,7 @@ export function Header({ title, subtitle, actions, className = '' }: HeaderProps
   };
 
   return (
-    <header className={`h-[60px] bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 ${className}`}>
+    <header className={`h-15 bg-gray-50 dark:bg-gray-800 border-b border-primary-200 dark:border-gray-700 ${className}`}>
       <div className="h-full px-6 flex items-center">
         <div className="flex items-center justify-between w-full">
           {/* Title Section */}
@@ -53,11 +54,7 @@ export function Header({ title, subtitle, actions, className = '' }: HeaderProps
             </button>
 
             {/* Notifications */}
-            <button className="relative p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
-              <Bell size={20} />
-              {/* Badge example */}
-              {/* <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" /> */}
-            </button>
+            <NotificationBell />
           </div>
         </div>
       </div>

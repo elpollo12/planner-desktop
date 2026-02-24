@@ -6,118 +6,127 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct DrillString {
+pub struct DrillStringComponent {
     pub id: String,
     pub report_id: String,
-    pub size: Option<String>,
-    pub weight: Option<String>,
-    pub grade: Option<String>,
-    pub connection_type: Option<String>,
-    pub string_number: Option<String>,
-    pub pump_brand: Option<String>,
-    pub pump_type: Option<String>,
-    pub header_length: Option<String>,
+    pub entry_number: i64,
+    pub piece_name: String,
+    pub length: Option<f64>,
     pub created_at: String,
     pub updated_at: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct DrillStringData {
-    pub size: Option<String>,
-    pub weight: Option<String>,
-    pub grade: Option<String>,
-    pub connection_type: Option<String>,
-    pub string_number: Option<String>,
-    pub pump_brand: Option<String>,
-    pub pump_type: Option<String>,
-    pub header_length: Option<String>,
+pub struct CreateDrillStringComponentRequest {
+    pub piece_name: String,
+    pub length: Option<f64>,
 }
 
-impl DrillString {
+impl DrillStringComponent {
     fn from_row(row: &Row) -> Result<Self, rusqlite::Error> {
-        Ok(DrillString {
+        Ok(DrillStringComponent {
             id: row.get(0)?,
             report_id: row.get(1)?,
-            size: row.get(2)?,
-            weight: row.get(3)?,
-            grade: row.get(4)?,
-            connection_type: row.get(5)?,
-            string_number: row.get(6)?,
-            pump_brand: row.get(7)?,
-            pump_type: row.get(8)?,
-            header_length: row.get(9)?,
-            created_at: row.get(10)?,
-            updated_at: row.get(11)?,
+            entry_number: row.get(2)?,
+            piece_name: row.get(3)?,
+            length: row.get(4)?,
+            created_at: row.get(5)?,
+            updated_at: row.get(6)?,
         })
     }
 
-    pub fn save(
+    pub fn create(
         conn: &Connection,
         report_id: &str,
-        data: &DrillStringData,
-    ) -> Result<DrillString, AppError> {
-        // Check if already exists
-        let exists: bool = conn
-            .query_row(
-                "SELECT COUNT(*) > 0 FROM drill_string WHERE report_id = ?1",
-                params![report_id],
-                |row| row.get(0),
-            )?;
-
+        data: &CreateDrillStringComponentRequest,
+    ) -> Result<DrillStringComponent, AppError> {
+        let id = uuid::Uuid::new_v4().to_string();
         let now = chrono::Utc::now().to_rfc3339();
 
-        if exists {
-            // Update existing
-            conn.execute(
-                "UPDATE drill_string SET size = ?1, weight = ?2, grade = ?3, connection_type = ?4, string_number = ?5, pump_brand = ?6, pump_type = ?7, header_length = ?8, updated_at = ?9 WHERE report_id = ?10",
-                params![
-                    &data.size,
-                    &data.weight,
-                    &data.grade,
-                    &data.connection_type,
-                    &data.string_number,
-                    &data.pump_brand,
-                    &data.pump_type,
-                    &data.header_length,
-                    &now,
-                    report_id
-                ],
-            )?;
-        } else {
-            // Insert new
+        // Auto-increment entry_number per report
+        let next_entry: i64 = conn
+            .query_row(
+                "SELECT COALESCE(MAX(entry_number), 0) + 1 FROM drill_string_components WHERE report_id = ?1",
+                params![report_id],
+                |row| row.get(0),
+            )
+            .unwrap_or(1);
+
+        conn.execute(
+            "INSERT INTO drill_string_components (id, report_id, entry_number, piece_name, length, created_at, updated_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            params![
+                &id,
+                report_id,
+                next_entry,
+                &data.piece_name,
+                &data.length,
+                &now,
+                &now
+            ],
+        )?;
+
+        DrillStringComponent::get_by_id(conn, &id)
+    }
+
+    pub fn get_by_id(conn: &Connection, id: &str) -> Result<DrillStringComponent, AppError> {
+        let component = conn.query_row(
+            "SELECT id, report_id, entry_number, piece_name, length, created_at, updated_at
+             FROM drill_string_components WHERE id = ?1",
+            params![id],
+            DrillStringComponent::from_row,
+        )?;
+
+        Ok(component)
+    }
+
+    pub fn list_by_report(
+        conn: &Connection,
+        report_id: &str,
+    ) -> Result<Vec<DrillStringComponent>, AppError> {
+        let mut stmt = conn.prepare(
+            "SELECT id, report_id, entry_number, piece_name, length, created_at, updated_at
+             FROM drill_string_components WHERE report_id = ?1 ORDER BY entry_number ASC",
+        )?;
+
+        let components = stmt
+            .query_map(params![report_id], DrillStringComponent::from_row)?
+            .collect::<Result<Vec<_>, _>>()?;
+
+        Ok(components)
+    }
+
+    pub fn delete_all_by_report(conn: &Connection, report_id: &str) -> Result<(), AppError> {
+        conn.execute(
+            "DELETE FROM drill_string_components WHERE report_id = ?1",
+            params![report_id],
+        )?;
+        Ok(())
+    }
+
+    pub fn save_bulk(
+        conn: &Connection,
+        report_id: &str,
+        components: &[CreateDrillStringComponentRequest],
+    ) -> Result<Vec<DrillStringComponent>, AppError> {
+        let now = chrono::Utc::now().to_rfc3339();
+
+        conn.execute(
+            "DELETE FROM drill_string_components WHERE report_id = ?1",
+            params![report_id],
+        )?;
+
+        for (index, comp) in components.iter().enumerate() {
             let id = uuid::Uuid::new_v4().to_string();
+            let entry_number = (index + 1) as i64;
             conn.execute(
-                "INSERT INTO drill_string (id, report_id, size, weight, grade, connection_type, string_number, pump_brand, pump_type, header_length, created_at, updated_at)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
-                params![
-                    &id,
-                    report_id,
-                    &data.size,
-                    &data.weight,
-                    &data.grade,
-                    &data.connection_type,
-                    &data.string_number,
-                    &data.pump_brand,
-                    &data.pump_type,
-                    &data.header_length,
-                    &now,
-                    &now
-                ],
+                "INSERT INTO drill_string_components (id, report_id, entry_number, piece_name, length, created_at, updated_at)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+                params![&id, report_id, entry_number, &comp.piece_name, &comp.length, &now, &now],
             )?;
         }
 
-        DrillString::get_by_report_id(conn, report_id)
-    }
-
-    pub fn get_by_report_id(conn: &Connection, report_id: &str) -> Result<DrillString, AppError> {
-        let drill_string = conn.query_row(
-            "SELECT id, report_id, size, weight, grade, connection_type, string_number, pump_brand, pump_type, header_length, created_at, updated_at
-             FROM drill_string WHERE report_id = ?1",
-            params![report_id],
-            DrillString::from_row,
-        )?;
-
-        Ok(drill_string)
+        DrillStringComponent::list_by_report(conn, report_id)
     }
 }

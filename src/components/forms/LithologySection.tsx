@@ -1,4 +1,4 @@
-import { useFormContext, useFieldArray } from 'react-hook-form';
+﻿import { useFormContext, useFieldArray } from 'react-hook-form';
 import { Button, Input } from '../ui';
 import { Plus, Trash2 } from 'lucide-react';
 import type { CompleteReportData } from '../../schemas';
@@ -82,7 +82,7 @@ export function LithologySection() {
         ) : (
           <div className="space-y-4">
             {paramFields.map((field, index) => (
-              <div key={field.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-800">
+              <div key={field.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-800">
                 <div className="flex justify-between items-center mb-4">
                   <h4 className="font-medium text-gray-900 dark:text-gray-100">Registro #{index + 1}</h4>
                   <Button
@@ -104,7 +104,7 @@ export function LithologySection() {
                     </label>
                     <select
                       {...register(`lithology.drillingParameters.${index}.shift`)}
-                      className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-sm"
+                      className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-sm"
                     >
                       <option value="">Seleccionar...</option>
                       <option value="morning">{SHIFT_LABELS.morning}</option>
@@ -188,7 +188,7 @@ export function LithologySection() {
                     <textarea
                       {...register(`lithology.drillingParameters.${index}.lithologyNotes`)}
                       rows={3}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-primary-500 focus:border-primary-500"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-primary-500 focus:border-primary-500"
                       placeholder="Descripción de la formación, litología observada, etc."
                     />
                   </div>
@@ -252,7 +252,7 @@ export function LithologySection() {
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+              <tbody className="bg-gray-50 dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                 {deviationFields.map((field, index) => (
                   <tr key={field.id}>
                     <td className="px-4 py-3">

@@ -2,6 +2,15 @@ use crate::sync::turso_client::{TursoClient, TursoValue};
 use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
+use std::sync::atomic::{AtomicBool, Ordering};
+use tokio::sync::Mutex as TokioMutex;
+
+/// Whether initialization completed successfully (fast check, no lock needed)
+static REMOTE_DB_INITIALIZED: AtomicBool = AtomicBool::new(false);
+
+/// Mutex to serialize concurrent initialization attempts.
+/// Only one task runs initialize_remote_db at a time; others wait.
+static REMOTE_DB_INIT_LOCK: TokioMutex<()> = TokioMutex::const_new(());
 
 /// Tables to sync, in dependency order (parents first)
 const SYNC_TABLES: &[TableDef] = &[
@@ -14,6 +23,7 @@ const SYNC_TABLES: &[TableDef] = &[
         id_col: "id",
         has_updated_at: true,
         parent_col: None,
+        skip_cleanup: false,
     },
     TableDef {
         name: "users",
@@ -25,16 +35,18 @@ const SYNC_TABLES: &[TableDef] = &[
         id_col: "id",
         has_updated_at: true,
         parent_col: None,
+        skip_cleanup: false,
     },
     TableDef {
         name: "operation_codes",
         columns: &[
             "id", "code", "name", "category", "sort_order", "active",
-            "created_by", "updated_by", "created_at", "is_deleted",
+            "created_by", "updated_by", "created_at", "updated_at", "is_deleted",
         ],
         id_col: "id",
-        has_updated_at: false,
+        has_updated_at: true,
         parent_col: None,
+        skip_cleanup: false,
     },
     TableDef {
         name: "areas",
@@ -45,6 +57,7 @@ const SYNC_TABLES: &[TableDef] = &[
         id_col: "id",
         has_updated_at: true,
         parent_col: None,
+        skip_cleanup: false,
     },
     TableDef {
         name: "operators",
@@ -54,6 +67,7 @@ const SYNC_TABLES: &[TableDef] = &[
         id_col: "id",
         has_updated_at: true,
         parent_col: None,
+        skip_cleanup: false,
     },
     TableDef {
         name: "rigs",
@@ -64,6 +78,7 @@ const SYNC_TABLES: &[TableDef] = &[
         id_col: "id",
         has_updated_at: true,
         parent_col: None,
+        skip_cleanup: false,
     },
     TableDef {
         name: "rig_personnel",
@@ -74,6 +89,7 @@ const SYNC_TABLES: &[TableDef] = &[
         id_col: "id",
         has_updated_at: true,
         parent_col: Some("rig_id"),
+        skip_cleanup: false,
     },
     TableDef {
         name: "user_rigs",
@@ -84,6 +100,7 @@ const SYNC_TABLES: &[TableDef] = &[
         id_col: "id",
         has_updated_at: true,
         parent_col: None,
+        skip_cleanup: false,
     },
     TableDef {
         name: "reports",
@@ -97,17 +114,18 @@ const SYNC_TABLES: &[TableDef] = &[
         id_col: "id",
         has_updated_at: true,
         parent_col: None,
+        skip_cleanup: false,
     },
     TableDef {
-        name: "drill_string",
+        name: "drill_string_components",
         columns: &[
-            "id", "report_id", "size", "weight", "grade", "connection_type",
-            "string_number", "pump_brand", "pump_type", "header_length",
+            "id", "report_id", "entry_number", "piece_name", "length",
             "created_at", "updated_at",
         ],
         id_col: "id",
         has_updated_at: true,
         parent_col: Some("report_id"),
+        skip_cleanup: false,
     },
     TableDef {
         name: "crew_shifts",
@@ -118,6 +136,7 @@ const SYNC_TABLES: &[TableDef] = &[
         id_col: "id",
         has_updated_at: true,
         parent_col: Some("report_id"),
+        skip_cleanup: false,
     },
     TableDef {
         name: "crew_members",
@@ -128,6 +147,7 @@ const SYNC_TABLES: &[TableDef] = &[
         id_col: "id",
         has_updated_at: true,
         parent_col: Some("crew_shift_id"),
+        skip_cleanup: false,
     },
     TableDef {
         name: "time_distribution",
@@ -138,6 +158,7 @@ const SYNC_TABLES: &[TableDef] = &[
         id_col: "id",
         has_updated_at: true,
         parent_col: Some("report_id"),
+        skip_cleanup: false,
     },
     TableDef {
         name: "bit_records",
@@ -149,6 +170,7 @@ const SYNC_TABLES: &[TableDef] = &[
         id_col: "id",
         has_updated_at: true,
         parent_col: Some("report_id"),
+        skip_cleanup: false,
     },
     TableDef {
         name: "mud_records",
@@ -159,6 +181,7 @@ const SYNC_TABLES: &[TableDef] = &[
         id_col: "id",
         has_updated_at: true,
         parent_col: Some("report_id"),
+        skip_cleanup: false,
     },
     TableDef {
         name: "mud_additives",
@@ -169,6 +192,7 @@ const SYNC_TABLES: &[TableDef] = &[
         id_col: "id",
         has_updated_at: true,
         parent_col: Some("report_id"),
+        skip_cleanup: false,
     },
     TableDef {
         name: "drilling_parameters",
@@ -181,6 +205,7 @@ const SYNC_TABLES: &[TableDef] = &[
         id_col: "id",
         has_updated_at: true,
         parent_col: Some("report_id"),
+        skip_cleanup: false,
     },
     TableDef {
         name: "deviation_history",
@@ -191,6 +216,7 @@ const SYNC_TABLES: &[TableDef] = &[
         id_col: "id",
         has_updated_at: true,
         parent_col: Some("report_id"),
+        skip_cleanup: false,
     },
     TableDef {
         name: "operations_log",
@@ -201,6 +227,19 @@ const SYNC_TABLES: &[TableDef] = &[
         id_col: "id",
         has_updated_at: true,
         parent_col: Some("report_id"),
+        skip_cleanup: false,
+    },
+    TableDef {
+        name: "report_reviews",
+        columns: &[
+            "id", "report_id", "reviewer_id", "action", "comment",
+            "previous_status", "new_status", "created_at", "updated_at",
+            "is_deleted",
+        ],
+        id_col: "id",
+        has_updated_at: true,
+        parent_col: Some("report_id"),
+        skip_cleanup: true, // append-only audit log — never delete existing rows
     },
     TableDef {
         name: "user_preferences",
@@ -210,6 +249,148 @@ const SYNC_TABLES: &[TableDef] = &[
         id_col: "id",
         has_updated_at: true,
         parent_col: None,
+        skip_cleanup: false,
+    },
+    // =========================================================================
+    // LOGISTICS MODULE
+    // =========================================================================
+    TableDef {
+        name: "logistics_materials",
+        columns: &[
+            "id", "name", "unit", "description", "active",
+            "created_by", "created_at", "updated_at", "is_deleted",
+        ],
+        id_col: "id",
+        has_updated_at: true,
+        parent_col: None,
+        skip_cleanup: false,
+    },
+    TableDef {
+        name: "logistics_water_bottles_movements",
+        columns: &[
+            "id", "rig_id", "movement_type", "quantity", "notes",
+            "created_by", "created_at", "updated_at", "is_deleted",
+        ],
+        id_col: "id",
+        has_updated_at: true,
+        parent_col: None,
+        skip_cleanup: false,
+    },
+    TableDef {
+        name: "logistics_fuel_movements",
+        columns: &[
+            "id", "rig_id", "movement_type", "amount", "notes",
+            "created_by", "created_at", "updated_at", "is_deleted",
+        ],
+        id_col: "id",
+        has_updated_at: true,
+        parent_col: None,
+        skip_cleanup: false,
+    },
+    TableDef {
+        name: "logistics_vacuum_actions",
+        columns: &[
+            "id", "rig_id", "action_name", "notes",
+            "created_by", "created_at", "updated_at", "is_deleted",
+        ],
+        id_col: "id",
+        has_updated_at: true,
+        parent_col: None,
+        skip_cleanup: false,
+    },
+    TableDef {
+        name: "logistics_materials_movements",
+        columns: &[
+            "id", "rig_id", "material_id", "movement_type", "quantity", "notes",
+            "created_by", "created_at", "updated_at", "is_deleted",
+        ],
+        id_col: "id",
+        has_updated_at: true,
+        parent_col: Some("material_id"),
+        skip_cleanup: false,
+    },
+    TableDef {
+        name: "logistics_requests",
+        columns: &[
+            "id", "rig_id", "request_type", "quantity", "action_requested",
+            "material_id", "status", "notes", "requested_by", "status_changed_by",
+            "requested_at", "status_changed_at", "created_at", "updated_at", "is_deleted",
+        ],
+        id_col: "id",
+        has_updated_at: true,
+        parent_col: None,
+        skip_cleanup: false,
+    },
+    // =========================================================================
+    // INCIDENTS MODULE
+    // =========================================================================
+    TableDef {
+        name: "incident_types",
+        columns: &[
+            "id", "name", "color", "sort_order",
+            "created_by", "created_at", "updated_at", "is_deleted",
+        ],
+        id_col: "id",
+        has_updated_at: true,
+        parent_col: None,
+        skip_cleanup: false,
+    },
+    TableDef {
+        name: "incidents",
+        columns: &[
+            "id", "rig_id", "incident_type", "description",
+            "created_by", "created_at", "updated_at", "is_deleted",
+        ],
+        id_col: "id",
+        has_updated_at: true,
+        parent_col: None,
+        skip_cleanup: false,
+    },
+    TableDef {
+        name: "incident_personnel",
+        columns: &[
+            "id", "incident_id", "personnel_id",
+            "created_at", "updated_at",
+        ],
+        id_col: "id",
+        has_updated_at: true,
+        parent_col: Some("incident_id"),
+        skip_cleanup: false,
+    },
+    // =========================================================================
+    // SNAPSHOTS
+    // =========================================================================
+    TableDef {
+        name: "last_report_snapshot",
+        columns: &[
+            "id", "rig_id", "report_number", "well_number", "api_number",
+            "contract", "contractor", "operator", "field_district", "municipality",
+            "rig_number", "company", "supervisor_24h",
+            "crew_data", "time_distribution_data", "bit_records_data",
+            "mud_records_data", "mud_additives_data", "drilling_params_data",
+            "deviation_data", "operations_log_data", "drill_string_data",
+            "source_report_id", "updated_by", "updated_at",
+        ],
+        id_col: "id",
+        has_updated_at: true,
+        parent_col: None,
+        skip_cleanup: false,
+    },
+    // =========================================================================
+    // NOTIFICATIONS MODULE
+    // =========================================================================
+    TableDef {
+        name: "notifications",
+        columns: &[
+            "id", "recipient_id", "actor_id", "actor_name",
+            "category", "action_type", "title", "message",
+            "reference_id", "reference_type", "rig_id", "rig_name",
+            "is_read", "read_at", "created_at", "updated_at", "is_deleted",
+        ],
+        id_col: "id",
+        has_updated_at: true,
+        parent_col: None,
+        skip_cleanup: false,
     },
 ];
 
@@ -221,6 +402,12 @@ struct TableDef {
     /// For child tables: column that links to parent (e.g. "report_id").
     /// Used to clean up stale rows before sync write.
     parent_col: Option<&'static str>,
+    /// If true, skip the delete-before-insert cleanup during sync.
+    /// Used for append-only tables (e.g. audit logs) where rows are never
+    /// replaced — only new rows are added. Without this flag, incremental
+    /// sync would delete all existing sibling rows when only the latest
+    /// row is present in the sync batch.
+    skip_cleanup: bool,
 }
 
 /// Data extracted from a single table for sync
@@ -240,121 +427,139 @@ pub struct SyncResult {
     pub timestamp: String,
 }
 
-/// Collect distinct report_ids from child-table data in a sync batch.
-/// Works with both `Vec<TableData>` and `Vec<(usize, Vec<Vec<TursoValue>>)>`.
-fn collect_report_ids_from_indexed(table_results: &[(usize, Vec<Vec<TursoValue>>)]) -> HashSet<String> {
-    let mut report_ids = HashSet::new();
+/// Collect distinct parent IDs from sync data, grouped by parent_col.
+/// Returns a map: parent_col -> set of parent IDs.
+/// E.g. { "report_id" => {"r1", "r2"}, "rig_id" => {"rig1"}, "material_id" => {"m1"} }
+fn collect_parent_ids_from_indexed(table_results: &[(usize, Vec<Vec<TursoValue>>)]) -> std::collections::HashMap<&'static str, HashSet<String>> {
+    let mut parent_map: std::collections::HashMap<&'static str, HashSet<String>> = std::collections::HashMap::new();
     for (idx, rows) in table_results {
         let table_def = &SYNC_TABLES[*idx];
-        if table_def.parent_col != Some("report_id") {
-            continue;
-        }
-        if let Some(col_idx) = table_def.columns.iter().position(|c| *c == "report_id") {
-            for row in rows {
-                if let Some(TursoValue::Text(val)) = row.get(col_idx) {
-                    report_ids.insert(val.clone());
+        if let Some(parent_col) = table_def.parent_col {
+            if let Some(col_idx) = table_def.columns.iter().position(|c| *c == parent_col) {
+                for row in rows {
+                    if let Some(TursoValue::Text(val)) = row.get(col_idx) {
+                        parent_map.entry(parent_col).or_default().insert(val.clone());
+                    }
                 }
             }
         }
     }
-    report_ids
+    parent_map
 }
 
-fn collect_report_ids_from_table_data(table_data: &[TableData]) -> HashSet<String> {
-    let mut report_ids = HashSet::new();
+fn collect_parent_ids_from_table_data(table_data: &[TableData]) -> std::collections::HashMap<&'static str, HashSet<String>> {
+    let mut parent_map: std::collections::HashMap<&'static str, HashSet<String>> = std::collections::HashMap::new();
     for data in table_data {
         let table_def = &SYNC_TABLES[data.table_index];
-        if table_def.parent_col != Some("report_id") {
-            continue;
-        }
-        if let Some(col_idx) = table_def.columns.iter().position(|c| *c == "report_id") {
-            for row in &data.rows {
-                if let Some(TursoValue::Text(val)) = row.get(col_idx) {
-                    report_ids.insert(val.clone());
+        if let Some(parent_col) = table_def.parent_col {
+            if let Some(col_idx) = table_def.columns.iter().position(|c| *c == parent_col) {
+                for row in &data.rows {
+                    if let Some(TursoValue::Text(val)) = row.get(col_idx) {
+                        parent_map.entry(parent_col).or_default().insert(val.clone());
+                    }
                 }
             }
         }
     }
-    report_ids
+    parent_map
 }
 
-/// Delete stale child rows from local DB for the given report_ids.
+/// Delete stale child rows from local DB for all parent relationships in the batch.
 /// Must be called BEFORE writing new data.
-fn cleanup_local_child_rows(conn: &Connection, report_ids: &HashSet<String>) -> Result<(), String> {
-    if report_ids.is_empty() {
-        return Ok(());
-    }
-
-    let placeholders: String = report_ids.iter().enumerate()
-        .map(|(i, _)| format!("?{}", i + 1))
-        .collect::<Vec<_>>()
-        .join(", ");
-
-    let ids: Vec<&str> = report_ids.iter().map(|s| s.as_str()).collect();
-
-    // 1) Delete grandchild first: crew_members via crew_shifts
-    let crew_members_sql = format!(
-        "DELETE FROM crew_members WHERE crew_shift_id IN (SELECT id FROM crew_shifts WHERE report_id IN ({}))",
-        placeholders
-    );
-    conn.execute(&crew_members_sql, rusqlite::params_from_iter(ids.iter()))
-        .map_err(|e| format!("Failed to cleanup crew_members: {}", e))?;
-
-    // 2) Delete all direct child tables with parent_col = "report_id"
-    for table_def in SYNC_TABLES.iter() {
-        if table_def.parent_col == Some("report_id") {
-            let sql = format!(
-                "DELETE FROM {} WHERE report_id IN ({})",
-                table_def.name, placeholders
-            );
-            conn.execute(&sql, rusqlite::params_from_iter(ids.iter()))
-                .map_err(|e| format!("Failed to cleanup {}: {}", table_def.name, e))?;
+/// Only deletes child rows for tables that are actually present in the batch,
+/// to avoid wiping sibling tables that share the same parent_col.
+fn cleanup_local_child_rows(
+    conn: &Connection,
+    parent_map: &std::collections::HashMap<&str, HashSet<String>>,
+    tables_in_batch: &HashSet<&str>,
+) -> Result<(), String> {
+    for (parent_col, parent_ids) in parent_map {
+        if parent_ids.is_empty() {
+            continue;
         }
-    }
 
-    println!("[Sync] Cleaned up local child rows for {} report(s)", report_ids.len());
+        let placeholders: String = parent_ids.iter().enumerate()
+            .map(|(i, _)| format!("?{}", i + 1))
+            .collect::<Vec<_>>()
+            .join(", ");
+        let ids: Vec<&str> = parent_ids.iter().map(|s| s.as_str()).collect();
+
+        // Special case: crew_members is a grandchild of report_id via crew_shifts
+        if *parent_col == "report_id" && tables_in_batch.contains("crew_shifts") {
+            let crew_members_sql = format!(
+                "DELETE FROM crew_members WHERE crew_shift_id IN (SELECT id FROM crew_shifts WHERE report_id IN ({}))",
+                placeholders
+            );
+            conn.execute(&crew_members_sql, rusqlite::params_from_iter(ids.iter()))
+                .map_err(|e| format!("Failed to cleanup crew_members: {}", e))?;
+        }
+
+        // Only delete from child tables that are actually in the current batch
+        for table_def in SYNC_TABLES.iter() {
+            if table_def.parent_col == Some(parent_col) && tables_in_batch.contains(table_def.name) && !table_def.skip_cleanup {
+                let sql = format!(
+                    "DELETE FROM {} WHERE {} IN ({})",
+                    table_def.name, parent_col, placeholders
+                );
+                conn.execute(&sql, rusqlite::params_from_iter(ids.iter()))
+                    .map_err(|e| format!("Failed to cleanup {}: {}", table_def.name, e))?;
+            }
+        }
+
+        println!("[Sync] Cleaned up local child rows for {} {}(s) (tables: {:?})", parent_ids.len(), parent_col, tables_in_batch);
+    }
     Ok(())
 }
 
-/// Delete stale child rows from Turso for the given report_ids.
+/// Delete stale child rows from Turso for all parent relationships in the batch.
 /// Must be called BEFORE pushing new data.
-async fn cleanup_turso_child_rows(client: &TursoClient, report_ids: &HashSet<String>) -> Result<(), String> {
-    if report_ids.is_empty() {
-        return Ok(());
-    }
-
-    let placeholders: String = report_ids.iter().enumerate()
-        .map(|(i, _)| format!("?{}", i + 1))
-        .collect::<Vec<_>>()
-        .join(", ");
-
-    let params: Vec<TursoValue> = report_ids.iter()
-        .map(|id| TursoValue::Text(id.clone()))
-        .collect();
-
+async fn cleanup_turso_child_rows(
+    client: &TursoClient,
+    parent_map: &std::collections::HashMap<&str, HashSet<String>>,
+    tables_in_batch: &HashSet<&str>,
+) -> Result<(), String> {
     let mut batch: Vec<(String, Vec<TursoValue>)> = Vec::new();
 
-    // 1) Delete grandchild first: crew_members via crew_shifts
-    batch.push((
-        format!(
-            "DELETE FROM crew_members WHERE crew_shift_id IN (SELECT id FROM crew_shifts WHERE report_id IN ({}))",
-            placeholders
-        ),
-        params.clone(),
-    ));
+    for (parent_col, parent_ids) in parent_map {
+        if parent_ids.is_empty() {
+            continue;
+        }
 
-    // 2) Delete all direct child tables with parent_col = "report_id"
-    for table_def in SYNC_TABLES.iter() {
-        if table_def.parent_col == Some("report_id") {
+        let placeholders: String = parent_ids.iter().enumerate()
+            .map(|(i, _)| format!("?{}", i + 1))
+            .collect::<Vec<_>>()
+            .join(", ");
+        let params: Vec<TursoValue> = parent_ids.iter()
+            .map(|id| TursoValue::Text(id.clone()))
+            .collect();
+
+        // Special case: crew_members grandchild
+        if *parent_col == "report_id" && tables_in_batch.contains("crew_shifts") {
             batch.push((
-                format!("DELETE FROM {} WHERE report_id IN ({})", table_def.name, placeholders),
+                format!(
+                    "DELETE FROM crew_members WHERE crew_shift_id IN (SELECT id FROM crew_shifts WHERE report_id IN ({}))",
+                    placeholders
+                ),
                 params.clone(),
             ));
         }
+
+        // Only delete from child tables that are actually in the current batch
+        for table_def in SYNC_TABLES.iter() {
+            if table_def.parent_col == Some(parent_col) && tables_in_batch.contains(table_def.name) && !table_def.skip_cleanup {
+                batch.push((
+                    format!("DELETE FROM {} WHERE {} IN ({})", table_def.name, parent_col, placeholders),
+                    params.clone(),
+                ));
+            }
+        }
+
+        println!("[Sync] Cleaned up Turso child rows for {} {}(s) (tables: {:?})", parent_ids.len(), parent_col, tables_in_batch);
     }
 
-    client.execute_batch(batch).await?;
-    println!("[Sync] Cleaned up Turso child rows for {} report(s)", report_ids.len());
+    if !batch.is_empty() {
+        client.execute_batch(batch).await?;
+    }
     Ok(())
 }
 
@@ -398,6 +603,7 @@ CREATE TABLE IF NOT EXISTS operation_codes (
   created_by TEXT,
   updated_by TEXT,
   created_at TEXT NOT NULL,
+  updated_at TEXT,
   is_deleted INTEGER DEFAULT 0
 );
 
@@ -488,17 +694,12 @@ CREATE TABLE IF NOT EXISTS reports (
   is_deleted INTEGER DEFAULT 0
 );
 
-CREATE TABLE IF NOT EXISTS drill_string (
+CREATE TABLE IF NOT EXISTS drill_string_components (
   id TEXT PRIMARY KEY,
   report_id TEXT,
-  size TEXT,
-  weight TEXT,
-  grade TEXT,
-  connection_type TEXT,
-  string_number TEXT,
-  pump_brand TEXT,
-  pump_type TEXT,
-  header_length TEXT,
+  entry_number INTEGER NOT NULL DEFAULT 0,
+  piece_name TEXT,
+  length REAL,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
@@ -634,7 +835,127 @@ CREATE TABLE IF NOT EXISTS user_preferences (
   theme_mode TEXT NOT NULL DEFAULT 'light' CHECK(theme_mode IN ('light', 'dark')),
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
-)
+);
+
+CREATE TABLE IF NOT EXISTS logistics_materials (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  unit TEXT NOT NULL,
+  description TEXT,
+  active INTEGER DEFAULT 1,
+  created_by TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  is_deleted INTEGER DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS logistics_water_bottles_movements (
+  id TEXT PRIMARY KEY,
+  rig_id TEXT,
+  movement_type TEXT NOT NULL,
+  quantity INTEGER NOT NULL,
+  notes TEXT,
+  created_by TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT,
+  is_deleted INTEGER DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS logistics_fuel_movements (
+  id TEXT PRIMARY KEY,
+  rig_id TEXT,
+  movement_type TEXT NOT NULL,
+  amount REAL NOT NULL,
+  notes TEXT,
+  created_by TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT,
+  is_deleted INTEGER DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS logistics_vacuum_actions (
+  id TEXT PRIMARY KEY,
+  rig_id TEXT,
+  action_name TEXT NOT NULL,
+  notes TEXT,
+  created_by TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT,
+  is_deleted INTEGER DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS logistics_materials_movements (
+  id TEXT PRIMARY KEY,
+  rig_id TEXT,
+  material_id TEXT NOT NULL,
+  movement_type TEXT NOT NULL,
+  quantity REAL NOT NULL,
+  notes TEXT,
+  created_by TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT,
+  is_deleted INTEGER DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS last_report_snapshot (
+  id TEXT PRIMARY KEY,
+  rig_id TEXT NOT NULL,
+  report_number INTEGER NOT NULL,
+  well_number TEXT,
+  api_number TEXT,
+  contract TEXT,
+  contractor TEXT,
+  operator TEXT,
+  field_district TEXT,
+  municipality TEXT,
+  rig_number TEXT,
+  company TEXT,
+  supervisor_24h TEXT,
+  crew_data TEXT,
+  time_distribution_data TEXT,
+  bit_records_data TEXT,
+  mud_records_data TEXT,
+  mud_additives_data TEXT,
+  drilling_params_data TEXT,
+  deviation_data TEXT,
+  operations_log_data TEXT,
+  drill_string_data TEXT,
+  source_report_id TEXT,
+  updated_by TEXT,
+  updated_at TEXT NOT NULL,
+  UNIQUE(rig_id)
+);
+
+CREATE TABLE IF NOT EXISTS logistics_requests (
+  id TEXT PRIMARY KEY,
+  rig_id TEXT,
+  request_type TEXT NOT NULL,
+  quantity REAL,
+  action_requested TEXT,
+  material_id TEXT,
+  status TEXT DEFAULT 'requested' NOT NULL,
+  notes TEXT,
+  requested_by TEXT,
+  status_changed_by TEXT,
+  requested_at TEXT NOT NULL,
+  status_changed_at TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  is_deleted INTEGER DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS report_reviews (
+  id TEXT PRIMARY KEY,
+  report_id TEXT NOT NULL,
+  reviewer_id TEXT NOT NULL,
+  action TEXT NOT NULL,
+  comment TEXT,
+  previous_status TEXT,
+  new_status TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  is_deleted INTEGER DEFAULT 0
+);
 "#;
 
 /// Migrations to apply to existing Turso databases (add missing columns/tables)
@@ -646,9 +967,9 @@ const REMOTE_MIGRATIONS: &[&str] = &[
     "CREATE TABLE IF NOT EXISTS user_rigs (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, rig_id TEXT NOT NULL, assigned_by TEXT, assigned_at TEXT NOT NULL, created_at TEXT, updated_at TEXT, UNIQUE(user_id, rig_id))",
     // V12: app_settings table (global appearance)
     "CREATE TABLE IF NOT EXISTS app_settings (id INTEGER PRIMARY KEY CHECK (id = 1), primary_color TEXT NOT NULL DEFAULT '#1e3a5f', secondary_color TEXT NOT NULL DEFAULT '#f97316', logo_path TEXT, created_at TEXT NOT NULL DEFAULT '', updated_at TEXT NOT NULL DEFAULT '')",
-    // V13: Recreate user_preferences with simplified schema (only theme_mode)
-    // Drop old table that had per-user colors (primary_color, secondary_color, logo_path)
-    "DROP TABLE IF EXISTS user_preferences",
+    // V13: user_preferences with simplified schema (only theme_mode)
+    // NOTE: DROP was removed — it already ran on all existing DBs and would cause
+    // data loss if initialize_remote_db is called again (e.g. admin manual init).
     "CREATE TABLE IF NOT EXISTS user_preferences (id TEXT PRIMARY KEY, user_id TEXT NOT NULL UNIQUE, theme_mode TEXT NOT NULL DEFAULT 'light', created_at TEXT NOT NULL DEFAULT '', updated_at TEXT NOT NULL DEFAULT '')",
     // V14: reports.company
     "ALTER TABLE reports ADD COLUMN company TEXT",
@@ -665,6 +986,36 @@ const REMOTE_MIGRATIONS: &[&str] = &[
     // V20: rig_personnel table + crew_members.personnel_id
     "CREATE TABLE IF NOT EXISTS rig_personnel (id TEXT PRIMARY KEY, rig_id TEXT NOT NULL, name TEXT NOT NULL, ci TEXT, default_position TEXT NOT NULL, active INTEGER DEFAULT 1, is_deleted INTEGER DEFAULT 0, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)",
     "ALTER TABLE crew_members ADD COLUMN personnel_id TEXT",
+    // V25: Logistics module tables
+    "CREATE TABLE IF NOT EXISTS logistics_materials (id TEXT PRIMARY KEY, name TEXT NOT NULL, unit TEXT NOT NULL, description TEXT, active INTEGER DEFAULT 1, created_by TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, is_deleted INTEGER DEFAULT 0)",
+    "CREATE TABLE IF NOT EXISTS logistics_water_bottles_movements (id TEXT PRIMARY KEY, rig_id TEXT, movement_type TEXT NOT NULL, quantity INTEGER NOT NULL, notes TEXT, created_by TEXT, created_at TEXT NOT NULL, updated_at TEXT, is_deleted INTEGER DEFAULT 0)",
+    "CREATE TABLE IF NOT EXISTS logistics_fuel_movements (id TEXT PRIMARY KEY, rig_id TEXT, movement_type TEXT NOT NULL, amount REAL NOT NULL, notes TEXT, created_by TEXT, created_at TEXT NOT NULL, updated_at TEXT, is_deleted INTEGER DEFAULT 0)",
+    "CREATE TABLE IF NOT EXISTS logistics_vacuum_actions (id TEXT PRIMARY KEY, rig_id TEXT, action_name TEXT NOT NULL, notes TEXT, created_by TEXT, created_at TEXT NOT NULL, updated_at TEXT, is_deleted INTEGER DEFAULT 0)",
+    "CREATE TABLE IF NOT EXISTS logistics_materials_movements (id TEXT PRIMARY KEY, rig_id TEXT, material_id TEXT NOT NULL, movement_type TEXT NOT NULL, quantity REAL NOT NULL, notes TEXT, created_by TEXT, created_at TEXT NOT NULL, updated_at TEXT, is_deleted INTEGER DEFAULT 0)",
+    "CREATE TABLE IF NOT EXISTS logistics_requests (id TEXT PRIMARY KEY, rig_id TEXT, request_type TEXT NOT NULL, quantity REAL, action_requested TEXT, material_id TEXT, status TEXT DEFAULT 'requested' NOT NULL, notes TEXT, requested_by TEXT, status_changed_by TEXT, requested_at TEXT NOT NULL, status_changed_at TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, is_deleted INTEGER DEFAULT 0)",
+    // V25: Add sync columns to existing logistics tables (for DBs that already had V22-V24 without sync columns)
+    "ALTER TABLE logistics_water_bottles_movements ADD COLUMN updated_at TEXT",
+    "ALTER TABLE logistics_water_bottles_movements ADD COLUMN is_deleted INTEGER DEFAULT 0",
+    "ALTER TABLE logistics_fuel_movements ADD COLUMN updated_at TEXT",
+    "ALTER TABLE logistics_fuel_movements ADD COLUMN is_deleted INTEGER DEFAULT 0",
+    "ALTER TABLE logistics_vacuum_actions ADD COLUMN updated_at TEXT",
+    "ALTER TABLE logistics_vacuum_actions ADD COLUMN is_deleted INTEGER DEFAULT 0",
+    "ALTER TABLE logistics_materials ADD COLUMN is_deleted INTEGER DEFAULT 0",
+    "ALTER TABLE logistics_materials_movements ADD COLUMN updated_at TEXT",
+    "ALTER TABLE logistics_materials_movements ADD COLUMN is_deleted INTEGER DEFAULT 0",
+    "ALTER TABLE logistics_requests ADD COLUMN is_deleted INTEGER DEFAULT 0",
+    // V26: operation_codes.updated_at (enables incremental sync for edits)
+    "ALTER TABLE operation_codes ADD COLUMN updated_at TEXT",
+    // V27: last_report_snapshot table
+    "CREATE TABLE IF NOT EXISTS last_report_snapshot (id TEXT PRIMARY KEY, rig_id TEXT NOT NULL, report_number INTEGER NOT NULL, well_number TEXT, api_number TEXT, contract TEXT, contractor TEXT, operator TEXT, field_district TEXT, municipality TEXT, rig_number TEXT, company TEXT, supervisor_24h TEXT, crew_data TEXT, time_distribution_data TEXT, bit_records_data TEXT, mud_records_data TEXT, mud_additives_data TEXT, drilling_params_data TEXT, deviation_data TEXT, operations_log_data TEXT, drill_string_data TEXT, source_report_id TEXT, updated_by TEXT, updated_at TEXT NOT NULL, UNIQUE(rig_id))",
+    // V28: drill_string_components replaces drill_string
+    "CREATE TABLE IF NOT EXISTS drill_string_components (id TEXT PRIMARY KEY, report_id TEXT, entry_number INTEGER NOT NULL DEFAULT 0, piece_name TEXT, length REAL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)",
+    // V30: report_reviews table + reports approval columns
+    "CREATE TABLE IF NOT EXISTS report_reviews (id TEXT PRIMARY KEY, report_id TEXT NOT NULL, reviewer_id TEXT NOT NULL, action TEXT NOT NULL, comment TEXT, previous_status TEXT, new_status TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, is_deleted INTEGER DEFAULT 0)",
+    "ALTER TABLE reports ADD COLUMN submitted_at TEXT",
+    "ALTER TABLE reports ADD COLUMN approved_at TEXT",
+    "ALTER TABLE reports ADD COLUMN rejected_at TEXT",
+    "ALTER TABLE reports ADD COLUMN rejection_reason TEXT",
 ];
 
 /// Initialize the remote Turso database with the same schema
@@ -703,6 +1054,37 @@ pub async fn initialize_remote_db(client: &TursoClient) -> Result<String, String
         "Base de datos remota inicializada ({} tablas, {} migraciones aplicadas)",
         table_count, migrations_applied
     ))
+}
+
+/// Initialize remote DB only once per app session.
+/// Uses a tokio::Mutex to ensure only one task runs the initialization
+/// while concurrent callers await. If it fails, retries on the next call.
+pub async fn ensure_remote_db_initialized(client: &TursoClient) -> Result<(), String> {
+    // Fast path: already initialized, no lock needed
+    if REMOTE_DB_INITIALIZED.load(Ordering::Acquire) {
+        return Ok(());
+    }
+
+    // Serialize concurrent callers — only one runs initialize_remote_db
+    let _guard = REMOTE_DB_INIT_LOCK.lock().await;
+
+    // Double-check after acquiring lock (another task may have completed it)
+    if REMOTE_DB_INITIALIZED.load(Ordering::Acquire) {
+        return Ok(());
+    }
+
+    match initialize_remote_db(client).await {
+        Ok(msg) => {
+            println!("[Sync] {}", msg);
+            REMOTE_DB_INITIALIZED.store(true, Ordering::Release);
+            Ok(())
+        }
+        Err(e) => {
+            // Do NOT mark as initialized — will retry on next sync operation
+            println!("[Sync] Remote DB initialization failed (will retry): {}", e);
+            Err(e)
+        }
+    }
 }
 
 // =============================================================================
@@ -813,8 +1195,13 @@ pub fn write_pulled_data(
         .map_err(|e| format!("Failed to disable foreign keys: {}", e))?;
 
     // Clean up stale child rows before writing to prevent duplicates
-    let report_ids = collect_report_ids_from_indexed(table_results);
-    cleanup_local_child_rows(conn, &report_ids)?;
+    // Only clean tables that are actually in this batch to avoid wiping unrelated sibling data
+    let parent_map = collect_parent_ids_from_indexed(table_results);
+    let tables_in_batch: HashSet<&str> = table_results.iter()
+        .filter(|(_, rows)| !rows.is_empty())
+        .map(|(idx, _)| SYNC_TABLES[*idx].name)
+        .collect();
+    cleanup_local_child_rows(conn, &parent_map, &tables_in_batch)?;
 
     let mut total: u32 = 0;
 
@@ -868,6 +1255,30 @@ pub fn write_pulled_data(
                 }
             }
 
+            // Special handling for user_rigs due to UNIQUE(user_id, rig_id) constraint
+            if table_def.name == "user_rigs" {
+                // Delete existing assignment with same user_id+rig_id but different id
+                // user_id is at index 1, rig_id is at index 2
+                if params.len() >= 3 {
+                    let _ = conn.execute(
+                        "DELETE FROM user_rigs WHERE user_id = ?1 AND rig_id = ?2 AND id != ?3",
+                        rusqlite::params![params.get(1), params.get(2), params.get(0)],
+                    );
+                }
+            }
+
+            // Special handling for last_report_snapshot due to UNIQUE(rig_id) constraint
+            if table_def.name == "last_report_snapshot" {
+                // Delete existing snapshot with same rig_id but different id
+                // rig_id is at index 1
+                if params.len() >= 2 {
+                    let _ = conn.execute(
+                        "DELETE FROM last_report_snapshot WHERE rig_id = ?1 AND id != ?2",
+                        rusqlite::params![params.get(1), params.get(0)],
+                    );
+                }
+            }
+
             conn.execute(&upsert_sql, params_refs.as_slice())
                 .map_err(|e| {
                     format!("Failed to upsert into '{}': {}", table_def.name, e)
@@ -882,6 +1293,55 @@ pub fn write_pulled_data(
         .map_err(|e| format!("Failed to re-enable foreign keys: {}", e))?;
 
     Ok(total)
+}
+
+/// Recalculate the logistics_stock cache from movement tables.
+/// Must be called AFTER writing pulled data that includes logistics tables.
+pub fn recalculate_logistics_stock(conn: &Connection) -> Result<(), String> {
+    // Check if any logistics movement table was affected by looking at table existence
+    // Always safe to recalculate — it's idempotent
+
+    conn.execute("DELETE FROM logistics_stock", [])
+        .map_err(|e| format!("Failed to clear logistics_stock: {}", e))?;
+
+    // Water bottles
+    conn.execute(
+        "INSERT INTO logistics_stock (rig_id, category, quantity, updated_at)
+         SELECT rig_id, 'water_bottles',
+                SUM(CASE WHEN movement_type = 'entry' THEN quantity ELSE -quantity END),
+                datetime('now')
+         FROM logistics_water_bottles_movements
+         WHERE rig_id IS NOT NULL AND is_deleted = 0
+         GROUP BY rig_id",
+        [],
+    ).map_err(|e| format!("Failed to recalculate water_bottles stock: {}", e))?;
+
+    // Fuel
+    conn.execute(
+        "INSERT INTO logistics_stock (rig_id, category, quantity, updated_at)
+         SELECT rig_id, 'fuel',
+                SUM(CASE WHEN movement_type = 'entry' THEN amount ELSE -amount END),
+                datetime('now')
+         FROM logistics_fuel_movements
+         WHERE rig_id IS NOT NULL AND is_deleted = 0
+         GROUP BY rig_id",
+        [],
+    ).map_err(|e| format!("Failed to recalculate fuel stock: {}", e))?;
+
+    // Materials (one row per rig + material combination)
+    conn.execute(
+        "INSERT INTO logistics_stock (rig_id, category, quantity, updated_at)
+         SELECT rig_id, 'material:' || material_id,
+                SUM(CASE WHEN movement_type = 'entry' THEN quantity ELSE -quantity END),
+                datetime('now')
+         FROM logistics_materials_movements
+         WHERE rig_id IS NOT NULL AND is_deleted = 0
+         GROUP BY rig_id, material_id",
+        [],
+    ).map_err(|e| format!("Failed to recalculate materials stock: {}", e))?;
+
+    println!("[Sync] Logistics stock cache recalculated");
+    Ok(())
 }
 
 /// During full sync, remove local records that don't exist in Turso.
@@ -986,8 +1446,12 @@ pub async fn push_data_to_turso(
     let _ = client.execute("PRAGMA foreign_keys = OFF;", vec![]).await;
 
     // Clean up stale child rows in Turso before pushing to prevent duplicates
-    let report_ids = collect_report_ids_from_table_data(&table_data);
-    if let Err(e) = cleanup_turso_child_rows(client, &report_ids).await {
+    let parent_map = collect_parent_ids_from_table_data(&table_data);
+    let tables_in_push: HashSet<&str> = table_data.iter()
+        .filter(|d| !d.rows.is_empty())
+        .map(|d| SYNC_TABLES[d.table_index].name)
+        .collect();
+    if let Err(e) = cleanup_turso_child_rows(client, &parent_map, &tables_in_push).await {
         println!("[Sync] Warning: cleanup_turso_child_rows failed: {}", e);
         errors.push(format!("Cleanup warning: {}", e));
     }
@@ -1073,6 +1537,29 @@ async fn push_rows_to_turso(
                     batch.push((delete_sql, delete_params));
                 }
                 // Add UPSERT statement
+                batch.push((upsert_sql.clone(), row.clone()));
+            }
+        } else if table_def.name == "user_rigs" {
+            for row in chunk {
+                // Delete existing assignment with same user_id+rig_id but different id
+                // user_id is at index 1, rig_id is at index 2
+                if row.len() >= 3 {
+                    let delete_sql = "DELETE FROM user_rigs WHERE user_id = ?1 AND rig_id = ?2 AND id != ?3".to_string();
+                    let delete_params = vec![row[1].clone(), row[2].clone(), row[0].clone()];
+                    batch.push((delete_sql, delete_params));
+                }
+                // Add UPSERT statement
+                batch.push((upsert_sql.clone(), row.clone()));
+            }
+        } else if table_def.name == "last_report_snapshot" {
+            for row in chunk {
+                // Delete existing snapshot with same rig_id but different id
+                // rig_id is at index 1
+                if row.len() >= 2 {
+                    let delete_sql = "DELETE FROM last_report_snapshot WHERE rig_id = ?1 AND id != ?2".to_string();
+                    let delete_params = vec![row[1].clone(), row[0].clone()];
+                    batch.push((delete_sql, delete_params));
+                }
                 batch.push((upsert_sql.clone(), row.clone()));
             }
         } else {
@@ -1325,11 +1812,52 @@ pub fn purge_local_soft_deleted(conn: &Connection, retention_days: i64) -> Resul
         }
     }
 
-    // 5. Purge operation_codes (no updated_at column, purge all deleted regardless of age)
-    if let Ok(count) = conn.execute("DELETE FROM operation_codes WHERE is_deleted = 1", []) {
+    // 5. Purge operation_codes (now has updated_at, use threshold)
+    if let Ok(count) = conn.execute(
+        "DELETE FROM operation_codes WHERE is_deleted = 1 AND updated_at < ?1",
+        rusqlite::params![&threshold_str],
+    ) {
         if count > 0 {
             total_purged += count as u32;
             println!("[Sync] Purged {} deleted operation_code(s)", count);
+        }
+    }
+
+    // 6. Purge logistics tables
+    // First: logistics_materials_movements (child of logistics_materials)
+    // Hard-delete movements whose parent material is soft-deleted
+    if let Ok(count) = conn.execute(
+        "DELETE FROM logistics_materials_movements WHERE is_deleted = 1 AND updated_at < ?1",
+        rusqlite::params![&threshold_str],
+    ) {
+        if count > 0 {
+            total_purged += count as u32;
+            println!("[Sync] Purged {} deleted logistics_materials_movements", count);
+        }
+    }
+    // Then: logistics_materials catalog
+    if let Ok(count) = conn.execute(
+        "DELETE FROM logistics_materials WHERE is_deleted = 1 AND updated_at < ?1",
+        rusqlite::params![&threshold_str],
+    ) {
+        if count > 0 {
+            total_purged += count as u32;
+            println!("[Sync] Purged {} deleted logistics_materials", count);
+        }
+    }
+    // Simple logistics tables (no children)
+    for table_name in &[
+        "logistics_water_bottles_movements",
+        "logistics_fuel_movements",
+        "logistics_vacuum_actions",
+        "logistics_requests",
+    ] {
+        let sql = format!("DELETE FROM {} WHERE is_deleted = 1 AND updated_at < ?1", table_name);
+        if let Ok(count) = conn.execute(&sql, rusqlite::params![&threshold_str]) {
+            if count > 0 {
+                total_purged += count as u32;
+                println!("[Sync] Purged {} deleted record(s) from '{}'", count, table_name);
+            }
         }
     }
 
@@ -1415,11 +1943,35 @@ pub async fn purge_turso_soft_deleted(client: &TursoClient, retention_days: i64)
         vec![TursoValue::Text(threshold_str.clone())],
     ));
 
-    // 5. operation_codes (no updated_at, purge all deleted)
+    // 5. operation_codes (now has updated_at, use threshold)
     batch.push((
-        "DELETE FROM operation_codes WHERE is_deleted = 1".to_string(),
-        vec![],
+        "DELETE FROM operation_codes WHERE is_deleted = 1 AND updated_at < ?1".to_string(),
+        vec![TursoValue::Text(threshold_str.clone())],
     ));
+
+    // 6. Logistics tables
+    // Child first: logistics_materials_movements
+    batch.push((
+        "DELETE FROM logistics_materials_movements WHERE is_deleted = 1 AND updated_at < ?1".to_string(),
+        vec![TursoValue::Text(threshold_str.clone())],
+    ));
+    // Parent: logistics_materials catalog
+    batch.push((
+        "DELETE FROM logistics_materials WHERE is_deleted = 1 AND updated_at < ?1".to_string(),
+        vec![TursoValue::Text(threshold_str.clone())],
+    ));
+    // Simple logistics tables
+    for table_name in &[
+        "logistics_water_bottles_movements",
+        "logistics_fuel_movements",
+        "logistics_vacuum_actions",
+        "logistics_requests",
+    ] {
+        batch.push((
+            format!("DELETE FROM {} WHERE is_deleted = 1 AND updated_at < ?1", table_name),
+            vec![TursoValue::Text(threshold_str.clone())],
+        ));
+    }
 
     client.execute_batch(batch).await?;
 

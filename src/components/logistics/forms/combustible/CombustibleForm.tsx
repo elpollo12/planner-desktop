@@ -2,28 +2,27 @@ import { useState } from 'react';
 import { useModalStore } from '../../../../store';
 import { Fuel, Plus, Minus } from 'lucide-react';
 import { CombustibleIngresoTab } from './CombustibleIngresoTab';
-import { CombustibleGastoTab } from './CombustibleGastoTab';
+import { CombustibleConsumoTab } from './CombustibleConsumoTab';
 import { Button } from '@/components/ui/Button';
 
-type TabType = 'ingreso' | 'gasto';
+type TabType = 'ingreso' | 'consumo';
 
 interface CombustibleFormProps {
-  onSuccess?: () => void;
+  rigId: string;
   initialTab?: TabType;
 }
 
-export function CombustibleForm({ onSuccess, initialTab = 'ingreso' }: CombustibleFormProps) {
+export function CombustibleForm({ rigId, initialTab = 'ingreso' }: CombustibleFormProps) {
   const [activeTab, setActiveTab] = useState<TabType>(initialTab);
   const { closeModal } = useModalStore();
 
   const handleSuccess = () => {
-    onSuccess?.();
     closeModal();
   };
 
   const tabs = [
-    { id: 'ingreso' as TabType, label: 'Ingreso', icon: Plus, color: 'text-green-600' },
-    { id: 'gasto' as TabType, label: 'Gasto', icon: Minus, color: 'text-red-600' },
+    { id: 'ingreso' as TabType, label: 'Ingreso', icon: Plus, className: `${activeTab === 'ingreso' ? 'bg-green-500! text-white!' : 'hover:bg-green-300!'}` },
+    { id: 'consumo' as TabType, label: 'Consumo', icon: Minus, className: `${activeTab === 'consumo' ? 'bg-red-500! text-white!' : 'hover:bg-red-300!'}` },
   ];
 
   return (
@@ -43,7 +42,7 @@ export function CombustibleForm({ onSuccess, initialTab = 'ingreso' }: Combustib
         </div>
       </div>
 
-      <div className="flex gap-2 mb-6">
+      <div className="flex gap-2 mb-6 p-2">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -52,16 +51,11 @@ export function CombustibleForm({ onSuccess, initialTab = 'ingreso' }: Combustib
             <Button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`
-                flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg
-                text-sm font-medium transition-all
-                ${isActive 
-                  ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400 ring-1 ring-primary-500/20' 
-                  : 'bg-gray-50 dark:bg-gray-800/50 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
-                }
-              `}
+              variant={isActive ? 'primary' : 'ghost'}
+              size='md'
+              icon={<Icon size={18} />}
+              className={`flex flex-1 items-center justify-center ${tab.className} ${isActive ? 'text-primary-500' : tab.className}`}
             >
-              <Icon size={18} className={isActive ? 'text-primary-500' : tab.color} />
               {tab.label}
             </Button>
           );
@@ -69,9 +63,9 @@ export function CombustibleForm({ onSuccess, initialTab = 'ingreso' }: Combustib
       </div>
 
       {/* Contenido según tab */}
-      <div className="flex-1 overflow-y-auto">
-        {activeTab === 'ingreso' && <CombustibleIngresoTab onSuccess={handleSuccess} />}
-        {activeTab === 'gasto' && <CombustibleGastoTab onSuccess={handleSuccess} />}
+      <div className="flex-1 overflow-y-auto p-2">
+        {activeTab === 'ingreso' && <CombustibleIngresoTab rigId={rigId} onSuccess={handleSuccess} />}
+        {activeTab === 'consumo' && <CombustibleConsumoTab rigId={rigId} onSuccess={handleSuccess} />}
       </div>
     </div>
   );

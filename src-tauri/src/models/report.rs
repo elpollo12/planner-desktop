@@ -102,12 +102,26 @@ pub struct ReportFilters {
     pub date_from: Option<String>,
     pub date_to: Option<String>,
     pub status: Option<String>,
+    /// Multiple statuses for combined queries (e.g. ["approved", "rejected"])
+    pub statuses: Option<Vec<String>>,
     pub created_by: Option<String>,
     pub well_number: Option<String>,
     pub rig_number: Option<String>,
 }
 
 impl Report {
+    /// Update the report's updated_at timestamp.
+    /// Must be called whenever a child section (crew, drill_string, etc.) is modified,
+    /// so that incremental sync picks up the report and cleans up stale child rows.
+    pub fn touch_updated_at(conn: &Connection, report_id: &str) -> Result<(), AppError> {
+        let now = chrono::Utc::now().to_rfc3339();
+        conn.execute(
+            "UPDATE reports SET updated_at = ?1 WHERE id = ?2",
+            params![&now, report_id],
+        )?;
+        Ok(())
+    }
+
     fn from_row(row: &Row) -> Result<Self, rusqlite::Error> {
         Ok(Report {
             id: row.get(0)?,
@@ -258,6 +272,16 @@ impl Report {
             query.push_str(clause);
             count_query.push_str(clause);
             params_vec.push(Box::new(status.clone()));
+        } else if let Some(ref statuses) = filters.statuses {
+            if !statuses.is_empty() {
+                let placeholders: Vec<&str> = statuses.iter().map(|_| "?").collect();
+                let clause = format!(" AND status IN ({})", placeholders.join(","));
+                query.push_str(&clause);
+                count_query.push_str(&clause);
+                for s in statuses {
+                    params_vec.push(Box::new(s.clone()));
+                }
+            }
         }
 
         if let Some(ref created_by) = filters.created_by {
@@ -374,7 +398,8 @@ impl Report {
         Report::get_by_id(conn, report_id)
     }
 
-    /// Soft delete report (marks is_deleted = 1 so sync propagates it)
+    /// Soft-delete report (marks is_deleted = 1 so sync propagates it).
+    /// Child entities are left in place and cleaned up by the purge cycle.
     pub fn delete(conn: &Connection, report_id: &str) -> Result<(), AppError> {
         let now = chrono::Utc::now().to_rfc3339();
         conn.execute(
@@ -386,10 +411,17 @@ impl Report {
 
     /// Submit report (draft → submitted)
     pub fn submit(conn: &Connection, report_id: &str) -> Result<Report, AppError> {
+        let report = Report::get_by_id(conn, report_id)?;
+        if report.status != "draft" {
+            return Err(AppError::ValidationError(
+                "Only draft reports can be submitted".to_string(),
+            ));
+        }
+
         let now = chrono::Utc::now().to_rfc3339();
 
         conn.execute(
-            "UPDATE reports SET status = ?1, submitted_at = ?2, updated_at = ?3 WHERE id = ?4",
+            "UPDATE reports SET status = ?1, submitted_at = ?2, approved_at = NULL, approved_by = NULL, rejected_at = NULL, rejection_reason = NULL, updated_at = ?3 WHERE id = ?4",
             params!["submitted", &now, &now, report_id],
         )?;
 
@@ -398,6 +430,13 @@ impl Report {
 
     /// Approve report (submitted → approved)
     pub fn approve(conn: &Connection, report_id: &str, approved_by: String) -> Result<Report, AppError> {
+        let report = Report::get_by_id(conn, report_id)?;
+        if report.status != "submitted" {
+            return Err(AppError::ValidationError(
+                "Only submitted reports can be approved".to_string(),
+            ));
+        }
+
         let now = chrono::Utc::now().to_rfc3339();
 
         conn.execute(
@@ -412,14 +451,42 @@ impl Report {
     pub fn reject(
         conn: &Connection,
         report_id: &str,
-        rejected_by: String,
+        _rejected_by: String,
         reason: String,
     ) -> Result<Report, AppError> {
+        let report = Report::get_by_id(conn, report_id)?;
+        if report.status != "submitted" {
+            return Err(AppError::ValidationError(
+                "Only submitted reports can be rejected".to_string(),
+            ));
+        }
+
         let now = chrono::Utc::now().to_rfc3339();
 
         conn.execute(
-            "UPDATE reports SET status = ?1, approved_by = ?2, rejected_at = ?3, rejection_reason = ?4, updated_at = ?5 WHERE id = ?6",
-            params!["rejected", &rejected_by, &now, &reason, &now, report_id],
+            "UPDATE reports SET status = ?1, rejected_at = ?2, rejection_reason = ?3, updated_at = ?4 WHERE id = ?5",
+            params!["rejected", &now, &reason, &now, report_id],
+        )?;
+
+        Report::get_by_id(conn, report_id)
+    }
+
+    /// Reopen a report back to draft so it can be edited and resubmitted
+    /// (rejected/approved/submitted → draft)
+    pub fn reopen(conn: &Connection, report_id: &str) -> Result<Report, AppError> {
+        let report = Report::get_by_id(conn, report_id)?;
+
+        if report.status == "draft" {
+            return Err(AppError::ValidationError(
+                "Report is already a draft".to_string(),
+            ));
+        }
+
+        let now = chrono::Utc::now().to_rfc3339();
+
+        conn.execute(
+            "UPDATE reports SET status = ?1, rejection_reason = NULL, rejected_at = NULL, approved_at = NULL, approved_by = NULL, submitted_at = NULL, updated_at = ?2 WHERE id = ?3",
+            params!["draft", &now, report_id],
         )?;
 
         Report::get_by_id(conn, report_id)
@@ -428,10 +495,13 @@ impl Report {
     /// Check if user can edit report
     pub fn can_edit(report: &Report, user_id: &str, user_role: &UserRole) -> bool {
         match user_role {
-            UserRole::Admin | UserRole::Supervisor => true,
+            UserRole::Admin => true,
+            UserRole::Supervisor => {
+                report.status == "draft" || report.status == "rejected"
+            }
             UserRole::Operator => {
-                // Operators can only edit their own draft reports
-                report.status == "draft" && report.created_by.as_deref() == Some(user_id)
+                (report.status == "draft" || report.status == "rejected" || report.status == "submitted")
+                    && report.created_by.as_deref() == Some(user_id)
             }
         }
     }

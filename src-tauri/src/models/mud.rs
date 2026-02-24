@@ -56,6 +56,52 @@ pub struct CreateMudAdditiveRequest {
     pub quantity: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SaveMudDataRequest {
+    pub records: Vec<CreateMudRecordRequest>,
+    pub additives: Vec<CreateMudAdditiveRequest>,
+}
+
+/// Save both mud records and additives in a single atomic operation.
+pub fn save_mud_bulk(
+    conn: &Connection,
+    report_id: &str,
+    data: &SaveMudDataRequest,
+) -> Result<(Vec<MudRecord>, Vec<MudAdditive>), AppError> {
+    let now = chrono::Utc::now().to_rfc3339();
+
+    conn.execute("DELETE FROM mud_records WHERE report_id = ?1", params![report_id])?;
+    conn.execute("DELETE FROM mud_additives WHERE report_id = ?1", params![report_id])?;
+
+    for rec in &data.records {
+        let id = uuid::Uuid::new_v4().to_string();
+        conn.execute(
+            "INSERT INTO mud_records (id, report_id, shift, hour, weight, viscosity, pvp, gels, filtrate, ph, solids, created_at, updated_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
+            params![
+                &id, report_id,
+                &rec.shift, &rec.hour, &rec.weight, &rec.viscosity,
+                &rec.pvp, &rec.gels, &rec.filtrate, &rec.ph, &rec.solids,
+                &now, &now
+            ],
+        )?;
+    }
+
+    for add in &data.additives {
+        let id = uuid::Uuid::new_v4().to_string();
+        conn.execute(
+            "INSERT INTO mud_additives (id, report_id, shift, additive_type, quantity, created_at, updated_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            params![&id, report_id, &add.shift, &add.additive_type, &add.quantity, &now, &now],
+        )?;
+    }
+
+    let records = MudRecord::list_by_report(conn, report_id)?;
+    let additives = MudAdditive::list_by_report(conn, report_id)?;
+    Ok((records, additives))
+}
+
 impl MudRecord {
     fn from_row(row: &Row) -> Result<Self, rusqlite::Error> {
         Ok(MudRecord {

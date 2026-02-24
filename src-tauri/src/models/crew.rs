@@ -164,6 +164,44 @@ impl CrewShift {
         conn.execute("DELETE FROM crew_shifts WHERE report_id = ?1", params![report_id])?;
         Ok(())
     }
+
+    pub fn save_bulk(
+        conn: &Connection,
+        report_id: &str,
+        shifts: &[CrewShiftData],
+    ) -> Result<Vec<CrewShiftWithMembers>, AppError> {
+        let now = chrono::Utc::now().to_rfc3339();
+
+        // CASCADE delete removes crew_members automatically
+        conn.execute("DELETE FROM crew_shifts WHERE report_id = ?1", params![report_id])?;
+
+        for data in shifts {
+            if !["morning", "afternoon", "night"].contains(&data.shift.as_str()) {
+                return Err(AppError::ValidationError(format!(
+                    "Invalid shift: {}. Must be morning, afternoon, or night",
+                    data.shift
+                )));
+            }
+
+            let shift_id = uuid::Uuid::new_v4().to_string();
+            conn.execute(
+                "INSERT INTO crew_shifts (id, report_id, shift, shift_start, shift_end, created_at, updated_at)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+                params![&shift_id, report_id, &data.shift, &data.shift_start, &data.shift_end, &now, &now],
+            )?;
+
+            for member_data in &data.members {
+                let member_id = uuid::Uuid::new_v4().to_string();
+                conn.execute(
+                    "INSERT INTO crew_members (id, crew_shift_id, personnel_id, position, hours, created_at, updated_at)
+                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+                    params![&member_id, &shift_id, &member_data.personnel_id, &member_data.position, &member_data.hours, &now, &now],
+                )?;
+            }
+        }
+
+        CrewShift::list_by_report(conn, report_id)
+    }
 }
 
 impl CrewMember {

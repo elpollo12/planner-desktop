@@ -64,13 +64,11 @@ export const observationsSectionSchema = z.object({
 // DRILL STRING SCHEMA
 // ============================================================================
 
-export const drillStringSchema = z.object({
-  size: z.string().optional(),
-  weight: z.string().optional(),
-  grade: z.string().optional(),
-  connectionType: z.string().optional(),
-  stringNumber: z.string().optional(),
-  pumpBrand: z.string().optional(),
-  pumpType: z.string().optional(),
-  headerLength: z.string().optional(),
+export const drillStringComponentSchema = z.object({
+  pieceName: z.string().min(1, 'Nombre de pieza es requerido'),
+  length: z.number().optional(),
+});
+
+export const drillStringSectionSchema = z.object({
+  components: z.array(drillStringComponentSchema),
 });

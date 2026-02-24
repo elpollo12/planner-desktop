@@ -107,4 +107,30 @@ impl OperationLog {
         conn.execute("DELETE FROM operations_log WHERE report_id = ?1", params![report_id])?;
         Ok(())
     }
+
+    pub fn save_bulk(
+        conn: &Connection,
+        report_id: &str,
+        logs: &[CreateOperationLogRequest],
+    ) -> Result<Vec<OperationLog>, AppError> {
+        let now = chrono::Utc::now().to_rfc3339();
+
+        conn.execute("DELETE FROM operations_log WHERE report_id = ?1", params![report_id])?;
+
+        for data in logs {
+            let id = uuid::Uuid::new_v4().to_string();
+            conn.execute(
+                "INSERT INTO operations_log (id, report_id, shift, time_from, time_to, duration, operation_code, details, created_at, updated_at)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+                params![
+                    &id, report_id,
+                    &data.shift, &data.time_from, &data.time_to,
+                    &data.duration, &data.operation_code, &data.details,
+                    &now, &now
+                ],
+            )?;
+        }
+
+        OperationLog::list_by_report(conn, report_id)
+    }
 }
