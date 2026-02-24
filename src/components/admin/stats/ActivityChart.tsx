@@ -13,10 +13,13 @@ import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useActivityStats } from '../../../hooks/useAdminStats';
 import { PeriodSelector } from './PeriodSelector';
+import { useAxisTickColor, useGridStroke } from './chartHelpers';
 
 export function ActivityChart() {
   const [days, setDays] = useState(30);
   const { data, isLoading } = useActivityStats(days);
+  const tickColor = useAxisTickColor();
+  const gridStroke = useGridStroke();
 
   if (isLoading) {
     return (
@@ -63,18 +66,16 @@ export function ActivityChart() {
                 <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200 dark:stroke-gray-700" />
+            <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
             <XAxis
               dataKey="label"
-              tick={{ fontSize: 12 }}
-              className="text-gray-500 dark:text-gray-400"
+              tick={{ fontSize: 12, fill: tickColor }}
               tickLine={false}
               axisLine={false}
             />
             <YAxis
               allowDecimals={false}
-              tick={{ fontSize: 12 }}
-              className="text-gray-500 dark:text-gray-400"
+              tick={{ fontSize: 12, fill: tickColor }}
               tickLine={false}
               axisLine={false}
             />

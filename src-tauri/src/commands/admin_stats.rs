@@ -83,6 +83,7 @@ pub async fn get_admin_logistics_stats(
         .prepare(
             "SELECT status, COUNT(*) as count
              FROM logistics_requests
+             WHERE is_deleted = 0
              GROUP BY status
              ORDER BY count DESC",
         )
@@ -104,6 +105,7 @@ pub async fn get_admin_logistics_stats(
         .prepare(
             "SELECT request_type, COUNT(*) as count
              FROM logistics_requests
+             WHERE is_deleted = 0
              GROUP BY request_type
              ORDER BY count DESC",
         )
@@ -126,6 +128,7 @@ pub async fn get_admin_logistics_stats(
             "SELECT DATE(created_at) as day, COUNT(*) as count
              FROM logistics_requests
              WHERE created_at >= date('now', ?1)
+               AND is_deleted = 0
              GROUP BY DATE(created_at)
              ORDER BY day ASC",
         )
@@ -148,6 +151,7 @@ pub async fn get_admin_logistics_stats(
             "SELECT r.name as rig_name, COUNT(lr.id) as count
              FROM logistics_requests lr
              JOIN rigs r ON lr.rig_id = r.id
+             WHERE lr.is_deleted = 0
              GROUP BY lr.rig_id
              ORDER BY count DESC
              LIMIT 5",
@@ -167,14 +171,14 @@ pub async fn get_admin_logistics_stats(
 
     // 5) Totals
     let total_requests: i64 = conn
-        .query_row("SELECT COUNT(*) FROM logistics_requests", [], |row| {
+        .query_row("SELECT COUNT(*) FROM logistics_requests WHERE is_deleted = 0", [], |row| {
             row.get(0)
         })
         .map_err(|e| e.to_string())?;
 
     let pending_count: i64 = conn
         .query_row(
-            "SELECT COUNT(*) FROM logistics_requests WHERE status IN ('requested', 'pending')",
+            "SELECT COUNT(*) FROM logistics_requests WHERE status IN ('requested', 'pending') AND is_deleted = 0",
             [],
             |row| row.get(0),
         )

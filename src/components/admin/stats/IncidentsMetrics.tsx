@@ -19,11 +19,13 @@ import { es } from 'date-fns/locale';
 import { Card } from '../../ui';
 import { useIncidentsStats } from '../../../hooks/useAdminStats';
 import { PeriodSelector } from './PeriodSelector';
-import { getIncidentColor } from './chartHelpers';
+import { getIncidentColor, useAxisTickColor, useGridStroke } from './chartHelpers';
 
 export function IncidentsMetrics() {
   const [days, setDays] = useState(30);
   const { data, isLoading } = useIncidentsStats(days);
+  const tickColor = useAxisTickColor();
+  const gridStroke = useGridStroke();
 
   if (isLoading) {
     return (
@@ -83,7 +85,7 @@ export function IncidentsMetrics() {
         {/* Pie: by type */}
         <Card className="p-5">
           <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Distribución por Tipo</h4>
-          <div className="h-56">
+          <div className="h-48">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -95,7 +97,6 @@ export function IncidentsMetrics() {
                   innerRadius={50}
                   outerRadius={80}
                   paddingAngle={3}
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                 >
                   {typeData.map((entry, idx) => (
                     <Cell key={idx} fill={entry.color} />
@@ -104,6 +105,14 @@ export function IncidentsMetrics() {
                 <Tooltip />
               </PieChart>
             </ResponsiveContainer>
+          </div>
+          <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 mt-3">
+            {typeData.map((entry, idx) => (
+              <div key={idx} className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400">
+                <span className="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: entry.color }} />
+                {entry.name}: {entry.value}
+              </div>
+            ))}
           </div>
         </Card>
 
@@ -114,9 +123,9 @@ export function IncidentsMetrics() {
             <div className="h-56">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={data.topRigs} layout="vertical" margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200 dark:stroke-gray-700" />
-                  <XAxis type="number" allowDecimals={false} tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
-                  <YAxis type="category" dataKey="rigName" tick={{ fontSize: 12 }} width={120} tickLine={false} axisLine={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
+                  <XAxis type="number" allowDecimals={false} tick={{ fontSize: 12, fill: tickColor }} tickLine={false} axisLine={false} />
+                  <YAxis type="category" dataKey="rigName" tick={{ fontSize: 12, fill: tickColor }} width={120} tickLine={false} axisLine={false} />
                   <Tooltip
                     content={({ active, payload }) => {
                       if (!active || !payload?.length) return null;
@@ -153,9 +162,9 @@ export function IncidentsMetrics() {
                     <stop offset="95%" stopColor="#f97316" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200 dark:stroke-gray-700" />
-                <XAxis dataKey="label" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
-                <YAxis allowDecimals={false} tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
+                <XAxis dataKey="label" tick={{ fontSize: 12, fill: tickColor }} tickLine={false} axisLine={false} />
+                <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: tickColor }} tickLine={false} axisLine={false} />
                 <Tooltip
                   content={({ active, payload }) => {
                     if (!active || !payload?.length) return null;

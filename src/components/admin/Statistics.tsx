@@ -75,7 +75,29 @@ export function Statistics() {
   };
 
   if (loading) {
-    return <div className="text-center py-8 text-gray-500">Cargando estadísticas...</div>;
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[...Array(4)].map((_, i) => (
+            <Card key={i} className="p-6">
+              <div className="animate-pulse flex items-center justify-between">
+                <div className="space-y-2">
+                  <div className="h-3 w-24 bg-gray-200 dark:bg-gray-700 rounded" />
+                  <div className="h-8 w-16 bg-gray-200 dark:bg-gray-700 rounded" />
+                </div>
+                <div className="h-8 w-8 bg-gray-200 dark:bg-gray-700 rounded-full" />
+              </div>
+            </Card>
+          ))}
+        </div>
+        <Card className="p-6">
+          <div className="animate-pulse space-y-4">
+            <div className="h-4 w-40 bg-gray-200 dark:bg-gray-700 rounded" />
+            <div className="h-64 bg-gray-100 dark:bg-gray-800 rounded-lg" />
+          </div>
+        </Card>
+      </div>
+    );
   }
 
   return (

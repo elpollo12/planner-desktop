@@ -12,7 +12,6 @@ import {
   ResponsiveContainer,
   AreaChart,
   Area,
-  Legend,
 } from 'recharts';
 import { Package, Clock, CheckCircle, XCircle, Loader2, PackageOpen } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
@@ -25,11 +24,15 @@ import {
   REQUEST_STATUS_LABELS,
   STATUS_COLOR_MAP,
   CHART_COLORS,
+  useAxisTickColor,
+  useGridStroke,
 } from './chartHelpers';
 
 export function LogisticsMetrics() {
   const [days, setDays] = useState(30);
   const { data, isLoading } = useLogisticsStats(days);
+  const tickColor = useAxisTickColor();
+  const gridStroke = useGridStroke();
 
   if (isLoading) {
     return (
@@ -84,7 +87,7 @@ export function LogisticsMetrics() {
         {/* Pie: by type */}
         <Card className="p-5">
           <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Por Tipo de Solicitud</h4>
-          <div className="h-56">
+          <div className="h-48">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -96,7 +99,6 @@ export function LogisticsMetrics() {
                   innerRadius={50}
                   outerRadius={80}
                   paddingAngle={3}
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                 >
                   {typeData.map((entry, idx) => (
                     <Cell key={idx} fill={entry.color} />
@@ -106,12 +108,20 @@ export function LogisticsMetrics() {
               </PieChart>
             </ResponsiveContainer>
           </div>
+          <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 mt-3">
+            {typeData.map((entry, idx) => (
+              <div key={idx} className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400">
+                <span className="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: entry.color }} />
+                {entry.name}: {entry.value}
+              </div>
+            ))}
+          </div>
         </Card>
 
         {/* Pie: by status */}
         <Card className="p-5">
           <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Por Estado</h4>
-          <div className="h-56">
+          <div className="h-48">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -123,7 +133,6 @@ export function LogisticsMetrics() {
                   innerRadius={50}
                   outerRadius={80}
                   paddingAngle={3}
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                 >
                   {statusData.map((entry, idx) => (
                     <Cell key={idx} fill={entry.color} />
@@ -132,6 +141,14 @@ export function LogisticsMetrics() {
                 <Tooltip />
               </PieChart>
             </ResponsiveContainer>
+          </div>
+          <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 mt-3">
+            {statusData.map((entry, idx) => (
+              <div key={idx} className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400">
+                <span className="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: entry.color }} />
+                {entry.name}: {entry.value}
+              </div>
+            ))}
           </div>
         </Card>
       </div>
@@ -143,9 +160,9 @@ export function LogisticsMetrics() {
           <div className="h-56">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data.topRigs} layout="vertical" margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200 dark:stroke-gray-700" />
-                <XAxis type="number" allowDecimals={false} tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
-                <YAxis type="category" dataKey="rigName" tick={{ fontSize: 12 }} width={120} tickLine={false} axisLine={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
+                <XAxis type="number" allowDecimals={false} tick={{ fontSize: 12, fill: tickColor }} tickLine={false} axisLine={false} />
+                <YAxis type="category" dataKey="rigName" tick={{ fontSize: 12, fill: tickColor }} width={120} tickLine={false} axisLine={false} />
                 <Tooltip
                   content={({ active, payload }) => {
                     if (!active || !payload?.length) return null;
@@ -181,9 +198,9 @@ export function LogisticsMetrics() {
                     <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200 dark:stroke-gray-700" />
-                <XAxis dataKey="label" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
-                <YAxis allowDecimals={false} tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
+                <XAxis dataKey="label" tick={{ fontSize: 12, fill: tickColor }} tickLine={false} axisLine={false} />
+                <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: tickColor }} tickLine={false} axisLine={false} />
                 <Tooltip
                   content={({ active, payload }) => {
                     if (!active || !payload?.length) return null;

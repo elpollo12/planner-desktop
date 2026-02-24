@@ -16,13 +16,17 @@ export const adminStatsKeys = {
 // HOOKS
 // ============================================================================
 
+const STALE_TIME = 1000 * 60 * 2; // 2 minutes
+const REFETCH_INTERVAL = 1000 * 60 * 2; // 2 minutes
+
 export function useActivityStats(days = 30) {
   const { sessionToken } = useAuthStore();
   return useQuery({
     queryKey: adminStatsKeys.activity(days),
     queryFn: () => adminStatsApi.getActivityStats(sessionToken!, days),
     enabled: !!sessionToken,
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    staleTime: STALE_TIME,
+    refetchInterval: REFETCH_INTERVAL,
   });
 }
 
@@ -32,7 +36,8 @@ export function useLogisticsStats(days = 30) {
     queryKey: adminStatsKeys.logistics(days),
     queryFn: () => adminStatsApi.getLogisticsStats(sessionToken!, days),
     enabled: !!sessionToken,
-    staleTime: 1000 * 60 * 5,
+    staleTime: STALE_TIME,
+    refetchInterval: REFETCH_INTERVAL,
   });
 }
 
@@ -42,6 +47,7 @@ export function useIncidentsStats(days = 30) {
     queryKey: adminStatsKeys.incidents(days),
     queryFn: () => adminStatsApi.getIncidentsStats(sessionToken!, days),
     enabled: !!sessionToken,
-    staleTime: 1000 * 60 * 5,
+    staleTime: STALE_TIME,
+    refetchInterval: REFETCH_INTERVAL,
   });
 }
