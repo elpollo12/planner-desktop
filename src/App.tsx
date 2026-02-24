@@ -8,7 +8,6 @@ import { usePreferencesStore } from './store/preferencesStore';
 import { useAppSettingsStore } from './store/appSettingsStore';
 import { useThemeApplicator } from './hooks/useThemeApplicator';
 import { useAutoSync } from './hooks/useAutoSync';
-import { backgroundPull } from './lib/syncHelper';
 import { syncEvents } from './lib/syncEvents';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -71,14 +70,11 @@ function App() {
     return unsubscribe;
   }, []);
 
-  // Validate session on startup and pull latest data from cloud
+  // Validate session on startup
+  // (useAutoSync handles the initial pull after 5s)
   useEffect(() => {
     if (sessionToken) {
       getCurrentUser()
-        .then(() => {
-          // After successful auth, pull latest data from cloud
-          backgroundPull(sessionToken);
-        })
         .finally(() => setValidating(false));
     } else {
       setValidating(false);

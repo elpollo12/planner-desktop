@@ -23,6 +23,7 @@ const SYNC_TABLES: &[TableDef] = &[
         id_col: "id",
         has_updated_at: true,
         parent_col: None,
+        skip_cleanup: false,
     },
     TableDef {
         name: "users",
@@ -34,6 +35,7 @@ const SYNC_TABLES: &[TableDef] = &[
         id_col: "id",
         has_updated_at: true,
         parent_col: None,
+        skip_cleanup: false,
     },
     TableDef {
         name: "operation_codes",
@@ -44,6 +46,7 @@ const SYNC_TABLES: &[TableDef] = &[
         id_col: "id",
         has_updated_at: true,
         parent_col: None,
+        skip_cleanup: false,
     },
     TableDef {
         name: "areas",
@@ -54,6 +57,7 @@ const SYNC_TABLES: &[TableDef] = &[
         id_col: "id",
         has_updated_at: true,
         parent_col: None,
+        skip_cleanup: false,
     },
     TableDef {
         name: "operators",
@@ -63,6 +67,7 @@ const SYNC_TABLES: &[TableDef] = &[
         id_col: "id",
         has_updated_at: true,
         parent_col: None,
+        skip_cleanup: false,
     },
     TableDef {
         name: "rigs",
@@ -73,6 +78,7 @@ const SYNC_TABLES: &[TableDef] = &[
         id_col: "id",
         has_updated_at: true,
         parent_col: None,
+        skip_cleanup: false,
     },
     TableDef {
         name: "rig_personnel",
@@ -83,6 +89,7 @@ const SYNC_TABLES: &[TableDef] = &[
         id_col: "id",
         has_updated_at: true,
         parent_col: Some("rig_id"),
+        skip_cleanup: false,
     },
     TableDef {
         name: "user_rigs",
@@ -93,6 +100,7 @@ const SYNC_TABLES: &[TableDef] = &[
         id_col: "id",
         has_updated_at: true,
         parent_col: None,
+        skip_cleanup: false,
     },
     TableDef {
         name: "reports",
@@ -106,6 +114,7 @@ const SYNC_TABLES: &[TableDef] = &[
         id_col: "id",
         has_updated_at: true,
         parent_col: None,
+        skip_cleanup: false,
     },
     TableDef {
         name: "drill_string_components",
@@ -116,6 +125,7 @@ const SYNC_TABLES: &[TableDef] = &[
         id_col: "id",
         has_updated_at: true,
         parent_col: Some("report_id"),
+        skip_cleanup: false,
     },
     TableDef {
         name: "crew_shifts",
@@ -126,6 +136,7 @@ const SYNC_TABLES: &[TableDef] = &[
         id_col: "id",
         has_updated_at: true,
         parent_col: Some("report_id"),
+        skip_cleanup: false,
     },
     TableDef {
         name: "crew_members",
@@ -136,6 +147,7 @@ const SYNC_TABLES: &[TableDef] = &[
         id_col: "id",
         has_updated_at: true,
         parent_col: Some("crew_shift_id"),
+        skip_cleanup: false,
     },
     TableDef {
         name: "time_distribution",
@@ -146,6 +158,7 @@ const SYNC_TABLES: &[TableDef] = &[
         id_col: "id",
         has_updated_at: true,
         parent_col: Some("report_id"),
+        skip_cleanup: false,
     },
     TableDef {
         name: "bit_records",
@@ -157,6 +170,7 @@ const SYNC_TABLES: &[TableDef] = &[
         id_col: "id",
         has_updated_at: true,
         parent_col: Some("report_id"),
+        skip_cleanup: false,
     },
     TableDef {
         name: "mud_records",
@@ -167,6 +181,7 @@ const SYNC_TABLES: &[TableDef] = &[
         id_col: "id",
         has_updated_at: true,
         parent_col: Some("report_id"),
+        skip_cleanup: false,
     },
     TableDef {
         name: "mud_additives",
@@ -177,6 +192,7 @@ const SYNC_TABLES: &[TableDef] = &[
         id_col: "id",
         has_updated_at: true,
         parent_col: Some("report_id"),
+        skip_cleanup: false,
     },
     TableDef {
         name: "drilling_parameters",
@@ -189,6 +205,7 @@ const SYNC_TABLES: &[TableDef] = &[
         id_col: "id",
         has_updated_at: true,
         parent_col: Some("report_id"),
+        skip_cleanup: false,
     },
     TableDef {
         name: "deviation_history",
@@ -199,6 +216,7 @@ const SYNC_TABLES: &[TableDef] = &[
         id_col: "id",
         has_updated_at: true,
         parent_col: Some("report_id"),
+        skip_cleanup: false,
     },
     TableDef {
         name: "operations_log",
@@ -209,6 +227,7 @@ const SYNC_TABLES: &[TableDef] = &[
         id_col: "id",
         has_updated_at: true,
         parent_col: Some("report_id"),
+        skip_cleanup: false,
     },
     TableDef {
         name: "report_reviews",
@@ -220,6 +239,7 @@ const SYNC_TABLES: &[TableDef] = &[
         id_col: "id",
         has_updated_at: true,
         parent_col: Some("report_id"),
+        skip_cleanup: true, // append-only audit log — never delete existing rows
     },
     TableDef {
         name: "user_preferences",
@@ -229,6 +249,7 @@ const SYNC_TABLES: &[TableDef] = &[
         id_col: "id",
         has_updated_at: true,
         parent_col: None,
+        skip_cleanup: false,
     },
     // =========================================================================
     // LOGISTICS MODULE
@@ -242,6 +263,7 @@ const SYNC_TABLES: &[TableDef] = &[
         id_col: "id",
         has_updated_at: true,
         parent_col: None,
+        skip_cleanup: false,
     },
     TableDef {
         name: "logistics_water_bottles_movements",
@@ -252,6 +274,7 @@ const SYNC_TABLES: &[TableDef] = &[
         id_col: "id",
         has_updated_at: true,
         parent_col: None,
+        skip_cleanup: false,
     },
     TableDef {
         name: "logistics_fuel_movements",
@@ -262,6 +285,7 @@ const SYNC_TABLES: &[TableDef] = &[
         id_col: "id",
         has_updated_at: true,
         parent_col: None,
+        skip_cleanup: false,
     },
     TableDef {
         name: "logistics_vacuum_actions",
@@ -272,6 +296,7 @@ const SYNC_TABLES: &[TableDef] = &[
         id_col: "id",
         has_updated_at: true,
         parent_col: None,
+        skip_cleanup: false,
     },
     TableDef {
         name: "logistics_materials_movements",
@@ -282,6 +307,7 @@ const SYNC_TABLES: &[TableDef] = &[
         id_col: "id",
         has_updated_at: true,
         parent_col: Some("material_id"),
+        skip_cleanup: false,
     },
     TableDef {
         name: "logistics_requests",
@@ -293,6 +319,7 @@ const SYNC_TABLES: &[TableDef] = &[
         id_col: "id",
         has_updated_at: true,
         parent_col: None,
+        skip_cleanup: false,
     },
     // =========================================================================
     // INCIDENTS MODULE
@@ -306,6 +333,7 @@ const SYNC_TABLES: &[TableDef] = &[
         id_col: "id",
         has_updated_at: true,
         parent_col: None,
+        skip_cleanup: false,
     },
     TableDef {
         name: "incidents",
@@ -316,6 +344,7 @@ const SYNC_TABLES: &[TableDef] = &[
         id_col: "id",
         has_updated_at: true,
         parent_col: None,
+        skip_cleanup: false,
     },
     TableDef {
         name: "incident_personnel",
@@ -326,6 +355,7 @@ const SYNC_TABLES: &[TableDef] = &[
         id_col: "id",
         has_updated_at: true,
         parent_col: Some("incident_id"),
+        skip_cleanup: false,
     },
     // =========================================================================
     // SNAPSHOTS
@@ -344,6 +374,23 @@ const SYNC_TABLES: &[TableDef] = &[
         id_col: "id",
         has_updated_at: true,
         parent_col: None,
+        skip_cleanup: false,
+    },
+    // =========================================================================
+    // NOTIFICATIONS MODULE
+    // =========================================================================
+    TableDef {
+        name: "notifications",
+        columns: &[
+            "id", "recipient_id", "actor_id", "actor_name",
+            "category", "action_type", "title", "message",
+            "reference_id", "reference_type", "rig_id", "rig_name",
+            "is_read", "read_at", "created_at", "updated_at", "is_deleted",
+        ],
+        id_col: "id",
+        has_updated_at: true,
+        parent_col: None,
+        skip_cleanup: false,
     },
 ];
 
@@ -355,6 +402,12 @@ struct TableDef {
     /// For child tables: column that links to parent (e.g. "report_id").
     /// Used to clean up stale rows before sync write.
     parent_col: Option<&'static str>,
+    /// If true, skip the delete-before-insert cleanup during sync.
+    /// Used for append-only tables (e.g. audit logs) where rows are never
+    /// replaced — only new rows are added. Without this flag, incremental
+    /// sync would delete all existing sibling rows when only the latest
+    /// row is present in the sync batch.
+    skip_cleanup: bool,
 }
 
 /// Data extracted from a single table for sync
@@ -443,7 +496,7 @@ fn cleanup_local_child_rows(
 
         // Only delete from child tables that are actually in the current batch
         for table_def in SYNC_TABLES.iter() {
-            if table_def.parent_col == Some(parent_col) && tables_in_batch.contains(table_def.name) {
+            if table_def.parent_col == Some(parent_col) && tables_in_batch.contains(table_def.name) && !table_def.skip_cleanup {
                 let sql = format!(
                     "DELETE FROM {} WHERE {} IN ({})",
                     table_def.name, parent_col, placeholders
@@ -493,7 +546,7 @@ async fn cleanup_turso_child_rows(
 
         // Only delete from child tables that are actually in the current batch
         for table_def in SYNC_TABLES.iter() {
-            if table_def.parent_col == Some(parent_col) && tables_in_batch.contains(table_def.name) {
+            if table_def.parent_col == Some(parent_col) && tables_in_batch.contains(table_def.name) && !table_def.skip_cleanup {
                 batch.push((
                     format!("DELETE FROM {} WHERE {} IN ({})", table_def.name, parent_col, placeholders),
                     params.clone(),

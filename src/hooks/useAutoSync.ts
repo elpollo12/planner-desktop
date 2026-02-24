@@ -65,7 +65,7 @@ export function useAutoSync() {
     // Do initial sync check after a short delay (let app settle)
     const initialTimeout = setTimeout(() => {
       doSync();
-    }, 5000);
+    }, 3000);
 
     // Check every minute if we need to sync
     // (the actual sync interval is checked inside doSync)

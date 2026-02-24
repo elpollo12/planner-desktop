@@ -7,6 +7,7 @@ mod models;
 mod commands;
 mod sync;
 mod license;
+pub mod notification_helper;
 
 use state::AppState;
 
