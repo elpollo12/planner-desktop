@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useModal } from '../store/modalStore';
+import { PermissionGate } from '../components/guards/PermissionGate';
 import { reportsApi, rigsApi, usersApi } from '../lib/api';
 import ApproveReportModal from '../components/modals/ApproveReportModal';
 import RejectReportModal from '../components/modals/RejectReportModal';
@@ -381,7 +382,7 @@ export default function ReportApprovals() {
                       Ver
                     </Button>
                     {activeTab === 'pending' && report.status === 'submitted' && (
-                      <>
+                      <PermissionGate minRole="supervisor">
                         <Button
                           variant="success"
                           size="sm"
@@ -398,7 +399,7 @@ export default function ReportApprovals() {
                         >
                           Rechazar
                         </Button>
-                      </>
+                      </PermissionGate>
                     )}
                   </div>
                 </div>

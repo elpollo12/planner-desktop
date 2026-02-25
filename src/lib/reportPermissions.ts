@@ -1,5 +1,6 @@
 import type { Report } from '../types/report';
 import type { User } from '../types';
+import { canAccessModule } from './permissions';
 
 // ============================================================================
 // Report Permission Functions
@@ -10,7 +11,8 @@ import type { User } from '../types';
 // PERMISSION POLICY (agreed 2025):
 //   Submit:  Only draft or rejected → submitted. Approved reports CANNOT
 //            be re-submitted without an explicit admin reopen first.
-//   Edit:    Admin always. Supervisor: draft/rejected. Operator: own draft/rejected/submitted.
+//   Edit:    Admin always. Supervisor: draft/rejected. Operator: own draft/rejected only.
+//            Submitted reports can only be edited by Admin (must await supervisor feedback).
 //   Delete:  Admin/Supervisor always (soft-delete). Operator: own draft/submitted.
 //   Approve: Only supervisor/admin when status is 'submitted'.
 //   Reopen:  Admin: any non-draft. Supervisor: submitted/rejected (NOT approved).
@@ -21,13 +23,13 @@ import type { User } from '../types';
  * Can the user edit this report?
  * - Admin: any report, any status
  * - Supervisor: draft or rejected
- * - Operator: own draft, rejected, or submitted
+ * - Operator: own draft or rejected only (submitted must await supervisor/admin feedback)
  */
 export function canEditReport(user: User | null, report: Report | null): boolean {
   if (!user || !report) return false;
   if (user.role === 'admin') return true;
   if (user.role === 'supervisor' && (report.status === 'draft' || report.status === 'rejected')) return true;
-  if (report.createdBy === user.id && (report.status === 'draft' || report.status === 'rejected' || report.status === 'submitted')) return true;
+  if (report.createdBy === user.id && (report.status === 'draft' || report.status === 'rejected')) return true;
   return false;
 }
 
@@ -51,6 +53,7 @@ export function canDeleteReport(user: User | null, report: Report | null): boole
  */
 export function canSubmitReport(user: User | null, report: Report | null): boolean {
   if (!user || !report) return false;
+  if (!canAccessModule(user, 'reports')) return false;
   const submittable = report.status === 'draft' || report.status === 'rejected';
   if (!submittable) return false;
   if (user.role === 'admin' || user.role === 'supervisor') return true;
@@ -64,6 +67,7 @@ export function canSubmitReport(user: User | null, report: Report | null): boole
  */
 export function canApproveReport(user: User | null, report: Report | null): boolean {
   if (!user || !report) return false;
+  if (!canAccessModule(user, 'approvals')) return false;
   if (report.status !== 'submitted') return false;
   return user.role === 'supervisor' || user.role === 'admin';
 }

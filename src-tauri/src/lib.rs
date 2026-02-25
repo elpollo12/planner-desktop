@@ -268,6 +268,7 @@ pub fn run() {
             commands::module_permissions::get_my_module_permissions,
             commands::module_permissions::get_user_module_permissions,
             commands::module_permissions::save_user_module_permissions,
+            commands::module_permissions::get_my_permission_modifier,
 
             // Debug commands
             commands::debug::debug_list_all_rigs,

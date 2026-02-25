@@ -4,6 +4,7 @@ export type UserRole = 'operator' | 'supervisor' | 'admin';
 // Module Permissions (granular per-user access)
 // ============================================================================
 
+// MUST stay in sync with `VALID_MODULES` in src-tauri/src/models/module_permission.rs.
 export const APP_MODULES = [
   'dashboard', 'reports', 'approvals',
   'logistics', 'incidents', 'admin',
@@ -23,12 +24,20 @@ export const MODULE_LABELS: Record<AppModule, string> = {
 /**
  * Modules shown in admin permissions UI.
  * 'admin' is excluded — only the admin role grants admin access.
+ * Derived from APP_MODULES so adding a new module here automatically
+ * surfaces it in the permissions UI.
  */
-export const PERMISSION_MODULES: AppModule[] = [
-  'dashboard', 'reports', 'approvals', 'logistics', 'incidents',
-];
+export const PERMISSION_MODULES: AppModule[] = APP_MODULES.filter((m) => m !== 'admin' && m !== 'dashboard');
 
-/** Default module access per role. Must stay in sync with backend (module_permission.rs). */
+/**
+ * UI fallback defaults — used only when `modulePermissions` hasn't been loaded yet
+ * (e.g. loading state, or admin users who skip the getMine() call).
+ *
+ * At runtime, non-admin users always have `modulePermissions` populated from the
+ * backend (`get_my_module_permissions`), which is the authoritative source.
+ *
+ * MUST stay in sync with `role_defaults()` in src-tauri/src/models/module_permission.rs.
+ */
 export const MODULE_DEFAULTS: Record<UserRole, Record<AppModule, boolean>> = {
   operator: {
     dashboard: true,
@@ -118,41 +127,3 @@ export interface UpdateUserInput {
   supervisorId?: string | null;
 }
 
-// Permisos por rol
-export const ROLE_PERMISSIONS = {
-  operator: {
-    canViewOwnReports: true,
-    canCreateReports: true,
-    canEditOwnReports: true,
-    canViewAllReports: false,
-    canEditAnyReport: false,
-    canApproveReports: false,
-    canManageUsers: false,
-    canConfigureSystem: false,
-    canExportData: false,
-  },
-  supervisor: {
-    canViewOwnReports: true,
-    canCreateReports: true,
-    canEditOwnReports: true,
-    canViewAllReports: true,
-    canEditAnyReport: true,
-    canApproveReports: true,
-    canManageUsers: false,
-    canConfigureSystem: false,
-    canExportData: true,
-  },
-  admin: {
-    canViewOwnReports: true,
-    canCreateReports: true,
-    canEditOwnReports: true,
-    canViewAllReports: true,
-    canEditAnyReport: true,
-    canApproveReports: true,
-    canManageUsers: true,
-    canConfigureSystem: true,
-    canExportData: true,
-  },
-} as const;
-
-export type Permission = keyof typeof ROLE_PERMISSIONS.admin;

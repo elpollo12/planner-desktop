@@ -95,7 +95,7 @@ export function useReportWizard({
       return existingReport.status === 'draft' || existingReport.status === 'rejected';
     }
     if (user.role === 'operator') {
-      return (existingReport.status === 'draft' || existingReport.status === 'rejected' || existingReport.status === 'submitted') && existingReport.createdBy === user.id;
+      return (existingReport.status === 'draft' || existingReport.status === 'rejected') && existingReport.createdBy === user.id;
     }
     return false;
   }, [existingReport, user]);
@@ -211,8 +211,7 @@ export function useReportWizard({
   /** Validate edit permissions */
   useEffect(() => {
     if (isEditMode && existingReport && !canEdit) {
-      toast.error('No tienes permisos para editar este reporte');
-      navigate('/reports');
+      navigate('/forbidden', { replace: true });
     }
   }, [isEditMode, existingReport, canEdit, navigate]);
 

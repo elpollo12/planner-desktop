@@ -13,7 +13,8 @@ use std::collections::HashMap;
 // Admin users always have full access — this table is ignored for them.
 // ============================================================================
 
-/// Valid application modules (flat — no sub-modules)
+/// Valid application modules (flat — no sub-modules).
+/// MUST stay in sync with `APP_MODULES` in src/types/user.ts.
 const VALID_MODULES: &[&str] = &[
     "dashboard",
     "reports",
@@ -55,6 +56,10 @@ impl ModulePermission {
 
     /// Returns the default module access map for a given role.
     /// Admin always gets all-true (enforced at a higher level too).
+    ///
+    /// MUST stay in sync with `MODULE_DEFAULTS` in src/types/user.ts (frontend fallback).
+    /// The backend is the authoritative source at runtime — the frontend value is only
+    /// used as a loading-state fallback before `modulePermissions` is populated.
     pub fn role_defaults(role: &str) -> HashMap<String, bool> {
         match role {
             "operator" => HashMap::from([

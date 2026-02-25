@@ -1,7 +1,8 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ShieldOff } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
+import { usePermissions } from '../hooks/usePermissions';
 import { MainLayout } from '../components/layout';
 import { Card } from '../components/ui';
 import { reportsApi } from '../lib/api';
@@ -80,6 +81,7 @@ function QuickActionsCarousel({ actions }: { actions: QuickAction[] }) {
 
 export default function Dashboard() {
   const { user, isAuthenticated, sessionToken } = useAuthStore();
+  const { canAccess } = usePermissions();
   const navigate = useNavigate();
   const [stats, setStats] = useState<DashboardStats>({
     total: 0,
@@ -97,10 +99,10 @@ export default function Dashboard() {
   }, [isAuthenticated, navigate]);
 
   useEffect(() => {
-    if (sessionToken) {
+    if (sessionToken && canAccess.reports) {
       loadStats();
     }
-  }, [sessionToken]);
+  }, [sessionToken, canAccess.reports]);
 
   const loadStats = async () => {
     if (!sessionToken) return;
@@ -128,13 +130,18 @@ export default function Dashboard() {
   };
 
   const quickActions = useMemo(() => {
-    const actions = [
-      { icon: '📝', title: 'Nuevo Reporte', description: 'Crear un nuevo DDR', href: '/reports/new' },
-      { icon: '📊', title: 'Ver Reportes', description: 'Consultar reportes existentes', href: '/reports' },
-      { icon: '⚠️', title: 'Incidencias', description: 'Registrar y consultar incidencias', href: '/incidents' },
-    ];
+    const actions: QuickAction[] = [];
 
-    if (user?.role === 'supervisor' || user?.role === 'admin') {
+    if (canAccess.reports) {
+      actions.push({ icon: '📝', title: 'Nuevo Reporte', description: 'Crear un nuevo DDR', href: '/reports/new' });
+      actions.push({ icon: '📊', title: 'Ver Reportes', description: 'Consultar reportes existentes', href: '/reports' });
+    }
+
+    if (canAccess.incidents) {
+      actions.push({ icon: '⚠️', title: 'Incidencias', description: 'Registrar y consultar incidencias', href: '/incidents' });
+    }
+
+    if (canAccess.approvals) {
       actions.push({
         icon: '✅',
         title: 'Aprobaciones',
@@ -145,14 +152,16 @@ export default function Dashboard() {
       });
     }
 
-    if (user?.role === 'admin') {
+    if (canAccess.admin) {
       actions.push({ icon: '👥', title: 'Usuarios', description: 'Gestionar usuarios del sistema', href: '/admin/' });
     }
 
-    actions.push({ icon: '🚚', title: 'Logística', description: 'Gestión de recursos y materiales', href: '/logistics' });
+    if (canAccess.logistics) {
+      actions.push({ icon: '🚚', title: 'Logística', description: 'Gestión de recursos y materiales', href: '/logistics' });
+    }
 
     return actions;
-  }, [user?.role, stats.submitted]);
+  }, [canAccess.reports, canAccess.incidents, canAccess.approvals, canAccess.admin, canAccess.logistics, stats.submitted]);
 
   if (!user) return null;
 
@@ -161,30 +170,47 @@ export default function Dashboard() {
       title="Dashboard"
       subtitle={`Bienvenido, ${user.fullName}`}
     >
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {[
-          { label: 'Reportes Totales', value: stats.total, color: 'bg-blue-500', href: '/reports' },
-          { label: 'Borradores', value: stats.drafts, color: 'bg-yellow-500', href: '/reports' },
-          { label: 'Pendientes', value: stats.submitted, color: 'bg-purple-500', href: (user.role === 'supervisor' || user.role === 'admin') ? '/approvals' : '/reports' },
-          { label: 'Aprobados', value: stats.approved, color: 'bg-green-500', href: '/reports' },
-        ].map((stat) => (
-          <div key={stat.label} onClick={() => navigate(stat.href)} className="cursor-pointer hover:shadow-md transition-shadow rounded-lg">
-            <Card className="p-0! overflow-hidden">
-              <div className={`h-2 ${stat.color}`} />
-              <div className="p-6">
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">{stat.label}</p>
-                <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-                  {loading ? '...' : stat.value}
-                </p>
-              </div>
-            </Card>
-          </div>
-        ))}
-      </div>
+      {/* Stats Grid — only shown when user has access to reports */}
+      {canAccess.reports && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          {[
+            { label: 'Reportes Totales', value: stats.total, color: 'bg-blue-500', href: '/reports' },
+            { label: 'Borradores', value: stats.drafts, color: 'bg-yellow-500', href: '/reports' },
+            { label: 'Pendientes', value: stats.submitted, color: 'bg-purple-500', href: canAccess.approvals ? '/approvals' : '/reports' },
+            { label: 'Aprobados', value: stats.approved, color: 'bg-green-500', href: '/reports' },
+          ].map((stat) => (
+            <div key={stat.label} onClick={() => navigate(stat.href)} className="cursor-pointer hover:shadow-md transition-shadow rounded-lg">
+              <Card className="p-0! overflow-hidden">
+                <div className={`h-2 ${stat.color}`} />
+                <div className="p-6">
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">{stat.label}</p>
+                  <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+                    {loading ? '...' : stat.value}
+                  </p>
+                </div>
+              </Card>
+            </div>
+          ))}
+        </div>
+      )}
 
-      {/* Quick Actions Carousel */}
-      <QuickActionsCarousel actions={quickActions} />
+      {/* Quick Actions Carousel / No permissions message */}
+      {quickActions.length === 0 ? (
+        <Card>
+          <div className="flex flex-col items-center justify-center py-12 text-center gap-4">
+            <ShieldOff size={48} className="text-gray-300 dark:text-gray-600" />
+            <div>
+              <p className="text-lg font-semibold text-gray-700 dark:text-gray-300">Sin acceso a módulos</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                Actualmente no tienes permisos para acceder a ningún módulo.<br />
+                Contacta con un administrador para que te asigne los permisos necesarios.
+              </p>
+            </div>
+          </div>
+        </Card>
+      ) : (
+        <QuickActionsCarousel actions={quickActions} />
+      )}
     </MainLayout>
   );
 }

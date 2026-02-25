@@ -2,13 +2,13 @@ import { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { useAuthStore } from '@/store/authStore';
 import { useModal } from '@/store/modalStore';
-import { usersApi, rigsApi } from '@/lib/api';
+import { usersApi, rigsApi, modulePermissionsApi } from '@/lib/api';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Tabs, TabPanel } from '@/components/ui/Tabs';
-import { KeyRound, User, HardHat, Shield, MapPin, AlertTriangle, ArrowRight } from 'lucide-react';
+import { KeyRound, User, HardHat, Shield, MapPin, AlertTriangle, ArrowRight, ShieldCheck } from 'lucide-react';
 import type { RigWithArea } from '@/types/rig';
 
 export default function Profile() {
@@ -24,6 +24,9 @@ export default function Profile() {
     const [confirmPassword, setConfirmPassword] = useState('');
     const [processing, setProcessing] = useState(false);
 
+    // Permission modifier state
+    const [permissionModifier, setPermissionModifier] = useState<{ modifiedBy: string; modifiedAt: string } | null>(null);
+
     // Load assigned rigs
     useEffect(() => {
         if (!sessionToken) return;
@@ -33,6 +36,14 @@ export default function Profile() {
             .catch(() => setRigs([]))
             .finally(() => setRigsLoading(false));
     }, [sessionToken]);
+
+    // Load permission modifier (only for non-admin users)
+    useEffect(() => {
+        if (!sessionToken || user?.role === 'admin') return;
+        modulePermissionsApi.getMyModifier(sessionToken)
+            .then(setPermissionModifier)
+            .catch(() => {/* non-critical, ignore silently */});
+    }, [sessionToken, user?.role]);
 
     const clearPasswordFields = () => {
         setCurrentPassword('');
@@ -162,6 +173,28 @@ export default function Profile() {
                         </div>
                     </div>
                 </Card>
+
+                {/* Permission modifier notice (non-admin users only) */}
+                {user.role !== 'admin' && permissionModifier && (
+                    <Card>
+                        <div className="flex items-center gap-3">
+                            <ShieldCheck size={16} className="text-amber-500 dark:text-amber-400 shrink-0" />
+                            <div>
+                                <p className="text-[11px] text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-0.5">
+                                    Última modificación de permisos
+                                </p>
+                                <p className="text-sm text-gray-700 dark:text-gray-300">
+                                    Por <span className="font-medium">{permissionModifier.modifiedBy}</span>
+                                    {' · '}
+                                    {new Date(permissionModifier.modifiedAt).toLocaleString('es-ES', {
+                                        dateStyle: 'medium',
+                                        timeStyle: 'short',
+                                    })}
+                                </p>
+                            </div>
+                        </div>
+                    </Card>
+                )}
 
                 {/* Tabs Section */}
                 <Card>

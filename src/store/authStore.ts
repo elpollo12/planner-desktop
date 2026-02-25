@@ -43,8 +43,8 @@ export const useAuthStore = create<AuthState>()(
               modulePermissions = await modulePermissionsApi.getMine(
                 response.sessionToken,
               ) as ModulePermissions;
-            } catch (e) {
-              console.error('Failed to load module permissions:', e);
+            } catch {
+              throw 'No se pudieron cargar tus permisos de acceso. Por favor, intenta de nuevo.';
             }
           }
 
@@ -128,9 +128,16 @@ export const useAuthStore = create<AuthState>()(
           let modulePermissions: ModulePermissions | undefined;
           if (user.role !== 'admin') {
             try {
-              modulePermissions = await modulePermissionsApi.getMine(sessionToken)  as ModulePermissions;
-            } catch (e) {
-              console.error('Failed to load module permissions:', e);
+              modulePermissions = await modulePermissionsApi.getMine(sessionToken) as ModulePermissions;
+            } catch {
+              set({
+                user: null,
+                sessionToken: null,
+                isAuthenticated: false,
+                isLoading: false,
+                error: null,
+              });
+              return;
             }
           }
 

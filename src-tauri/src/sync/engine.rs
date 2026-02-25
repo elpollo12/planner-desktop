@@ -1017,9 +1017,17 @@ const REMOTE_MIGRATIONS: &[&str] = &[
     "ALTER TABLE reports ADD COLUMN rejected_at TEXT",
     "ALTER TABLE reports ADD COLUMN rejection_reason TEXT",
     // V33: notifications table
-    "CREATE TABLE IF NOT EXISTS notifications (id TEXT PRIMARY KEY, recipient_id TEXT NOT NULL, actor_id TEXT NOT NULL, actor_name TEXT NOT NULL, category TEXT NOT NULL CHECK(category IN ('logistics','incident','report')), action_type TEXT NOT NULL, title TEXT NOT NULL, message TEXT NOT NULL, reference_id TEXT, reference_type TEXT CHECK(reference_type IN ('logistics_request','incident','report')), rig_id TEXT, rig_name TEXT, is_read INTEGER NOT NULL DEFAULT 0, read_at TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, is_deleted INTEGER NOT NULL DEFAULT 0)",
+    "CREATE TABLE IF NOT EXISTS notifications (id TEXT PRIMARY KEY, recipient_id TEXT NOT NULL, actor_id TEXT NOT NULL, actor_name TEXT NOT NULL, category TEXT NOT NULL CHECK(category IN ('logistics','incident','report','permissions')), action_type TEXT NOT NULL, title TEXT NOT NULL, message TEXT NOT NULL, reference_id TEXT, reference_type TEXT CHECK(reference_type IN ('logistics_request','incident','report')), rig_id TEXT, rig_name TEXT, is_read INTEGER NOT NULL DEFAULT 0, read_at TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, is_deleted INTEGER NOT NULL DEFAULT 0)",
     // V34: notification_retention_days in app_settings
     "ALTER TABLE app_settings ADD COLUMN notification_retention_days INTEGER NOT NULL DEFAULT 5",
+    // V38: Recreate notifications on Turso to add 'permissions' to category CHECK constraint.
+    // SQLite cannot ALTER constraints — use CREATE + copy + DROP + RENAME.
+    // Idempotent: data is always copied before DROP, so no rows are lost across sessions.
+    // Runs once per app session (guarded by REMOTE_DB_INITIALIZED).
+    "CREATE TABLE IF NOT EXISTS notifications_v38 (id TEXT PRIMARY KEY, recipient_id TEXT NOT NULL, actor_id TEXT NOT NULL, actor_name TEXT NOT NULL, category TEXT NOT NULL CHECK(category IN ('logistics','incident','report','permissions')), action_type TEXT NOT NULL, title TEXT NOT NULL, message TEXT NOT NULL, reference_id TEXT, reference_type TEXT CHECK(reference_type IN ('logistics_request','incident','report')), rig_id TEXT, rig_name TEXT, is_read INTEGER NOT NULL DEFAULT 0, read_at TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, is_deleted INTEGER NOT NULL DEFAULT 0)",
+    "INSERT OR IGNORE INTO notifications_v38 SELECT * FROM notifications",
+    "DROP TABLE IF EXISTS notifications",
+    "ALTER TABLE notifications_v38 RENAME TO notifications",
 ];
 
 /// Initialize the remote Turso database with the same schema

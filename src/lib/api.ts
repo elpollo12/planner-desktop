@@ -794,4 +794,8 @@ export const modulePermissionsApi = {
   /** Save permission overrides for a user (admin only) */
   save: (sessionToken: string, userId: string, permissions: Record<string, boolean>) =>
     invoke<void>('save_user_module_permissions', { sessionToken, userId, permissions }),
+
+  /** Get who last modified the current user's permissions. Null if never customized. */
+  getMyModifier: (sessionToken: string) =>
+    invoke<{ modifiedBy: string; modifiedAt: string } | null>('get_my_permission_modifier', { sessionToken }),
 };

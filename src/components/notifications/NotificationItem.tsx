@@ -1,8 +1,9 @@
 import { useNavigate } from 'react-router-dom';
-import { Forklift, AlertTriangle, FileText, X } from 'lucide-react';
+import { Forklift, AlertTriangle, FileText, ShieldCheck, X } from 'lucide-react';
 import { useMarkNotificationRead, useDeleteNotification } from '../../hooks/useNotifications';
 import { useLogisticsStore } from '../../store/logisticsStore';
 import { useIncidentsStore } from '../../store/incidentsStore';
+import { usePermissions } from '../../hooks/usePermissions';
 import type { Notification } from '../../types/notification';
 
 // Time-ago formatter (simple, in Spanish)
@@ -21,9 +22,10 @@ function timeAgo(dateStr: string): string {
 }
 
 const CATEGORY_CONFIG: Record<string, { icon: typeof FileText; color: string }> = {
-  logistics: { icon: Forklift, color: 'text-green-500 dark:text-green-400' },
-  incident: { icon: AlertTriangle, color: 'text-orange-500 dark:text-orange-400' },
-  report: { icon: FileText, color: 'text-blue-500 dark:text-blue-400' },
+  logistics:   { icon: Forklift,      color: 'text-green-500 dark:text-green-400'  },
+  incident:    { icon: AlertTriangle, color: 'text-orange-500 dark:text-orange-400' },
+  report:      { icon: FileText,      color: 'text-blue-500 dark:text-blue-400'    },
+  permissions: { icon: ShieldCheck,   color: 'text-amber-500 dark:text-amber-400'  },
 };
 
 interface NotificationItemProps {
@@ -33,6 +35,7 @@ interface NotificationItemProps {
 
 export function NotificationItem({ notification, onNavigate }: NotificationItemProps) {
   const navigate = useNavigate();
+  const { canAccess } = usePermissions();
   const markRead = useMarkNotificationRead();
   const deleteNotification = useDeleteNotification();
   const setLogisticsRig = useLogisticsStore((s) => s.setSelectedRig);
@@ -47,25 +50,31 @@ export function NotificationItem({ notification, onNavigate }: NotificationItemP
       markRead.mutate(notification.id);
     }
 
-    // Navigate based on reference type
+    // Navigate based on reference type — only if user has access to the target module
     switch (notification.referenceType) {
       case 'logistics_request':
-        if (notification.rigId && notification.rigName) {
-          setLogisticsRig(notification.rigId, notification.rigName);
+        if (canAccess.logistics) {
+          if (notification.rigId && notification.rigName) {
+            setLogisticsRig(notification.rigId, notification.rigName);
+          }
+          navigate('/logistics');
         }
-        navigate('/logistics');
         break;
       case 'incident':
-        if (notification.rigId && notification.rigName) {
-          setIncidentsRig(notification.rigId, notification.rigName);
+        if (canAccess.incidents) {
+          if (notification.rigId && notification.rigName) {
+            setIncidentsRig(notification.rigId, notification.rigName);
+          }
+          navigate('/incidents');
         }
-        navigate('/incidents');
         break;
       case 'report':
-        if (notification.referenceId) {
-          navigate(`/reports/view/${notification.referenceId}`);
-        } else {
-          navigate('/reports');
+        if (canAccess.viewReport) {
+          if (notification.referenceId) {
+            navigate(`/reports/view/${notification.referenceId}`);
+          } else {
+            navigate('/reports');
+          }
         }
         break;
       default:
