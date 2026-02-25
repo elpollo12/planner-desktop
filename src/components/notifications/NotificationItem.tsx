@@ -88,7 +88,7 @@ export function NotificationItem({ notification, onNavigate }: NotificationItemP
         hover:bg-primary-100 dark:hover:bg-gray-600
         ${notification.isRead
           ? 'bg-transparent'
-          : 'bg-primary-50/50! dark:bg-primary-900/10'
+          : 'bg-primary-50/50 dark:bg-primary-900/10'
         }
       `}
     >

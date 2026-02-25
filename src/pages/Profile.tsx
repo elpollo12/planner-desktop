@@ -53,9 +53,7 @@ export default function Profile() {
         setProcessing(true);
         try {
             // Step 1: Verify current password
-            console.log('[Profile] Verifying current password...');
             const isValid = await usersApi.verifyOwnPassword(sessionToken!, currentPassword);
-            console.log('[Profile] Password valid:', isValid);
 
             if (!isValid) {
                 // Wrong password → show error modal → clear inputs on close
@@ -100,12 +98,9 @@ export default function Profile() {
                     cancelText: 'Cancelar',
                     onConfirm: async () => {
                         try {
-                            console.log('[Profile] Changing password...');
                             await usersApi.changeOwnPassword(sessionToken!, currentPassword, newPassword);
-                            console.log('[Profile] Password changed successfully');
                             toast.success('Contraseña actualizada exitosamente');
                         } catch (err: any) {
-                            console.error('[Profile] Change password error:', err);
                             toast.error(err.message || err || 'Error al cambiar contraseña');
                         }
                         clearPasswordFields();
@@ -114,7 +109,6 @@ export default function Profile() {
                 }
             );
         } catch (err: any) {
-            console.error('[Profile] Verify password error:', err);
             toast.error(err.message || err || 'Error al verificar contraseña');
             setProcessing(false);
         }
