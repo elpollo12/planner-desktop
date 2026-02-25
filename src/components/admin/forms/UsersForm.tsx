@@ -91,9 +91,12 @@ export default function UsersForm({ onSubmit, user, rigs, supervisors = [], isEd
         if (isEditing && user && sessionToken && user.role !== 'admin') {
             setPermsLoading(true);
             modulePermissionsApi.getForUser(sessionToken, user.id)
-                .then(perms => setModulePerms(perms as Record<AppModule, boolean>))
+                .then(perms => {
+                    console.log('[UsersForm] Permisos cargados para', user.id, perms);
+                    setModulePerms(perms as Record<AppModule, boolean>);
+                })
                 .catch((e) => {
-                    console.error('Failed to load module permissions:', e);
+                    console.error('[UsersForm] Error al cargar permisos de módulos:', e);
                     setModulePerms({ ...MODULE_DEFAULTS[user.role] });
                 })
                 .finally(() => setPermsLoading(false));

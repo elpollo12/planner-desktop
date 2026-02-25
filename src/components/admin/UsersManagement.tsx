@@ -114,17 +114,31 @@ export function UsersManagement() {
               assignedRigIds: data.hasAllRigs ? [] : data.assignedRigIds,
               supervisorId: data.role === 'operator' ? (data.supervisorId || null) : null,
             });
-            // Save module permissions if provided (non-admin)
-            if (data.modulePermissions && data.role !== 'admin') {
-              await modulePermissionsApi.save(sessionToken!, user.id, data.modulePermissions);
-            }
-            toast.success('Usuario actualizado exitosamente');
-            closeModal();
-            loadData();
-            backgroundPush(sessionToken!);
           } catch (error: any) {
+            console.error('[UsersManagement] Error al actualizar usuario:', error);
             toast.error(error.message || 'Error al actualizar el usuario');
+            return;
           }
+
+          // Guardar permisos de módulos por separado para detectar el fallo exacto
+          if (data.modulePermissions && data.role !== 'admin') {
+            console.log('[UsersManagement] Guardando permisos para', user.id, data.modulePermissions);
+            try {
+              await modulePermissionsApi.save(sessionToken!, user.id, data.modulePermissions);
+              console.log('[UsersManagement] Permisos guardados correctamente');
+            } catch (error: any) {
+              console.error('[UsersManagement] Error al guardar permisos de módulos:', error);
+              toast.error(`Usuario actualizado, pero falló al guardar permisos: ${error.message || error}`);
+              closeModal();
+              loadData();
+              return;
+            }
+          }
+
+          toast.success('Usuario actualizado exitosamente');
+          closeModal();
+          loadData();
+          backgroundPush(sessionToken!);
         }}
       />,
       {

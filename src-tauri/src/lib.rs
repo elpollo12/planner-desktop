@@ -270,6 +270,10 @@ pub fn run() {
             commands::module_permissions::save_user_module_permissions,
             commands::module_permissions::get_my_permission_modifier,
 
+            // Cloud Logs (Turso-only: daily_reports + messages)
+            commands::cloud_logs::list_daily_reports,
+            commands::cloud_logs::get_message_detail,
+
             // Debug commands
             commands::debug::debug_list_all_rigs,
             commands::debug::debug_get_sync_info,

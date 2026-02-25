@@ -31,6 +31,7 @@ pub mod report_reviews;
 pub mod notifications;
 pub mod admin_stats;
 pub mod module_permissions;
+pub mod cloud_logs;
 
 // Re-export all command handlers for Tauri
 // Allow unused imports as these are registered in main.rs
@@ -98,3 +99,5 @@ pub use notifications::*;
 pub use admin_stats::*;
 #[allow(unused_imports)]
 pub use module_permissions::*;
+#[allow(unused_imports)]
+pub use cloud_logs::*;

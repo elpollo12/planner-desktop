@@ -20,6 +20,7 @@ import AdminPanel from './pages/AdminPanel';
 import { UpdateNotification } from './components/ui/UpdateNotification';
 import Logistics from './pages/Logistics';
 import Incidents from './pages/Incidents';
+import CloudLogs from './pages/CloudLogs';
 import ReportApprovals from './pages/ReportApprovals';
 import LicenseActivation from './pages/LicenseActivation';
 import Forbidden from './pages/Forbidden';
@@ -205,6 +206,15 @@ function App() {
           element={
             <RoleGuard module="incidents">
               <Incidents />
+            </RoleGuard>
+          }
+        />
+
+        <Route
+          path="/cloud-logs"
+          element={
+            <RoleGuard module="cloud-logs">
+              <CloudLogs />
             </RoleGuard>
           }
         />

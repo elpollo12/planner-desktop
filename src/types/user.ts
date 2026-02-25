@@ -7,7 +7,7 @@ export type UserRole = 'operator' | 'supervisor' | 'admin';
 // MUST stay in sync with `VALID_MODULES` in src-tauri/src/models/module_permission.rs.
 export const APP_MODULES = [
   'dashboard', 'reports', 'approvals',
-  'logistics', 'incidents', 'admin',
+  'logistics', 'incidents', 'admin', 'cloud-logs',
 ] as const;
 
 export type AppModule = typeof APP_MODULES[number];
@@ -19,6 +19,7 @@ export const MODULE_LABELS: Record<AppModule, string> = {
   logistics: 'Logística',
   incidents: 'Incidencias',
   admin: 'Administración',
+  'cloud-logs': 'Registros Diarios',
 };
 
 /**
@@ -46,6 +47,7 @@ export const MODULE_DEFAULTS: Record<UserRole, Record<AppModule, boolean>> = {
     logistics: true,
     incidents: true,
     admin: false,
+    'cloud-logs': true,
   },
   supervisor: {
     dashboard: true,
@@ -54,6 +56,7 @@ export const MODULE_DEFAULTS: Record<UserRole, Record<AppModule, boolean>> = {
     logistics: true,
     incidents: true,
     admin: false,
+    'cloud-logs': true,
   },
   admin: {
     dashboard: true,
@@ -62,6 +65,7 @@ export const MODULE_DEFAULTS: Record<UserRole, Record<AppModule, boolean>> = {
     logistics: true,
     incidents: true,
     admin: true,
+    'cloud-logs': true,
   },
 };
 

@@ -6,6 +6,7 @@ import { useAppSettingsStore } from '../../store/appSettingsStore';
 import { Button } from '../ui';
 import {
   ClipboardCheck,
+  ClipboardList,
   Forklift,
   LayoutDashboard,
   List,
@@ -13,6 +14,7 @@ import {
   Shield,
   AlertTriangle,
   UserCircle,
+  CloudDownload,
 } from 'lucide-react';
 import { canAccessModule } from '../../lib/permissions';
 import type { AppModule } from '../../types/user';
@@ -41,8 +43,9 @@ export function Sidebar({ className = '' }: SidebarProps) {
     { name: 'Aprobaciones',   href: '/approvals',  icon: ClipboardCheck,  module: 'approvals' },
     { name: 'Reportes',       href: '/reports',     icon: List,            module: 'reports' },
     { name: 'Logística',      href: '/logistics',   icon: Forklift,        module: 'logistics' },
-    { name: 'Incidencias',    href: '/incidents',   icon: AlertTriangle,   module: 'incidents' },
-    { name: 'Administración', href: '/admin',       icon: Shield,          module: 'admin' },
+    { name: 'Incidencias',       href: '/incidents',   icon: AlertTriangle,  module: 'incidents' },
+    { name: 'Registros Diarios', href: '/cloud-logs',  icon: CloudDownload,  module: 'cloud-logs' },
+    { name: 'Administración',    href: '/admin',       icon: Shield,         module: 'admin' },
   ];
 
   const isActive = (href: string) => {
