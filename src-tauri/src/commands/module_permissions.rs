@@ -104,15 +104,6 @@ pub async fn save_user_module_permissions(
     )
     .map_err(|e| e.to_string())?;
 
-    // Notify the target user that their permissions were updated
-    let actor_name: String = conn
-        .query_row(
-            "SELECT COALESCE(full_name, username) FROM users WHERE id = ?1",
-            params![session.user_id],
-            |row| row.get(0),
-        )
-        .unwrap_or_else(|_| session.username.clone());
-
     crate::notification_helper::notify_user(
         &conn,
         &session,

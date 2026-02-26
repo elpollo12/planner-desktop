@@ -274,15 +274,7 @@ pub fn run() {
             commands::cloud_logs::list_daily_reports,
             commands::cloud_logs::get_message_detail,
 
-            // Debug commands
-            commands::debug::debug_list_all_rigs,
-            commands::debug::debug_get_sync_info,
-            commands::debug::debug_query_turso_rigs,
-            commands::debug::debug_sync_state,
-            commands::debug::debug_test_sync_pull,
-            commands::debug::debug_simulate_full_sync,
-            commands::debug::debug_list_all_users,
-            commands::debug::debug_delete_user_by_username,
+
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
