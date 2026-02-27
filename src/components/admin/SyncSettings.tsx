@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, Button } from '../ui';
 import {
   Cloud,
@@ -15,6 +15,7 @@ import {
   Clock,
   AlertTriangle,
   Power,
+  LogIn,
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { syncApi } from '../../lib/api';
@@ -36,10 +37,12 @@ export default function SyncSettings() {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [testing, setTesting] = useState(false);
-  const [initializing, setInitializing] = useState(false);
   const [enabling, setEnabling] = useState(false);
+  const [loggingIn, setLoggingIn] = useState(false);
   const [lastResult, setLastResult] = useState<SyncResult | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [loginUsername, setLoginUsername] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
 
   useEffect(() => {
     if (sessionToken) {
@@ -50,10 +53,7 @@ export default function SyncSettings() {
   }, [sessionToken]);
 
   const loadStatus = async () => {
-    if (!sessionToken) {
-      setLoading(false);
-      return;
-    }
+    if (!sessionToken) { setLoading(false); return; }
     setLoading(true);
     try {
       const s = await syncApi.getStatus(sessionToken);
@@ -83,6 +83,21 @@ export default function SyncSettings() {
     }
   };
 
+  const handleSyncLogin = async () => {
+    if (!sessionToken || !loginUsername || !loginPassword) return;
+    setLoggingIn(true);
+    try {
+      const msg = await syncApi.syncLogin(sessionToken, loginUsername, loginPassword);
+      showMessage('success', msg);
+      setLoginUsername('');
+      setLoginPassword('');
+    } catch (error) {
+      showMessage('error', `Error de autenticación: ${error}`);
+    } finally {
+      setLoggingIn(false);
+    }
+  };
+
   const handleEnable = async () => {
     if (!sessionToken) return;
     setEnabling(true);
@@ -94,19 +109,6 @@ export default function SyncSettings() {
       showMessage('error', `Error al habilitar: ${error}`);
     } finally {
       setEnabling(false);
-    }
-  };
-
-  const handleInitializeRemote = async () => {
-    if (!sessionToken) return;
-    setInitializing(true);
-    try {
-      const msg = await syncApi.initializeRemote(sessionToken);
-      showMessage('success', msg);
-    } catch (error) {
-      showMessage('error', `Error al inicializar: ${error}`);
-    } finally {
-      setInitializing(false);
     }
   };
 
@@ -135,11 +137,8 @@ export default function SyncSettings() {
     try {
       const result = await syncApi.push(sessionToken);
       setLastResult(result);
-      if (result.success) {
-        showMessage('success', `${result.recordsPushed} registros enviados a la nube`);
-      } else {
-        showMessage('error', `Push con errores: ${result.errors.join(', ')}`);
-      }
+      showMessage(result.success ? 'success' : 'error',
+        result.success ? `${result.recordsPushed} registros enviados` : `Push con errores: ${result.errors.join(', ')}`);
       await loadStatus();
     } catch (error) {
       showMessage('error', `Error al enviar: ${error}`);
@@ -154,11 +153,8 @@ export default function SyncSettings() {
     try {
       const result = await syncApi.pull(sessionToken);
       setLastResult(result);
-      if (result.success) {
-        showMessage('success', `${result.recordsPulled} registros recibidos de la nube`);
-      } else {
-        showMessage('error', `Pull con errores: ${result.errors.join(', ')}`);
-      }
+      showMessage(result.success ? 'success' : 'error',
+        result.success ? `${result.recordsPulled} registros recibidos` : `Pull con errores: ${result.errors.join(', ')}`);
       await loadStatus();
     } catch (error) {
       showMessage('error', `Error al recibir: ${error}`);
@@ -187,8 +183,7 @@ export default function SyncSettings() {
       setStatus(s);
       showMessage('success', intervalMinutes > 0
         ? `Sincronización automática cada ${intervalMinutes} minutos`
-        : 'Sincronización automática desactivada'
-      );
+        : 'Sincronización automática desactivada');
     } catch (error) {
       showMessage('error', `Error al cambiar intervalo: ${error}`);
     }
@@ -216,10 +211,10 @@ export default function SyncSettings() {
             <div>
               <p className="font-medium text-green-800 dark:text-green-300">Sincronización Activa</p>
               <p className="text-sm text-green-600 dark:text-green-400">
-                Conectado a Turso Cloud
+                Conectado al servidor de sincronización
               </p>
               {status.lastSyncAt && (
-                <p className="text-xs text-green-500 dark:text-green-500 mt-1">
+                <p className="text-xs text-green-500 mt-1">
                   Última sincronización: {new Date(status.lastSyncAt).toLocaleString()}
                 </p>
               )}
@@ -231,7 +226,7 @@ export default function SyncSettings() {
             <div>
               <p className="font-medium text-yellow-800 dark:text-yellow-300">Sincronización Disponible</p>
               <p className="text-sm text-yellow-600 dark:text-yellow-400">
-                Credenciales configuradas. Habilita la sincronización para comenzar.
+                Servidor configurado. Habilita la sincronización para comenzar.
               </p>
             </div>
           </>
@@ -241,7 +236,7 @@ export default function SyncSettings() {
             <div>
               <p className="font-medium text-red-800 dark:text-red-300">Sincronización No Disponible</p>
               <p className="text-sm text-red-600 dark:text-red-400">
-                {status?.configError || 'Las variables de entorno TURSO_DATABASE_URL y TURSO_AUTH_TOKEN no están configuradas.'}
+                {status?.configError || 'La variable de entorno SYNC_SERVER_URL no está configurada.'}
               </p>
             </div>
           </>
@@ -250,52 +245,73 @@ export default function SyncSettings() {
 
       {/* Message */}
       {message && (
-        <div
-          className={`flex items-center gap-2 p-3 rounded-lg ${
-            message.type === 'success'
-              ? 'bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-300'
-              : 'bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-300'
-          }`}
-        >
+        <div className={`flex items-center gap-2 p-3 rounded-lg ${
+          message.type === 'success'
+            ? 'bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-300'
+            : 'bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-300'
+        }`}>
           {message.type === 'success' ? <CheckCircle size={18} /> : <XCircle size={18} />}
           <span className="text-sm">{message.text}</span>
         </div>
       )}
 
-      {/* Enable/Disable and Test Connection */}
+      {/* Control: Test Connection, Enable, Login */}
       {status?.configured && (
         <Card className="p-6">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
             <Database size={20} />
             Control de Sincronización
           </h3>
-
           <div className="space-y-4">
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Las credenciales de Turso están configuradas mediante variables de entorno del sistema.
-              Solo los administradores del sistema pueden modificar estas credenciales.
+              El servidor de sincronización se configura mediante la variable de entorno <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">SYNC_SERVER_URL</code>.
             </p>
-
             <div className="flex flex-wrap gap-3">
-              <Button
-                variant="outline"
-                onClick={handleTestConnection}
-                loading={testing}
-                icon={<Wifi size={16} />}
-              >
+              <Button variant="outline" onClick={handleTestConnection} loading={testing} icon={<Wifi size={16} />}>
                 Probar Conexión
               </Button>
-
-              {!status.enabled ? (
-                <Button
-                  variant="primary"
-                  onClick={handleEnable}
-                  loading={enabling}
-                  icon={<Power size={16} />}
-                >
+              {!status.enabled && (
+                <Button variant="primary" onClick={handleEnable} loading={enabling} icon={<Power size={16} />}>
                   Habilitar Sincronización
                 </Button>
-              ) : null}
+              )}
+            </div>
+
+            {/* Login to sync server */}
+            <div className="p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg border border-indigo-200 dark:border-indigo-800">
+              <p className="font-medium text-indigo-800 dark:text-indigo-300 mb-3 flex items-center gap-2">
+                <LogIn size={16} />
+                Autenticación del Servidor
+              </p>
+              <p className="text-sm text-indigo-600 dark:text-indigo-400 mb-3">
+                Ingrese las credenciales del servidor para obtener un token de sincronización.
+              </p>
+              <div className="flex flex-wrap items-end gap-3">
+                <div>
+                  <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Usuario</label>
+                  <input
+                    type="text"
+                    value={loginUsername}
+                    onChange={(e) => setLoginUsername(e.target.value)}
+                    className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm w-40"
+                    placeholder="admin"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Contraseña</label>
+                  <input
+                    type="password"
+                    value={loginPassword}
+                    onChange={(e) => setLoginPassword(e.target.value)}
+                    className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm w-40"
+                    placeholder="••••••"
+                    onKeyDown={(e) => e.key === 'Enter' && handleSyncLogin()}
+                  />
+                </div>
+                <Button variant="primary" onClick={handleSyncLogin} loading={loggingIn} disabled={!loginUsername || !loginPassword} icon={<LogIn size={16} />}>
+                  Iniciar Sesión
+                </Button>
+              </div>
             </div>
           </div>
         </Card>
@@ -308,20 +324,16 @@ export default function SyncSettings() {
             <AlertTriangle size={20} className="text-amber-500" />
             Configuración Requerida
           </h3>
-
           <div className="space-y-4">
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Para habilitar la sincronización en la nube, el administrador del sistema debe configurar
-              las siguientes variables de entorno:
+              Para habilitar la sincronización, el administrador del sistema debe configurar
+              la siguiente variable de entorno:
             </p>
-
             <div className="bg-gray-100 dark:bg-gray-700 p-4 rounded-lg font-mono text-sm">
-              <p className="text-gray-800 dark:text-gray-200">TURSO_DATABASE_URL=libsql://tu-db.turso.io</p>
-              <p className="text-gray-800 dark:text-gray-200">TURSO_AUTH_TOKEN=eyJhbGciOiJF...</p>
+              <p className="text-gray-800 dark:text-gray-200">SYNC_SERVER_URL=https://api.tudominio.com</p>
             </div>
-
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              Estas variables deben configurarse antes de iniciar la aplicación.
+              Esta variable debe configurarse antes de iniciar la aplicación.
               Contacte al administrador del sistema para obtener asistencia.
             </p>
           </div>
@@ -335,56 +347,26 @@ export default function SyncSettings() {
             <RefreshCw size={20} />
             Acciones de Sincronización
           </h3>
-
           <div className="space-y-4">
-            {/* Initialize Remote */}
-            <div className="flex items-center justify-between p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-              <div>
-                <p className="font-medium text-blue-800 dark:text-blue-300">Inicializar Base Remota</p>
-                <p className="text-sm text-blue-600 dark:text-blue-400">
-                  Crea las tablas en Turso (solo necesario la primera vez)
-                </p>
-              </div>
-              <Button
-                variant="outline"
-                onClick={handleInitializeRemote}
-                loading={initializing}
-                icon={<Database size={16} />}
-              >
-                Inicializar
-              </Button>
-            </div>
-
             {/* Sync Buttons */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <button
-                onClick={handleFullSync}
-                disabled={syncing}
-                className="flex flex-col items-center gap-2 p-6 rounded-lg border-2 border-gray-200 dark:border-gray-600 hover:border-primary-400 dark:hover:border-primary-400 transition-colors disabled:opacity-50"
-              >
+              <button onClick={handleFullSync} disabled={syncing}
+                className="flex flex-col items-center gap-2 p-6 rounded-lg border-2 border-gray-200 dark:border-gray-600 hover:border-primary-400 dark:hover:border-primary-400 transition-colors disabled:opacity-50">
                 <RefreshCw size={32} className={`text-primary-500 ${syncing ? 'animate-spin' : ''}`} />
                 <span className="font-medium text-gray-900 dark:text-gray-100">Sincronización Completa</span>
-                <span className="text-xs text-gray-500 dark:text-gray-400">Enviar y recibir datos</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400">Enviar y recibir todo</span>
               </button>
-
-              <button
-                onClick={handlePush}
-                disabled={syncing}
-                className="flex flex-col items-center gap-2 p-6 rounded-lg border-2 border-gray-200 dark:border-gray-600 hover:border-green-400 transition-colors disabled:opacity-50"
-              >
+              <button onClick={handlePush} disabled={syncing}
+                className="flex flex-col items-center gap-2 p-6 rounded-lg border-2 border-gray-200 dark:border-gray-600 hover:border-green-400 transition-colors disabled:opacity-50">
                 <Upload size={32} className="text-green-500" />
-                <span className="font-medium text-gray-900 dark:text-gray-100">Enviar a la Nube</span>
-                <span className="text-xs text-gray-500 dark:text-gray-400">Push: local → Turso</span>
+                <span className="font-medium text-gray-900 dark:text-gray-100">Enviar al Servidor</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400">Push: local → servidor</span>
               </button>
-
-              <button
-                onClick={handlePull}
-                disabled={syncing}
-                className="flex flex-col items-center gap-2 p-6 rounded-lg border-2 border-gray-200 dark:border-gray-600 hover:border-blue-400 transition-colors disabled:opacity-50"
-              >
+              <button onClick={handlePull} disabled={syncing}
+                className="flex flex-col items-center gap-2 p-6 rounded-lg border-2 border-gray-200 dark:border-gray-600 hover:border-blue-400 transition-colors disabled:opacity-50">
                 <Download size={32} className="text-blue-500" />
-                <span className="font-medium text-gray-900 dark:text-gray-100">Recibir de la Nube</span>
-                <span className="text-xs text-gray-500 dark:text-gray-400">Pull: Turso → local</span>
+                <span className="font-medium text-gray-900 dark:text-gray-100">Recibir del Servidor</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400">Pull: servidor → local</span>
               </button>
             </div>
 
@@ -427,9 +409,7 @@ export default function SyncSettings() {
                 className="px-3 py-2 border border-purple-300 dark:border-purple-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               >
                 {INTERVAL_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}
               </select>
             </div>
@@ -440,21 +420,14 @@ export default function SyncSettings() {
       {/* Last Sync Result */}
       {lastResult && (
         <Card className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-            Último Resultado
-          </h3>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Último Resultado</h3>
           <div className="space-y-3">
             <div className="flex items-center gap-2">
-              {lastResult.success ? (
-                <CheckCircle className="text-green-500" size={20} />
-              ) : (
-                <XCircle className="text-red-500" size={20} />
-              )}
+              {lastResult.success ? <CheckCircle className="text-green-500" size={20} /> : <XCircle className="text-red-500" size={20} />}
               <span className={`font-medium ${lastResult.success ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}`}>
                 {lastResult.success ? 'Sincronización exitosa' : 'Sincronización con errores'}
               </span>
             </div>
-
             <div className="grid grid-cols-3 gap-4 text-sm">
               <div className="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg text-center">
                 <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{lastResult.tablesSynced}</p>
@@ -469,14 +442,11 @@ export default function SyncSettings() {
                 <p className="text-gray-500 dark:text-gray-400">Recibidos</p>
               </div>
             </div>
-
             {lastResult.errors.length > 0 && (
               <div className="bg-red-50 dark:bg-red-900/20 p-3 rounded-lg">
                 <p className="text-sm font-medium text-red-800 dark:text-red-300 mb-1">Errores:</p>
                 <ul className="text-sm text-red-700 dark:text-red-400 list-disc list-inside">
-                  {lastResult.errors.map((err, i) => (
-                    <li key={i}>{err}</li>
-                  ))}
+                  {lastResult.errors.map((err, i) => <li key={i}>{err}</li>)}
                 </ul>
               </div>
             )}
@@ -493,20 +463,12 @@ export default function SyncSettings() {
           </h3>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-700 dark:text-gray-300">
-                Desactivar la sincronización en la nube.
-              </p>
+              <p className="text-sm text-gray-700 dark:text-gray-300">Desactivar la sincronización.</p>
               <p className="text-xs text-gray-500 dark:text-gray-400">
                 Los datos locales no se verán afectados. Puede volver a habilitar en cualquier momento.
               </p>
             </div>
-            <Button
-              variant="danger"
-              onClick={handleDisable}
-              icon={<Trash2 size={16} />}
-            >
-              Desactivar
-            </Button>
+            <Button variant="danger" onClick={handleDisable} icon={<Trash2 size={16} />}>Desactivar</Button>
           </div>
         </Card>
       )}
@@ -518,14 +480,16 @@ export default function SyncSettings() {
         </h3>
         <div className="text-sm text-gray-600 dark:text-gray-400 space-y-3">
           <p>
-            La sincronización con Turso Cloud permite que múltiples instalaciones de la aplicación
-            compartan datos en tiempo real. Los datos se sincronizan de forma bidireccional.
+            La sincronización permite que múltiples instalaciones de la aplicación
+            compartan datos en tiempo real a través del servidor planner-sync.
+            Los datos se sincronizan de forma bidireccional.
           </p>
           <div className="bg-amber-50 dark:bg-amber-900/20 p-3 rounded-lg">
             <p className="text-amber-800 dark:text-amber-300">
-              <strong>Nota para administradores:</strong> Las credenciales de Turso se configuran
-              mediante variables de entorno del sistema (TURSO_DATABASE_URL y TURSO_AUTH_TOKEN).
-              Esto garantiza que las credenciales no se expongan en la interfaz de usuario.
+              <strong>Nota para administradores:</strong> La URL del servidor se configura
+              mediante la variable de entorno <code className="bg-amber-100 dark:bg-amber-800 px-1 rounded">SYNC_SERVER_URL</code>.
+              Después de configurarla, inicie sesión con sus credenciales del servidor para obtener
+              el token de autenticación.
             </p>
           </div>
         </div>

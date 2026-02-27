@@ -1,10 +1,20 @@
 use crate::auth::get_session;
 use crate::models::user::User;
 use crate::state::AppState;
-use crate::sync::config::TursoCredentials;
 use crate::sync::turso_client::{TursoClient, TursoValue};
 use serde::{Deserialize, Serialize};
 use tauri::State;
+
+/// Temporary credentials for cloud logs (Turso/planner-api).
+/// These tables (messages, daily_reports) are NOT in planner-sync.
+/// Will be replaced when AI agent integration is defined.
+fn get_turso_client() -> Result<TursoClient, String> {
+    let url = std::env::var("TURSO_DATABASE_URL")
+        .map_err(|_| "TURSO_DATABASE_URL no configurada (requerida para CloudLogs)".to_string())?;
+    let token = std::env::var("TURSO_AUTH_TOKEN")
+        .map_err(|_| "TURSO_AUTH_TOKEN no configurada (requerida para CloudLogs)".to_string())?;
+    Ok(TursoClient::new(&url, &token))
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -109,8 +119,7 @@ pub async fn list_daily_reports(
         }
     }
 
-    let creds = TursoCredentials::from_env()?;
-    let client = TursoClient::new(&creds.database_url, &creds.auth_token);
+    let client = get_turso_client()?;
 
     let args = vec![
         TursoValue::text(&taladro),
@@ -181,8 +190,7 @@ pub async fn get_message_detail(
 ) -> Result<MessageDetail, String> {
     get_session(&session_token, &state).map_err(|e| e.to_string())?;
 
-    let creds = TursoCredentials::from_env()?;
-    let client = TursoClient::new(&creds.database_url, &creds.auth_token);
+    let client = get_turso_client()?;
 
     let result = client
         .execute(

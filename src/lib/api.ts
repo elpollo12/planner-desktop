@@ -492,7 +492,7 @@ export const preferencesApi = {
 };
 
 // ============================================================================
-// Sync Commands (Turso Cloud)
+// Sync Commands (planner-sync server)
 // ============================================================================
 
 export const syncApi = {
@@ -506,10 +506,10 @@ export const syncApi = {
     invoke<import('../types/sync').SyncStatus>('set_sync_interval', { sessionToken, intervalMinutes }),
 
   testConnection: (sessionToken: string) =>
-    invoke<string>('test_turso_connection', { sessionToken }),
+    invoke<string>('test_sync_connection', { sessionToken }),
 
-  initializeRemote: (sessionToken: string) =>
-    invoke<string>('initialize_remote_database', { sessionToken }),
+  syncLogin: (sessionToken: string, username: string, password: string) =>
+    invoke<string>('sync_login', { sessionToken, username, password }),
 
   push: (sessionToken: string) =>
     invoke<import('../types/sync').SyncResult>('sync_push', { sessionToken }),

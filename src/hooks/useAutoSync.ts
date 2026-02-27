@@ -4,10 +4,10 @@ import { syncApi } from '../lib/api';
 import { syncEvents } from '../lib/syncEvents';
 
 /**
- * Hook that automatically syncs with Turso cloud at the configured interval.
+ * Hook that automatically syncs with planner-sync server at the configured interval.
  * Runs in the background while the app is open.
  *
- * All authenticated users will automatically pull latest data from cloud.
+ * All authenticated users will automatically pull latest data from server.
  * This ensures reports from other clients appear automatically.
  */
 export function useAutoSync() {
@@ -19,24 +19,20 @@ export function useAutoSync() {
     if (!sessionToken) return;
 
     try {
-      // Check if sync is configured and get interval
       const status = await syncApi.getStatus(sessionToken);
 
       if (!status.configured || !status.enabled || status.syncIntervalMinutes === 0) {
-        // Auto-sync disabled or not configured
         return;
       }
 
       const intervalMs = status.syncIntervalMinutes * 60 * 1000;
       const now = Date.now();
 
-      // Check if enough time has passed since last sync
       if (now - lastSyncRef.current < intervalMs) {
         return;
       }
 
-      console.log('[AutoSync] Starting incremental sync (push changes + pull changes)...');
-      // Incremental sync: only push/pull records modified since last sync
+      console.log('[AutoSync] Starting incremental sync...');
       const result = await syncApi.incrementalSync(sessionToken);
       lastSyncRef.current = now;
 
@@ -46,7 +42,6 @@ export function useAutoSync() {
         console.warn('[AutoSync] Completed with errors:', result.errors);
       }
 
-      // Only notify listeners when new data was actually pulled
       if (result.recordsPulled > 0) {
         syncEvents.emit();
       }
@@ -56,22 +51,19 @@ export function useAutoSync() {
   }, [sessionToken]);
 
   useEffect(() => {
-    // Run for all authenticated users (not just admins)
-    // This ensures everyone sees reports from other clients automatically
     if (!isAuthenticated || !sessionToken) {
       return;
     }
 
-    // Do initial sync check after a short delay (let app settle)
+    // Initial sync after short delay
     const initialTimeout = setTimeout(() => {
       doSync();
     }, 3000);
 
     // Check every minute if we need to sync
-    // (the actual sync interval is checked inside doSync)
     intervalRef.current = window.setInterval(() => {
       doSync();
-    }, 60 * 1000); // Check every minute
+    }, 60 * 1000);
 
     return () => {
       clearTimeout(initialTimeout);

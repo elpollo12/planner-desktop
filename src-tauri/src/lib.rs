@@ -167,12 +167,12 @@ pub fn run() {
             commands::app_settings::remove_company_logo,
             commands::app_settings::get_company_logo_data,
 
-            // Sync commands (Turso cloud - credentials via environment variables)
+            // Sync commands (planner-sync server)
             commands::sync::get_sync_status,
             commands::sync::enable_sync,
             commands::sync::set_sync_interval,
-            commands::sync::test_turso_connection,
-            commands::sync::initialize_remote_database,
+            commands::sync::test_sync_connection,
+            commands::sync::sync_login,
             commands::sync::sync_push,
             commands::sync::sync_pull,
             commands::sync::sync_full,

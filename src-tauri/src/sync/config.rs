@@ -2,11 +2,10 @@ use serde::{Deserialize, Serialize};
 use std::env;
 use std::path::PathBuf;
 
-/// Environment variable names for Turso credentials
-pub const ENV_TURSO_DATABASE_URL: &str = "TURSO_DATABASE_URL";
-pub const ENV_TURSO_AUTH_TOKEN: &str = "TURSO_AUTH_TOKEN";
+/// Environment variable for sync server URL
+pub const ENV_SYNC_SERVER_URL: &str = "SYNC_SERVER_URL";
 
-/// Sync configuration stored locally (no credentials)
+/// Sync configuration stored locally
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SyncConfig {
@@ -17,10 +16,13 @@ pub struct SyncConfig {
     /// Auto-sync interval in minutes (0 = disabled)
     #[serde(default = "default_sync_interval")]
     pub sync_interval_minutes: u32,
+    /// JWT token from planner-sync login
+    #[serde(default)]
+    pub sync_token: Option<String>,
 }
 
 fn default_sync_interval() -> u32 {
-    5 // Default: 5 minutes
+    5
 }
 
 impl Default for SyncConfig {
@@ -31,44 +33,33 @@ impl Default for SyncConfig {
             last_push_at: None,
             last_pull_at: None,
             sync_interval_minutes: default_sync_interval(),
+            sync_token: None,
         }
     }
 }
 
-/// Turso credentials read from environment variables
+/// Sync server credentials from environment
 #[derive(Debug, Clone)]
-pub struct TursoCredentials {
-    pub database_url: String,
-    pub auth_token: String,
+pub struct SyncCredentials {
+    pub server_url: String,
 }
 
-impl TursoCredentials {
-    /// Load credentials from environment variables
+impl SyncCredentials {
+    /// Load from environment variables
     pub fn from_env() -> Result<Self, String> {
-        let database_url = env::var(ENV_TURSO_DATABASE_URL)
-            .map_err(|_| format!("Variable de entorno {} no configurada", ENV_TURSO_DATABASE_URL))?;
+        let server_url = env::var(ENV_SYNC_SERVER_URL)
+            .map_err(|_| format!("Variable de entorno {} no configurada", ENV_SYNC_SERVER_URL))?;
 
-        let auth_token = env::var(ENV_TURSO_AUTH_TOKEN)
-            .map_err(|_| format!("Variable de entorno {} no configurada", ENV_TURSO_AUTH_TOKEN))?;
-
-        if database_url.is_empty() {
-            return Err(format!("{} está vacía", ENV_TURSO_DATABASE_URL));
+        if server_url.is_empty() {
+            return Err(format!("{} está vacía", ENV_SYNC_SERVER_URL));
         }
 
-        if auth_token.is_empty() {
-            return Err(format!("{} está vacía", ENV_TURSO_AUTH_TOKEN));
-        }
-
-        Ok(Self {
-            database_url,
-            auth_token,
-        })
+        Ok(Self { server_url })
     }
 
-    /// Check if credentials are configured (without loading them)
+    /// Check if credentials are configured
     pub fn is_configured() -> bool {
-        env::var(ENV_TURSO_DATABASE_URL).map(|v| !v.is_empty()).unwrap_or(false)
-            && env::var(ENV_TURSO_AUTH_TOKEN).map(|v| !v.is_empty()).unwrap_or(false)
+        env::var(ENV_SYNC_SERVER_URL).map(|v| !v.is_empty()).unwrap_or(false)
     }
 }
 
