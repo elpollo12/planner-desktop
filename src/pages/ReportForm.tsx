@@ -161,9 +161,6 @@ export default function ReportForm() {
 
     // ── Phase 2: Status transitions — only after data is safely persisted ──
     const needsReopen = originalStatus !== null && originalStatus !== 'draft';
-    // Track if we reopened (unused but kept for debugging if needed)
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    let _didReopen = false;
 
     // Safety guard: approved reports should not be re-submitted through this flow
     if (opts.submit && originalStatus === 'approved') {
@@ -175,7 +172,6 @@ export default function ReportForm() {
       // Submit flow: reopen to draft if needed, then submit
       if (needsReopen) {
         await reportsApi.reopen(sessionToken, currentReportId);
-        _didReopen = true;
       }
       try {
         await reportsApi.submit(sessionToken, currentReportId);
@@ -193,7 +189,6 @@ export default function ReportForm() {
     } else if (needsReopen) {
       // Draft save flow: reopen to draft so it can be re-edited
       await reportsApi.reopen(sessionToken, currentReportId);
-      _didReopen = true;
       await loadReport(currentReportId);
     }
 
