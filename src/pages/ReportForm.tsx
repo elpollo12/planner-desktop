@@ -161,7 +161,8 @@ export default function ReportForm() {
 
     // ── Phase 2: Status transitions — only after data is safely persisted ──
     const needsReopen = originalStatus !== null && originalStatus !== 'draft';
-    // Track if we reopened (for debugging purposes)
+    // Track if we reopened (unused but kept for debugging if needed)
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     let _didReopen = false;
 
     // Safety guard: approved reports should not be re-submitted through this flow
