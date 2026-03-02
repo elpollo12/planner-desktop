@@ -1,6 +1,8 @@
 import { useEffect, useCallback, useRef } from 'react';
 import { useUpdatesStore } from '../store';
 import { useAuthStore } from '../store';
+import { useModalStore } from '../store';
+import { openUpdateModal } from '../components/modals/UpdateModal';
 
 /**
  * Hook for checking and managing application updates.
@@ -30,6 +32,9 @@ export function useUpdateChecker() {
 
   const hasCheckedRef = useRef(false);
   const autoUpdateTriggeredRef = useRef(false);
+  const modalShownRef = useRef(false);
+  
+  const { openModal } = useModalStore();
 
   // Load preferences on mount if logged in
   useEffect(() => {
@@ -38,9 +43,9 @@ export function useUpdateChecker() {
     }
   }, [sessionToken, loadPreferences]);
 
-  // Initial update check with delay
+  // Initial update check with delay (only when authenticated)
   useEffect(() => {
-    if (hasCheckedRef.current) return;
+    if (hasCheckedRef.current || !isAuthenticated) return;
     
     const timeout = setTimeout(() => {
       hasCheckedRef.current = true;
@@ -48,7 +53,7 @@ export function useUpdateChecker() {
     }, 3000);
     
     return () => clearTimeout(timeout);
-  }, [checkForUpdate, sessionToken]);
+  }, [checkForUpdate, sessionToken, isAuthenticated]);
 
   // Periodic update checks based on preferences
   useEffect(() => {
@@ -63,31 +68,38 @@ export function useUpdateChecker() {
     return () => clearInterval(interval);
   }, [preferences?.checkIntervalHours, checkForUpdate, sessionToken, isAuthenticated]);
 
-  // Auto-update logic: if autoUpdate is enabled and update is available, start download
+  // Show modal when update is available (for all users)
   useEffect(() => {
     if (
-      preferences?.autoUpdate &&
       updateState.status === 'available' &&
-      !autoUpdateTriggeredRef.current
+      !modalShownRef.current
     ) {
-      // Check if this version was postponed too many times
       const release = updateState.release;
-      const isPostponed = preferences.postponedVersion === release.version;
-      const canStillPostpone = preferences.postponeCount < 3;
-
-      // If not postponed or max postpones reached, auto-download
-      if (!isPostponed || !canStillPostpone) {
+      const isPostponed = preferences?.postponedVersion === release.version;
+      
+      // Don't show modal if this version was already postponed (user dismissed it)
+      // But show if they've exhausted postpones
+      const canStillPostpone = (preferences?.postponeCount ?? 0) < 3;
+      
+      // If auto-update is enabled, start download automatically
+      if (preferences?.autoUpdate && !autoUpdateTriggeredRef.current) {
         console.log('[Updater] Auto-update enabled, starting download...');
         autoUpdateTriggeredRef.current = true;
         downloadAndInstall();
+      } else if (!isPostponed || !canStillPostpone) {
+        // Show modal if not postponed, or if postpones exhausted
+        console.log('[Updater] Update available, showing modal...');
+        modalShownRef.current = true;
+        openUpdateModal(openModal);
       }
     }
 
-    // Reset the flag when no update is available
+    // Reset flags when no update is available
     if (updateState.status === 'idle') {
       autoUpdateTriggeredRef.current = false;
+      modalShownRef.current = false;
     }
-  }, [preferences?.autoUpdate, updateState, downloadAndInstall, preferences?.postponedVersion, preferences?.postponeCount]);
+  }, [updateState, preferences?.autoUpdate, preferences?.postponedVersion, preferences?.postponeCount, downloadAndInstall, openModal]);
 
   const handlePostpone = useCallback(async () => {
     if (updateState.status !== 'available' || !sessionToken) return;

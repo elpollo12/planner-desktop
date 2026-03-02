@@ -118,7 +118,7 @@ function App() {
 
   return (
     <>
-      <UpdateNotification />
+      {isAuthenticated && <UpdateNotification />}
       <ToastContainer
         position="bottom-right"
         autoClose={2000}

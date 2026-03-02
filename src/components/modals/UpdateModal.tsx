@@ -112,12 +112,13 @@ export function UpdateModalContent() {
         <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
           {canPostpone && (
             <Button variant="secondary" onClick={handlePostpone}>
-              <Clock size={16} className="mr-1.5" />
+              <Clock size={16} />
               Recordar más tarde
             </Button>
           )}
-          <Button variant="primary" onClick={handleDownload}>
-            <Download size={16} className="mr-1.5" />
+          <Button variant="primary" onClick={handleDownload}
+          icon={<Download size={16} />}
+          >
             Actualizar ahora
           </Button>
         </div>
@@ -156,8 +157,9 @@ export function UpdateModalContent() {
           <br />
           Reinicie la aplicación para aplicar los cambios.
         </p>
-        <Button variant="primary" onClick={installAndRelaunch}>
-          <RefreshCw size={16} className="mr-1.5" />
+        <Button variant="primary" onClick={installAndRelaunch}
+          icon={<RefreshCw size={16} />}
+        >
           Reiniciar ahora
         </Button>
       </div>
@@ -182,8 +184,9 @@ export function UpdateModalContent() {
           <Button variant="secondary" onClick={closeModal}>
             Cerrar
           </Button>
-          <Button variant="primary" onClick={checkForUpdate}>
-            <RefreshCw size={16} className="mr-1.5" />
+          <Button variant="primary" onClick={checkForUpdate}
+            icon={<RefreshCw size={16} />}
+          >
             Reintentar
           </Button>
         </div>
