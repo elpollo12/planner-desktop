@@ -8,6 +8,7 @@ import { usePreferencesStore } from './store/preferencesStore';
 import { useAppSettingsStore } from './store/appSettingsStore';
 import { useThemeApplicator } from './hooks/useThemeApplicator';
 import { useAutoSync } from './hooks/useAutoSync';
+import { useConnectionPing } from './hooks/useConnectionPing';
 import { useUnreadCount, notificationKeys } from './hooks/useNotifications';
 import { syncEvents } from './lib/syncEvents';
 import { queryClient } from './lib/queryClient';
@@ -55,8 +56,11 @@ function App() {
   // Apply theme reactively whenever preferences change
   useThemeApplicator();
 
-  // Auto-sync with Turso cloud (for admin users)
+  // Auto-sync with planner-sync server
   useAutoSync();
+
+  // Periodic connection ping (every 30s)
+  useConnectionPing();
 
   // Poll unread notifications count (every 30s while authenticated)
   useUnreadCount();

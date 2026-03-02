@@ -499,6 +499,10 @@ export const syncApi = {
   getStatus: (sessionToken: string) =>
     invoke<import('../types/sync').SyncStatus>('get_sync_status', { sessionToken }),
 
+  /** Lightweight ping to check if sync server is reachable (any user) */
+  ping: (sessionToken: string) =>
+    invoke<boolean>('ping_sync_server', { sessionToken }),
+
   enable: (sessionToken: string) =>
     invoke<import('../types/sync').SyncStatus>('enable_sync', { sessionToken }),
 
@@ -857,4 +861,41 @@ export const cloudLogsApi = {
 
   getMessage: (sessionToken: string, messageId: number) =>
     invoke<MessageDetail>('get_message_detail', { sessionToken, messageId }),
+};
+
+// ============================================================================
+// Update Preferences Commands
+// ============================================================================
+
+import type {
+  UpdatePreferences,
+  SaveUpdatePreferencesInput,
+  CheckUpdateResponse,
+  UpdateCheckStatus,
+} from '../types/updates';
+
+export const updatesApi = {
+  getPreferences: (sessionToken: string) =>
+    invoke<UpdatePreferences | null>('get_update_preferences', { sessionToken }),
+
+  savePreferences: (sessionToken: string, input: SaveUpdatePreferencesInput) =>
+    invoke<UpdatePreferences>('save_update_preferences', { sessionToken, input }),
+
+  recordCheck: (sessionToken: string) =>
+    invoke<void>('record_update_check', { sessionToken }),
+
+  postpone: (sessionToken: string, version: string) =>
+    invoke<UpdatePreferences>('postpone_update', { sessionToken, input: { version } }),
+
+  clearPostpone: (sessionToken: string) =>
+    invoke<void>('clear_postpone', { sessionToken }),
+
+  getStatus: (sessionToken: string) =>
+    invoke<UpdateCheckStatus>('get_update_status', { sessionToken }),
+
+  checkFromApi: (apiUrl: string, channel?: string) =>
+    invoke<CheckUpdateResponse>('check_for_update_from_api', { apiUrl, channel: channel ?? null }),
+
+  recordDownload: (apiUrl: string, version: string, fromVersion?: string) =>
+    invoke<void>('record_download_to_api', { apiUrl, version, fromVersion: fromVersion ?? null }),
 };

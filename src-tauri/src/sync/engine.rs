@@ -206,6 +206,8 @@ const SYNC_TABLES: &[TableDef] = &[
         columns: &["id", "recipient_id", "actor_id", "actor_name", "category", "action_type", "title", "message", "reference_id", "reference_type", "rig_id", "rig_name", "is_read", "read_at", "created_at", "updated_at", "is_deleted"],
         id_col: "id", has_updated_at: true, parent_col: None, skip_cleanup: false,
     },
+    // NOTE: messages and daily_reports are server-only tables (for AI agent).
+    // They should NOT be synced to desktop clients.
 ];
 
 struct TableDef {
@@ -255,31 +257,67 @@ fn collect_parent_ids_from_indexed(table_results: &[(usize, Vec<Vec<TursoValue>>
     parent_map
 }
 
+/// Clean up child rows before writing pulled data.
+/// Handles grandchild tables (crew_members, daily_reports) by cleaning up via their
+/// grandparent's ID to prevent orphaned records when intermediate parent IDs change.
 fn cleanup_local_child_rows(
     conn: &Connection,
     parent_map: &std::collections::HashMap<&str, HashSet<String>>,
     tables_in_batch: &HashSet<&str>,
 ) -> Result<(), String> {
+    // =========================================================================
+    // GRANDCHILD CLEANUP: Handle tables that are children of children
+    // These need special handling because their immediate parent IDs may change
+    // when the grandparent is edited, leaving orphans if we only clean by parent_col.
+    // =========================================================================
+
+    // crew_members: grandchild of reports via crew_shifts
+    // Clean by report_id (grandparent) to catch all crew_members when report is edited
+    if tables_in_batch.contains("crew_members") || tables_in_batch.contains("crew_shifts") {
+        if let Some(report_ids) = parent_map.get("report_id") {
+            if !report_ids.is_empty() {
+                let placeholders: String = report_ids.iter().enumerate()
+                    .map(|(i, _)| format!("?{}", i + 1))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                let ids: Vec<&str> = report_ids.iter().map(|s| s.as_str()).collect();
+                let sql = format!(
+                    "DELETE FROM crew_members WHERE crew_shift_id IN \
+                     (SELECT id FROM crew_shifts WHERE report_id IN ({}))",
+                    placeholders
+                );
+                conn.execute(&sql, rusqlite::params_from_iter(ids.iter()))
+                    .map_err(|e| format!("Failed to cleanup crew_members by report_id: {}", e))?;
+            }
+        }
+    }
+
+    // =========================================================================
+    // STANDARD CHILD CLEANUP: Direct parent-child relationships
+    // =========================================================================
     for (parent_col, parent_ids) in parent_map {
         if parent_ids.is_empty() { continue; }
 
         let placeholders: String = parent_ids.iter().enumerate()
-            .map(|(i, _)| format!("?{}", i + 1)).collect::<Vec<_>>().join(", ");
+            .map(|(i, _)| format!("?{}", i + 1))
+            .collect::<Vec<_>>()
+            .join(", ");
         let ids: Vec<&str> = parent_ids.iter().map(|s| s.as_str()).collect();
 
-        // crew_members grandchild
-        if *parent_col == "report_id" && tables_in_batch.contains("crew_shifts") {
-            let sql = format!(
-                "DELETE FROM crew_members WHERE crew_shift_id IN (SELECT id FROM crew_shifts WHERE report_id IN ({}))",
-                placeholders
-            );
-            conn.execute(&sql, rusqlite::params_from_iter(ids.iter()))
-                .map_err(|e| format!("Failed to cleanup crew_members: {}", e))?;
-        }
-
         for table_def in SYNC_TABLES.iter() {
-            if table_def.parent_col == Some(parent_col) && tables_in_batch.contains(table_def.name) && !table_def.skip_cleanup {
-                let sql = format!("DELETE FROM {} WHERE {} IN ({})", table_def.name, parent_col, placeholders);
+            // Skip grandchild tables (already handled above)
+            if table_def.name == "crew_members" {
+                continue;
+            }
+
+            if table_def.parent_col == Some(parent_col) 
+                && tables_in_batch.contains(table_def.name) 
+                && !table_def.skip_cleanup 
+            {
+                let sql = format!(
+                    "DELETE FROM {} WHERE {} IN ({})", 
+                    table_def.name, parent_col, placeholders
+                );
                 conn.execute(&sql, rusqlite::params_from_iter(ids.iter()))
                     .map_err(|e| format!("Failed to cleanup {}: {}", table_def.name, e))?;
             }
@@ -363,20 +401,31 @@ pub fn mark_reports_synced(conn: &Connection) {
     let _ = conn.execute("UPDATE reports SET synced = 1 WHERE synced = 0", []);
 }
 
-/// Write pulled data to local SQLite
+/// Write pulled data to local SQLite (wrapped in transaction for atomicity)
 pub fn write_pulled_data(
     conn: &Connection,
     table_results: &[(usize, Vec<Vec<TursoValue>>)],
 ) -> Result<u32, String> {
+    // Start transaction for atomicity
+    conn.execute("BEGIN IMMEDIATE", [])
+        .map_err(|e| format!("Failed to begin transaction: {}", e))?;
+
     conn.execute("PRAGMA foreign_keys = OFF", [])
-        .map_err(|e| format!("Failed to disable foreign keys: {}", e))?;
+        .map_err(|e| {
+            let _ = conn.execute("ROLLBACK", []);
+            format!("Failed to disable foreign keys: {}", e)
+        })?;
 
     let parent_map = collect_parent_ids_from_indexed(table_results);
     let tables_in_batch: HashSet<&str> = table_results.iter()
         .filter(|(_, rows)| !rows.is_empty())
         .map(|(idx, _)| SYNC_TABLES[*idx].name)
         .collect();
-    cleanup_local_child_rows(conn, &parent_map, &tables_in_batch)?;
+    
+    if let Err(e) = cleanup_local_child_rows(conn, &parent_map, &tables_in_batch) {
+        let _ = conn.execute("ROLLBACK", []);
+        return Err(e);
+    }
 
     let mut total: u32 = 0;
 
@@ -408,25 +457,57 @@ pub fn write_pulled_data(
 
             // UNIQUE conflict handling
             if table_def.name == "users" {
+                // UNIQUE(username)
                 if let Some(username_param) = params.get(1) {
                     let _ = conn.execute("DELETE FROM users WHERE username = ?1 AND id != ?2", rusqlite::params![username_param, params.get(0)]);
                 }
+            } else if table_def.name == "operation_codes" {
+                // UNIQUE(code) - code is at index 1
+                if let Some(code_param) = params.get(1) {
+                    let _ = conn.execute("DELETE FROM operation_codes WHERE code = ?1 AND id != ?2", rusqlite::params![code_param, params.get(0)]);
+                }
+            } else if table_def.name == "operators" {
+                // UNIQUE(name) - name is at index 1
+                if let Some(name_param) = params.get(1) {
+                    let _ = conn.execute("DELETE FROM operators WHERE name = ?1 AND id != ?2", rusqlite::params![name_param, params.get(0)]);
+                }
             } else if table_def.name == "user_rigs" && params.len() >= 3 {
+                // UNIQUE(user_id, rig_id)
                 let _ = conn.execute("DELETE FROM user_rigs WHERE user_id = ?1 AND rig_id = ?2 AND id != ?3", rusqlite::params![params.get(1), params.get(2), params.get(0)]);
             } else if table_def.name == "user_module_permissions" && params.len() >= 3 {
+                // UNIQUE(user_id, module)
                 let _ = conn.execute("DELETE FROM user_module_permissions WHERE user_id = ?1 AND module = ?2 AND id != ?3", rusqlite::params![params.get(1), params.get(2), params.get(0)]);
+            } else if table_def.name == "user_preferences" {
+                // UNIQUE(user_id) - user_id is at index 1
+                if let Some(user_id_param) = params.get(1) {
+                    let _ = conn.execute("DELETE FROM user_preferences WHERE user_id = ?1 AND id != ?2", rusqlite::params![user_id_param, params.get(0)]);
+                }
             } else if table_def.name == "last_report_snapshot" && params.len() >= 2 {
+                // UNIQUE(rig_id)
                 let _ = conn.execute("DELETE FROM last_report_snapshot WHERE rig_id = ?1 AND id != ?2", rusqlite::params![params.get(1), params.get(0)]);
             }
 
-            conn.execute(&upsert_sql, params_refs.as_slice())
-                .map_err(|e| format!("Failed to upsert into '{}': {}", table_def.name, e))?;
+            if let Err(e) = conn.execute(&upsert_sql, params_refs.as_slice()) {
+                let _ = conn.execute("ROLLBACK", []);
+                return Err(format!("Failed to upsert into '{}': {}", table_def.name, e));
+            }
             total += 1;
         }
     }
 
     conn.execute("PRAGMA foreign_keys = ON", [])
-        .map_err(|e| format!("Failed to re-enable foreign keys: {}", e))?;
+        .map_err(|e| {
+            let _ = conn.execute("ROLLBACK", []);
+            format!("Failed to re-enable foreign keys: {}", e)
+        })?;
+
+    // Commit transaction
+    conn.execute("COMMIT", [])
+        .map_err(|e| {
+            let _ = conn.execute("ROLLBACK", []);
+            format!("Failed to commit transaction: {}", e)
+        })?;
+
     Ok(total)
 }
 

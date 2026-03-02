@@ -16,3 +16,4 @@ export type { BadgeVariant, BadgeSize } from './Badge';
 export { ReportStatusBadge } from './ReportStatusBadge';
 export { SectionCarousel } from './SectionCarousel';
 export { PaginationControls } from './PaginationControls';
+export { ConnectionStatus } from './ConnectionStatus';

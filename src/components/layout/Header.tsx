@@ -2,6 +2,7 @@ import { Sun, Moon } from 'lucide-react';
 import { usePreferencesStore } from '../../store/preferencesStore';
 import { useAuthStore } from '../../store/authStore';
 import { NotificationBell } from '../notifications';
+import { ConnectionStatus } from '../ui/ConnectionStatus';
 
 interface HeaderProps {
   title?: string;
@@ -43,6 +44,9 @@ export function Header({ title, subtitle, actions, className = '' }: HeaderProps
           {/* Actions Section */}
           <div className="flex items-center gap-2">
             {actions}
+
+            {/* Connection Status */}
+            <ConnectionStatus />
 
             {/* Theme Toggle */}
             <button

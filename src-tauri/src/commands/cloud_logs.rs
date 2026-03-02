@@ -19,7 +19,7 @@ fn get_turso_client() -> Result<TursoClient, String> {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DailyReport {
-    pub id: i64,
+    pub id: String,
     pub taladro: String,
     pub fecha: Option<String>,
     pub rop: Option<f64>,
@@ -30,7 +30,7 @@ pub struct DailyReport {
     pub npt_causa: Option<String>,
     pub actividad: Option<String>,
     pub observaciones: Option<String>,
-    pub message_id: Option<i64>,
+    pub message_id: Option<String>,
     pub created_at: Option<String>,
 }
 
@@ -46,7 +46,7 @@ pub struct DailyReportsPage {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MessageDetail {
-    pub id: i64,
+    pub id: String,
     pub from_number: Option<String>,
     pub group_name: Option<String>,
     pub message: Option<String>,
@@ -162,7 +162,7 @@ pub async fn list_daily_reports(
         .rows
         .into_iter()
         .map(|row| DailyReport {
-            id: get_opt_int(&row, 0).unwrap_or(0),
+            id: get_opt_str(&row, 0).unwrap_or_default(),
             taladro: get_opt_str(&row, 1).unwrap_or_default(),
             fecha: get_opt_str(&row, 2),
             rop: get_opt_float(&row, 3),
@@ -173,7 +173,7 @@ pub async fn list_daily_reports(
             npt_causa: get_opt_str(&row, 8),
             actividad: get_opt_str(&row, 9),
             observaciones: get_opt_str(&row, 10),
-            message_id: get_opt_int(&row, 11),
+            message_id: get_opt_str(&row, 11),
             created_at: get_opt_str(&row, 12),
         })
         .collect();
@@ -185,7 +185,7 @@ pub async fn list_daily_reports(
 #[tauri::command]
 pub async fn get_message_detail(
     session_token: String,
-    message_id: i64,
+    message_id: String,
     state: State<'_, AppState>,
 ) -> Result<MessageDetail, String> {
     get_session(&session_token, &state).map_err(|e| e.to_string())?;
@@ -194,9 +194,9 @@ pub async fn get_message_detail(
 
     let result = client
         .execute(
-            "SELECT id, from_number, group_name, message, type, raw_data, created_at \
+            "SELECT id, from_number, group_name, message, message_type, raw_data, created_at \
              FROM messages WHERE id = ?1",
-            vec![TursoValue::integer(message_id)],
+            vec![TursoValue::text(&message_id)],
         )
         .await?;
 
@@ -207,7 +207,7 @@ pub async fn get_message_detail(
         .ok_or_else(|| format!("Mensaje {} no encontrado", message_id))?;
 
     Ok(MessageDetail {
-        id: get_opt_int(&row, 0).unwrap_or(message_id),
+        id: get_opt_str(&row, 0).unwrap_or(message_id),
         from_number: get_opt_str(&row, 1),
         group_name: get_opt_str(&row, 2),
         message: get_opt_str(&row, 3),

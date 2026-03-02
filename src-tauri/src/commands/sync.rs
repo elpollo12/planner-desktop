@@ -21,6 +21,7 @@ pub struct SyncStatus {
 
 fn build_status(cfg: &config::SyncConfig) -> SyncStatus {
     let configured = SyncCredentials::is_configured();
+    println!("[Sync] is_configured: {}, cfg.enabled: {}", configured, cfg.enabled);
     let config_error = if !configured {
         Some("Variable de entorno SYNC_SERVER_URL no configurada. Contacte al administrador del sistema.".to_string())
     } else {
@@ -86,7 +87,7 @@ pub async fn set_sync_interval(
     Ok(build_status(&cfg))
 }
 
-/// Test connection to planner-sync server.
+/// Test connection to planner-sync server (admin only, shows detailed info).
 #[tauri::command]
 pub async fn test_sync_connection(
     session_token: String,
@@ -96,6 +97,30 @@ pub async fn test_sync_connection(
     let creds = SyncCredentials::from_env()?;
     let client = SyncClient::new(&creds.server_url);
     client.test_connection().await
+}
+
+/// Lightweight ping to check if sync server is reachable (any authenticated user).
+/// Returns true if server responds, false otherwise.
+#[tauri::command]
+pub async fn ping_sync_server(
+    session_token: String,
+    state: State<'_, AppState>,
+) -> Result<bool, String> {
+    // Just verify session is valid, no admin check
+    get_session(&session_token, &state).map_err(|e| e.to_string())?;
+    
+    // Check if sync is configured
+    if !SyncCredentials::is_configured() {
+        return Ok(false);
+    }
+    
+    let creds = SyncCredentials::from_env()?;
+    let client = SyncClient::new(&creds.server_url);
+    
+    match client.test_connection().await {
+        Ok(_) => Ok(true),
+        Err(_) => Ok(false),
+    }
 }
 
 /// Login to planner-sync and persist JWT token.
@@ -139,12 +164,13 @@ pub async fn sync_push(
     if result.success {
         let conn = state.db.lock().map_err(|e| format!("Failed to lock database: {}", e))?;
         engine::mark_reports_synced(&conn);
-    }
 
-    let mut cfg = config::load_config()?;
-    cfg.last_push_at = Some(result.timestamp.clone());
-    cfg.last_sync_at = Some(result.timestamp.clone());
-    config::save_config(&cfg)?;
+        // Solo avanzar timestamps si el push fue completamente exitoso
+        let mut cfg = config::load_config()?;
+        cfg.last_push_at = Some(result.timestamp.clone());
+        cfg.last_sync_at = Some(result.timestamp.clone());
+        config::save_config(&cfg)?;
+    }
 
     Ok(result)
 }
@@ -162,6 +188,7 @@ pub async fn sync_pull(
     let (pulled_data, mut result) =
         engine::pull_data_from_server(&client, cfg.last_pull_at.as_deref()).await?;
 
+    let mut write_succeeded = true;
     if !pulled_data.is_empty() {
         let conn = state.db.lock().map_err(|e| format!("Failed to lock database: {}", e))?;
         match engine::write_pulled_data(&conn, &pulled_data) {
@@ -171,16 +198,20 @@ pub async fn sync_pull(
                 }
             }
             Err(e) => {
+                write_succeeded = false;
                 result.success = false;
                 result.errors.push(format!("Error writing to local DB: {}", e));
             }
         }
     }
 
-    let mut cfg = config::load_config()?;
-    cfg.last_pull_at = Some(result.timestamp.clone());
-    cfg.last_sync_at = Some(result.timestamp.clone());
-    config::save_config(&cfg)?;
+    // Solo avanzar timestamps si la escritura fue exitosa
+    if write_succeeded {
+        let mut cfg = config::load_config()?;
+        cfg.last_pull_at = Some(result.timestamp.clone());
+        cfg.last_sync_at = Some(result.timestamp.clone());
+        config::save_config(&cfg)?;
+    }
 
     Ok(result)
 }
@@ -274,7 +305,8 @@ pub async fn sync_incremental(
     };
     let push_result = engine::push_data_to_server(&client, table_data).await?;
 
-    if push_result.success {
+    let push_succeeded = push_result.success;
+    if push_succeeded {
         let conn = state.db.lock().map_err(|e| format!("Failed to lock database: {}", e))?;
         engine::mark_reports_synced(&conn);
     }
@@ -284,9 +316,11 @@ pub async fn sync_incremental(
         engine::pull_data_from_server(&client, cfg.last_pull_at.as_deref()).await?;
 
     let mut pull_errors: Vec<String> = Vec::new();
+    let mut pull_write_succeeded = true;
     if !pulled_data.is_empty() {
         let conn = state.db.lock().map_err(|e| format!("Failed to lock database: {}", e))?;
         if let Err(e) = engine::write_pulled_data(&conn, &pulled_data) {
+            pull_write_succeeded = false;
             pull_errors.push(format!("Error writing to local DB: {}", e));
         }
         if let Err(e) = engine::recalculate_logistics_stock(&conn) {
@@ -299,7 +333,7 @@ pub async fn sync_incremental(
     all_errors.extend(pull_errors);
 
     let result = SyncResult {
-        success: all_errors.is_empty(),
+        success: push_succeeded && pull_write_succeeded && all_errors.is_empty(),
         tables_synced: push_result.tables_synced + pull_result.tables_synced,
         records_pushed: push_result.records_pushed,
         records_pulled: pull_result.records_pulled,
@@ -307,10 +341,17 @@ pub async fn sync_incremental(
         timestamp: now.clone(),
     };
 
+    // Solo avanzar timestamps de operaciones exitosas
     let mut cfg = config::load_config()?;
-    cfg.last_sync_at = Some(now.clone());
-    cfg.last_push_at = Some(now.clone());
-    cfg.last_pull_at = Some(now);
+    if push_succeeded {
+        cfg.last_push_at = Some(now.clone());
+    }
+    if pull_write_succeeded {
+        cfg.last_pull_at = Some(now.clone());
+    }
+    if push_succeeded && pull_write_succeeded {
+        cfg.last_sync_at = Some(now);
+    }
     config::save_config(&cfg)?;
 
     Ok(result)

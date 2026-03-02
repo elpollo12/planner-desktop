@@ -18,6 +18,7 @@ import {
   LogIn,
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
+import { useConnectionStore } from '../../store/connectionStore';
 import { syncApi } from '../../lib/api';
 import type { SyncStatus, SyncResult } from '../../types/sync';
 
@@ -33,6 +34,7 @@ const INTERVAL_OPTIONS = [
 
 export default function SyncSettings() {
   const { sessionToken } = useAuthStore();
+  const { setOnline, setOffline, setSyncing: setSyncingConnection, setError, setSyncEnabled } = useConnectionStore();
   const [status, setStatus] = useState<SyncStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
@@ -76,8 +78,10 @@ export default function SyncSettings() {
     try {
       const msg = await syncApi.testConnection(sessionToken);
       showMessage('success', msg);
+      setOnline();
     } catch (error) {
       showMessage('error', `Error de conexión: ${error}`);
+      setOffline(String(error));
     } finally {
       setTesting(false);
     }
@@ -104,6 +108,7 @@ export default function SyncSettings() {
     try {
       const s = await syncApi.enable(sessionToken);
       setStatus(s);
+      setSyncEnabled(true, true);
       showMessage('success', 'Sincronización habilitada exitosamente');
     } catch (error) {
       showMessage('error', `Error al habilitar: ${error}`);
@@ -115,17 +120,23 @@ export default function SyncSettings() {
   const handleFullSync = async () => {
     if (!sessionToken) return;
     setSyncing(true);
+    setSyncingConnection();
     try {
       const result = await syncApi.fullSync(sessionToken);
       setLastResult(result);
       if (result.success) {
         showMessage('success', `Sincronización completa: ${result.recordsPushed} enviados, ${result.recordsPulled} recibidos`);
+        setOnline();
       } else {
         showMessage('error', `Sincronización con errores: ${result.errors.join(', ')}`);
+        if (result.errors.length > 0) {
+          setError(result.errors[0]);
+        }
       }
       await loadStatus();
     } catch (error) {
       showMessage('error', `Error de sincronización: ${error}`);
+      setOffline(String(error));
     } finally {
       setSyncing(false);
     }
@@ -134,14 +145,17 @@ export default function SyncSettings() {
   const handlePush = async () => {
     if (!sessionToken) return;
     setSyncing(true);
+    setSyncingConnection();
     try {
       const result = await syncApi.push(sessionToken);
       setLastResult(result);
       showMessage(result.success ? 'success' : 'error',
         result.success ? `${result.recordsPushed} registros enviados` : `Push con errores: ${result.errors.join(', ')}`);
+      if (result.success) setOnline();
       await loadStatus();
     } catch (error) {
       showMessage('error', `Error al enviar: ${error}`);
+      setOffline(String(error));
     } finally {
       setSyncing(false);
     }
@@ -150,14 +164,17 @@ export default function SyncSettings() {
   const handlePull = async () => {
     if (!sessionToken) return;
     setSyncing(true);
+    setSyncingConnection();
     try {
       const result = await syncApi.pull(sessionToken);
       setLastResult(result);
       showMessage(result.success ? 'success' : 'error',
         result.success ? `${result.recordsPulled} registros recibidos` : `Pull con errores: ${result.errors.join(', ')}`);
+      if (result.success) setOnline();
       await loadStatus();
     } catch (error) {
       showMessage('error', `Error al recibir: ${error}`);
+      setOffline(String(error));
     } finally {
       setSyncing(false);
     }
@@ -169,6 +186,8 @@ export default function SyncSettings() {
     try {
       await syncApi.disable(sessionToken);
       setLastResult(null);
+      setSyncEnabled(true, false);
+      setOffline();
       showMessage('success', 'Sincronización desactivada');
       await loadStatus();
     } catch (error) {

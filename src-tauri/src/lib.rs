@@ -172,6 +172,7 @@ pub fn run() {
             commands::sync::enable_sync,
             commands::sync::set_sync_interval,
             commands::sync::test_sync_connection,
+            commands::sync::ping_sync_server,
             commands::sync::sync_login,
             commands::sync::sync_push,
             commands::sync::sync_pull,
@@ -274,6 +275,15 @@ pub fn run() {
             commands::cloud_logs::list_daily_reports,
             commands::cloud_logs::get_message_detail,
 
+            // Update preferences commands
+            commands::updates::get_update_preferences,
+            commands::updates::save_update_preferences,
+            commands::updates::record_update_check,
+            commands::updates::postpone_update,
+            commands::updates::clear_postpone,
+            commands::updates::get_update_status,
+            commands::updates::check_for_update_from_api,
+            commands::updates::record_download_to_api,
 
         ])
         .run(tauri::generate_context!())

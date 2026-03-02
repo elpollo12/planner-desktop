@@ -60,6 +60,8 @@ pub struct Report {
     pub created_at: String,
     pub updated_at: String,
     pub synced: bool,
+    #[serde(default)]
+    pub is_deleted: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -147,6 +149,7 @@ impl Report {
             created_at: row.get(20)?,
             updated_at: row.get(21)?,
             synced: row.get::<_, i32>(22)? == 1,
+            is_deleted: row.get::<_, i32>(23).unwrap_or(0) == 1,
         })
     }
 
@@ -187,11 +190,11 @@ impl Report {
         Report::get_by_id(conn, &id)
     }
 
-    /// Get report by ID
+    /// Get report by ID (excludes soft-deleted reports)
     pub fn get_by_id(conn: &Connection, report_id: &str) -> Result<Report, AppError> {
         let report = conn.query_row(
-            "SELECT id, report_number, report_date, well_number, api_number, contract, contractor, operator, field_district, municipality, rig_number, company, supervisor_24h, status, created_by, approved_by, submitted_at, approved_at, rejected_at, rejection_reason, created_at, updated_at, synced
-             FROM reports WHERE id = ?1",
+            "SELECT id, report_number, report_date, well_number, api_number, contract, contractor, operator, field_district, municipality, rig_number, company, supervisor_24h, status, created_by, approved_by, submitted_at, approved_at, rejected_at, rejection_reason, created_at, updated_at, synced, is_deleted
+             FROM reports WHERE id = ?1 AND (is_deleted IS NULL OR is_deleted = 0)",
             params![report_id],
             Report::from_row,
         )?;
@@ -216,7 +219,7 @@ impl Report {
 
         // Base query for selecting reports
         let mut query = String::from(
-            "SELECT id, report_number, report_date, well_number, api_number, contract, contractor, operator, field_district, municipality, rig_number, company, supervisor_24h, status, created_by, approved_by, submitted_at, approved_at, rejected_at, rejection_reason, created_at, updated_at, synced FROM reports WHERE (is_deleted IS NULL OR is_deleted = 0)"
+            "SELECT id, report_number, report_date, well_number, api_number, contract, contractor, operator, field_district, municipality, rig_number, company, supervisor_24h, status, created_by, approved_by, submitted_at, approved_at, rejected_at, rejection_reason, created_at, updated_at, synced, is_deleted FROM reports WHERE (is_deleted IS NULL OR is_deleted = 0)"
         );
 
         // Query for counting total
@@ -526,7 +529,7 @@ impl Report {
 
         // Check time distribution
         let time_count: i32 = conn.query_row(
-            "SELECT COUNT(*) FROM time_distributions WHERE report_id = ?1",
+            "SELECT COUNT(*) FROM time_distribution WHERE report_id = ?1",
             params![report_id],
             |row| row.get(0),
         )?;
@@ -574,7 +577,7 @@ impl Report {
 
         // Check drill string
         let drill_string_count: i32 = conn.query_row(
-            "SELECT COUNT(*) FROM drill_string WHERE report_id = ?1",
+            "SELECT COUNT(*) FROM drill_string_components WHERE report_id = ?1",
             params![report_id],
             |row| row.get(0),
         )?;

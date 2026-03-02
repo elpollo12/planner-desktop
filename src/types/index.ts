@@ -31,6 +31,7 @@ export { type UserRole, type CreateUserInput, type UpdateUserInput, type AppModu
 export * from './logistics';
 export * from './incident';
 export * from './notification';
+export * from './updates';
 
 export interface LoginResponse {
   sessionToken: string;

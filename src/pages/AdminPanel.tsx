@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { MainLayout } from '../components/layout';
 import { Card } from '../components/ui';
-import { Users, Bookmark, BarChart3, Activity, MapPin, Palette, Cloud, Building2, Wrench } from 'lucide-react';
+import { Users, Bookmark, BarChart3, Activity, MapPin, Palette, Cloud, Building2, Wrench, Download } from 'lucide-react';
 import { OilRigIcon } from '../components/ui/icons/OilRigIcon';
 import { useAuthStore } from '../store/authStore';
 import { UsersManagement } from '../components/admin/UsersManagement';
@@ -13,9 +13,10 @@ import AppearanceSettings from '../components/admin/AppearanceSettings';
 import SyncSettings from '../components/admin/SyncSettings';
 import OperatorsManagement from '../components/admin/OperatorsManagement';
 import RigsDiagnostic from '../components/admin/RigsDiagnostic';
+import UpdatesSettings from '../components/admin/UpdatesSettings';
 import { usersApi, areasApi, rigsApi, reportsApi } from '../lib/api';
 
-type AdminTab = 'users' | 'codes' | 'stats' | 'areas' | 'rigs' | 'operators' | 'appearance' | 'sync' | 'diagnostic';
+type AdminTab = 'users' | 'codes' | 'stats' | 'areas' | 'rigs' | 'operators' | 'appearance' | 'sync' | 'updates' | 'diagnostic';
 
 interface AdminStats {
   totalUsers: number;
@@ -79,6 +80,7 @@ export default function AdminPanel() {
     { id: 'stats' as AdminTab, label: 'Estadísticas', icon: BarChart3 },
     { id: 'appearance' as AdminTab, label: 'Apariencia', icon: Palette },
     { id: 'sync' as AdminTab, label: 'Sincronización', icon: Cloud },
+    { id: 'updates' as AdminTab, label: 'Actualizaciones', icon: Download },
     { id: 'diagnostic' as AdminTab, label: 'Diagnóstico', icon: Wrench },
   ];
 
@@ -179,6 +181,7 @@ export default function AdminPanel() {
             {activeTab === 'stats' && <Statistics />}
             {activeTab === 'appearance' && <AppearanceSettings />}
             {activeTab === 'sync' && <SyncSettings />}
+            {activeTab === 'updates' && <UpdatesSettings />}
             {activeTab === 'diagnostic' && <RigsDiagnostic />}
           </div>
         </Card>

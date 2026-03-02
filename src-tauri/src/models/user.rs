@@ -163,11 +163,11 @@ impl User {
         User::get_by_id(conn, &id)
     }
 
-    /// Get user by ID
+    /// Get user by ID (excludes soft-deleted users)
     pub fn get_by_id(conn: &Connection, user_id: &str) -> Result<User, AppError> {
         let user = conn.query_row(
             "SELECT id, username, password_hash, full_name, ci, role, position, active, has_all_rigs, supervisor_id, last_login, created_by, updated_by, created_at, updated_at
-             FROM users WHERE id = ?1",
+             FROM users WHERE id = ?1 AND (is_deleted IS NULL OR is_deleted = 0)",
             params![user_id],
             User::from_row,
         )?;
@@ -245,8 +245,8 @@ impl User {
         for rig_id in rig_ids {
             let id = uuid::Uuid::new_v4().to_string();
             conn.execute(
-                "INSERT INTO user_rigs (id, user_id, rig_id, assigned_by, assigned_at) VALUES (?1, ?2, ?3, ?4, ?5)",
-                params![&id, user_id, rig_id, assigned_by, &now],
+                "INSERT INTO user_rigs (id, user_id, rig_id, assigned_by, assigned_at, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+                params![&id, user_id, rig_id, assigned_by, &now, &now, &now],
             )?;
         }
 
@@ -386,13 +386,13 @@ impl User {
         User::get_by_id(conn, user_id)
     }
 
-    /// Update last login timestamp
+    /// Update last login timestamp (also updates updated_at for sync)
     pub fn update_last_login(conn: &Connection, user_id: &str) -> Result<(), AppError> {
         let now = chrono::Utc::now().to_rfc3339();
 
         conn.execute(
-            "UPDATE users SET last_login = ?1 WHERE id = ?2",
-            params![&now, user_id],
+            "UPDATE users SET last_login = ?1, updated_at = ?2 WHERE id = ?3",
+            params![&now, &now, user_id],
         )?;
 
         Ok(())

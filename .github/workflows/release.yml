@@ -7,6 +7,8 @@ on:
 
 env:
   PUBLIC_REPO: elpollo12/planner-desktop-releases
+  # URL del servidor planner-sync (cambiar a producción cuando esté listo)
+  SYNC_API_URL: http://localhost:3001
 
 jobs:
   build-windows:
@@ -61,9 +63,13 @@ jobs:
             exit 1
           }
 
+          # Get file size
+          $size = $exe.Length
+
           echo "nsis_exe=$($exe.FullName)" >> $env:GITHUB_OUTPUT
           echo "nsis_sig=$($sig.FullName)" >> $env:GITHUB_OUTPUT
           echo "nsis_exe_name=$($exe.Name)" >> $env:GITHUB_OUTPUT
+          echo "nsis_size=$size" >> $env:GITHUB_OUTPUT
 
       - name: Read signature and get version
         id: meta
@@ -99,6 +105,7 @@ jobs:
           Get-Content "latest.json"
 
       - name: Publish to public releases repo
+        id: publish
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.RELEASE_PAT }}
@@ -113,3 +120,40 @@ jobs:
             "${{ steps.artifacts.outputs.nsis_exe }}" \
             "${{ steps.artifacts.outputs.nsis_sig }}" \
             "latest.json"
+
+          echo "release_url=https://github.com/${{ env.PUBLIC_REPO }}/releases/download/$TAG/${{ steps.artifacts.outputs.nsis_exe_name }}" >> $GITHUB_OUTPUT
+
+      - name: Notify planner-sync API
+        if: success()
+        shell: bash
+        env:
+          SYNC_ADMIN_TOKEN: ${{ secrets.SYNC_ADMIN_TOKEN }}
+        run: |
+          VERSION="${{ steps.meta.outputs.version }}"
+          SIGNATURE="${{ steps.meta.outputs.signature }}"
+          RELEASE_URL="${{ steps.publish.outputs.release_url }}"
+          SIZE="${{ steps.artifacts.outputs.nsis_size }}"
+          PUB_DATE="${{ steps.meta.outputs.pub_date }}"
+
+          echo "Notifying planner-sync about release $VERSION..."
+
+          # Solo notificar si tenemos el token configurado
+          if [ -n "$SYNC_ADMIN_TOKEN" ]; then
+            curl -X POST "${{ env.SYNC_API_URL }}/api/v1/updates/releases" \
+              -H "Content-Type: application/json" \
+              -H "Authorization: Bearer $SYNC_ADMIN_TOKEN" \
+              -d @- <<EOF || echo "Warning: Failed to notify planner-sync (may not be running)"
+          {
+            "version": "$VERSION",
+            "channel": "stable",
+            "notes": "Actualización a versión $VERSION",
+            "assetUrl": "$RELEASE_URL",
+            "assetSignature": "$SIGNATURE",
+            "assetSize": $SIZE
+          }
+          EOF
+          else
+            echo "SYNC_ADMIN_TOKEN not configured, skipping API notification"
+          fi
+
+          echo "Release $VERSION published successfully!"

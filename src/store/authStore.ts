@@ -4,6 +4,7 @@ import type { User, LoginResponse, ModulePermissions } from '../types';
 import { invoke } from '@tauri-apps/api/core';
 import { modulePermissionsApi } from '../lib/api';
 import { useLogisticsStore } from './logisticsStore';
+import { useConnectionStore } from './connectionStore';
 import { queryClient } from '../lib/queryClient';
 
 interface AuthState {
@@ -55,6 +56,9 @@ export const useAuthStore = create<AuthState>()(
             isLoading: false,
             error: null,
           });
+
+          // Check connection status after successful login (fire and forget)
+          useConnectionStore.getState().checkConnection(response.sessionToken);
         } catch (error) {
           const rawError = error as string;
           // Map backend error messages to user-friendly Spanish messages
@@ -96,6 +100,9 @@ export const useAuthStore = create<AuthState>()(
 
         // Clear logistics rig selection on logout
         useLogisticsStore.getState().clearSelectedRig();
+
+        // Reset connection status on logout
+        useConnectionStore.getState().reset();
 
         // Clear all React Query cache to prevent stale data leaking between users
         queryClient.clear();
@@ -147,6 +154,9 @@ export const useAuthStore = create<AuthState>()(
             isLoading: false,
             error: null,
           });
+
+          // Check connection status on session restore (fire and forget)
+          useConnectionStore.getState().checkConnection(sessionToken);
         } catch (error) {
           set({
             user: null,
