@@ -64,13 +64,13 @@ export function LogisticsMetrics() {
     color: CHART_COLORS[i % CHART_COLORS.length],
   }));
 
-  const dailyData = data.dailyRequests.map((d) => ({
+  const dailyData = data.dailyRequests.map((d: { day: string; count: number }) => ({
     ...d,
     label: format(parseISO(d.day), 'd MMM', { locale: es }),
   }));
 
-  const approvedCount = data.byStatus.find((s) => s.category === 'approved')?.count ?? 0;
-  const rejectedCount = data.byStatus.find((s) => s.category === 'rejected')?.count ?? 0;
+  const approvedCount = data.byStatus.find((s: { category: string; count: number }) => s.category === 'approved')?.count ?? 0;
+  const rejectedCount = data.byStatus.find((s: { category: string; count: number }) => s.category === 'rejected')?.count ?? 0;
 
   return (
     <div className="space-y-6">
@@ -100,7 +100,7 @@ export function LogisticsMetrics() {
                   outerRadius={80}
                   paddingAngle={3}
                 >
-                  {typeData.map((entry, idx) => (
+                  {typeData.map((entry: { name: string; value: number; color: string }, idx: number) => (
                     <Cell key={idx} fill={entry.color} />
                   ))}
                 </Pie>
@@ -109,7 +109,7 @@ export function LogisticsMetrics() {
             </ResponsiveContainer>
           </div>
           <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 mt-3">
-            {typeData.map((entry, idx) => (
+            {typeData.map((entry: { name: string; value: number; color: string }, idx: number) => (
               <div key={idx} className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400">
                 <span className="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: entry.color }} />
                 {entry.name}: {entry.value}
@@ -134,7 +134,7 @@ export function LogisticsMetrics() {
                   outerRadius={80}
                   paddingAngle={3}
                 >
-                  {statusData.map((entry, idx) => (
+                  {statusData.map((entry: { name: string; value: number; color: string }, idx: number) => (
                     <Cell key={idx} fill={entry.color} />
                   ))}
                 </Pie>
@@ -143,7 +143,7 @@ export function LogisticsMetrics() {
             </ResponsiveContainer>
           </div>
           <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 mt-3">
-            {statusData.map((entry, idx) => (
+            {statusData.map((entry: { name: string; value: number; color: string }, idx: number) => (
               <div key={idx} className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400">
                 <span className="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: entry.color }} />
                 {entry.name}: {entry.value}

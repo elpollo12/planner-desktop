@@ -65,7 +65,7 @@ export function IncidentsMetrics() {
           <span className="text-sm text-gray-500 dark:text-gray-400">Total Incidencias</span>
         </div>
 
-        {data.byType.map((t) => (
+        {data.byType.map((t: { typeName: string; count: number; color: string; typeId: string }) => (
           <div
             key={t.typeId}
             className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium"
