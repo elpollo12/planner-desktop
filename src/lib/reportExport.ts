@@ -296,7 +296,7 @@ export function buildDDRReportPdf(opts: DDRExportOptions): { doc: jsPDF; filenam
       body: data.timeDistributions.map((td) => {
         const t = (td.hoursShift1 || 0) + (td.hoursShift2 || 0) + (td.hoursShift3 || 0);
         return [
-          td.operationCode?.name || td.operationCodeId || '-',
+          td.operationCode?.code || td.operationCodeId || '-',
           String(td.hoursShift1 || 0),
           String(td.hoursShift2 || 0),
           String(td.hoursShift3 || 0),
@@ -552,7 +552,7 @@ export function buildDDRReportExcel(opts: DDRExportOptions): { workbook: XLSX.Wo
     const rows: any[][] = [['Operación', 'Mañana (hrs)', 'Tarde (hrs)', 'Noche (hrs)', 'Total (hrs)']];
     for (const td of data.timeDistributions) {
       const t = (td.hoursShift1 || 0) + (td.hoursShift2 || 0) + (td.hoursShift3 || 0);
-      rows.push([td.operationCode?.name || td.operationCodeId || '-', td.hoursShift1 || 0, td.hoursShift2 || 0, td.hoursShift3 || 0, t]);
+      rows.push([td.operationCode?.code || td.operationCodeId || '-', td.hoursShift1 || 0, td.hoursShift2 || 0, td.hoursShift3 || 0, t]);
     }
     const ws = XLSX.utils.aoa_to_sheet(rows);
     ws['!cols'] = [{ wch: 30 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 12 }];

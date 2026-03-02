@@ -6,10 +6,19 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct OperationCodeInfo {
+    pub id: String,
+    pub code: String,
+    pub name: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TimeDistribution {
     pub id: String,
     pub report_id: String,
     pub operation_code_id: String,
+    pub operation_code: Option<OperationCodeInfo>,
     pub hours_shift1: f64,
     pub hours_shift2: f64,
     pub hours_shift3: f64,
@@ -27,10 +36,17 @@ pub struct TimeDistributionData {
 
 impl TimeDistribution {
     fn from_row(row: &Row) -> Result<Self, rusqlite::Error> {
+        let oc_id: Option<String> = row.get(8)?;
+        let operation_code = oc_id.map(|id| OperationCodeInfo {
+            id,
+            code: row.get(9).unwrap_or_default(),
+            name: row.get(10).unwrap_or_default(),
+        });
         Ok(TimeDistribution {
             id: row.get(0)?,
             report_id: row.get(1)?,
             operation_code_id: row.get(2)?,
+            operation_code,
             hours_shift1: row.get(3)?,
             hours_shift2: row.get(4)?,
             hours_shift3: row.get(5)?,
@@ -76,8 +92,13 @@ impl TimeDistribution {
 
     pub fn list_by_report(conn: &Connection, report_id: &str) -> Result<Vec<TimeDistribution>, AppError> {
         let mut stmt = conn.prepare(
-            "SELECT id, report_id, operation_code_id, hours_shift1, hours_shift2, hours_shift3, created_at, updated_at
-             FROM time_distribution WHERE report_id = ?1"
+            "SELECT td.id, td.report_id, td.operation_code_id,
+                    td.hours_shift1, td.hours_shift2, td.hours_shift3,
+                    td.created_at, td.updated_at,
+                    oc.id, oc.code, oc.name
+             FROM time_distribution td
+             LEFT JOIN operation_codes oc ON oc.id = td.operation_code_id
+             WHERE td.report_id = ?1"
         )?;
 
         let distributions = stmt

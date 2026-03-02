@@ -61,7 +61,10 @@ const SYNC_TABLES: &[TableDef] = &[
     TableDef {
         name: "rig_personnel",
         columns: &["id", "rig_id", "name", "ci", "default_position", "active", "is_deleted", "created_at", "updated_at"],
-        id_col: "id", has_updated_at: true, parent_col: Some("rig_id"), skip_cleanup: false,
+        // skip_cleanup: true because rig_personnel has soft-delete. Deletions are
+        // propagated via is_deleted=1 UPSERT; cleanup+incremental would wipe
+        // unmodified personnel that weren't included in the delta batch.
+        id_col: "id", has_updated_at: true, parent_col: Some("rig_id"), skip_cleanup: true,
     },
     TableDef {
         name: "user_rigs",
@@ -168,7 +171,8 @@ const SYNC_TABLES: &[TableDef] = &[
     TableDef {
         name: "logistics_materials_movements",
         columns: &["id", "rig_id", "material_id", "movement_type", "quantity", "notes", "created_by", "created_at", "updated_at", "is_deleted"],
-        id_col: "id", has_updated_at: true, parent_col: Some("material_id"), skip_cleanup: false,
+        // skip_cleanup: true — same reason as rig_personnel (has soft-delete, append-only movements)
+        id_col: "id", has_updated_at: true, parent_col: Some("material_id"), skip_cleanup: true,
     },
     TableDef {
         name: "logistics_requests",
