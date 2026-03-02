@@ -7,7 +7,6 @@ import type {
   UpdatePreferences,
   SaveUpdatePreferencesInput,
   CheckUpdateResponse,
-  ApiRelease,
   UpdateState,
   UpdateCheckStatus,
 } from '../types/updates';

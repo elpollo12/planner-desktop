@@ -6,7 +6,6 @@ import { useAppSettingsStore } from '../../store/appSettingsStore';
 import { Button } from '../ui';
 import {
   ClipboardCheck,
-  ClipboardList,
   Forklift,
   LayoutDashboard,
   List,

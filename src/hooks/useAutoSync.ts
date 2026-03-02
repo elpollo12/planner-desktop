@@ -18,7 +18,7 @@ import { syncEvents } from '../lib/syncEvents';
  */
 export function useAutoSync() {
   const { sessionToken, isAuthenticated } = useAuthStore();
-  const { setOnline, setOffline, setSyncing, setError, setSyncEnabled, status } = useConnectionStore();
+  const { setOnline, setOffline, setSyncing, setError, setSyncEnabled } = useConnectionStore();
   const intervalRef = useRef<number | null>(null);
   const lastSyncRef = useRef<number>(0);
 

@@ -26,7 +26,7 @@ interface AdminStats {
 }
 
 export default function AdminPanel() {
-  const { user, sessionToken } = useAuthStore();
+  const { sessionToken } = useAuthStore();
   const [activeTab, setActiveTab] = useState<AdminTab>('users');
   const [stats, setStats] = useState<AdminStats>({
     totalUsers: 0,

@@ -1,7 +1,8 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { savePdfDialog } from './logisticsSaveDialog';
-import { formatDateDMY } from './dateUtils';
+// formatDateDMY available if needed
+// import { formatDateDMY } from './dateUtils';
 import type { ReportBranding } from './logisticsExport';
 import type { IncidentWithPersonnel } from '../types/incident';
 import { toast } from 'react-toastify';
@@ -223,7 +224,8 @@ export async function exportIncidentPdf({ incident, rigName, typeName, branding 
     }
 
     // ── Save ──
-    const dateTag = incident.createdAt.split('T')[0] ?? 'sin-fecha';
+    // dateTag available for future use
+    // const dateTag = incident.createdAt.split('T')[0] ?? 'sin-fecha';
     const rig = rigName.replace(/\s+/g, '_');
     const filename = `${rig} - Incidencia - ${getTodayForFilename()}.pdf`;
 

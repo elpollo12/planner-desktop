@@ -768,6 +768,31 @@ export const notificationsApi = {
 };
 
 // ============================================================================
+// Admin Statistics Types
+// ============================================================================
+
+export interface ActivityStats {
+  totalPeriod: number;
+  dailyReports: Array<{ day: string; count: number }>;
+}
+
+export interface LogisticsAdminStats {
+  totalRequests: number;
+  pendingCount: number;
+  byStatus: Array<{ category: string; count: number }>;
+  byType: Array<{ category: string; count: number }>;
+  topRigs: Array<{ rigId: string; rigName: string; count: number }>;
+  dailyRequests: Array<{ day: string; count: number }>;
+}
+
+export interface IncidentsAdminStats {
+  totalIncidents: number;
+  byType: Array<{ typeId: string; typeName: string; color: string; count: number }>;
+  topRigs: Array<{ rigId: string; rigName: string; count: number }>;
+  dailyIncidents: Array<{ day: string; count: number }>;
+}
+
+// ============================================================================
 // Admin Statistics Commands
 // ============================================================================
 
