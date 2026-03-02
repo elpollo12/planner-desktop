@@ -38,7 +38,7 @@ export function ActivityChart() {
     );
   }
 
-  const chartData = data.dailyReports.map((d) => ({
+  const chartData = data.dailyReports.map((d: { day: string; count: number }) => ({
     ...d,
     label: format(parseISO(d.day), 'd MMM', { locale: es }),
   }));

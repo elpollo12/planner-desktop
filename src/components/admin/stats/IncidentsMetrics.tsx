@@ -44,13 +44,13 @@ export function IncidentsMetrics() {
     );
   }
 
-  const typeData = data.byType.map((t) => ({
+  const typeData = data.byType.map((t: { typeName: string; count: number; color: string; typeId: string }) => ({
     name: t.typeName,
     value: t.count,
     color: getIncidentColor(t.color),
   }));
 
-  const dailyData = data.dailyIncidents.map((d) => ({
+  const dailyData = data.dailyIncidents.map((d: { day: string; count: number }) => ({
     ...d,
     label: format(parseISO(d.day), 'd MMM', { locale: es }),
   }));
@@ -98,7 +98,7 @@ export function IncidentsMetrics() {
                   outerRadius={80}
                   paddingAngle={3}
                 >
-                  {typeData.map((entry, idx) => (
+                  {typeData.map((entry: { name: string; value: number; color: string }, idx: number) => (
                     <Cell key={idx} fill={entry.color} />
                   ))}
                 </Pie>
@@ -107,7 +107,7 @@ export function IncidentsMetrics() {
             </ResponsiveContainer>
           </div>
           <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 mt-3">
-            {typeData.map((entry, idx) => (
+            {typeData.map((entry: { name: string; value: number; color: string }, idx: number) => (
               <div key={idx} className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400">
                 <span className="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: entry.color }} />
                 {entry.name}: {entry.value}

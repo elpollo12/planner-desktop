@@ -52,13 +52,13 @@ export function LogisticsMetrics() {
   }
 
   // Prepare data with Spanish labels
-  const statusData = data.byStatus.map((s) => ({
+  const statusData = data.byStatus.map((s: { category: string; count: number }) => ({
     name: REQUEST_STATUS_LABELS[s.category] ?? s.category,
     value: s.count,
     color: STATUS_COLOR_MAP[s.category] ?? '#6b7280',
   }));
 
-  const typeData = data.byType.map((t, i) => ({
+  const typeData = data.byType.map((t: { category: string; count: number }, i: number) => ({
     name: REQUEST_TYPE_LABELS[t.category] ?? t.category,
     value: t.count,
     color: CHART_COLORS[i % CHART_COLORS.length],
