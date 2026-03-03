@@ -71,13 +71,13 @@ export function Sidebar({ className = '' }: SidebarProps) {
       className={`w-64 bg-gray-50 dark:bg-gray-800 border-r border-primary-200 dark:border-gray-700 flex flex-col ${className}`}
     >
       {/* Logo/Brand — height matches Header component (py-4) */}
-      <div className="h-15 px-6 border-b border-primary-200 dark:border-gray-700 flex items-center">
+      <div className="h-16 px-4 border-b border-primary-200 dark:border-gray-700 flex items-center">
         {logoPath ? (
-          <div className="flex items-center justify-center w-full">
+          <div className="flex items-center justify-center w-full h-full py-2">
             <img
               src={logoPath}
               alt="Logo de la empresa"
-              className="max-h-12 w-auto object-contain"
+              className="max-h-full max-w-full object-contain"
             />
           </div>
         ) : (

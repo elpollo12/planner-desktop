@@ -72,7 +72,7 @@ export default function RigsManagement() {
         onSubmit={async (data) => {
           try {
             const newRig = await rigsApi.create(user!.id, data);
-            toast.success('Taladro creado. Ahora puedes agregar personal.');
+            toast.success('Taladro creado exitosamente');
 
             // Push changes to cloud in background
             if (sessionToken) {
