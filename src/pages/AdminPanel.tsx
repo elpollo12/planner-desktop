@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { MainLayout } from '../components/layout';
 import { Card } from '../components/ui';
-import { Users, Bookmark, BarChart3, Activity, MapPin, Palette, Cloud, Building2, Wrench, Download } from 'lucide-react';
+import { Users, Bookmark, BarChart3, Activity, MapPin, Palette, Cloud, Building2, Download } from 'lucide-react';
 import { OilRigIcon } from '../components/ui/icons/OilRigIcon';
 import { useAuthStore } from '../store/authStore';
 import { UsersManagement } from '../components/admin/UsersManagement';
@@ -12,11 +12,10 @@ import RigsManagement from '../components/admin/RigsManagement';
 import AppearanceSettings from '../components/admin/AppearanceSettings';
 import SyncSettings from '../components/admin/SyncSettings';
 import OperatorsManagement from '../components/admin/OperatorsManagement';
-import RigsDiagnostic from '../components/admin/RigsDiagnostic';
 import UpdatesSettings from '../components/admin/UpdatesSettings';
 import { usersApi, areasApi, rigsApi, reportsApi } from '../lib/api';
 
-type AdminTab = 'users' | 'codes' | 'stats' | 'areas' | 'rigs' | 'operators' | 'appearance' | 'sync' | 'updates' | 'diagnostic';
+type AdminTab = 'users' | 'codes' | 'stats' | 'areas' | 'rigs' | 'operators' | 'appearance' | 'sync' | 'updates';
 
 interface AdminStats {
   totalUsers: number;
@@ -81,7 +80,6 @@ export default function AdminPanel() {
     { id: 'appearance' as AdminTab, label: 'Apariencia', icon: Palette },
     { id: 'sync' as AdminTab, label: 'Sincronización', icon: Cloud },
     { id: 'updates' as AdminTab, label: 'Actualizaciones', icon: Download },
-    { id: 'diagnostic' as AdminTab, label: 'Diagnóstico', icon: Wrench },
   ];
 
   return (
@@ -89,7 +87,7 @@ export default function AdminPanel() {
       title="Panel de Administración"
       subtitle="Gestión del sistema"
     >
-      {activeTab !== 'stats' && activeTab !== 'diagnostic' && (
+      {activeTab !== 'stats' && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
           <Card className="p-6">
             <div className="flex items-center justify-between">
@@ -182,7 +180,6 @@ export default function AdminPanel() {
             {activeTab === 'appearance' && <AppearanceSettings />}
             {activeTab === 'sync' && <SyncSettings />}
             {activeTab === 'updates' && <UpdatesSettings />}
-            {activeTab === 'diagnostic' && <RigsDiagnostic />}
           </div>
         </Card>
       </div>
