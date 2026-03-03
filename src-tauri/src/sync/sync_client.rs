@@ -59,6 +59,7 @@ pub struct PullResponse {
 #[serde(rename_all = "camelCase")]
 pub struct LoginResponse {
     pub token: String,
+    #[allow(dead_code)]
     pub expires_at: String,
     pub user: LoginUser,
 }
@@ -66,26 +67,12 @@ pub struct LoginResponse {
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LoginUser {
+    #[allow(dead_code)]
     pub id: String,
+    #[allow(dead_code)]
     pub username: String,
     pub full_name: String,
     pub role: String,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct StatusResponse {
-    pub server_version: String,
-    pub db_status: String,
-    pub tables_count: u32,
-    pub uptime: u64,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct PurgeResponse {
-    pub purged: u64,
-    pub timestamp: String,
 }
 
 // ─── Conversion: TursoValue <-> CellValue ────────────────────────────────────
@@ -135,10 +122,6 @@ impl SyncClient {
 
     pub fn set_token(&mut self, token: String) {
         self.token = Some(token);
-    }
-
-    pub fn has_token(&self) -> bool {
-        self.token.is_some()
     }
 
     fn auth_header(&self) -> Result<String, String> {
@@ -239,26 +222,5 @@ impl SyncClient {
 
         resp.json::<PullResponse>().await
             .map_err(|e| format!("Error parseando respuesta de pull: {e}"))
-    }
-
-    /// Get server status.
-    pub async fn status(&self) -> Result<StatusResponse, String> {
-        let auth = self.auth_header()?;
-
-        let resp = self.client
-            .get(format!("{}/api/v1/sync/status", self.base_url))
-            .header("Authorization", &auth)
-            .send()
-            .await
-            .map_err(|e| format!("Error de conexión al status: {e}"))?;
-
-        if !resp.status().is_success() {
-            let status = resp.status();
-            let body = resp.text().await.unwrap_or_default();
-            return Err(format!("Status fallido ({}): {}", status, body));
-        }
-
-        resp.json::<StatusResponse>().await
-            .map_err(|e| format!("Error parseando respuesta de status: {e}"))
     }
 }

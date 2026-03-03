@@ -33,8 +33,10 @@ pub struct PostponeUpdateInput {
 }
 
 /// Information about an available update (from API).
+/// NOTE: Currently unused but kept for future API integration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
 pub struct UpdateInfo {
     pub version: String,
     pub channel: String,

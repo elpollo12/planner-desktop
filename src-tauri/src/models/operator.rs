@@ -135,12 +135,6 @@ impl Operator {
         Ok(rows > 0)
     }
 
-    /// Hard delete an operator
-    pub fn hard_delete(conn: &Connection, id: &str) -> rusqlite::Result<bool> {
-        let rows = conn.execute("DELETE FROM operators WHERE id = ?", params![id])?;
-        Ok(rows > 0)
-    }
-
     /// Update logo path
     pub fn update_logo(conn: &Connection, id: &str, logo_path: Option<&str>) -> rusqlite::Result<Option<Self>> {
         let now = chrono::Utc::now().to_rfc3339();

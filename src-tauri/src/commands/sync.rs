@@ -21,7 +21,6 @@ pub struct SyncStatus {
 
 fn build_status(cfg: &config::SyncConfig) -> SyncStatus {
     let configured = SyncCredentials::is_configured();
-    println!("[Sync] is_configured: {}, cfg.enabled: {}", configured, cfg.enabled);
     let config_error = if !configured {
         Some("Variable de entorno SYNC_SERVER_URL no configurada. Contacte al administrador del sistema.".to_string())
     } else {

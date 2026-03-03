@@ -26,16 +26,6 @@ impl ReviewAction {
             ))),
         }
     }
-
-    pub fn to_str(&self) -> &str {
-        match self {
-            ReviewAction::Approved => "approved",
-            ReviewAction::Rejected => "rejected",
-            ReviewAction::RevisionRequested => "revision_requested",
-            ReviewAction::Comment => "comment",
-            ReviewAction::Resubmitted => "resubmitted",
-        }
-    }
 }
 
 /// A single review entry in the report approval audit trail
@@ -52,15 +42,6 @@ pub struct ReportReview {
     pub created_at: String,
     pub updated_at: String,
     pub is_deleted: bool,
-}
-
-/// Request payload to create a review entry
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct CreateReportReviewRequest {
-    pub report_id: String,
-    pub action: String,
-    pub comment: Option<String>,
 }
 
 impl ReportReview {
