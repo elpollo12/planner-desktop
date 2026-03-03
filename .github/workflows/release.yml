@@ -108,18 +108,26 @@ jobs:
           TAG="${{ github.ref_name }}"
           VERSION="${{ steps.meta.outputs.version }}"
           
+          echo "=== Debug info ==="
+          echo "Token length: ${#GH_TOKEN}"
+          gh auth status || echo "Auth status failed"
+          
+          echo "=== Checking repo access ==="
+          gh repo view "${{ env.PUBLIC_REPO }}" --json name || echo "Cannot access repo"
+          
           if gh release view "$TAG" --repo "${{ env.PUBLIC_REPO }}" > /dev/null 2>&1; then
             echo "Release $TAG already exists, deleting..."
-            gh release delete "$TAG" --repo "${{ env.PUBLIC_REPO }}" --yes
+            gh release delete "$TAG" --repo "${{ env.PUBLIC_REPO }}" --yes || echo "Failed to delete"
           fi
           
+          echo "=== Creating release ==="
           gh release create "$TAG" \
             --repo "${{ env.PUBLIC_REPO }}" \
             --title "Planner $VERSION" \
             --notes "Actualización a versión $VERSION" \
             "${{ steps.artifacts.outputs.nsis_exe }}" \
             "${{ steps.artifacts.outputs.nsis_sig }}" \
-            "latest.json"
+            "latest.json" 2>&1 || echo "Release create failed with exit code $?"
 
       - name: Summary
         run: |

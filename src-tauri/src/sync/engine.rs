@@ -406,14 +406,15 @@ pub fn write_pulled_data(
     conn: &Connection,
     table_results: &[(usize, Vec<Vec<TursoValue>>)],
 ) -> Result<u32, String> {
+    // IMPORTANT: PRAGMA foreign_keys must be set BEFORE starting a transaction
+    conn.execute("PRAGMA foreign_keys = OFF", [])
+        .map_err(|e| format!("Failed to disable foreign keys: {}", e))?;
+
     // Start transaction for atomicity
     conn.execute("BEGIN IMMEDIATE", [])
-        .map_err(|e| format!("Failed to begin transaction: {}", e))?;
-
-    conn.execute("PRAGMA foreign_keys = OFF", [])
         .map_err(|e| {
-            let _ = conn.execute("ROLLBACK", []);
-            format!("Failed to disable foreign keys: {}", e)
+            let _ = conn.execute("PRAGMA foreign_keys = ON", []);
+            format!("Failed to begin transaction: {}", e)
         })?;
 
     let parent_map = collect_parent_ids_from_indexed(table_results);
@@ -424,6 +425,7 @@ pub fn write_pulled_data(
     
     if let Err(e) = cleanup_local_child_rows(conn, &parent_map, &tables_in_batch) {
         let _ = conn.execute("ROLLBACK", []);
+        let _ = conn.execute("PRAGMA foreign_keys = ON", []);
         return Err(e);
     }
 
@@ -489,24 +491,24 @@ pub fn write_pulled_data(
 
             if let Err(e) = conn.execute(&upsert_sql, params_refs.as_slice()) {
                 let _ = conn.execute("ROLLBACK", []);
+                let _ = conn.execute("PRAGMA foreign_keys = ON", []);
                 return Err(format!("Failed to upsert into '{}': {}", table_def.name, e));
             }
             total += 1;
         }
     }
 
-    conn.execute("PRAGMA foreign_keys = ON", [])
-        .map_err(|e| {
-            let _ = conn.execute("ROLLBACK", []);
-            format!("Failed to re-enable foreign keys: {}", e)
-        })?;
-
     // Commit transaction
     conn.execute("COMMIT", [])
         .map_err(|e| {
             let _ = conn.execute("ROLLBACK", []);
+            let _ = conn.execute("PRAGMA foreign_keys = ON", []);
             format!("Failed to commit transaction: {}", e)
         })?;
+
+    // Re-enable foreign keys after transaction completes
+    conn.execute("PRAGMA foreign_keys = ON", [])
+        .map_err(|e| format!("Failed to re-enable foreign keys: {}", e))?;
 
     Ok(total)
 }
