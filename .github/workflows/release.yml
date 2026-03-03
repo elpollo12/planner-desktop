@@ -7,8 +7,6 @@ on:
 
 env:
   PUBLIC_REPO: elpollo12/planner-desktop-releases
-  # URL del servidor planner-sync (cambiar a producción cuando esté listo)
-  SYNC_API_URL: http://localhost:3001
 
 jobs:
   build-windows:
@@ -40,79 +38,80 @@ jobs:
       - name: Build Tauri app
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: npm run tauri build
 
       - name: Find build artifacts
         id: artifacts
-        shell: powershell
+        shell: bash
         run: |
-          $bundleDir = "src-tauri\target\release\bundle\nsis"
-
+          BUNDLE_DIR="src-tauri/target/release/bundle/nsis"
+          
           echo "=== Bundle contents ==="
-          Get-ChildItem -Path $bundleDir -Recurse | ForEach-Object { echo $_.FullName }
-
-          $exe = Get-ChildItem -Path $bundleDir -Filter "*.exe" | Where-Object { $_.Name -notlike "*.sig" } | Select-Object -First 1
-          $sig = Get-ChildItem -Path $bundleDir -Filter "*.exe.sig" | Select-Object -First 1
-
-          echo "EXE: $($exe.FullName)"
-          echo "SIG: $($sig.FullName)"
-
-          if (-not $exe -or -not $sig) {
+          ls -la "$BUNDLE_DIR"
+          
+          EXE_FILE=$(find "$BUNDLE_DIR" -maxdepth 1 -name "*.exe" ! -name "*.sig" | head -1)
+          SIG_FILE=$(find "$BUNDLE_DIR" -maxdepth 1 -name "*.exe.sig" | head -1)
+          
+          if [ -z "$EXE_FILE" ] || [ -z "$SIG_FILE" ]; then
             echo "ERROR: Missing artifacts!"
             exit 1
-          }
-
-          # Get file size
-          $size = $exe.Length
-
-          echo "nsis_exe=$($exe.FullName)" >> $env:GITHUB_OUTPUT
-          echo "nsis_sig=$($sig.FullName)" >> $env:GITHUB_OUTPUT
-          echo "nsis_exe_name=$($exe.Name)" >> $env:GITHUB_OUTPUT
-          echo "nsis_size=$size" >> $env:GITHUB_OUTPUT
+          fi
+          
+          EXE_NAME=$(basename "$EXE_FILE")
+          EXE_SIZE=$(stat -c%s "$EXE_FILE" 2>/dev/null || stat -f%z "$EXE_FILE")
+          
+          echo "nsis_exe=$EXE_FILE" >> $GITHUB_OUTPUT
+          echo "nsis_sig=$SIG_FILE" >> $GITHUB_OUTPUT
+          echo "nsis_exe_name=$EXE_NAME" >> $GITHUB_OUTPUT
+          echo "nsis_size=$EXE_SIZE" >> $GITHUB_OUTPUT
 
       - name: Read signature and get version
         id: meta
-        shell: powershell
+        shell: bash
         run: |
-          $sig = Get-Content "${{ steps.artifacts.outputs.nsis_sig }}" -Raw
-          $sig = $sig.Trim()
-          echo "signature=$sig" >> $env:GITHUB_OUTPUT
-
-          $version = "${{ github.ref_name }}" -replace '^v', ''
-          echo "version=$version" >> $env:GITHUB_OUTPUT
-
-          $pubDate = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
-          echo "pub_date=$pubDate" >> $env:GITHUB_OUTPUT
+          SIGNATURE=$(cat "${{ steps.artifacts.outputs.nsis_sig }}" | tr -d '\n\r')
+          echo "signature=$SIGNATURE" >> $GITHUB_OUTPUT
+          
+          VERSION="${{ github.ref_name }}"
+          VERSION="${VERSION#v}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          
+          PUB_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          echo "pub_date=$PUB_DATE" >> $GITHUB_OUTPUT
 
       - name: Generate latest.json
-        shell: powershell
+        shell: bash
         run: |
-          $json = @{
-            version = "${{ steps.meta.outputs.version }}"
-            notes = "Actualización a versión ${{ steps.meta.outputs.version }}"
-            pub_date = "${{ steps.meta.outputs.pub_date }}"
-            platforms = @{
-              "windows-x86_64" = @{
-                signature = "${{ steps.meta.outputs.signature }}"
-                url = "https://github.com/${{ env.PUBLIC_REPO }}/releases/download/${{ github.ref_name }}/${{ steps.artifacts.outputs.nsis_exe_name }}"
+          cat > latest.json << 'ENDJSON'
+          {
+            "version": "${{ steps.meta.outputs.version }}",
+            "notes": "Actualización a versión ${{ steps.meta.outputs.version }}",
+            "pub_date": "${{ steps.meta.outputs.pub_date }}",
+            "platforms": {
+              "windows-x86_64": {
+                "signature": "${{ steps.meta.outputs.signature }}",
+                "url": "https://github.com/${{ env.PUBLIC_REPO }}/releases/download/${{ github.ref_name }}/${{ steps.artifacts.outputs.nsis_exe_name }}"
               }
             }
-          } | ConvertTo-Json -Depth 3
-
-          [System.IO.File]::WriteAllText("latest.json", $json)
+          }
+          ENDJSON
+          
           echo "=== latest.json ==="
-          Get-Content "latest.json"
+          cat latest.json
 
       - name: Publish to public releases repo
-        id: publish
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.RELEASE_PAT }}
         run: |
           TAG="${{ github.ref_name }}"
           VERSION="${{ steps.meta.outputs.version }}"
-
+          
+          if gh release view "$TAG" --repo "${{ env.PUBLIC_REPO }}" > /dev/null 2>&1; then
+            echo "Release $TAG already exists, deleting..."
+            gh release delete "$TAG" --repo "${{ env.PUBLIC_REPO }}" --yes
+          fi
+          
           gh release create "$TAG" \
             --repo "${{ env.PUBLIC_REPO }}" \
             --title "Planner $VERSION" \
@@ -121,39 +120,8 @@ jobs:
             "${{ steps.artifacts.outputs.nsis_sig }}" \
             "latest.json"
 
-          echo "release_url=https://github.com/${{ env.PUBLIC_REPO }}/releases/download/$TAG/${{ steps.artifacts.outputs.nsis_exe_name }}" >> $GITHUB_OUTPUT
-
-      - name: Notify planner-sync API
-        if: success()
-        shell: bash
-        env:
-          SYNC_ADMIN_TOKEN: ${{ secrets.SYNC_ADMIN_TOKEN }}
+      - name: Summary
         run: |
-          VERSION="${{ steps.meta.outputs.version }}"
-          SIGNATURE="${{ steps.meta.outputs.signature }}"
-          RELEASE_URL="${{ steps.publish.outputs.release_url }}"
-          SIZE="${{ steps.artifacts.outputs.nsis_size }}"
-          PUB_DATE="${{ steps.meta.outputs.pub_date }}"
-
-          echo "Notifying planner-sync about release $VERSION..."
-
-          # Solo notificar si tenemos el token configurado
-          if [ -n "$SYNC_ADMIN_TOKEN" ]; then
-            curl -X POST "${{ env.SYNC_API_URL }}/api/v1/updates/releases" \
-              -H "Content-Type: application/json" \
-              -H "Authorization: Bearer $SYNC_ADMIN_TOKEN" \
-              -d @- <<EOF || echo "Warning: Failed to notify planner-sync (may not be running)"
-          {
-            "version": "$VERSION",
-            "channel": "stable",
-            "notes": "Actualización a versión $VERSION",
-            "assetUrl": "$RELEASE_URL",
-            "assetSignature": "$SIGNATURE",
-            "assetSize": $SIZE
-          }
-          EOF
-          else
-            echo "SYNC_ADMIN_TOKEN not configured, skipping API notification"
-          fi
-
-          echo "Release $VERSION published successfully!"
+          echo "## ✅ Release Published!" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** ${{ steps.meta.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Tag:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
