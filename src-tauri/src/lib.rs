@@ -146,9 +146,16 @@ pub fn run() {
             commands::rigs::create_rig,
             commands::rigs::list_rigs,
             commands::rigs::get_rig,
+            commands::rigs::get_rig_full,
             commands::rigs::update_rig,
             commands::rigs::delete_rig,
             commands::rigs::list_accessible_rigs,
+
+            // Rig contractors commands
+            commands::rig_contractors::list_rig_contractors,
+            commands::rig_contractors::add_rig_contractor,
+            commands::rig_contractors::remove_rig_contractor,
+            commands::rig_contractors::replace_rig_contractors,
 
             // Rig personnel commands
             commands::rig_personnel::create_rig_personnel,
@@ -180,15 +187,15 @@ pub fn run() {
             commands::sync::sync_incremental,
             commands::sync::disable_sync,
 
-            // Operators commands
-            commands::operators::list_operators,
-            commands::operators::get_operator,
-            commands::operators::create_operator,
-            commands::operators::update_operator,
-            commands::operators::delete_operator,
-            commands::operators::upload_operator_logo,
-            commands::operators::remove_operator_logo,
-            commands::operators::get_operator_logo_data,
+            // Companies commands
+            commands::companies::list_companies,
+            commands::companies::get_company,
+            commands::companies::create_company,
+            commands::companies::update_company,
+            commands::companies::delete_company,
+            commands::companies::upload_company_brand_logo,
+            commands::companies::remove_company_brand_logo,
+            commands::companies::get_company_brand_logo,
 
             // Logistics - Water Bottles
             commands::logistics_water::create_water_bottles_movement,

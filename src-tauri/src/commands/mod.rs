@@ -14,10 +14,10 @@ pub mod areas;
 pub mod rigs;
 pub mod preferences;
 pub mod sync;
-pub mod operators;
-
+pub mod companies;
 pub mod app_settings;
 pub mod rig_personnel;
+pub mod rig_contractors;
 pub mod logistics_water;
 pub mod logistics_fuel;
 pub mod logistics_vacuum;
@@ -67,12 +67,13 @@ pub use rigs::*;
 #[allow(unused_imports)]
 pub use preferences::*;
 #[allow(unused_imports)]
-pub use operators::*;
-
+pub use companies::*;
 #[allow(unused_imports)]
 pub use app_settings::*;
 #[allow(unused_imports)]
 pub use rig_personnel::*;
+#[allow(unused_imports)]
+pub use rig_contractors::*;
 #[allow(unused_imports)]
 pub use logistics_water::*;
 #[allow(unused_imports)]

@@ -4,12 +4,12 @@ import { AlertTriangle } from 'lucide-react';
 import { Input, DateInput, Select } from '../ui';
 import { Button } from '../ui';
 import type { CompleteReportData } from '../../schemas';
-import { useOperatorsStore } from '@/store/operatorsStore';
+import { useCompaniesStore } from '@/store/companiesStore';
 import { useAuthStore } from '@/store/authStore';
 import { useModal } from '@/store/modalStore';
-import { areasApi, rigsApi } from '@/lib/api';
+import { areasApi, rigsApi, rigPersonnelApi } from '@/lib/api';
 import { toast } from '@/lib/toast';
-import type { Area, Rig } from '@/types/rig';
+import type { Area, Rig, RigPersonnel } from '@/types/rig';
 
 // Empty section defaults used when resetting after rig change
 const EMPTY_SECTIONS = {
@@ -36,6 +36,7 @@ export function HeaderSection({ isEditMode = false }: HeaderSectionProps) {
   const {
     register,
     control,
+    watch,
     setValue,
     getValues,
     reset,
@@ -44,17 +45,18 @@ export function HeaderSection({ isEditMode = false }: HeaderSectionProps) {
 
   const { sessionToken } = useAuthStore();
   const { openModal, closeModal } = useModal();
-  const { operators, loadOperators } = useOperatorsStore();
+  const { companies, loadCompanies, operators, contractors } = useCompaniesStore();
   const [areas, setAreas] = useState<Area[]>([]);
   const [accessibleRigs, setAccessibleRigs] = useState<Rig[]>([]);
+  const [supervisors, setSupervisors] = useState<RigPersonnel[]>([]);
 
   // Track the confirmed rig to detect actual changes in edit mode
   const confirmedRigRef = useRef<string>('');
 
-  // Load operators, areas and rigs on mount
+  // Load companies, areas and rigs on mount
   useEffect(() => {
-    if (sessionToken && operators.length === 0) {
-      loadOperators(sessionToken, true);
+    if (sessionToken && companies.length === 0) {
+      loadCompanies(sessionToken, true);
     }
     areasApi.list(false).then(setAreas).catch(console.error);
     if (sessionToken) {
@@ -62,7 +64,26 @@ export function HeaderSection({ isEditMode = false }: HeaderSectionProps) {
         .then(setAccessibleRigs)
         .catch(console.error);
     }
-  }, [sessionToken, operators.length, loadOperators]);
+  }, [sessionToken, companies.length, loadCompanies]);
+
+  // Load supervisors when the selected rig changes
+  const rigNumber = watch('header.rigNumber');
+  useEffect(() => {
+    if (!rigNumber) {
+      setSupervisors([]);
+      return;
+    }
+    const rig = accessibleRigs.find((r) => r.name === rigNumber);
+    if (!rig) {
+      setSupervisors([]);
+      return;
+    }
+    rigPersonnelApi.list(rig.id, false)
+      .then((personnel) =>
+        setSupervisors(personnel.filter((p) => p.defaultPosition === 'Supervisor' && p.active))
+      )
+      .catch(console.error);
+  }, [rigNumber, accessibleRigs]);
 
   // Set initial confirmed rig ref once the form has data
   useEffect(() => {
@@ -141,12 +162,12 @@ export function HeaderSection({ isEditMode = false }: HeaderSectionProps) {
 
   const operatorOptions = [
     { value: '', label: 'Selecciona un operador' },
-    ...operators.map((op) => ({ value: op.name, label: op.name })),
+    ...operators().map((op) => ({ value: op.name, label: op.name })),
   ];
 
   const contractorOptions = [
     { value: '', label: 'Selecciona un contratista' },
-    ...operators.map((op) => ({ value: op.name, label: op.name })),
+    ...contractors().map((c) => ({ value: c.name, label: c.name })),
   ];
 
   const areaOptions = [
@@ -227,6 +248,7 @@ export function HeaderSection({ isEditMode = false }: HeaderSectionProps) {
               ref={field.ref}
               options={contractorOptions}
               error={errors.header?.contractor?.message}
+              required
             />
           )}
         />
@@ -261,6 +283,7 @@ export function HeaderSection({ isEditMode = false }: HeaderSectionProps) {
               ref={field.ref}
               options={areaOptions}
               error={errors.header?.fieldDistrict?.message}
+              required
             />
           )}
         />
@@ -288,10 +311,39 @@ export function HeaderSection({ isEditMode = false }: HeaderSectionProps) {
           />
         )}
 
-        <Input
-          label="Supervisor 24h"
-          {...register('header.supervisor24h')}
-          error={errors.header?.supervisor24h?.message}
+        <Controller
+          name="header.supervisor24h"
+          control={control}
+          render={({ field }) =>
+            supervisors.length > 0 ? (
+              <Select
+                label="Supervisor 24h"
+                value={field.value ?? ''}
+                onChange={field.onChange}
+                onBlur={field.onBlur}
+                name={field.name}
+                ref={field.ref}
+                options={[
+                  { value: '', label: 'Selecciona un supervisor' },
+                  ...supervisors.map((s) => ({ value: s.name, label: s.name })),
+                ]}
+                error={errors.header?.supervisor24h?.message}
+                required
+              />
+            ) : (
+              <Input
+                label="Supervisor 24h"
+                value={field.value ?? ''}
+                onChange={field.onChange}
+                onBlur={field.onBlur}
+                name={field.name}
+                ref={field.ref}
+                placeholder={rigNumber ? 'Sin supervisores registrados' : 'Selecciona un taladro primero'}
+                error={errors.header?.supervisor24h?.message}
+                required
+              />
+            )
+          }
         />
       </div>
 

@@ -43,6 +43,34 @@ export const Modal = () => {
     }
   }, [isOpen]);
 
+  // Block context menu, Alt+Arrow navigation, and mouse back/forward buttons while modal is open
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleContextMenu = (e: MouseEvent) => e.preventDefault();
+
+    const handleNavKeys = (e: KeyboardEvent) => {
+      if (e.altKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+        e.preventDefault();
+      }
+    };
+
+    // Buttons 3 and 4 are back/forward on most mice
+    const handleMouseDown = (e: MouseEvent) => {
+      if (e.button === 3 || e.button === 4) e.preventDefault();
+    };
+
+    document.addEventListener('contextmenu', handleContextMenu);
+    document.addEventListener('keydown', handleNavKeys);
+    document.addEventListener('mousedown', handleMouseDown);
+
+    return () => {
+      document.removeEventListener('contextmenu', handleContextMenu);
+      document.removeEventListener('keydown', handleNavKeys);
+      document.removeEventListener('mousedown', handleMouseDown);
+    };
+  }, [isOpen]);
+
   // Handle ESC key & focus trap
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -112,10 +140,10 @@ export const Modal = () => {
   }, [onClose, closeModal]);
 
   const sizeClasses = {
-    sm: 'w-full max-w-[24rem]',  // 24rem = 384px
-    md: 'w-full max-w-[28rem]',  // 28rem = 448px
-    lg: 'w-full max-w-[32rem]',  // 32rem = 512px
-    xl: 'w-full max-w-[48rem]',  // 48rem = 768px
+    sm: 'w-full max-w-[24rem]',   // 384px
+    md: 'w-full max-w-[28rem]',   // 448px
+    lg: 'w-full max-w-[36rem]',   // 576px — wizard fits here
+    xl: 'w-full max-w-[48rem]',   // 768px
     full: 'w-full max-w-[90vw]',
   };
 

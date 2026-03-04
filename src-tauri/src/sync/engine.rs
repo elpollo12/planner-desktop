@@ -46,17 +46,25 @@ const SYNC_TABLES: &[TableDef] = &[
         id_col: "id", has_updated_at: true, parent_col: None, skip_cleanup: false,
     },
     TableDef {
-        name: "operators",
-        columns: &["id", "name", "logo_path", "active", "created_at", "updated_at", "is_deleted"],
+        name: "companies",
+        columns: &["id", "name", "logo", "company_type", "active", "is_deleted", "created_at", "updated_at"],
         id_col: "id", has_updated_at: true, parent_col: None, skip_cleanup: false,
     },
     TableDef {
         name: "rigs",
         columns: &[
-            "id", "name", "operator", "power", "area_id", "active",
+            "id", "name", "operator", "operator_id", "power", "area_id", "active",
             "created_by", "updated_by", "created_at", "updated_at", "is_deleted",
         ],
         id_col: "id", has_updated_at: true, parent_col: None, skip_cleanup: false,
+    },
+    TableDef {
+        // rig_contractors has no updated_at — uses created_at for incremental.
+        // UNIQUE(rig_id, company_id) conflict handled in write_pulled_data.
+        // skip_cleanup: false — table is replaced via ON CONFLICT, no soft-delete.
+        name: "rig_contractors",
+        columns: &["id", "rig_id", "company_id", "created_at"],
+        id_col: "id", has_updated_at: false, parent_col: Some("rig_id"), skip_cleanup: false,
     },
     TableDef {
         name: "rig_personnel",
@@ -145,6 +153,15 @@ const SYNC_TABLES: &[TableDef] = &[
     TableDef {
         name: "user_preferences",
         columns: &["id", "user_id", "theme_mode", "created_at", "updated_at"],
+        id_col: "id", has_updated_at: true, parent_col: None, skip_cleanup: false,
+    },
+    TableDef {
+        name: "update_preferences",
+        columns: &[
+            "id", "user_id", "auto_update", "channel", "check_interval_hours",
+            "last_check_at", "postponed_version", "postpone_count",
+            "created_at", "updated_at",
+        ],
         id_col: "id", has_updated_at: true, parent_col: None, skip_cleanup: false,
     },
     // Logistics
@@ -468,10 +485,10 @@ pub fn write_pulled_data(
                 if let Some(code_param) = params.get(1) {
                     let _ = conn.execute("DELETE FROM operation_codes WHERE code = ?1 AND id != ?2", rusqlite::params![code_param, params.get(0)]);
                 }
-            } else if table_def.name == "operators" {
-                // UNIQUE(name) - name is at index 1
-                if let Some(name_param) = params.get(1) {
-                    let _ = conn.execute("DELETE FROM operators WHERE name = ?1 AND id != ?2", rusqlite::params![name_param, params.get(0)]);
+            } else if table_def.name == "companies" {
+                // UNIQUE(name + company_type) — name is index 1, company_type is index 3
+                if let (Some(name_param), Some(type_param)) = (params.get(1), params.get(3)) {
+                    let _ = conn.execute("DELETE FROM companies WHERE name = ?1 AND company_type = ?2 AND id != ?3", rusqlite::params![name_param, type_param, params.get(0)]);
                 }
             } else if table_def.name == "user_rigs" && params.len() >= 3 {
                 // UNIQUE(user_id, rig_id)
@@ -484,6 +501,17 @@ pub fn write_pulled_data(
                 if let Some(user_id_param) = params.get(1) {
                     let _ = conn.execute("DELETE FROM user_preferences WHERE user_id = ?1 AND id != ?2", rusqlite::params![user_id_param, params.get(0)]);
                 }
+            } else if table_def.name == "update_preferences" {
+                // UNIQUE(user_id) - user_id is at index 1
+                if let Some(user_id_param) = params.get(1) {
+                    let _ = conn.execute("DELETE FROM update_preferences WHERE user_id = ?1 AND id != ?2", rusqlite::params![user_id_param, params.get(0)]);
+                }
+            } else if table_def.name == "rig_contractors" && params.len() >= 3 {
+                // UNIQUE(rig_id, company_id) — rig_id is index 1, company_id is index 2
+                let _ = conn.execute(
+                    "DELETE FROM rig_contractors WHERE rig_id = ?1 AND company_id = ?2 AND id != ?3",
+                    rusqlite::params![params.get(1), params.get(2), params.get(0)],
+                );
             } else if table_def.name == "last_report_snapshot" && params.len() >= 2 {
                 // UNIQUE(rig_id)
                 let _ = conn.execute("DELETE FROM last_report_snapshot WHERE rig_id = ?1 AND id != ?2", rusqlite::params![params.get(1), params.get(0)]);
@@ -658,7 +686,7 @@ pub fn purge_local_soft_deleted(conn: &Connection, retention_days: i64) -> Resul
     // 2. Users cascade
     let user_ids = collect_ids("users")?;
     if !user_ids.is_empty() {
-        for child in &["user_rigs", "user_module_permissions", "user_preferences"] {
+        for child in &["user_rigs", "user_module_permissions", "user_preferences", "update_preferences"] {
             delete_by_ids(&format!("DELETE FROM {} WHERE user_id IN ({{PH}})", child), &user_ids);
         }
         total_purged += delete_by_ids("DELETE FROM users WHERE id IN ({PH})", &user_ids);
@@ -667,7 +695,7 @@ pub fn purge_local_soft_deleted(conn: &Connection, retention_days: i64) -> Resul
     // 3. Rigs cascade
     let rig_ids = collect_ids("rigs")?;
     if !rig_ids.is_empty() {
-        for child in &["user_rigs", "rig_personnel"] {
+        for child in &["user_rigs", "rig_personnel", "rig_contractors"] {
             delete_by_ids(&format!("DELETE FROM {} WHERE rig_id IN ({{PH}})", child), &rig_ids);
         }
         total_purged += delete_by_ids("DELETE FROM rigs WHERE id IN ({PH})", &rig_ids);
@@ -681,7 +709,7 @@ pub fn purge_local_soft_deleted(conn: &Connection, retention_days: i64) -> Resul
     }
 
     // 5. Simple tables with soft-delete
-    for table in &["areas", "operators", "rig_personnel", "operation_codes", "incident_types",
+    for table in &["areas", "companies", "rig_personnel", "operation_codes", "incident_types",
                     "logistics_materials_movements", "logistics_materials",
                     "logistics_water_bottles_movements", "logistics_fuel_movements",
                     "logistics_vacuum_actions", "logistics_requests", "notifications"] {

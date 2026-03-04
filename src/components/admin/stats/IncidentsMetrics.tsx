@@ -85,7 +85,7 @@ export function IncidentsMetrics() {
         {/* Pie: by type */}
         <Card className="p-5">
           <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Distribución por Tipo</h4>
-          <div className="h-48">
+          <div className="h-48" style={{ minWidth: 0 }}>
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -120,7 +120,7 @@ export function IncidentsMetrics() {
         {data.topRigs.length > 0 && (
           <Card className="p-5">
             <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Top Taladros con Incidencias</h4>
-            <div className="h-56">
+            <div className="h-56" style={{ minWidth: 0 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={data.topRigs} layout="vertical" margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
@@ -153,7 +153,7 @@ export function IncidentsMetrics() {
             <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Tendencia de Incidencias</h4>
             <PeriodSelector value={days} onChange={setDays} />
           </div>
-          <div className="h-56">
+          <div className="h-56" style={{ minWidth: 0 }}>
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={dailyData} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
                 <defs>

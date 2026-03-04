@@ -57,7 +57,7 @@ export function ActivityChart() {
         <PeriodSelector value={days} onChange={setDays} />
       </div>
 
-      <div className="h-72">
+      <div className="h-72" style={{ minWidth: 0 }}>
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={chartData} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
             <defs>

@@ -12,9 +12,10 @@ pub mod operations_log;
 pub mod area;
 pub mod rig;
 pub mod user_preferences;
-pub mod operator;
+pub mod company;
 pub mod app_settings;
 pub mod rig_personnel;
+pub mod rig_contractor;
 pub mod logistics;
 pub mod incident;
 pub mod incident_type;
@@ -56,11 +57,13 @@ pub use rig::*;
 #[allow(unused_imports)]
 pub use user_preferences::*;
 #[allow(unused_imports)]
-pub use operator::*;
+pub use company::*;
 #[allow(unused_imports)]
 pub use app_settings::*;
 #[allow(unused_imports)]
 pub use rig_personnel::*;
+#[allow(unused_imports)]
+pub use rig_contractor::*;
 #[allow(unused_imports)]
 pub use logistics::*;
 #[allow(unused_imports)]

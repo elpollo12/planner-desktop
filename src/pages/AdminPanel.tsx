@@ -11,11 +11,11 @@ import AreasManagement from '../components/admin/AreasManagement';
 import RigsManagement from '../components/admin/RigsManagement';
 import AppearanceSettings from '../components/admin/AppearanceSettings';
 import SyncSettings from '../components/admin/SyncSettings';
-import OperatorsManagement from '../components/admin/OperatorsManagement';
+import CompaniesManagement from '../components/admin/CompaniesManagement';
 import UpdatesSettings from '../components/admin/UpdatesSettings';
 import { usersApi, areasApi, rigsApi, reportsApi } from '../lib/api';
 
-type AdminTab = 'users' | 'codes' | 'stats' | 'areas' | 'rigs' | 'operators' | 'appearance' | 'sync' | 'updates';
+type AdminTab = 'users' | 'codes' | 'stats' | 'areas' | 'rigs' | 'companies' | 'appearance' | 'sync' | 'updates';
 
 interface AdminStats {
   totalUsers: number;
@@ -26,7 +26,7 @@ interface AdminStats {
 
 export default function AdminPanel() {
   const { sessionToken } = useAuthStore();
-  const [activeTab, setActiveTab] = useState<AdminTab>('users');
+  const [activeTab, setActiveTab] = useState<AdminTab>('stats');
   const [stats, setStats] = useState<AdminStats>({
     totalUsers: 0,
     activeAreas: 0,
@@ -71,15 +71,15 @@ export default function AdminPanel() {
   };
 
   const tabs = [
-    { id: 'users' as AdminTab, label: 'Usuarios', icon: Users },
-    { id: 'areas' as AdminTab, label: 'Áreas', icon: MapPin },
-    { id: 'rigs' as AdminTab, label: 'Taladros', icon: OilRigIcon },
-    { id: 'operators' as AdminTab, label: 'Operadores', icon: Building2 },
-    { id: 'codes' as AdminTab, label: 'Códigos de Operación', icon: Bookmark },
     { id: 'stats' as AdminTab, label: 'Estadísticas', icon: BarChart3 },
-    { id: 'appearance' as AdminTab, label: 'Apariencia', icon: Palette },
+    { id: 'users' as AdminTab, label: 'Usuarios', icon: Users },
+    { id: 'rigs' as AdminTab, label: 'Taladros', icon: OilRigIcon },
+    { id: 'areas' as AdminTab, label: 'Áreas', icon: MapPin },
+    { id: 'companies' as AdminTab, label: 'Empresas', icon: Building2 },
+    { id: 'codes' as AdminTab, label: 'Códigos de Operación', icon: Bookmark },
     { id: 'sync' as AdminTab, label: 'Sincronización', icon: Cloud },
     { id: 'updates' as AdminTab, label: 'Actualizaciones', icon: Download },
+    { id: 'appearance' as AdminTab, label: 'Apariencia', icon: Palette },
   ];
 
   return (
@@ -174,7 +174,7 @@ export default function AdminPanel() {
             {activeTab === 'users' && <UsersManagement />}
             {activeTab === 'areas' && <AreasManagement />}
             {activeTab === 'rigs' && <RigsManagement />}
-            {activeTab === 'operators' && <OperatorsManagement />}
+            {activeTab === 'companies' && <CompaniesManagement />}
             {activeTab === 'codes' && <OperationCodesManagement />}
             {activeTab === 'stats' && <Statistics />}
             {activeTab === 'appearance' && <AppearanceSettings />}
