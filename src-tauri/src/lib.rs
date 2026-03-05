@@ -186,6 +186,9 @@ pub fn run() {
             commands::sync::sync_full,
             commands::sync::sync_incremental,
             commands::sync::disable_sync,
+            commands::sync::set_sync_server_url,
+            commands::sync::get_sync_server_url,
+            commands::sync::connect_sync_server,
 
             // Companies commands
             commands::companies::list_companies,

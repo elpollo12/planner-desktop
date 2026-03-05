@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, ShieldOff } from 'lucide-react';
+import { ShieldOff } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { usePermissions } from '../hooks/usePermissions';
 import { MainLayout } from '../components/layout';
@@ -15,68 +15,11 @@ interface DashboardStats {
   rejected: number;
 }
 
-const PAGE_SIZE = 3;
-
 interface QuickAction {
   icon: string;
   title: string;
   description: string;
   href: string;
-}
-
-function QuickActionsCarousel({ actions }: { actions: QuickAction[] }) {
-  const navigate = useNavigate();
-  const [page, setPage] = useState(0);
-  const totalPages = Math.ceil(actions.length / PAGE_SIZE);
-  const showArrows = actions.length > PAGE_SIZE;
-
-  const visibleActions = actions.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
-
-  return (
-    <Card>
-      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Acciones Rápidas</h3>
-      <div className="flex items-center gap-3">
-        {showArrows && (
-          <button
-            type="button"
-            onClick={() => setPage((p) => p - 1)}
-            disabled={page === 0}
-            className="shrink-0 p-2 rounded-full border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400
-                       hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-          >
-            <ChevronLeft size={20} />
-          </button>
-        )}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 flex-1 min-w-0">
-          {visibleActions.map((action) => (
-            <button
-              key={action.href}
-              onClick={() => navigate(action.href)}
-              className="p-6 border-2 border-dashed cursor-pointer border-gray-300 dark:border-gray-600 rounded-lg
-                         hover:bg-primary-50 dark:hover:bg-gray-700 transition text-left"
-              onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--color-primary-500)'}
-              onMouseLeave={(e) => e.currentTarget.style.borderColor = ''}
-            >
-              <div className="text-2xl mb-2">{action.icon}</div>
-              <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">{action.title}</h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400">{action.description}</p>
-            </button>
-          ))}
-        </div>
-        {showArrows && (
-          <button
-            type="button"
-            onClick={() => setPage((p) => p + 1)}
-            disabled={page >= totalPages - 1}
-            className="shrink-0 p-2 rounded-full border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400
-                       hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-          >
-            <ChevronRight size={20} />
-          </button>
-        )}
-      </div>
-    </Card>
-  );
 }
 
 export default function Dashboard() {
@@ -194,7 +137,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Quick Actions Carousel / No permissions message */}
+      {/* Quick Actions Grid / No permissions message */}
       {quickActions.length === 0 ? (
         <Card>
           <div className="flex flex-col items-center justify-center py-12 text-center gap-4">
@@ -209,7 +152,25 @@ export default function Dashboard() {
           </div>
         </Card>
       ) : (
-        <QuickActionsCarousel actions={quickActions} />
+        <Card>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Acciones Rápidas</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {quickActions.map((action) => (
+              <button
+                key={action.href}
+                onClick={() => navigate(action.href)}
+                className="p-6 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg
+                           hover:bg-primary-50 dark:hover:bg-gray-700 transition text-left"
+                onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--color-primary-500)'}
+                onMouseLeave={(e) => e.currentTarget.style.borderColor = ''}
+              >
+                <div className="text-2xl mb-2">{action.icon}</div>
+                <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">{action.title}</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400">{action.description}</p>
+              </button>
+            ))}
+          </div>
+        </Card>
       )}
     </MainLayout>
   );

@@ -28,7 +28,7 @@ export function Header({ title, subtitle, actions, className = '' }: HeaderProps
   };
 
   return (
-    <header className={`h-15 bg-gray-50 dark:bg-gray-800 border-b border-primary-200 dark:border-gray-700 ${className}`}>
+    <header className={`h-16 bg-gray-50 dark:bg-gray-800 border-b border-primary-200 dark:border-gray-700 ${className}`}>
       <div className="h-full px-6 flex items-center">
         <div className="flex items-center justify-between w-full">
           {/* Title Section */}

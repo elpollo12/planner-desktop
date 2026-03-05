@@ -8,17 +8,19 @@ import {
   Download,
   CheckCircle,
   XCircle,
-  Database,
-  Wifi,
-  WifiOff,
-  Trash2,
   Clock,
   AlertTriangle,
-  Power,
   LogIn,
+  Link2,
+  Link2Off,
+  Server,
+  ShieldCheck,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { useConnectionStore } from '../../store/connectionStore';
+import { useModal } from '../../store/modalStore';
 import { syncApi } from '../../lib/api';
 import type { SyncStatus, SyncResult } from '../../types/sync';
 
@@ -35,33 +37,42 @@ const INTERVAL_OPTIONS = [
 export default function SyncSettings() {
   const { sessionToken } = useAuthStore();
   const { setOnline, setOffline, setSyncing: setSyncingConnection, setError, setSyncEnabled } = useConnectionStore();
+  const { openModal, closeModal } = useModal();
+
   const [status, setStatus] = useState<SyncStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
-  const [testing, setTesting] = useState(false);
-  const [enabling, setEnabling] = useState(false);
-  const [loggingIn, setLoggingIn] = useState(false);
   const [lastResult, setLastResult] = useState<SyncResult | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [loginUsername, setLoginUsername] = useState('');
-  const [loginPassword, setLoginPassword] = useState('');
+
+  // Connection form state
+  const [serverUrl, setServerUrl] = useState('');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [connecting, setConnecting] = useState(false);
+  const [disconnecting, setDisconnecting] = useState(false);
 
   useEffect(() => {
     if (sessionToken) {
-      loadStatus();
+      loadInitialData();
     } else {
       setLoading(false);
     }
   }, [sessionToken]);
 
-  const loadStatus = async () => {
-    if (!sessionToken) { setLoading(false); return; }
+  const loadInitialData = async () => {
+    if (!sessionToken) return;
     setLoading(true);
     try {
-      const s = await syncApi.getStatus(sessionToken);
+      const [s, url] = await Promise.all([
+        syncApi.getStatus(sessionToken),
+        syncApi.getServerUrl(sessionToken),
+      ]);
       setStatus(s);
+      setServerUrl(url || '');
     } catch (error) {
-      console.error('Error loading sync status:', error);
+      console.error('Error loading sync data:', error);
     } finally {
       setLoading(false);
     }
@@ -69,54 +80,72 @@ export default function SyncSettings() {
 
   const showMessage = (type: 'success' | 'error', text: string) => {
     setMessage({ type, text });
-    setTimeout(() => setMessage(null), 5000);
+    setTimeout(() => setMessage(null), 6000);
   };
 
-  const handleTestConnection = async () => {
-    if (!sessionToken) return;
-    setTesting(true);
+  // ── CONNECT ──────────────────────────────────────────────────────────────
+  const handleConnect = async () => {
+    if (!sessionToken || !serverUrl || !username || !password) return;
+    setConnecting(true);
     try {
-      const msg = await syncApi.testConnection(sessionToken);
-      showMessage('success', msg);
-      setOnline();
-    } catch (error) {
-      showMessage('error', `Error de conexión: ${error}`);
-      setOffline(String(error));
-    } finally {
-      setTesting(false);
-    }
-  };
-
-  const handleSyncLogin = async () => {
-    if (!sessionToken || !loginUsername || !loginPassword) return;
-    setLoggingIn(true);
-    try {
-      const msg = await syncApi.syncLogin(sessionToken, loginUsername, loginPassword);
-      showMessage('success', msg);
-      setLoginUsername('');
-      setLoginPassword('');
-    } catch (error) {
-      showMessage('error', `Error de autenticación: ${error}`);
-    } finally {
-      setLoggingIn(false);
-    }
-  };
-
-  const handleEnable = async () => {
-    if (!sessionToken) return;
-    setEnabling(true);
-    try {
-      const s = await syncApi.enable(sessionToken);
+      const s = await syncApi.connect(sessionToken, serverUrl, username, password);
       setStatus(s);
       setSyncEnabled(true, true);
-      showMessage('success', 'Sincronización habilitada exitosamente');
+      setOnline();
+      setUsername('');
+      setPassword('');
+      showMessage('success', `Servidor vinculado correctamente`);
     } catch (error) {
-      showMessage('error', `Error al habilitar: ${error}`);
+      showMessage('error', String(error));
     } finally {
-      setEnabling(false);
+      setConnecting(false);
     }
   };
 
+  // ── DISCONNECT ────────────────────────────────────────────────────────────
+  const doDisconnect = async () => {
+    if (!sessionToken) return;
+    closeModal();
+    setDisconnecting(true);
+    try {
+      await syncApi.disable(sessionToken);
+      const s = await syncApi.getStatus(sessionToken);
+      setStatus(s);
+      setLastResult(null);
+      setSyncEnabled(true, false);
+      setOffline();
+      showMessage('success', 'Servidor desvinculado');
+    } catch (error) {
+      showMessage('error', `Error: ${error}`);
+    } finally {
+      setDisconnecting(false);
+    }
+  };
+
+  const handleDisconnect = () => {
+    openModal(
+      <div className="space-y-2">
+        <p className="text-sm text-gray-700 dark:text-gray-300">
+          Se eliminará la conexión con el servidor de sincronización y se
+          desactivará la sincronización automática.
+        </p>
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          Los datos locales no se verán afectados.
+        </p>
+      </div>,
+      {
+        title: '¿Desvincular servidor?',
+        size: 'sm',
+        showConfirmButton: true,
+        showCancelButton: true,
+        confirmText: 'Desvincular',
+        cancelText: 'Cancelar',
+        onConfirm: doDisconnect,
+      }
+    );
+  };
+
+  // ── SYNC ACTIONS ──────────────────────────────────────────────────────────
   const handleFullSync = async () => {
     if (!sessionToken) return;
     setSyncing(true);
@@ -125,15 +154,14 @@ export default function SyncSettings() {
       const result = await syncApi.fullSync(sessionToken);
       setLastResult(result);
       if (result.success) {
-        showMessage('success', `Sincronización completa: ${result.recordsPushed} enviados, ${result.recordsPulled} recibidos`);
+        showMessage('success', `Sync completo — ${result.recordsPushed} enviados, ${result.recordsPulled} recibidos`);
         setOnline();
       } else {
-        showMessage('error', `Sincronización con errores: ${result.errors.join(', ')}`);
-        if (result.errors.length > 0) {
-          setError(result.errors[0]);
-        }
+        showMessage('error', `Sync con errores: ${result.errors.join(', ')}`);
+        if (result.errors.length > 0) setError(result.errors[0]);
       }
-      await loadStatus();
+      const s = await syncApi.getStatus(sessionToken);
+      setStatus(s);
     } catch (error) {
       showMessage('error', `Error de sincronización: ${error}`);
       setOffline(String(error));
@@ -152,7 +180,8 @@ export default function SyncSettings() {
       showMessage(result.success ? 'success' : 'error',
         result.success ? `${result.recordsPushed} registros enviados` : `Push con errores: ${result.errors.join(', ')}`);
       if (result.success) setOnline();
-      await loadStatus();
+      const s = await syncApi.getStatus(sessionToken);
+      setStatus(s);
     } catch (error) {
       showMessage('error', `Error al enviar: ${error}`);
       setOffline(String(error));
@@ -171,27 +200,13 @@ export default function SyncSettings() {
       showMessage(result.success ? 'success' : 'error',
         result.success ? `${result.recordsPulled} registros recibidos` : `Pull con errores: ${result.errors.join(', ')}`);
       if (result.success) setOnline();
-      await loadStatus();
+      const s = await syncApi.getStatus(sessionToken);
+      setStatus(s);
     } catch (error) {
       showMessage('error', `Error al recibir: ${error}`);
       setOffline(String(error));
     } finally {
       setSyncing(false);
-    }
-  };
-
-  const handleDisable = async () => {
-    if (!sessionToken) return;
-    if (!confirm('¿Desactivar la sincronización? Los datos locales no se verán afectados.')) return;
-    try {
-      await syncApi.disable(sessionToken);
-      setLastResult(null);
-      setSyncEnabled(true, false);
-      setOffline();
-      showMessage('success', 'Sincronización desactivada');
-      await loadStatus();
-    } catch (error) {
-      showMessage('error', `Error: ${error}`);
     }
   };
 
@@ -201,318 +216,291 @@ export default function SyncSettings() {
       const s = await syncApi.setInterval(sessionToken, intervalMinutes);
       setStatus(s);
       showMessage('success', intervalMinutes > 0
-        ? `Sincronización automática cada ${intervalMinutes} minutos`
-        : 'Sincronización automática desactivada');
+        ? `Auto-sync cada ${intervalMinutes} minutos`
+        : 'Auto-sync desactivado');
     } catch (error) {
       showMessage('error', `Error al cambiar intervalo: ${error}`);
     }
   };
 
+  // ── RENDER ────────────────────────────────────────────────────────────────
   if (loading) {
-    return <div className="text-center py-8 text-gray-500">Cargando configuración de sincronización...</div>;
+    return <div className="text-center py-12 text-gray-500">Cargando configuración de sincronización...</div>;
   }
+
+  const isConnected = status?.configured && status?.enabled;
+  const canConnect = serverUrl.trim() && username.trim() && password.trim();
 
   return (
     <div className="space-y-6">
-      {/* Status Banner */}
-      <div
-        className={`flex items-center gap-3 p-4 rounded-lg ${
-          status?.configured && status?.enabled
-            ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
-            : status?.configured
-            ? 'bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800'
-            : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
-        }`}
-      >
-        {status?.configured && status?.enabled ? (
-          <>
-            <Cloud className="text-green-500" size={24} />
-            <div>
-              <p className="font-medium text-green-800 dark:text-green-300">Sincronización Activa</p>
-              <p className="text-sm text-green-600 dark:text-green-400">
-                Conectado al servidor de sincronización
-              </p>
-              {status.lastSyncAt && (
-                <p className="text-xs text-green-500 mt-1">
-                  Última sincronización: {new Date(status.lastSyncAt).toLocaleString()}
-                </p>
-              )}
-            </div>
-          </>
-        ) : status?.configured ? (
-          <>
-            <CloudOff className="text-yellow-500" size={24} />
-            <div>
-              <p className="font-medium text-yellow-800 dark:text-yellow-300">Sincronización Disponible</p>
-              <p className="text-sm text-yellow-600 dark:text-yellow-400">
-                Servidor configurado. Habilita la sincronización para comenzar.
-              </p>
-            </div>
-          </>
-        ) : (
-          <>
-            <AlertTriangle className="text-red-500" size={24} />
-            <div>
-              <p className="font-medium text-red-800 dark:text-red-300">Sincronización No Disponible</p>
-              <p className="text-sm text-red-600 dark:text-red-400">
-                {status?.configError || 'La variable de entorno SYNC_SERVER_URL no está configurada.'}
-              </p>
-            </div>
-          </>
+
+      {/* ── STATUS BANNER ── */}
+      <div className={`flex items-center gap-4 p-4 rounded-xl border ${
+        isConnected
+          ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
+          : 'bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700'
+      }`}>
+        {isConnected
+          ? <Cloud className="text-green-500 flex-shrink-0" size={28} />
+          : <CloudOff className="text-gray-400 flex-shrink-0" size={28} />
+        }
+        <div className="flex-1 min-w-0">
+          <p className={`font-semibold ${isConnected ? 'text-green-800 dark:text-green-300' : 'text-gray-700 dark:text-gray-300'}`}>
+            {isConnected ? 'Servidor vinculado' : 'Sin servidor vinculado'}
+          </p>
+          <p className={`text-sm truncate ${isConnected ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}`}>
+            {isConnected
+              ? (serverUrl || 'Sincronización activa')
+              : 'Vincula un servidor para comenzar a sincronizar datos'
+            }
+          </p>
+          {isConnected && status?.lastSyncAt && (
+            <p className="text-xs text-green-500 mt-0.5">
+              Última sync: {new Date(status.lastSyncAt).toLocaleString()}
+            </p>
+          )}
+        </div>
+        {isConnected && (
+          <div className="flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/40 px-2.5 py-1 rounded-full flex-shrink-0">
+            <ShieldCheck size={13} />
+            Activo
+          </div>
         )}
       </div>
 
-      {/* Message */}
+      {/* ── INLINE MESSAGE ── */}
       {message && (
-        <div className={`flex items-center gap-2 p-3 rounded-lg ${
+        <div className={`flex items-center gap-2 p-3 rounded-lg text-sm ${
           message.type === 'success'
             ? 'bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-300'
             : 'bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-300'
         }`}>
-          {message.type === 'success' ? <CheckCircle size={18} /> : <XCircle size={18} />}
-          <span className="text-sm">{message.text}</span>
+          {message.type === 'success' ? <CheckCircle size={16} /> : <XCircle size={16} />}
+          <span>{message.text}</span>
         </div>
       )}
 
-      {/* Control: Test Connection, Enable, Login */}
-      {status?.configured && (
+      {/* ══════════════════════════════════════════════════════════════════════
+          STATE A — NOT CONNECTED: Connection form
+      ══════════════════════════════════════════════════════════════════════ */}
+      {!isConnected && (
         <Card className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
-            <Database size={20} />
-            Control de Sincronización
+          <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-1 flex items-center gap-2">
+            <Server size={18} />
+            Vincular servidor
           </h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">
+            Ingresa la URL del servidor planner-sync y las credenciales de acceso.
+            Si el servidor principal no responde, la app intentará con{' '}
+            <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded text-xs">localhost:3001</code> automáticamente.
+          </p>
+
           <div className="space-y-4">
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              El servidor de sincronización se configura mediante la variable de entorno <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">SYNC_SERVER_URL</code>.
-            </p>
-            <div className="flex flex-wrap gap-3">
-              <Button variant="outline" onClick={handleTestConnection} loading={testing} icon={<Wifi size={16} />}>
-                Probar Conexión
-              </Button>
-              {!status.enabled && (
-                <Button variant="primary" onClick={handleEnable} loading={enabling} icon={<Power size={16} />}>
-                  Habilitar Sincronización
-                </Button>
-              )}
+            {/* URL */}
+            <div>
+              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">
+                URL del servidor
+              </label>
+              <input
+                type="url"
+                value={serverUrl}
+                onChange={(e) => setServerUrl(e.target.value)}
+                placeholder="http://187.77.221.60:3005"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary-500"
+              />
             </div>
 
-            {/* Login to sync server */}
-            <div className="p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg border border-indigo-200 dark:border-indigo-800">
-              <p className="font-medium text-indigo-800 dark:text-indigo-300 mb-3 flex items-center gap-2">
-                <LogIn size={16} />
-                Autenticación del Servidor
-              </p>
-              <p className="text-sm text-indigo-600 dark:text-indigo-400 mb-3">
-                Ingrese las credenciales del servidor para obtener un token de sincronización.
-              </p>
-              <div className="flex flex-wrap items-end gap-3">
-                <div>
-                  <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Usuario</label>
+            {/* Credentials */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">
+                  Usuario
+                </label>
+                <input
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="admin"
+                  autoComplete="off"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">
+                  Contraseña
+                </label>
+                <div className="relative">
                   <input
-                    type="text"
-                    value={loginUsername}
-                    onChange={(e) => setLoginUsername(e.target.value)}
-                    className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm w-40"
-                    placeholder="admin"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Contraseña</label>
-                  <input
-                    type="password"
-                    value={loginPassword}
-                    onChange={(e) => setLoginPassword(e.target.value)}
-                    className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm w-40"
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && canConnect && handleConnect()}
                     placeholder="••••••"
-                    onKeyDown={(e) => e.key === 'Enter' && handleSyncLogin()}
+                    autoComplete="new-password"
+                    className="w-full px-3 py-2 pr-9 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(v => !v)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  >
+                    {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                  </button>
                 </div>
-                <Button variant="primary" onClick={handleSyncLogin} loading={loggingIn} disabled={!loginUsername || !loginPassword} icon={<LogIn size={16} />}>
-                  Iniciar Sesión
-                </Button>
               </div>
             </div>
+
+            <Button
+              variant="primary"
+              onClick={handleConnect}
+              loading={connecting}
+              disabled={!canConnect}
+              icon={<Link2 size={16} />}
+              className="w-full justify-center"
+            >
+              {connecting ? 'Vinculando...' : 'Vincular servidor'}
+            </Button>
           </div>
         </Card>
       )}
 
-      {/* Not Configured Info */}
-      {!status?.configured && (
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
-            <AlertTriangle size={20} className="text-amber-500" />
-            Configuración Requerida
-          </h3>
-          <div className="space-y-4">
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Para habilitar la sincronización, el administrador del sistema debe configurar
-              la siguiente variable de entorno:
-            </p>
-            <div className="bg-gray-100 dark:bg-gray-700 p-4 rounded-lg font-mono text-sm">
-              <p className="text-gray-800 dark:text-gray-200">SYNC_SERVER_URL=https://api.tudominio.com</p>
-            </div>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Esta variable debe configurarse antes de iniciar la aplicación.
-              Contacte al administrador del sistema para obtener asistencia.
-            </p>
-          </div>
-        </Card>
-      )}
-
-      {/* Sync Actions (only when configured and enabled) */}
-      {status?.configured && status?.enabled && (
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
-            <RefreshCw size={20} />
-            Acciones de Sincronización
-          </h3>
-          <div className="space-y-4">
-            {/* Sync Buttons */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <button onClick={handleFullSync} disabled={syncing}
-                className="flex flex-col items-center gap-2 p-6 rounded-lg border-2 border-gray-200 dark:border-gray-600 hover:border-primary-400 dark:hover:border-primary-400 transition-colors disabled:opacity-50">
-                <RefreshCw size={32} className={`text-primary-500 ${syncing ? 'animate-spin' : ''}`} />
-                <span className="font-medium text-gray-900 dark:text-gray-100">Sincronización Completa</span>
-                <span className="text-xs text-gray-500 dark:text-gray-400">Enviar y recibir todo</span>
+      {/* ══════════════════════════════════════════════════════════════════════
+          STATE B — CONNECTED: Operational panel
+      ══════════════════════════════════════════════════════════════════════ */}
+      {isConnected && (
+        <>
+          {/* Sync action cards */}
+          <Card className="p-6">
+            <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+              <RefreshCw size={18} />
+              Acciones de sincronización
+            </h3>
+            <div className="grid grid-cols-3 gap-3 mb-5">
+              <button
+                onClick={handleFullSync}
+                disabled={syncing}
+                className="flex flex-col items-center gap-2 p-5 rounded-xl border-2 border-gray-200 dark:border-gray-600 hover:border-primary-400 dark:hover:border-primary-500 transition-colors disabled:opacity-50"
+              >
+                <RefreshCw size={28} className={`text-primary-500 ${syncing ? 'animate-spin' : ''}`} />
+                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Completa</span>
+                <span className="text-xs text-gray-400">Enviar y recibir todo</span>
               </button>
-              <button onClick={handlePush} disabled={syncing}
-                className="flex flex-col items-center gap-2 p-6 rounded-lg border-2 border-gray-200 dark:border-gray-600 hover:border-green-400 transition-colors disabled:opacity-50">
-                <Upload size={32} className="text-green-500" />
-                <span className="font-medium text-gray-900 dark:text-gray-100">Enviar al Servidor</span>
-                <span className="text-xs text-gray-500 dark:text-gray-400">Push: local → servidor</span>
+              <button
+                onClick={handlePush}
+                disabled={syncing}
+                className="flex flex-col items-center gap-2 p-5 rounded-xl border-2 border-gray-200 dark:border-gray-600 hover:border-green-400 transition-colors disabled:opacity-50"
+              >
+                <Upload size={28} className="text-green-500" />
+                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Enviar</span>
+                <span className="text-xs text-gray-400">Local → servidor</span>
               </button>
-              <button onClick={handlePull} disabled={syncing}
-                className="flex flex-col items-center gap-2 p-6 rounded-lg border-2 border-gray-200 dark:border-gray-600 hover:border-blue-400 transition-colors disabled:opacity-50">
-                <Download size={32} className="text-blue-500" />
-                <span className="font-medium text-gray-900 dark:text-gray-100">Recibir del Servidor</span>
-                <span className="text-xs text-gray-500 dark:text-gray-400">Pull: servidor → local</span>
+              <button
+                onClick={handlePull}
+                disabled={syncing}
+                className="flex flex-col items-center gap-2 p-5 rounded-xl border-2 border-gray-200 dark:border-gray-600 hover:border-blue-400 transition-colors disabled:opacity-50"
+              >
+                <Download size={28} className="text-blue-500" />
+                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Recibir</span>
+                <span className="text-xs text-gray-400">Servidor → local</span>
               </button>
             </div>
 
-            {/* Sync Timestamps */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-              <div className="text-center">
-                <p className="text-gray-500 dark:text-gray-400">Última sincronización</p>
-                <p className="font-medium text-gray-900 dark:text-gray-100">
-                  {status.lastSyncAt ? new Date(status.lastSyncAt).toLocaleString() : 'Nunca'}
-                </p>
-              </div>
-              <div className="text-center">
-                <p className="text-gray-500 dark:text-gray-400">Último push</p>
-                <p className="font-medium text-gray-900 dark:text-gray-100">
-                  {status.lastPushAt ? new Date(status.lastPushAt).toLocaleString() : 'Nunca'}
-                </p>
-              </div>
-              <div className="text-center">
-                <p className="text-gray-500 dark:text-gray-400">Último pull</p>
-                <p className="font-medium text-gray-900 dark:text-gray-100">
-                  {status.lastPullAt ? new Date(status.lastPullAt).toLocaleString() : 'Nunca'}
-                </p>
-              </div>
-            </div>
-
-            {/* Auto-sync Interval */}
-            <div className="flex items-center justify-between p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
-              <div className="flex items-center gap-3">
-                <Clock className="text-purple-500" size={24} />
-                <div>
-                  <p className="font-medium text-purple-800 dark:text-purple-300">Sincronización Automática</p>
-                  <p className="text-sm text-purple-600 dark:text-purple-400">
-                    Sincroniza automáticamente en segundo plano
+            {/* Timestamps */}
+            <div className="grid grid-cols-3 gap-3 text-xs text-center border-t border-gray-100 dark:border-gray-700 pt-4">
+              {[
+                { label: 'Última sync', value: status?.lastSyncAt },
+                { label: 'Último push', value: status?.lastPushAt },
+                { label: 'Último pull', value: status?.lastPullAt },
+              ].map(({ label, value }) => (
+                <div key={label}>
+                  <p className="text-gray-400 mb-0.5">{label}</p>
+                  <p className="font-medium text-gray-700 dark:text-gray-300">
+                    {value ? new Date(value).toLocaleString() : 'Nunca'}
                   </p>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          {/* Auto-sync interval */}
+          <Card className="p-5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Clock className="text-purple-500" size={20} />
+                <div>
+                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Sincronización automática</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Se ejecuta en segundo plano</p>
                 </div>
               </div>
               <select
-                value={status.syncIntervalMinutes}
+                value={status?.syncIntervalMinutes ?? 5}
                 onChange={(e) => handleIntervalChange(parseInt(e.target.value))}
-                className="px-3 py-2 border border-purple-300 dark:border-purple-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
               >
                 {INTERVAL_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}
               </select>
             </div>
-          </div>
-        </Card>
-      )}
+          </Card>
 
-      {/* Last Sync Result */}
-      {lastResult && (
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Último Resultado</h3>
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              {lastResult.success ? <CheckCircle className="text-green-500" size={20} /> : <XCircle className="text-red-500" size={20} />}
-              <span className={`font-medium ${lastResult.success ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}`}>
-                {lastResult.success ? 'Sincronización exitosa' : 'Sincronización con errores'}
-              </span>
-            </div>
-            <div className="grid grid-cols-3 gap-4 text-sm">
-              <div className="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg text-center">
-                <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{lastResult.tablesSynced}</p>
-                <p className="text-gray-500 dark:text-gray-400">Tablas</p>
+          {/* Last result */}
+          {lastResult && (
+            <Card className="p-5">
+              <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Último resultado</p>
+              <div className="flex items-center gap-2 mb-3">
+                {lastResult.success
+                  ? <CheckCircle className="text-green-500" size={18} />
+                  : <XCircle className="text-red-500" size={18} />
+                }
+                <span className={`text-sm font-medium ${lastResult.success ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}`}>
+                  {lastResult.success ? 'Exitosa' : 'Con errores'}
+                </span>
               </div>
-              <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded-lg text-center">
-                <p className="text-2xl font-bold text-green-600">{lastResult.recordsPushed}</p>
-                <p className="text-gray-500 dark:text-gray-400">Enviados</p>
+              <div className="grid grid-cols-3 gap-3 text-center text-sm">
+                <div className="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg">
+                  <p className="text-xl font-bold text-gray-900 dark:text-gray-100">{lastResult.tablesSynced}</p>
+                  <p className="text-xs text-gray-500">Tablas</p>
+                </div>
+                <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded-lg">
+                  <p className="text-xl font-bold text-green-600">{lastResult.recordsPushed}</p>
+                  <p className="text-xs text-gray-500">Enviados</p>
+                </div>
+                <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
+                  <p className="text-xl font-bold text-blue-600">{lastResult.recordsPulled}</p>
+                  <p className="text-xs text-gray-500">Recibidos</p>
+                </div>
               </div>
-              <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg text-center">
-                <p className="text-2xl font-bold text-blue-600">{lastResult.recordsPulled}</p>
-                <p className="text-gray-500 dark:text-gray-400">Recibidos</p>
-              </div>
-            </div>
-            {lastResult.errors.length > 0 && (
-              <div className="bg-red-50 dark:bg-red-900/20 p-3 rounded-lg">
-                <p className="text-sm font-medium text-red-800 dark:text-red-300 mb-1">Errores:</p>
-                <ul className="text-sm text-red-700 dark:text-red-400 list-disc list-inside">
-                  {lastResult.errors.map((err, i) => <li key={i}>{err}</li>)}
-                </ul>
-              </div>
-            )}
-          </div>
-        </Card>
-      )}
+              {lastResult.errors.length > 0 && (
+                <div className="mt-3 bg-red-50 dark:bg-red-900/20 p-3 rounded-lg">
+                  <ul className="text-xs text-red-700 dark:text-red-400 list-disc list-inside space-y-0.5">
+                    {lastResult.errors.map((err, i) => <li key={i}>{err}</li>)}
+                  </ul>
+                </div>
+              )}
+            </Card>
+          )}
 
-      {/* Danger Zone */}
-      {status?.configured && status?.enabled && (
-        <Card className="p-6 border-red-200 dark:border-red-800">
-          <h3 className="text-lg font-semibold text-red-700 dark:text-red-400 mb-4 flex items-center gap-2">
-            <WifiOff size={20} />
-            Zona de Peligro
-          </h3>
-          <div className="flex items-center justify-between">
+          {/* Disconnect */}
+          <div className="flex items-center justify-between p-4 rounded-xl border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-900/10">
             <div>
-              <p className="text-sm text-gray-700 dark:text-gray-300">Desactivar la sincronización.</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Los datos locales no se verán afectados. Puede volver a habilitar en cualquier momento.
+              <p className="text-sm font-medium text-red-700 dark:text-red-400">Desvincular servidor</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                Los datos locales no se verán afectados.
               </p>
             </div>
-            <Button variant="danger" onClick={handleDisable} icon={<Trash2 size={16} />}>Desactivar</Button>
+            <Button
+              variant="danger"
+              onClick={handleDisconnect}
+              loading={disconnecting}
+              icon={<Link2Off size={15} />}
+            >
+              Desvincular
+            </Button>
           </div>
-        </Card>
+        </>
       )}
 
-      {/* Help Info */}
-      <Card className="p-6">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">
-          Información de Configuración
-        </h3>
-        <div className="text-sm text-gray-600 dark:text-gray-400 space-y-3">
-          <p>
-            La sincronización permite que múltiples instalaciones de la aplicación
-            compartan datos en tiempo real a través del servidor planner-sync.
-            Los datos se sincronizan de forma bidireccional.
-          </p>
-          <div className="bg-amber-50 dark:bg-amber-900/20 p-3 rounded-lg">
-            <p className="text-amber-800 dark:text-amber-300">
-              <strong>Nota para administradores:</strong> La URL del servidor se configura
-              mediante la variable de entorno <code className="bg-amber-100 dark:bg-amber-800 px-1 rounded">SYNC_SERVER_URL</code>.
-              Después de configurarla, inicie sesión con sus credenciales del servidor para obtener
-              el token de autenticación.
-            </p>
-          </div>
-        </div>
-      </Card>
     </div>
   );
 }

@@ -72,8 +72,8 @@ export default function AdminPanel() {
 
   const tabs = [
     { id: 'stats' as AdminTab, label: 'Estadísticas', icon: BarChart3 },
-    { id: 'users' as AdminTab, label: 'Usuarios', icon: Users },
     { id: 'rigs' as AdminTab, label: 'Taladros', icon: OilRigIcon },
+    { id: 'users' as AdminTab, label: 'Usuarios', icon: Users },
     { id: 'areas' as AdminTab, label: 'Áreas', icon: MapPin },
     { id: 'companies' as AdminTab, label: 'Empresas', icon: Building2 },
     { id: 'codes' as AdminTab, label: 'Códigos de Operación', icon: Bookmark },

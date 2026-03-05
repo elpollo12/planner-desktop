@@ -37,9 +37,9 @@ fn build_status(cfg: &config::SyncConfig) -> SyncStatus {
     }
 }
 
-/// Build a SyncClient with token from config.
-fn build_sync_client() -> Result<SyncClient, String> {
-    let creds = SyncCredentials::from_env()?;
+/// Build a SyncClient with token from config, with fallback to localhost:3001.
+async fn build_sync_client() -> Result<SyncClient, String> {
+    let creds = SyncCredentials::resolve_with_fallback().await?;
     let cfg = config::load_config()?;
     let mut client = SyncClient::new(&creds.server_url);
     if let Some(token) = &cfg.sync_token {
@@ -151,7 +151,7 @@ pub async fn sync_push(
 ) -> Result<SyncResult, String> {
     get_session(&session_token, &state).map_err(|e| e.to_string())?;
     let cfg = config::load_config()?;
-    let client = build_sync_client()?;
+    let client = build_sync_client().await?;
 
     let table_data = {
         let conn = state.db.lock().map_err(|e| format!("Failed to lock database: {}", e))?;
@@ -182,7 +182,7 @@ pub async fn sync_pull(
 ) -> Result<SyncResult, String> {
     get_session(&session_token, &state).map_err(|e| e.to_string())?;
     let cfg = config::load_config()?;
-    let client = build_sync_client()?;
+    let client = build_sync_client().await?;
 
     let (pulled_data, mut result) =
         engine::pull_data_from_server(&client, cfg.last_pull_at.as_deref()).await?;
@@ -222,7 +222,7 @@ pub async fn sync_full(
     state: State<'_, AppState>,
 ) -> Result<SyncResult, String> {
     check_permission(&session_token, UserRole::Admin, &state).map_err(|e| e.to_string())?;
-    let client = build_sync_client()?;
+    let client = build_sync_client().await?;
     let now = chrono::Utc::now().to_rfc3339();
 
     // PUSH all
@@ -294,7 +294,7 @@ pub async fn sync_incremental(
 ) -> Result<SyncResult, String> {
     get_session(&session_token, &state).map_err(|e| e.to_string())?;
     let cfg = config::load_config()?;
-    let client = build_sync_client()?;
+    let client = build_sync_client().await?;
     let now = chrono::Utc::now().to_rfc3339();
 
     // Incremental push
@@ -354,6 +354,85 @@ pub async fn sync_incremental(
     config::save_config(&cfg)?;
 
     Ok(result)
+}
+
+/// Connect to sync server: save URL + login + enable — all in one step.
+/// This is the main entry point for setting up sync.
+#[tauri::command]
+pub async fn connect_sync_server(
+    session_token: String,
+    url: String,
+    username: String,
+    password: String,
+    state: State<'_, AppState>,
+) -> Result<SyncStatus, String> {
+    check_permission(&session_token, UserRole::Admin, &state).map_err(|e| e.to_string())?;
+
+    let trimmed_url = url.trim().trim_end_matches('/').to_string();
+    if trimmed_url.is_empty() {
+        return Err("La URL del servidor no puede estar vacía".to_string());
+    }
+
+    // Step 1: Test connection
+    let client = SyncClient::new(&trimmed_url);
+    client.test_connection().await
+        .map_err(|e| format!("No se pudo conectar al servidor: {}", e))?;
+
+    // Step 2: Login and get token
+    let mut client = SyncClient::new(&trimmed_url);
+    let login = client.login(&username, &password).await
+        .map_err(|e| {
+            let e_str = e.to_string();
+            if e_str.contains("404") || e_str.contains("Not Found") || e_str.contains("Cannot POST") {
+                "URL incorrecta: el servidor no reconoce la ruta de autenticación. Verifica que sea un servidor planner-sync válido.".to_string()
+            } else if e_str.contains("401") || e_str.contains("Unauthorized") || e_str.contains("Invalid") {
+                "Usuario o contraseña incorrectos.".to_string()
+            } else {
+                format!("Error al autenticar: {}", e_str)
+            }
+        })?;
+
+    // Step 3: Save everything and enable
+    let mut cfg = config::load_config()?;
+    cfg.server_url = Some(trimmed_url);
+    cfg.sync_token = Some(login.token);
+    cfg.enabled = true;
+    // Reset timestamps for fresh sync
+    cfg.last_sync_at = None;
+    cfg.last_push_at = None;
+    cfg.last_pull_at = None;
+    config::save_config(&cfg)?;
+
+    println!("[Sync] Conectado como {} ({})", login.user.full_name, login.user.role);
+    Ok(build_status(&cfg))
+}
+
+/// Set the sync server URL (admin only). Clears token since URL changed.
+#[tauri::command]
+pub async fn set_sync_server_url(
+    session_token: String,
+    url: String,
+    state: State<'_, AppState>,
+) -> Result<SyncStatus, String> {
+    check_permission(&session_token, UserRole::Admin, &state).map_err(|e| e.to_string())?;
+    let mut cfg = config::load_config()?;
+    let trimmed = url.trim().trim_end_matches('/').to_string();
+    cfg.server_url = if trimmed.is_empty() { None } else { Some(trimmed) };
+    // Reset token since server changed
+    cfg.sync_token = None;
+    cfg.enabled = false;
+    config::save_config(&cfg)?;
+    Ok(build_status(&cfg))
+}
+
+/// Get the currently configured sync server URL.
+#[tauri::command]
+pub async fn get_sync_server_url(
+    session_token: String,
+    state: State<'_, AppState>,
+) -> Result<Option<String>, String> {
+    get_session(&session_token, &state).map_err(|e| e.to_string())?;
+    Ok(config::SyncCredentials::get_configured_url())
 }
 
 /// Disable sync: reset timestamps and enabled flag.

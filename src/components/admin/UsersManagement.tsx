@@ -7,7 +7,8 @@ import { backgroundPush } from '@/lib/syncHelper';
 import { useModal } from '@/store/modalStore';
 import type { UserRole, UserWithRigs } from '@/types/user';
 import type { Rig } from '@/types/rig';
-import UsersForm from './forms/UsersForm';
+import UserCreateForm from './forms/UserCreateForm';
+import UserEditForm   from './forms/UserEditForm';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Table } from '@/components/ui/Table';
@@ -56,23 +57,22 @@ export function UsersManagement() {
   // Abrir modal para crear
   const handleCreate = () => {
     openModal(
-      <UsersForm
+      <UserCreateForm
         rigs={rigs}
         supervisors={activeSupervisors}
         sessionToken={sessionToken!}
         onSubmit={async (data) => {
           try {
             const created = await usersApi.create(sessionToken!, {
-              username: data.username!,
-              password: data.password!,
-              fullName: data.fullName,
-              ci: data.ci || undefined,
-              role: data.role,
-              hasAllRigs: data.hasAllRigs,
+              username:       data.username,
+              password:       data.password,
+              fullName:       data.fullName,
+              ci:             data.ci || undefined,
+              role:           data.role,
+              hasAllRigs:     data.hasAllRigs,
               assignedRigIds: data.hasAllRigs ? [] : data.assignedRigIds,
-              supervisorId: data.supervisorId,
+              supervisorId:   data.supervisorId,
             });
-            // Save module permissions if provided (non-admin)
             if (data.modulePermissions && data.role !== 'admin' && created?.id) {
               await modulePermissionsApi.save(sessionToken!, created.id, data.modulePermissions);
             }
@@ -96,54 +96,43 @@ export function UsersManagement() {
   // Abrir modal para editar
   const handleEdit = (user: UserWithRigs) => {
     openModal(
-      <UsersForm
+      <UserEditForm
         user={user}
         rigs={rigs}
         supervisors={activeSupervisors}
-        isEditing={true}
         currentUserId={currentUser?.id}
         sessionToken={sessionToken!}
         onSubmit={async (data) => {
           try {
             await usersApi.update(sessionToken!, user.id, {
-              fullName: data.fullName,
-              ci: data.ci || undefined,
-              role: data.role,
-              active: data.active,
-              hasAllRigs: data.hasAllRigs,
+              fullName:       data.fullName,
+              ci:             data.ci || undefined,
+              role:           data.role,
+              active:         data.active,
+              hasAllRigs:     data.hasAllRigs,
               assignedRigIds: data.hasAllRigs ? [] : data.assignedRigIds,
-              supervisorId: data.role === 'operator' ? (data.supervisorId || null) : null,
+              supervisorId:   data.role === 'operator' ? (data.supervisorId || null) : null,
             });
           } catch (error: any) {
-            console.error('[UsersManagement] Error al actualizar usuario:', error);
             toast.error(error.message || 'Error al actualizar el usuario');
             return;
           }
-
-          // Guardar permisos de módulos por separado para detectar el fallo exacto
           if (data.modulePermissions && data.role !== 'admin') {
-            console.log('[UsersManagement] Guardando permisos para', user.id, data.modulePermissions);
             try {
               await modulePermissionsApi.save(sessionToken!, user.id, data.modulePermissions);
-              console.log('[UsersManagement] Permisos guardados correctamente');
             } catch (error: any) {
-              console.error('[UsersManagement] Error al guardar permisos de módulos:', error);
               toast.error(`Usuario actualizado, pero falló al guardar permisos: ${error.message || error}`);
-              closeModal();
               loadData();
               return;
             }
           }
-
-          toast.success('Usuario actualizado exitosamente');
-          closeModal();
           loadData();
           backgroundPush(sessionToken!);
         }}
       />,
       {
         title: `Editar Usuario: ${user.username}`,
-        size: 'xl',
+        size: 'lg',
         showCloseButton: true,
       }
     );

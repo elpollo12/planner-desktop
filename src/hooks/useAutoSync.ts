@@ -21,11 +21,14 @@ export function useAutoSync() {
   const { setOnline, setOffline, setSyncing, setError, setSyncEnabled } = useConnectionStore();
   const intervalRef = useRef<number | null>(null);
   const lastSyncRef = useRef<number>(0);
+  const isSyncingRef = useRef<boolean>(false);
 
   const doSync = useCallback(async () => {
     if (!sessionToken) return;
+    if (isSyncingRef.current) return; // Prevent concurrent syncs
 
     try {
+      isSyncingRef.current = true;
       const syncStatus = await syncApi.getStatus(sessionToken);
 
       // Update sync enabled state
@@ -68,8 +71,9 @@ export function useAutoSync() {
       }
     } catch (error: any) {
       console.error('[AutoSync] Error:', error);
-      // Set offline with error message
       setOffline(error?.message || 'Error de conexión');
+    } finally {
+      isSyncingRef.current = false;
     }
   }, [sessionToken, setOnline, setOffline, setSyncing, setError, setSyncEnabled]);
 

@@ -70,22 +70,22 @@ export function Sidebar({ className = '' }: SidebarProps) {
     <aside
       className={`w-64 bg-gray-50 dark:bg-gray-800 border-r border-primary-200 dark:border-gray-700 flex flex-col ${className}`}
     >
-      {/* Logo/Brand — height matches Header component (py-4) */}
-      <div className="h-16 px-4 border-b border-primary-200 dark:border-gray-700 flex items-center">
-        {logoPath ? (
-          <div className="flex items-center justify-center w-full h-full py-2">
+      {/* Logo/Brand — outer fixes height, inner contains logo with overflow protection */}
+      <div className="h-16 flex-shrink-0 border-b border-primary-200 dark:border-gray-700 px-4">
+        <div className="w-full h-full overflow-hidden flex items-center justify-center">
+          {logoPath ? (
             <img
               src={logoPath}
               alt="Logo de la empresa"
               className="max-h-full max-w-full object-contain"
             />
-          </div>
-        ) : (
-          <div>
-            <h1 className="text-xl font-bold text-primary-500">DDR System</h1>
-            <p className="text-xs text-gray-500 mt-1">Reportes Petroleros</p>
-          </div>
-        )}
+          ) : (
+            <div className="w-full">
+              <h1 className="text-xl font-bold text-primary-500">DDR System</h1>
+              <p className="text-xs text-gray-500 mt-1">Reportes Petroleros</p>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Navigation */}

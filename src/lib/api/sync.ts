@@ -39,4 +39,13 @@ export const syncApi = {
 
   disable: (sessionToken: string) =>
     invoke<void>('disable_sync', { sessionToken }),
+
+  connect: (sessionToken: string, url: string, username: string, password: string) =>
+    invoke<SyncStatus>('connect_sync_server', { sessionToken, url, username, password }),
+
+  setServerUrl: (sessionToken: string, url: string) =>
+    invoke<SyncStatus>('set_sync_server_url', { sessionToken, url }),
+
+  getServerUrl: (sessionToken: string) =>
+    invoke<string | null>('get_sync_server_url', { sessionToken }),
 };

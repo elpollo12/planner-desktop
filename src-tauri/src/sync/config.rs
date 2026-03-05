@@ -2,8 +2,11 @@ use serde::{Deserialize, Serialize};
 use std::env;
 use std::path::PathBuf;
 
-/// Environment variable for sync server URL
+/// Environment variable for sync server URL (fallback only)
 pub const ENV_SYNC_SERVER_URL: &str = "SYNC_SERVER_URL";
+
+/// Fallback URL when primary server is unreachable
+pub const FALLBACK_SYNC_SERVER_URL: &str = "http://localhost:3001";
 
 /// Sync configuration stored locally
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -19,6 +22,9 @@ pub struct SyncConfig {
     /// JWT token from planner-sync login
     #[serde(default)]
     pub sync_token: Option<String>,
+    /// User-configured sync server URL
+    #[serde(default)]
+    pub server_url: Option<String>,
 }
 
 fn default_sync_interval() -> u32 {
@@ -34,33 +40,101 @@ impl Default for SyncConfig {
             last_pull_at: None,
             sync_interval_minutes: default_sync_interval(),
             sync_token: None,
+            server_url: None,
         }
     }
 }
 
-/// Sync server credentials from environment
+/// Sync server credentials
 #[derive(Debug, Clone)]
 pub struct SyncCredentials {
     pub server_url: String,
+    pub is_fallback: bool,
 }
 
 impl SyncCredentials {
-    /// Load from environment variables
+    /// Load from sync_config.json (user-configured), then env var, then error
     pub fn from_env() -> Result<Self, String> {
-        let server_url = env::var(ENV_SYNC_SERVER_URL)
-            .map_err(|_| format!("Variable de entorno {} no configurada", ENV_SYNC_SERVER_URL))?;
-
-        if server_url.is_empty() {
-            return Err(format!("{} está vacía", ENV_SYNC_SERVER_URL));
+        // 1. Try user-configured URL from sync_config
+        if let Ok(cfg) = load_config() {
+            if let Some(url) = &cfg.server_url {
+                if !url.is_empty() {
+                    return Ok(Self { server_url: url.clone(), is_fallback: false });
+                }
+            }
         }
-
-        Ok(Self { server_url })
+        // 2. Try environment variable
+        if let Ok(url) = env::var(ENV_SYNC_SERVER_URL) {
+            if !url.is_empty() {
+                return Ok(Self { server_url: url, is_fallback: false });
+            }
+        }
+        Err("URL del servidor de sincronización no configurada".to_string())
     }
 
-    /// Check if credentials are configured
+    /// Try primary URL, fall back to localhost:3001 if unreachable.
+    /// Returns the credentials that actually worked, or error.
+    pub async fn resolve_with_fallback() -> Result<Self, String> {
+        use crate::sync::sync_client::SyncClient;
+
+        // Get primary URL
+        let primary = Self::from_env();
+
+        match primary {
+            Ok(creds) => {
+                // Test primary
+                let client = SyncClient::new(&creds.server_url);
+                if client.test_connection().await.is_ok() {
+                    return Ok(creds);
+                }
+                // Primary failed — try fallback
+                let fallback_url = FALLBACK_SYNC_SERVER_URL.to_string();
+                let fallback_client = SyncClient::new(&fallback_url);
+                if fallback_client.test_connection().await.is_ok() {
+                    tracing_or_println("[Sync] Servidor principal inaccesible, usando fallback localhost:3001");
+                    return Ok(Self { server_url: fallback_url, is_fallback: true });
+                }
+                Err(format!("Servidor principal y fallback (localhost:3001) inaccesibles"))
+            }
+            Err(_) => {
+                // No primary configured — try fallback directly
+                let fallback_url = FALLBACK_SYNC_SERVER_URL.to_string();
+                let fallback_client = SyncClient::new(&fallback_url);
+                if fallback_client.test_connection().await.is_ok() {
+                    return Ok(Self { server_url: fallback_url, is_fallback: true });
+                }
+                Err("URL del servidor no configurada y fallback localhost:3001 inaccesible".to_string())
+            }
+        }
+    }
+
+    /// Check if any URL is configured
     pub fn is_configured() -> bool {
+        if let Ok(cfg) = load_config() {
+            if let Some(url) = &cfg.server_url {
+                if !url.is_empty() {
+                    return true;
+                }
+            }
+        }
         env::var(ENV_SYNC_SERVER_URL).map(|v| !v.is_empty()).unwrap_or(false)
     }
+
+    /// Get the currently configured URL (for display)
+    pub fn get_configured_url() -> Option<String> {
+        if let Ok(cfg) = load_config() {
+            if let Some(url) = cfg.server_url {
+                if !url.is_empty() {
+                    return Some(url);
+                }
+            }
+        }
+        env::var(ENV_SYNC_SERVER_URL).ok().filter(|v| !v.is_empty())
+    }
+}
+
+fn tracing_or_println(msg: &str) {
+    println!("{}", msg);
 }
 
 fn get_config_path() -> Result<PathBuf, String> {
