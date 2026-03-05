@@ -428,7 +428,15 @@ fn build_materials_summary(conn: &rusqlite::Connection, rig_id: &str, start: &st
             "SELECT COALESCE(SUM(quantity), 0) FROM logistics_materials_movements WHERE material_id = ?1 AND movement_type = 'exit' AND rig_id = ?2 AND created_at BETWEEN ?3 AND ?4 AND is_deleted = 0",
             params![id, rig_id, start, end], |row| row.get(0),
         ).map_err(|e| e.to_string())?;
-        summaries.push(MaterialSummary { material_id: id, material_name: name, unit, total_entries, total_exits, net: total_entries - total_exits });
+        let stock: f64 = conn.query_row(
+            "SELECT COALESCE(quantity, 0) FROM logistics_stock WHERE rig_id = ?1 AND category = ?2",
+            params![rig_id, format!("material:{}", id)],
+            |row| row.get(0),
+        ).unwrap_or(0.0);
+
+        if stock > 0.0 {
+            summaries.push(MaterialSummary { material_id: id, material_name: name, unit, total_entries, total_exits, net: total_entries - total_exits });
+        }
     }
     Ok(summaries)
 }

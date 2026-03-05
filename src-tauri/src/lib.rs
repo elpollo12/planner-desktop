@@ -248,6 +248,12 @@ pub fn run() {
             commands::incident_types::create_incident_type,
             commands::incident_types::delete_incident_type,
 
+            // Crew Positions
+            commands::crew_positions::list_crew_positions,
+            commands::crew_positions::create_crew_position,
+            commands::crew_positions::update_crew_position,
+            commands::crew_positions::delete_crew_position,
+
             // License commands
             commands::license::activate_license,
             commands::license::get_license_status,

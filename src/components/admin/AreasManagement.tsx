@@ -94,11 +94,17 @@ export default function AreasManagement() {
   const handleDelete = (area: Area) => {
     openModal(
       <div className="space-y-3">
-        <p className="text-gray-700">
-          ¿Estás seguro de eliminar el área <strong className="text-gray-900">"{area.name}"</strong>?
+        <p className="text-gray-700 dark:text-gray-300">
+          ¿Estás seguro de eliminar el área <strong className="text-gray-900 dark:text-gray-100">"{area.name}"</strong>?
         </p>
-        <p className="text-sm text-gray-500">
-          Esta acción no se puede deshacer.
+        <div className="rounded-md bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 px-3 py-2.5 space-y-1">
+          <p className="text-sm font-medium text-amber-800 dark:text-amber-300">⚠ Impacto en taladros</p>
+          <p className="text-sm text-amber-700 dark:text-amber-400">
+            Los taladros asignados a esta área quedarán sin área geográfica asignada y deberán ser reasignados manualmente.
+          </p>
+        </div>
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          Esta acción es irreversible. Solo procede si el área ya no está en uso.
         </p>
       </div>,
       {

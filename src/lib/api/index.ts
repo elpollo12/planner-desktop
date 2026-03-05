@@ -18,3 +18,4 @@ export * from './preferences';
 export * from './sync';
 export * from './license';
 export * from './cloudLogs';
+export * from './crewPositions';

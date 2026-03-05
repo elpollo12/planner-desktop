@@ -1,21 +1,20 @@
 import { useState, useEffect } from 'react';
 import { MainLayout } from '../components/layout';
 import { Card } from '../components/ui';
-import { Users, Bookmark, BarChart3, Activity, MapPin, Palette, Cloud, Building2, Download } from 'lucide-react';
+import { Users, BarChart3, Activity, MapPin, Palette, Cloud, Building2, Download, LayoutGrid } from 'lucide-react';
 import { OilRigIcon } from '../components/ui/icons/OilRigIcon';
 import { useAuthStore } from '../store/authStore';
 import { UsersManagement } from '../components/admin/UsersManagement';
-import { OperationCodesManagement } from '../components/admin/OperationCodesManagement';
 import { Statistics } from '../components/admin/Statistics';
-import AreasManagement from '../components/admin/AreasManagement';
 import RigsManagement from '../components/admin/RigsManagement';
 import AppearanceSettings from '../components/admin/AppearanceSettings';
 import SyncSettings from '../components/admin/SyncSettings';
 import CompaniesManagement from '../components/admin/CompaniesManagement';
 import UpdatesSettings from '../components/admin/UpdatesSettings';
+import MiscelaneosManagement from '../components/admin/MiscelaneosManagement';
 import { usersApi, areasApi, rigsApi, reportsApi } from '../lib/api';
 
-type AdminTab = 'users' | 'codes' | 'stats' | 'areas' | 'rigs' | 'companies' | 'appearance' | 'sync' | 'updates';
+type AdminTab = 'users' | 'stats' | 'rigs' | 'companies' | 'misc' | 'appearance' | 'sync' | 'updates';
 
 interface AdminStats {
   totalUsers: number;
@@ -74,9 +73,8 @@ export default function AdminPanel() {
     { id: 'stats' as AdminTab, label: 'Estadísticas', icon: BarChart3 },
     { id: 'rigs' as AdminTab, label: 'Taladros', icon: OilRigIcon },
     { id: 'users' as AdminTab, label: 'Usuarios', icon: Users },
-    { id: 'areas' as AdminTab, label: 'Áreas', icon: MapPin },
     { id: 'companies' as AdminTab, label: 'Empresas', icon: Building2 },
-    { id: 'codes' as AdminTab, label: 'Códigos de Operación', icon: Bookmark },
+    { id: 'misc' as AdminTab, label: 'Misceláneos', icon: LayoutGrid },
     { id: 'sync' as AdminTab, label: 'Sincronización', icon: Cloud },
     { id: 'updates' as AdminTab, label: 'Actualizaciones', icon: Download },
     { id: 'appearance' as AdminTab, label: 'Apariencia', icon: Palette },
@@ -172,10 +170,9 @@ export default function AdminPanel() {
 
           <div className="p-6">
             {activeTab === 'users' && <UsersManagement />}
-            {activeTab === 'areas' && <AreasManagement />}
             {activeTab === 'rigs' && <RigsManagement />}
             {activeTab === 'companies' && <CompaniesManagement />}
-            {activeTab === 'codes' && <OperationCodesManagement />}
+            {activeTab === 'misc' && <MiscelaneosManagement />}
             {activeTab === 'stats' && <Statistics />}
             {activeTab === 'appearance' && <AppearanceSettings />}
             {activeTab === 'sync' && <SyncSettings />}

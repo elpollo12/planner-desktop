@@ -196,6 +196,12 @@ const SYNC_TABLES: &[TableDef] = &[
         columns: &["id", "rig_id", "request_type", "quantity", "action_requested", "material_id", "status", "notes", "requested_by", "status_changed_by", "requested_at", "status_changed_at", "created_at", "updated_at", "is_deleted"],
         id_col: "id", has_updated_at: true, parent_col: None, skip_cleanup: false,
     },
+    // Catalogs
+    TableDef {
+        name: "crew_positions",
+        columns: &["id", "name", "sort_order", "is_default", "is_deleted", "created_by", "created_at", "updated_at"],
+        id_col: "id", has_updated_at: true, parent_col: None, skip_cleanup: false,
+    },
     // Incidents
     TableDef {
         name: "incident_types",

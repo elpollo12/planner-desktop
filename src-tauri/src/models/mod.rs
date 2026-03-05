@@ -19,6 +19,7 @@ pub mod rig_contractor;
 pub mod logistics;
 pub mod incident;
 pub mod incident_type;
+pub mod crew_position;
 pub mod last_report_snapshot;
 pub mod report_review;
 pub mod notification;
@@ -70,6 +71,8 @@ pub use logistics::*;
 pub use incident::*;
 #[allow(unused_imports)]
 pub use incident_type::*;
+#[allow(unused_imports)]
+pub use crew_position::*;
 #[allow(unused_imports)]
 pub use last_report_snapshot::*;
 #[allow(unused_imports)]

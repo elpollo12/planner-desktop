@@ -25,6 +25,7 @@ pub mod logistics_materials;
 pub mod logistics_requests;
 pub mod incidents;
 pub mod incident_types;
+pub mod crew_positions;
 pub mod license;
 pub mod last_report_snapshot;
 pub mod report_reviews;
@@ -88,6 +89,8 @@ pub use logistics_requests::*;
 pub use incidents::*;
 #[allow(unused_imports)]
 pub use incident_types::*;
+#[allow(unused_imports)]
+pub use crew_positions::*;
 #[allow(unused_imports)]
 pub use license::*;
 #[allow(unused_imports)]
