@@ -155,7 +155,7 @@ pub async fn sync_push(
 
     let table_data = {
         let conn = state.db.lock().map_err(|e| format!("Failed to lock database: {}", e))?;
-        engine::read_all_local_data(&conn, cfg.last_push_at.as_deref())?
+        engine::read_all_local_data(&conn, cfg.last_push_at.as_deref(), &[])?
     };
 
     let result = engine::push_data_to_server(&client, table_data).await?;
@@ -225,10 +225,12 @@ pub async fn sync_full(
     let client = build_sync_client().await?;
     let now = chrono::Utc::now().to_rfc3339();
 
-    // PUSH all
+    // PUSH all — exclude app_settings: it's a server-owned singleton.
+    // Pushing local defaults on a fresh DB would overwrite the admin's branding on the server.
+    // app_settings is always received via PULL and updated via incremental push when changed.
     let table_data = {
         let conn = state.db.lock().map_err(|e| format!("Failed to lock database: {}", e))?;
-        engine::read_all_local_data(&conn, None)?
+        engine::read_all_local_data(&conn, None, &["app_settings"])?
     };
     let push_result = engine::push_data_to_server(&client, table_data).await?;
 
@@ -314,7 +316,7 @@ pub async fn sync_incremental(
     // Incremental push
     let table_data = {
         let conn = state.db.lock().map_err(|e| format!("Failed to lock database: {}", e))?;
-        engine::read_all_local_data(&conn, cfg.last_push_at.as_deref())?
+        engine::read_all_local_data(&conn, cfg.last_push_at.as_deref(), &[])?
     };
     let push_result = engine::push_data_to_server(&client, table_data).await?;
 

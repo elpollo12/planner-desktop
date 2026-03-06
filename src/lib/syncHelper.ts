@@ -44,9 +44,9 @@ export async function backgroundPull(sessionToken: string): Promise<void> {
 
     if (result.success) {
       console.log(`[BackgroundPull] Success: ${result.recordsPulled} records pulled`);
-      if (result.recordsPulled > 0) {
-        syncEvents.emit();
-      }
+      // Always emit after a successful pull so app_settings/branding are refreshed,
+      // even if recordsPulled is 0 (edge case where server reports 0 but wrote settings).
+      syncEvents.emit();
     } else {
       console.warn('[BackgroundPull] Completed with errors:', result.errors);
     }
@@ -69,9 +69,8 @@ export async function backgroundFullSync(sessionToken: string): Promise<void> {
 
     if (result.success) {
       console.log(`[BackgroundSync] Success: ${result.recordsPushed} pushed, ${result.recordsPulled} pulled`);
-      if (result.recordsPulled > 0) {
-        syncEvents.emit();
-      }
+      // Always emit after a successful full sync — branding/settings must always refresh.
+      syncEvents.emit();
     } else {
       console.warn('[BackgroundSync] Completed with errors:', result.errors);
     }

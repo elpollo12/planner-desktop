@@ -66,7 +66,9 @@ export function useAutoSync() {
         }
       }
 
-      if (result.recordsPulled > 0) {
+      // Always emit after a successful sync so app_settings (branding/colors) refresh.
+      // Even if recordsPulled is 0, settings might have been updated on the server.
+      if (result.success || result.recordsPulled > 0) {
         syncEvents.emit();
       }
     } catch (error: any) {

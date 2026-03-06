@@ -349,13 +349,19 @@ fn cleanup_local_child_rows(
 // SYNCHRONOUS: Read/Write local SQLite
 // =============================================================================
 
-/// Read all table data from local SQLite for push
+/// Read all table data from local SQLite for push.
+/// `exclude` is a list of table names to skip — used in full sync to avoid
+/// overwriting server-owned singletons (e.g. app_settings) with local defaults.
 pub fn read_all_local_data(
     conn: &Connection,
     last_sync_at: Option<&str>,
+    exclude: &[&str],
 ) -> Result<Vec<TableData>, String> {
     let mut all_data = Vec::new();
     for (idx, table_def) in SYNC_TABLES.iter().enumerate() {
+        if exclude.contains(&table_def.name) {
+            continue;
+        }
         let rows = read_local_table(conn, table_def, last_sync_at)
             .map_err(|e| format!("Error reading '{}': {}", table_def.name, e))?;
         all_data.push(TableData { table_index: idx, rows });

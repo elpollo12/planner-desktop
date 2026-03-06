@@ -152,10 +152,18 @@ export default function SyncSettings() {
     try {
       const result = await syncApi.fullSync(sessionToken);
       setLastResult(result);
+      console.log('[FullSync] Result:', JSON.stringify({
+        success: result.success,
+        recordsPushed: result.recordsPushed,
+        recordsPulled: result.recordsPulled,
+        errors: result.errors,
+      }));
       if (result.success) {
         showMessage('success', `Sync completo — ${result.recordsPushed} enviados, ${result.recordsPulled} recibidos`);
         setOnline();
+        console.log('[FullSync] Emitting syncEvents...');
         syncEvents.emit(); // Recargar app_settings, notificaciones, etc.
+        console.log('[FullSync] syncEvents emitted.');
       } else {
         showMessage('error', `Sync con errores: ${result.errors.join(', ')}`);
         if (result.errors.length > 0) setError(result.errors[0]);

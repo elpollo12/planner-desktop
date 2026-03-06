@@ -6,7 +6,7 @@ import { useAuthStore } from './store/authStore';
 import { useLicenseStore } from './store/licenseStore';
 import { usePreferencesStore } from './store/preferencesStore';
 import { useAppSettingsStore } from './store/appSettingsStore';
-import { useThemeApplicator } from './hooks/useThemeApplicator';
+import { useThemeApplicator, applyThemeToDOM } from './hooks/useThemeApplicator';
 import { useAutoSync } from './hooks/useAutoSync';
 import { useConnectionPing } from './hooks/useConnectionPing';
 import { useUnreadCount, notificationKeys } from './hooks/useNotifications';
@@ -75,9 +75,18 @@ function App() {
   // Reload company settings after any sync (so all users get admin's branding)
   useEffect(() => {
     const unsubscribe = syncEvents.subscribe(() => {
-      loadSettings().catch((error) => {
-        console.error('Error reloading settings after sync:', error);
-      });
+      loadSettings()
+        .then(() => {
+          const appSettings = useAppSettingsStore.getState().settings;
+          const preferences = usePreferencesStore.getState().preferences;
+          const primaryColor = appSettings?.primaryColor ?? '#1e3a5f';
+          const secondaryColor = appSettings?.secondaryColor ?? '#f97316';
+          const themeMode = preferences?.themeMode ?? 'light';
+          applyThemeToDOM({ primaryColor, secondaryColor, themeMode });
+        })
+        .catch((error) => {
+          console.error('Error reloading settings after sync:', error);
+        });
       // Refresh notifications after sync pull (new notifications from other instances)
       queryClient.invalidateQueries({ queryKey: notificationKeys.all() });
     });
