@@ -106,6 +106,7 @@ export default function Dashboard() {
 
   return (
     <MainLayout title="Dashboard" subtitle={`Bienvenido, ${user.fullName}`}>
+      {/* Version badge dropdown */}
       {appVersion && (
         <div className="flex justify-end mb-4">
           <div className="relative">
@@ -135,6 +136,7 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* Stats Grid */}
       {canAccess.reports && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {[
@@ -155,3 +157,41 @@ export default function Dashboard() {
           ))}
         </div>
       )}
+
+      {/* Quick Actions */}
+      {quickActions.length === 0 ? (
+        <Card>
+          <div className="flex flex-col items-center justify-center py-12 text-center gap-4">
+            <ShieldOff size={48} className="text-gray-300 dark:text-gray-600" />
+            <div>
+              <p className="text-lg font-semibold text-gray-700 dark:text-gray-300">Sin acceso a módulos</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                Actualmente no tienes permisos para acceder a ningún módulo.<br />
+                Contacta con un administrador para que te asigne los permisos necesarios.
+              </p>
+            </div>
+          </div>
+        </Card>
+      ) : (
+        <Card>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Acciones Rápidas</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {quickActions.map((action) => (
+              <button
+                key={action.href}
+                onClick={() => navigate(action.href)}
+                className="p-6 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg hover:bg-primary-50 dark:hover:bg-gray-700 transition text-left"
+                onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--color-primary-500)'}
+                onMouseLeave={(e) => e.currentTarget.style.borderColor = ''}
+              >
+                <div className="text-2xl mb-2">{action.icon}</div>
+                <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">{action.title}</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400">{action.description}</p>
+              </button>
+            ))}
+          </div>
+        </Card>
+      )}
+    </MainLayout>
+  );
+}
