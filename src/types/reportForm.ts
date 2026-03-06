@@ -78,6 +78,9 @@ export const DEFAULT_REPORT_VALUES: Partial<CompleteReportData> = {
     wellNumber: '',
     rigNumber: '',
     operator: '',
+    contractor: '',
+    fieldDistrict: '',
+    supervisor24h: '',
   },
   crew: {
     shifts: [

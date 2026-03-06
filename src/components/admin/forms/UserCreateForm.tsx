@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
-  ChevronRight, ChevronLeft, User, HardHat, Shield,
+  ChevronRight, ChevronLeft,
   RotateCcw, Eye, EyeOff,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
@@ -118,7 +118,7 @@ function StepFooter({ onBack, onContinue, continueLabel, loading, disabled }: St
 // Root
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function UserCreateForm({ rigs, supervisors, sessionToken, onSubmit }: UserCreateFormProps) {
+export default function UserCreateForm({ rigs, supervisors, sessionToken: _sessionToken, onSubmit }: UserCreateFormProps) {
   const [step, setStep] = useState<WizardStep>(1);
   const [wizard, setWizard] = useState<WizardState>({
     username:          '',

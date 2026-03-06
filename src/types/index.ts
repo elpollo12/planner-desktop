@@ -25,7 +25,6 @@ export interface UserWithRigs extends User {
 export * from './rig';
 export * from './preferences';
 export * from './sync';
-export * from './operator';
 export * from './appSettings';
 export { type UserRole, type CreateUserInput, type UpdateUserInput, type AppModule, type ModulePermissions, APP_MODULES, MODULE_LABELS, MODULE_DEFAULTS, PERMISSION_MODULES } from './user';
 export * from './logistics';

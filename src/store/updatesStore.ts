@@ -148,7 +148,7 @@ export const useUpdatesStore = create<UpdatesState>()(
       },
 
       downloadAndInstall: async () => {
-        const { apiUrl, updateState, currentVersion } = get();
+        const { updateState, currentVersion } = get();
 
         if (updateState.status !== 'available') return;
 

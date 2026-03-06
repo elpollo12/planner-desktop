@@ -9,8 +9,6 @@ import {
   CheckCircle,
   XCircle,
   Clock,
-  AlertTriangle,
-  LogIn,
   Link2,
   Link2Off,
   Server,
