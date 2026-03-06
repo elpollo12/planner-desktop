@@ -92,7 +92,7 @@ jobs:
           cat > latest.json << ENDJSON
           {
             "version": "${VERSION}",
-            "notes": "Actualización a versión ${VERSION}",
+            "notes": "Actualizacion a version ${VERSION}",
             "pub_date": "${PUB_DATE}",
             "platforms": {
               "windows-x86_64": {
@@ -170,7 +170,7 @@ jobs:
             -H "Authorization: Bearer ${TOKEN}" \
             -d "{
               \"version\": \"${VERSION}\",
-              \"notes\": \"Actualización a versión ${VERSION}\",
+              \"notes\": \"Actualizacion a version ${VERSION}\",
               \"channel\": \"stable\",
               \"pubDate\": \"${PUB_DATE}\",
               \"assetUrl\": \"${ASSET_URL}\",

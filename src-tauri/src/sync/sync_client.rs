@@ -113,10 +113,15 @@ impl From<&CellValue> for TursoValue {
 impl SyncClient {
     pub fn new(base_url: &str) -> Self {
         let base_url = base_url.trim().trim_end_matches('/').to_string();
+        // Aumentar timeout a 120s y límite de respuesta a 50MB para soportar logos en base64
+        let client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(120))
+            .build()
+            .unwrap_or_default();
         Self {
             base_url,
             token: None,
-            client: reqwest::Client::new(),
+            client,
         }
     }
 

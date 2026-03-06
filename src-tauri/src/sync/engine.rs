@@ -150,11 +150,7 @@ const SYNC_TABLES: &[TableDef] = &[
         columns: &["id", "report_id", "reviewer_id", "action", "comment", "previous_status", "new_status", "created_at", "updated_at", "is_deleted"],
         id_col: "id", has_updated_at: true, parent_col: Some("report_id"), skip_cleanup: true,
     },
-    TableDef {
-        name: "user_preferences",
-        columns: &["id", "user_id", "theme_mode", "created_at", "updated_at"],
-        id_col: "id", has_updated_at: true, parent_col: None, skip_cleanup: false,
-    },
+    // user_preferences (theme_mode) es local a cada dispositivo — NO se sincroniza.
     TableDef {
         name: "update_preferences",
         columns: &[
@@ -618,10 +614,24 @@ pub fn reconcile_local_with_remote(
     conn.execute("PRAGMA foreign_keys = OFF", [])
         .map_err(|e| format!("Failed to disable FK: {}", e))?;
 
+    conn.execute("BEGIN IMMEDIATE", [])
+        .map_err(|e| {
+            let _ = conn.execute("PRAGMA foreign_keys = ON", []);
+            format!("Failed to begin reconcile transaction: {}", e)
+        })?;
+
     let mut total_deleted: u32 = 0;
 
     for (idx, rows) in pulled_data {
         let table_def = &SYNC_TABLES[*idx];
+
+        // No reconciliar app_settings — es un singleton (id=1) que nunca debe borrarse.
+        // Tampoco reconciliar tablas sin soft-delete donde el id es INTEGER: riesgo de
+        // comparación de tipos (INTEGER vs TEXT) que borra filas válidas.
+        if table_def.name == "app_settings" {
+            continue;
+        }
+
         let id_col_idx = table_def.columns.iter().position(|c| *c == table_def.id_col).unwrap_or(0);
 
         let pulled_ids: Vec<String> = rows.iter()
@@ -648,6 +658,12 @@ pub fn reconcile_local_with_remote(
         }
     }
 
+    if let Err(e) = conn.execute("COMMIT", []) {
+        let _ = conn.execute("ROLLBACK", []);
+        let _ = conn.execute("PRAGMA foreign_keys = ON", []);
+        return Err(format!("Failed to commit reconcile transaction: {}", e));
+    }
+
     conn.execute("PRAGMA foreign_keys = ON", []).map_err(|e| format!("Failed to re-enable FK: {}", e))?;
     Ok(total_deleted)
 }
@@ -658,6 +674,13 @@ pub fn purge_local_soft_deleted(conn: &Connection, retention_days: i64) -> Resul
     let threshold_str = threshold.to_rfc3339();
 
     conn.execute("PRAGMA foreign_keys = OFF", []).map_err(|e| format!("Failed to disable FK: {}", e))?;
+
+    conn.execute("BEGIN IMMEDIATE", [])
+        .map_err(|e| {
+            let _ = conn.execute("PRAGMA foreign_keys = ON", []);
+            format!("Failed to begin purge transaction: {}", e)
+        })?;
+
     let mut total_purged: u32 = 0;
 
     // Helper: collect IDs of soft-deleted rows older than threshold
@@ -721,6 +744,12 @@ pub fn purge_local_soft_deleted(conn: &Connection, retention_days: i64) -> Resul
                     "logistics_vacuum_actions", "logistics_requests", "notifications"] {
         let sql = format!("DELETE FROM {} WHERE is_deleted = 1 AND updated_at < ?1", table);
         if let Ok(c) = conn.execute(&sql, rusqlite::params![&threshold_str]) { total_purged += c as u32; }
+    }
+
+    if let Err(e) = conn.execute("COMMIT", []) {
+        let _ = conn.execute("ROLLBACK", []);
+        let _ = conn.execute("PRAGMA foreign_keys = ON", []);
+        return Err(format!("Failed to commit purge transaction: {}", e));
     }
 
     conn.execute("PRAGMA foreign_keys = ON", []).map_err(|e| format!("Failed to re-enable FK: {}", e))?;

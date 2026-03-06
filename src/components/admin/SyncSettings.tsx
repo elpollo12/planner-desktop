@@ -20,6 +20,7 @@ import { useAuthStore } from '../../store/authStore';
 import { useConnectionStore } from '../../store/connectionStore';
 import { useModal } from '../../store/modalStore';
 import { syncApi } from '../../lib/api';
+import { syncEvents } from '../../lib/syncEvents';
 import type { SyncStatus, SyncResult } from '../../types/sync';
 
 const INTERVAL_OPTIONS = [
@@ -154,6 +155,7 @@ export default function SyncSettings() {
       if (result.success) {
         showMessage('success', `Sync completo — ${result.recordsPushed} enviados, ${result.recordsPulled} recibidos`);
         setOnline();
+        syncEvents.emit(); // Recargar app_settings, notificaciones, etc.
       } else {
         showMessage('error', `Sync con errores: ${result.errors.join(', ')}`);
         if (result.errors.length > 0) setError(result.errors[0]);
@@ -197,7 +199,10 @@ export default function SyncSettings() {
       setLastResult(result);
       showMessage(result.success ? 'success' : 'error',
         result.success ? `${result.recordsPulled} registros recibidos` : `Pull con errores: ${result.errors.join(', ')}`);
-      if (result.success) setOnline();
+      if (result.success) {
+        setOnline();
+        syncEvents.emit(); // Recargar app_settings, notificaciones, etc.
+      }
       const s = await syncApi.getStatus(sessionToken);
       setStatus(s);
     } catch (error) {

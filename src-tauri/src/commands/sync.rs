@@ -243,16 +243,24 @@ pub async fn sync_full(
     let mut pull_errors: Vec<String> = Vec::new();
     if !pulled_data.is_empty() {
         let conn = state.db.lock().map_err(|e| format!("Failed to lock database: {}", e))?;
-        if let Err(e) = engine::write_pulled_data(&conn, &pulled_data) {
-            pull_errors.push(format!("Error writing to local DB: {}", e));
-        }
-        if push_result.success {
+        let write_ok = match engine::write_pulled_data(&conn, &pulled_data) {
+            Ok(_) => true,
+            Err(e) => {
+                pull_errors.push(format!("Error writing to local DB: {}", e));
+                false
+            }
+        };
+        // Only reconcile if write succeeded — otherwise pulled_data is not in local DB
+        // and reconcile would delete valid local records not present in the partial batch.
+        if write_ok && push_result.success {
             if let Err(e) = engine::reconcile_local_with_remote(&conn, &pulled_data) {
                 pull_errors.push(format!("Reconciliation warning: {}", e));
             }
         }
-        if let Err(e) = engine::recalculate_logistics_stock(&conn) {
-            pull_errors.push(format!("Stock recalculation warning: {}", e));
+        if write_ok {
+            if let Err(e) = engine::recalculate_logistics_stock(&conn) {
+                pull_errors.push(format!("Stock recalculation warning: {}", e));
+            }
         }
     }
 
