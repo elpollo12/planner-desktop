@@ -33,8 +33,6 @@ export default function UpdatesSettings() {
     preferences, 
     loadPreferences, 
     savePreferences,
-    setApiUrl,
-    apiUrl,
   } = useUpdatesStore();
   
   const {
@@ -53,7 +51,6 @@ export default function UpdatesSettings() {
   // Local state for form
   const [autoUpdate, setAutoUpdate] = useState(false);
   const [checkInterval, setCheckInterval] = useState(24);
-  const [customApiUrl, setCustomApiUrl] = useState('');
 
   useEffect(() => {
     if (sessionToken) {
@@ -67,10 +64,6 @@ export default function UpdatesSettings() {
       setCheckInterval(preferences.checkIntervalHours);
     }
   }, [preferences]);
-
-  useEffect(() => {
-    setCustomApiUrl(apiUrl);
-  }, [apiUrl]);
 
   const loadData = async () => {
     setLoading(true);
@@ -103,11 +96,6 @@ export default function UpdatesSettings() {
     } finally {
       setSaving(false);
     }
-  };
-
-  const handleSaveApiUrl = () => {
-    setApiUrl(customApiUrl);
-    showMessage('success', 'URL de API guardada');
   };
 
   const handleCheckNow = async () => {
@@ -307,32 +295,15 @@ export default function UpdatesSettings() {
       {/* API URL Configuration (Admin only) */}
       {user?.role === 'admin' && (
         <Card className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2 flex items-center gap-2">
             <Settings size={20} />
-            Configuración Avanzada
+            Servidor de Actualizaciones
           </h3>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                URL del Servidor de Actualizaciones
-              </label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={customApiUrl}
-                  onChange={(e) => setCustomApiUrl(e.target.value)}
-                  placeholder="http://localhost:3001"
-                  className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                />
-                <Button variant="outline" onClick={handleSaveApiUrl}>
-                  Guardar
-                </Button>
-              </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                URL del servidor planner-sync para verificar actualizaciones
-              </p>
-            </div>
-          </div>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Las actualizaciones se verifican automáticamente en el servidor sync vinculado
+            desde <strong>Configuración → Sincronización</strong>. Si no hay servidor vinculado,
+            se usa el canal de GitHub Releases como respaldo.
+          </p>
         </Card>
       )}
 

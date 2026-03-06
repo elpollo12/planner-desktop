@@ -184,6 +184,7 @@ impl SyncClient {
         let resp = self.client
             .post(format!("{}/api/v1/sync/push", self.base_url))
             .header("Authorization", &auth)
+            .header("X-App-Version", env!("CARGO_PKG_VERSION"))
             .json(&request)
             .send()
             .await
@@ -210,6 +211,7 @@ impl SyncClient {
         let resp = self.client
             .get(&url)
             .header("Authorization", &auth)
+            .header("X-App-Version", env!("CARGO_PKG_VERSION"))
             .send()
             .await
             .map_err(|e| format!("Error de conexión al pull: {e}"))?;

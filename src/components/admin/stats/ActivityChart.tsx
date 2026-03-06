@@ -13,13 +13,14 @@ import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useActivityStats } from '../../../hooks/useAdminStats';
 import { PeriodSelector } from './PeriodSelector';
-import { useAxisTickColor, useGridStroke } from './chartHelpers';
+import { useAxisTickColor, useGridStroke, useChartReady } from './chartHelpers';
 
 export function ActivityChart() {
   const [days, setDays] = useState(30);
   const { data, isLoading } = useActivityStats(days);
   const tickColor = useAxisTickColor();
   const gridStroke = useGridStroke();
+  const { ref: chartRef, ready: chartReady } = useChartReady();
 
   if (isLoading) {
     return (
@@ -57,8 +58,8 @@ export function ActivityChart() {
         <PeriodSelector value={days} onChange={setDays} />
       </div>
 
-      <div className="h-72" style={{ minWidth: 0 }}>
-        <ResponsiveContainer width="100%" height="100%">
+      <div ref={chartRef} className="h-72" style={{ minWidth: 0, overflow: 'hidden' }}>
+        {chartReady && <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={chartData} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
             <defs>
               <linearGradient id="colorReports" x1="0" y1="0" x2="0" y2="1">
@@ -103,7 +104,7 @@ export function ActivityChart() {
               fill="url(#colorReports)"
             />
           </AreaChart>
-        </ResponsiveContainer>
+        </ResponsiveContainer>}
       </div>
     </div>
   );

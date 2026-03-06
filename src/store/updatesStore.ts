@@ -11,18 +11,21 @@ import type {
   UpdateCheckStatus,
 } from '../types/updates';
 
-// Default API URL - can be overridden by sync settings
-const DEFAULT_API_URL = 'http://localhost:3001';
+/**
+ * Updates Store
+ *
+ * apiUrl is set automatically when the admin links a sync server (SyncSettings → handleConnect).
+ * If empty, checkForUpdate skips the API call and falls back directly to the Tauri updater
+ * (GitHub Releases), so the app always works even without a linked server.
+ */
 
 interface UpdatesState {
   // State
   preferences: UpdatePreferences | null;
   updateState: UpdateState;
   currentVersion: string;
-  apiUrl: string;
   
   // Actions
-  setApiUrl: (url: string) => void;
   loadPreferences: (sessionToken: string) => Promise<void>;
   savePreferences: (sessionToken: string, input: SaveUpdatePreferencesInput) => Promise<void>;
   checkForUpdate: (sessionToken?: string) => Promise<void>;
@@ -39,11 +42,8 @@ export const useUpdatesStore = create<UpdatesState>()(
       preferences: null,
       updateState: { status: 'idle' },
       currentVersion: '',
-      apiUrl: DEFAULT_API_URL,
 
-      setApiUrl: (url: string) => {
-        set({ apiUrl: url });
-      },
+      setApiUrl: (_url: string) => { /* no-op: URL is managed by sync_config.json in Rust */ },
 
       loadPreferences: async (sessionToken: string) => {
         try {
@@ -78,16 +78,16 @@ export const useUpdatesStore = create<UpdatesState>()(
       },
 
       checkForUpdate: async (sessionToken?: string) => {
-        const { apiUrl, preferences } = get();
+        const { preferences } = get();
         const channel = preferences?.channel ?? 'stable';
 
         try {
           set({ updateState: { status: 'checking' } });
 
-          // Try API first for richer metadata
+          // Try planner-sync API first for richer metadata.
+          // api_url is omitted — Rust resolves it from sync_config.json automatically.
           try {
             const response = await invoke<CheckUpdateResponse>('check_for_update_from_api', {
-              apiUrl,
               channel,
             });
 
@@ -180,10 +180,9 @@ export const useUpdatesStore = create<UpdatesState>()(
             }
           });
 
-          // Record download to API for statistics
+          // Record download to API for statistics (api_url resolved by Rust from sync_config)
           try {
             await invoke('record_download_to_api', {
-              apiUrl,
               version: release.version,
               fromVersion: currentVersion,
             });
@@ -234,7 +233,8 @@ export const useUpdatesStore = create<UpdatesState>()(
     {
       name: 'updates-storage',
       partialize: (state) => ({
-        apiUrl: state.apiUrl,
+        // Only persist preferences cache — URL is always read from sync_config.json by Rust
+        preferences: state.preferences,
       }),
     }
   )

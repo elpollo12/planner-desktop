@@ -19,13 +19,16 @@ import { es } from 'date-fns/locale';
 import { Card } from '../../ui';
 import { useIncidentsStats } from '../../../hooks/useAdminStats';
 import { PeriodSelector } from './PeriodSelector';
-import { getIncidentColor, useAxisTickColor, useGridStroke } from './chartHelpers';
+import { getIncidentColor, useAxisTickColor, useGridStroke, useChartReady } from './chartHelpers';
 
 export function IncidentsMetrics() {
   const [days, setDays] = useState(30);
   const { data, isLoading } = useIncidentsStats(days);
   const tickColor = useAxisTickColor();
   const gridStroke = useGridStroke();
+  const { ref: chart1Ref, ready: chart1Ready } = useChartReady();
+  const { ref: chart2Ref, ready: chart2Ready } = useChartReady();
+  const { ref: chart3Ref, ready: chart3Ready } = useChartReady();
 
   if (isLoading) {
     return (
@@ -85,8 +88,8 @@ export function IncidentsMetrics() {
         {/* Pie: by type */}
         <Card className="p-5">
           <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Distribución por Tipo</h4>
-          <div className="h-48" style={{ minWidth: 0 }}>
-            <ResponsiveContainer width="100%" height="100%">
+          <div ref={chart1Ref} className="h-48" style={{ minWidth: 0, overflow: 'hidden' }}>
+            {chart1Ready && <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
                   data={typeData}
@@ -104,7 +107,7 @@ export function IncidentsMetrics() {
                 </Pie>
                 <Tooltip />
               </PieChart>
-            </ResponsiveContainer>
+            </ResponsiveContainer>}
           </div>
           <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 mt-3">
             {typeData.map((entry: { name: string; value: number; color: string }, idx: number) => (
@@ -120,8 +123,8 @@ export function IncidentsMetrics() {
         {data.topRigs.length > 0 && (
           <Card className="p-5">
             <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Top Taladros con Incidencias</h4>
-            <div className="h-56" style={{ minWidth: 0 }}>
-              <ResponsiveContainer width="100%" height="100%">
+            <div ref={chart2Ref} className="h-56" style={{ minWidth: 0, overflow: 'hidden' }}>
+              {chart2Ready && <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={data.topRigs} layout="vertical" margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
                   <XAxis type="number" allowDecimals={false} tick={{ fontSize: 12, fill: tickColor }} tickLine={false} axisLine={false} />
@@ -140,7 +143,7 @@ export function IncidentsMetrics() {
                   />
                   <Bar dataKey="count" fill="#f97316" radius={[0, 4, 4, 0]} />
                 </BarChart>
-              </ResponsiveContainer>
+              </ResponsiveContainer>}
             </div>
           </Card>
         )}
@@ -153,8 +156,8 @@ export function IncidentsMetrics() {
             <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Tendencia de Incidencias</h4>
             <PeriodSelector value={days} onChange={setDays} />
           </div>
-          <div className="h-56" style={{ minWidth: 0 }}>
-            <ResponsiveContainer width="100%" height="100%">
+          <div ref={chart3Ref} className="h-56" style={{ minWidth: 0, overflow: 'hidden' }}>
+            {chart3Ready && <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={dailyData} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorIncidents" x1="0" y1="0" x2="0" y2="1">
@@ -181,7 +184,7 @@ export function IncidentsMetrics() {
                 />
                 <Area type="monotone" dataKey="count" stroke="#f97316" strokeWidth={2} fill="url(#colorIncidents)" />
               </AreaChart>
-            </ResponsiveContainer>
+            </ResponsiveContainer>}
           </div>
         </Card>
       )}

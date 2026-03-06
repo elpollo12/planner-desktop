@@ -293,17 +293,27 @@ pub async fn get_update_status(
 
 /// Check for updates from the API.
 /// This calls the planner-sync API to check for available updates.
+/// `api_url` is optional — if None or empty, the URL is resolved automatically
+/// from sync_config.json (set when the admin links the sync server).
 #[tauri::command]
 pub async fn check_for_update_from_api(
-    api_url: String,
+    api_url: Option<String>,
     channel: Option<String>,
 ) -> Result<CheckUpdateResponse> {
     let current_version = env!("CARGO_PKG_VERSION");
     let channel = channel.unwrap_or_else(|| "stable".to_string());
 
+    // Resolve URL: use explicit arg first, then sync_config, then fail gracefully
+    let resolved_url = api_url
+        .filter(|u| !u.trim().is_empty())
+        .or_else(|| crate::sync::config::SyncCredentials::get_configured_url())
+        .ok_or_else(|| AppError::NetworkError(
+            "No hay servidor de actualización configurado".to_string()
+        ))?;
+
     let url = format!(
         "{}/api/v1/updates/check?currentVersion={}&channel={}",
-        api_url.trim_end_matches('/'),
+        resolved_url.trim_end_matches('/'),
         current_version,
         channel
     );
@@ -332,15 +342,25 @@ pub async fn check_for_update_from_api(
 }
 
 /// Record a download to the API for statistics.
+/// `api_url` is optional — falls back to sync_config URL if not provided.
 #[tauri::command]
 pub async fn record_download_to_api(
-    api_url: String,
+    api_url: Option<String>,
     version: String,
     from_version: Option<String>,
 ) -> Result<()> {
+    let resolved_url = api_url
+        .filter(|u| !u.trim().is_empty())
+        .or_else(|| crate::sync::config::SyncCredentials::get_configured_url());
+
+    let Some(base_url) = resolved_url else {
+        // No server configured — skip stats silently
+        return Ok(());
+    };
+
     let url = format!(
         "{}/api/v1/updates/downloads",
-        api_url.trim_end_matches('/')
+        base_url.trim_end_matches('/')
     );
 
     let client = reqwest::Client::new();

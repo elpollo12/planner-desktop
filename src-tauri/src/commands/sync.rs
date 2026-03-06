@@ -266,7 +266,7 @@ pub async fn sync_full(
 
     let mut all_errors = push_result.errors;
     all_errors.extend(pull_result.errors);
-    all_errors.extend(pull_errors);
+    all_errors.extend(pull_errors.clone());
 
     let result = SyncResult {
         success: all_errors.is_empty(),
@@ -278,9 +278,15 @@ pub async fn sync_full(
     };
 
     let mut cfg = config::load_config()?;
-    cfg.last_sync_at = Some(now.clone());
-    cfg.last_push_at = Some(now.clone());
-    cfg.last_pull_at = Some(now);
+    if push_result.success {
+        cfg.last_push_at = Some(now.clone());
+    }
+    if pull_errors.is_empty() && !pulled_data.is_empty() || pulled_data.is_empty() {
+        cfg.last_pull_at = Some(now.clone());
+    }
+    if push_result.success && pull_errors.is_empty() {
+        cfg.last_sync_at = Some(now);
+    }
     config::save_config(&cfg)?;
 
     Ok(result)

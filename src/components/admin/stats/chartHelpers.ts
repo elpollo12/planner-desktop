@@ -5,7 +5,7 @@
  * and provides a consistent palette for logistics/activity charts.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 // Palette for pie/bar charts (category colors)
 export const CHART_COLORS = [
@@ -87,4 +87,43 @@ export function useAxisTickColor(): string {
 export function useGridStroke(): string {
   const isDark = useIsDarkMode();
   return isDark ? '#374151' : '#e5e7eb';
+}
+
+/**
+ * Returns a ref to attach to the chart container div, and a boolean
+ * `ready` that is true only after the container has non-zero dimensions.
+ * Use this to defer rendering ResponsiveContainer until the DOM is painted.
+ *
+ * Usage:
+ *   const { ref, ready } = useChartReady();
+ *   <div ref={ref} className="h-72" style={{ minWidth: 0, overflow: 'hidden' }}>
+ *     {ready && <ResponsiveContainer>...</ResponsiveContainer>}
+ *   </div>
+ */
+export function useChartReady(): { ref: React.RefObject<HTMLDivElement | null>; ready: boolean } {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    if (!ref.current) return;
+    // Check immediately (in case layout already complete)
+    if (ref.current.offsetWidth > 0) {
+      setReady(true);
+      return;
+    }
+    // Otherwise observe until dimensions are available
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.contentRect.width > 0) {
+          setReady(true);
+          ro.disconnect();
+          break;
+        }
+      }
+    });
+    ro.observe(ref.current);
+    return () => ro.disconnect();
+  }, []);
+
+  return { ref, ready };
 }

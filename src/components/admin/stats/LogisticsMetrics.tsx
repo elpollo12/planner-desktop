@@ -26,6 +26,7 @@ import {
   CHART_COLORS,
   useAxisTickColor,
   useGridStroke,
+  useChartReady,
 } from './chartHelpers';
 
 export function LogisticsMetrics() {
@@ -33,6 +34,10 @@ export function LogisticsMetrics() {
   const { data, isLoading } = useLogisticsStats(days);
   const tickColor = useAxisTickColor();
   const gridStroke = useGridStroke();
+  const { ref: chart1Ref, ready: chart1Ready } = useChartReady();
+  const { ref: chart2Ref, ready: chart2Ready } = useChartReady();
+  const { ref: chart3Ref, ready: chart3Ready } = useChartReady();
+  const { ref: chart4Ref, ready: chart4Ready } = useChartReady();
 
   if (isLoading) {
     return (
@@ -87,8 +92,8 @@ export function LogisticsMetrics() {
         {/* Pie: by type */}
         <Card className="p-5">
           <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Por Tipo de Solicitud</h4>
-          <div className="h-48" style={{ minWidth: 0 }}>
-            <ResponsiveContainer width="100%" height="100%">
+          <div ref={chart1Ref} className="h-48" style={{ minWidth: 0, overflow: 'hidden' }}>
+            {chart1Ready && <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
                   data={typeData}
@@ -106,7 +111,7 @@ export function LogisticsMetrics() {
                 </Pie>
                 <Tooltip />
               </PieChart>
-            </ResponsiveContainer>
+            </ResponsiveContainer>}
           </div>
           <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 mt-3">
             {typeData.map((entry: { name: string; value: number; color: string }, idx: number) => (
@@ -121,8 +126,8 @@ export function LogisticsMetrics() {
         {/* Pie: by status */}
         <Card className="p-5">
           <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Por Estado</h4>
-          <div className="h-48" style={{ minWidth: 0 }}>
-            <ResponsiveContainer width="100%" height="100%">
+          <div ref={chart2Ref} className="h-48" style={{ minWidth: 0, overflow: 'hidden' }}>
+            {chart2Ready && <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
                   data={statusData}
@@ -140,7 +145,7 @@ export function LogisticsMetrics() {
                 </Pie>
                 <Tooltip />
               </PieChart>
-            </ResponsiveContainer>
+            </ResponsiveContainer>}
           </div>
           <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 mt-3">
             {statusData.map((entry: { name: string; value: number; color: string }, idx: number) => (
@@ -157,8 +162,8 @@ export function LogisticsMetrics() {
       {data.topRigs.length > 0 && (
         <Card className="p-5">
           <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Top Taladros por Solicitudes</h4>
-          <div className="h-56" style={{ minWidth: 0 }}>
-            <ResponsiveContainer width="100%" height="100%">
+          <div ref={chart3Ref} className="h-56" style={{ minWidth: 0, overflow: 'hidden' }}>
+            {chart3Ready && <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data.topRigs} layout="vertical" margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
                 <XAxis type="number" allowDecimals={false} tick={{ fontSize: 12, fill: tickColor }} tickLine={false} axisLine={false} />
@@ -177,7 +182,7 @@ export function LogisticsMetrics() {
                 />
                 <Bar dataKey="count" fill="#3b82f6" radius={[0, 4, 4, 0]} />
               </BarChart>
-            </ResponsiveContainer>
+            </ResponsiveContainer>}
           </div>
         </Card>
       )}
@@ -189,8 +194,8 @@ export function LogisticsMetrics() {
             <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Tendencia de Solicitudes</h4>
             <PeriodSelector value={days} onChange={setDays} />
           </div>
-          <div className="h-56" style={{ minWidth: 0 }}>
-            <ResponsiveContainer width="100%" height="100%">
+          <div ref={chart4Ref} className="h-56" style={{ minWidth: 0, overflow: 'hidden' }}>
+            {chart4Ready && <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={dailyData} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorLogistics" x1="0" y1="0" x2="0" y2="1">
@@ -217,7 +222,7 @@ export function LogisticsMetrics() {
                 />
                 <Area type="monotone" dataKey="count" stroke="#10b981" strokeWidth={2} fill="url(#colorLogistics)" />
               </AreaChart>
-            </ResponsiveContainer>
+            </ResponsiveContainer>}
           </div>
         </Card>
       )}
