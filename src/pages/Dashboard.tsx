@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShieldOff } from 'lucide-react';
+import { ShieldOff, ChevronDown, Tag, Cpu, Calendar } from 'lucide-react';
+import { getVersion } from '@tauri-apps/api/app';
 import { useAuthStore } from '../store/authStore';
 import { usePermissions } from '../hooks/usePermissions';
 import { MainLayout } from '../components/layout';
@@ -26,6 +27,8 @@ export default function Dashboard() {
   const { user, isAuthenticated, sessionToken } = useAuthStore();
   const { canAccess } = usePermissions();
   const navigate = useNavigate();
+  const [appVersion, setAppVersion] = useState('');
+  const [versionOpen, setVersionOpen] = useState(false);
   const [stats, setStats] = useState<DashboardStats>({
     total: 0,
     drafts: 0,
@@ -38,6 +41,12 @@ export default function Dashboard() {
   useEffect(() => {
     if (!isAuthenticated) {
       navigate('/login');
+    }
+  }, [isAuthenticated, navigate]);
+
+  useEffect(() => {
+    getVersion().then(setAppVersion).catch(() => {});
+  }, []);
     }
   }, [isAuthenticated, navigate]);
 
@@ -113,6 +122,41 @@ export default function Dashboard() {
       title="Dashboard"
       subtitle={`Bienvenido, ${user.fullName}`}
     >
+      {/* Version badge dropdown */}
+      {appVersion && (
+        <div className="flex justify-end mb-4">
+          <div className="relative">
+            <button
+              onClick={() => setVersionOpen(v => !v)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium
+                         bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400
+                         border border-green-200 dark:border-green-800 rounded-full
+                         hover:bg-green-100 dark:hover:bg-green-900/40 transition-colors"
+            >
+              <Tag size={11} />
+              v{appVersion}
+              <ChevronDown size={11} className={`transition-transform ${versionOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {versionOpen && (
+              <div className="absolute right-0 mt-1 w-56 bg-white dark:bg-gray-800 border border-gray-200
+                              dark:border-gray-700 rounded-lg shadow-lg z-10 overflow-hidden">
+                <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Versión instalada</p>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">D-Planner v{appVersion}</p>
+                </div>
+                <div className="px-4 py-2 flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                  <Cpu size={12} />
+                  <span>Windows x64</span>
+                </div>
+                <div className="px-4 py-2 flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 border-t border-gray-100 dark:border-gray-700">
+                  <Calendar size={12} />
+                  <span>Actualizado correctamente ✓</span>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
       {/* Stats Grid — only shown when user has access to reports */}
       {canAccess.reports && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
