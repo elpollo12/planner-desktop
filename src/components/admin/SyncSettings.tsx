@@ -305,12 +305,18 @@ export default function SyncSettings() {
                 URL del servidor
               </label>
               <input
+                list="sync-server-options"
                 type="url"
                 value={serverUrl}
                 onChange={(e) => setServerUrl(e.target.value)}
                 placeholder="http://187.77.221.60:3005"
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
+              <datalist id="sync-server-options">
+                <option value="http://187.77.221.60:3005" />
+                <option value="http://localhost:3005" />
+                <option value="http://localhost:3001" />
+              </datalist>
             </div>
 
             {/* Credentials */}
