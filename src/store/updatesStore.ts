@@ -256,13 +256,16 @@ export const useUpdatesStore = create<UpdatesState>()(
 
       installAndRelaunch: async () => {
         if (!_pendingUpdate) {
-          console.warn('[Updates] _pendingUpdate lost — using relaunch fallback');
-          await relaunch();
+          console.warn('[Updates] _pendingUpdate lost — cannot install');
+          set({ updateState: { status: 'error', message: 'Actualización no disponible, reinicia la app e intenta de nuevo' } });
           return;
         }
         try {
+          // Con NSIS: install() lanza el instalador y cierra el proceso.
+          // El instalador relanza la app automáticamente — relaunch() nunca llegaría a ejecutarse.
           await _pendingUpdate.install();
           _pendingUpdate = null;
+          // Fallback por si el instalador no cierra el proceso (no debería ocurrir con NSIS)
           await relaunch();
         } catch (error: any) {
           console.error('[Updates] Install failed:', error);
