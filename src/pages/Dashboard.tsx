@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ShieldOff, ChevronDown, Tag, Cpu, Calendar } from 'lucide-react';
 import { getVersion } from '@tauri-apps/api/app';
@@ -29,29 +29,34 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [appVersion, setAppVersion] = useState('');
   const [versionOpen, setVersionOpen] = useState(false);
+  const versionRef = useRef<HTMLDivElement>(null);
   const [stats, setStats] = useState<DashboardStats>({
-    total: 0,
-    drafts: 0,
-    submitted: 0,
-    approved: 0,
-    rejected: 0,
+    total: 0, drafts: 0, submitted: 0, approved: 0, rejected: 0,
   });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      navigate('/login');
-    }
+    if (!isAuthenticated) navigate('/login');
   }, [isAuthenticated, navigate]);
 
   useEffect(() => {
     getVersion().then(setAppVersion).catch(() => {});
   }, []);
 
+  // Cerrar el dropdown al hacer click fuera
   useEffect(() => {
-    if (sessionToken && canAccess.reports) {
-      loadStats();
-    }
+    if (!versionOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (versionRef.current && !versionRef.current.contains(e.target as Node)) {
+        setVersionOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [versionOpen]);
+
+  useEffect(() => {
+    if (sessionToken && canAccess.reports) loadStats();
   }, [sessionToken, canAccess.reports]);
 
   const loadStats = async () => {
@@ -59,14 +64,13 @@ export default function Dashboard() {
     setLoading(true);
     try {
       const response = await reportsApi.list(sessionToken, {}, 1, 1000);
-      const newStats: DashboardStats = {
+      setStats({
         total: response.reports.length,
         drafts: response.reports.filter(r => r.status === 'draft').length,
         submitted: response.reports.filter(r => r.status === 'submitted').length,
         approved: response.reports.filter(r => r.status === 'approved').length,
         rejected: response.reports.filter(r => r.status === 'rejected').length,
-      };
-      setStats(newStats);
+      });
     } catch (error) {
       console.error('Error loading dashboard stats:', error);
     } finally {
@@ -85,11 +89,8 @@ export default function Dashboard() {
     }
     if (canAccess.approvals) {
       actions.push({
-        icon: '✅',
-        title: 'Aprobaciones',
-        description: stats.submitted > 0
-          ? `${stats.submitted} pendiente${stats.submitted !== 1 ? 's' : ''}`
-          : 'Revisar reportes enviados',
+        icon: '✅', title: 'Aprobaciones',
+        description: stats.submitted > 0 ? `${stats.submitted} pendiente${stats.submitted !== 1 ? 's' : ''}` : 'Revisar reportes enviados',
         href: '/approvals',
       });
     }
@@ -109,7 +110,7 @@ export default function Dashboard() {
       {/* Version badge dropdown */}
       {appVersion && (
         <div className="flex justify-end mb-4">
-          <div className="relative">
+          <div className="relative" ref={versionRef}>
             <button
               onClick={() => setVersionOpen(v => !v)}
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800 rounded-full hover:bg-green-100 dark:hover:bg-green-900/40 transition-colors"
