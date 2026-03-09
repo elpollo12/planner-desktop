@@ -1,35 +1,53 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { invoke } from '@tauri-apps/api/core';
-import { check } from '@tauri-apps/plugin-updater';
+import { check, type Update } from '@tauri-apps/plugin-updater';
 import { relaunch } from '@tauri-apps/plugin-process';
 import type {
   UpdatePreferences,
   SaveUpdatePreferencesInput,
   CheckUpdateResponse,
-  UpdateState,
   UpdateCheckStatus,
 } from '../types/updates';
+import type { PreInstallStep } from '../components/modals/InstallConfirmModal';
 
 /**
- * Updates Store
+ * Updates Store — flujo completo para NSIS/Windows:
  *
- * apiUrl is set automatically when the admin links a sync server (SyncSettings → handleConnect).
- * If empty, checkForUpdate skips the API call and falls back directly to the Tauri updater
- * (GitHub Releases), so the app always works even without a linked server.
+ *  1. checkForUpdate()      → detecta update, cachea objeto Update de Tauri
+ *  2. downloadUpdate()      → SOLO descarga el binario → status 'ready'
+ *  3. prepareInstall()      → backup DB + sync push → status 'confirming'
+ *  4. installAndRelaunch()  → install() + relaunch() — ÚNICO cierre de proceso
+ *
+ * El objeto Update de Tauri (no serializable) se guarda en _pendingUpdate,
+ * una ref de módulo fuera de Zustand. Nunca se persiste.
+ * updateState tampoco se persiste: siempre arranca en 'idle' al reiniciar.
  */
 
+let _pendingUpdate: Update | null = null;
+
+type ConfirmingState = {
+  status: 'confirming';
+  release: import('../types/updates').ApiRelease;
+  steps: PreInstallStep[];
+  preparing: boolean;
+  readyToInstall: boolean;
+};
+
+type ExtendedUpdateState =
+  | import('../types/updates').UpdateState
+  | ConfirmingState;
+
 interface UpdatesState {
-  // State
   preferences: UpdatePreferences | null;
-  updateState: UpdateState;
+  updateState: ExtendedUpdateState;
   currentVersion: string;
-  
-  // Actions
+
   loadPreferences: (sessionToken: string) => Promise<void>;
   savePreferences: (sessionToken: string, input: SaveUpdatePreferencesInput) => Promise<void>;
   checkForUpdate: (sessionToken?: string) => Promise<void>;
-  downloadAndInstall: () => Promise<void>;
+  downloadUpdate: () => Promise<void>;
+  prepareInstall: (sessionToken: string | null) => Promise<void>;
   installAndRelaunch: () => Promise<void>;
   postponeUpdate: (sessionToken: string, version: string) => Promise<void>;
   dismissUpdate: () => void;
@@ -43,22 +61,11 @@ export const useUpdatesStore = create<UpdatesState>()(
       updateState: { status: 'idle' },
       currentVersion: '',
 
-      setApiUrl: (_url: string) => { /* no-op: URL is managed by sync_config.json in Rust */ },
-
       loadPreferences: async (sessionToken: string) => {
         try {
-          const prefs = await invoke<UpdatePreferences | null>('get_update_preferences', {
-            sessionToken,
-          });
-          
-          const status = await invoke<UpdateCheckStatus>('get_update_status', {
-            sessionToken,
-          });
-          
-          set({ 
-            preferences: prefs,
-            currentVersion: status.currentVersion,
-          });
+          const prefs = await invoke<UpdatePreferences | null>('get_update_preferences', { sessionToken });
+          const status = await invoke<UpdateCheckStatus>('get_update_status', { sessionToken });
+          set({ preferences: prefs, currentVersion: status.currentVersion });
         } catch (error) {
           console.error('[Updates] Failed to load preferences:', error);
         }
@@ -66,10 +73,7 @@ export const useUpdatesStore = create<UpdatesState>()(
 
       savePreferences: async (sessionToken: string, input: SaveUpdatePreferencesInput) => {
         try {
-          const prefs = await invoke<UpdatePreferences>('save_update_preferences', {
-            sessionToken,
-            input,
-          });
+          const prefs = await invoke<UpdatePreferences>('save_update_preferences', { sessionToken, input });
           set({ preferences: prefs });
         } catch (error) {
           console.error('[Updates] Failed to save preferences:', error);
@@ -80,36 +84,27 @@ export const useUpdatesStore = create<UpdatesState>()(
       checkForUpdate: async (sessionToken?: string) => {
         const { preferences } = get();
         const channel = preferences?.channel ?? 'stable';
-
         try {
           set({ updateState: { status: 'checking' } });
-
-          // Try planner-sync API first for richer metadata.
-          // api_url is omitted — Rust resolves it from sync_config.json automatically.
           try {
-            const response = await invoke<CheckUpdateResponse>('check_for_update_from_api', {
-              channel,
-            });
-
+            const response = await invoke<CheckUpdateResponse>('check_for_update_from_api', { channel });
             if (response.updateAvailable && response.release) {
-              // Check if we can postpone
               let canPostpone = true;
               if (sessionToken) {
-                const status = await invoke<UpdateCheckStatus>('get_update_status', {
-                  sessionToken,
-                });
+                const status = await invoke<UpdateCheckStatus>('get_update_status', { sessionToken });
                 canPostpone = status.canPostpone;
-
-                // Record the check
-                await invoke('record_update_check', { sessionToken }).catch(() => {});
+                invoke('record_update_check', { sessionToken }).catch(() => {});
               }
-
+              try {
+                const tauriUpdate = await check();
+                if (tauriUpdate) {
+                  _pendingUpdate = tauriUpdate;
+                }
+              } catch (e) {
+                console.warn('[Updates] Tauri pre-fetch failed (non-fatal):', e);
+              }
               set({
-                updateState: {
-                  status: 'available',
-                  release: response.release,
-                  canPostpone,
-                },
+                updateState: { status: 'available', release: response.release, canPostpone },
                 currentVersion: response.currentVersion,
               });
               return;
@@ -118,22 +113,17 @@ export const useUpdatesStore = create<UpdatesState>()(
             console.warn('[Updates] API check failed, falling back to Tauri:', apiError);
           }
 
-          // Fallback to Tauri updater (GitHub releases)
           const update = await check();
           if (update) {
+            _pendingUpdate = update;
             set({
               updateState: {
                 status: 'available',
                 release: {
-                  version: update.version,
-                  channel: 'stable',
+                  version: update.version, channel: 'stable',
                   pubDate: update.date ?? new Date().toISOString(),
-                  notes: update.body ?? '',
-                  breakingChanges: false,
-                  asset: {
-                    url: '',
-                    signature: '',
-                  },
+                  notes: update.body ?? '', breakingChanges: false,
+                  asset: { url: '', signature: '' },
                 },
                 canPostpone: true,
               },
@@ -147,71 +137,144 @@ export const useUpdatesStore = create<UpdatesState>()(
         }
       },
 
-      downloadAndInstall: async () => {
+      downloadUpdate: async () => {
         const { updateState, currentVersion } = get();
-
         if (updateState.status !== 'available') return;
-
         const release = updateState.release;
-
         try {
           set({ updateState: { status: 'downloading', progress: 0 } });
-
-          // Use Tauri updater for actual download
-          const update = await check();
-          if (!update) {
-            throw new Error('No update available');
+          if (!_pendingUpdate) {
+            _pendingUpdate = await check();
           }
+          if (!_pendingUpdate) throw new Error('No se encontró actualización disponible');
 
           let downloadedBytes = 0;
           let totalBytes = 0;
-
-          await update.downloadAndInstall((event) => {
+          await _pendingUpdate.download((event) => {
             if (event.event === 'Started') {
               totalBytes = event.data.contentLength ?? 0;
             } else if (event.event === 'Progress') {
               downloadedBytes += event.data.chunkLength;
-              const progress = totalBytes > 0
-                ? Math.round((downloadedBytes / totalBytes) * 100)
-                : 0;
+              const progress = totalBytes > 0 ? Math.round((downloadedBytes / totalBytes) * 100) : 0;
               set({ updateState: { status: 'downloading', progress } });
-            } else if (event.event === 'Finished') {
-              set({ updateState: { status: 'ready' } });
             }
           });
 
-          // Record download to API for statistics (api_url resolved by Rust from sync_config)
-          try {
-            await invoke('record_download_to_api', {
-              version: release.version,
-              fromVersion: currentVersion,
-            });
-          } catch {
-            // Ignore stats errors
-          }
+          invoke('record_download_to_api', {
+            version: release.version, fromVersion: currentVersion,
+          }).catch(() => {});
 
           set({ updateState: { status: 'ready' } });
         } catch (error: any) {
           console.error('[Updates] Download failed:', error);
-          set({
-            updateState: {
-              status: 'error',
-              message: error?.message || 'Error al descargar la actualización',
-            },
-          });
+          _pendingUpdate = null;
+          set({ updateState: { status: 'error', message: error?.message || 'Error al descargar' } });
         }
       },
 
+      prepareInstall: async (sessionToken: string | null) => {
+        const { updateState } = get();
+        const release = (updateState as any).release ?? {
+          version: '?', channel: 'stable', pubDate: '', notes: '', breakingChanges: false,
+          asset: { url: '', signature: '' },
+        };
+
+        const steps: PreInstallStep[] = [
+          { id: 'backup', label: 'Copia de seguridad de la base de datos', status: 'pending' },
+          { id: 'sync',   label: 'Sincronizando datos pendientes con el servidor', status: 'pending' },
+        ];
+
+        set({
+          updateState: {
+            status: 'confirming' as any,
+            release,
+            steps,
+            preparing: true,
+            readyToInstall: false,
+          },
+        });
+
+        const updateStep = (id: PreInstallStep['id'], patch: Partial<PreInstallStep>) => {
+          set((state) => {
+            const curr = state.updateState as ConfirmingState;
+            return {
+              updateState: {
+                ...curr,
+                steps: curr.steps.map((s) => s.id === id ? { ...s, ...patch } : s),
+              },
+            };
+          });
+        };
+
+        // ── Paso 1: Backup ──────────────────────────────────────────────────
+        updateStep('backup', { status: 'running' });
+        try {
+          if (!sessionToken) throw new Error('No hay sesión activa');
+          const result = await invoke<{ success: boolean; backupPath: string; sizeBytes: number }>(
+            'backup_database', { sessionToken }
+          );
+          const sizeKb = Math.round(result.sizeBytes / 1024);
+          updateStep('backup', { status: 'ok', detail: `${sizeKb} KB guardados` });
+        } catch (err: any) {
+          console.error('[Updates] Backup failed:', err);
+          updateStep('backup', { status: 'warning', detail: 'No se pudo crear backup — continuar con precaución' });
+        }
+
+        // ── Paso 2: Sync push ───────────────────────────────────────────────
+        updateStep('sync', { status: 'running' });
+        try {
+          if (!sessionToken) throw new Error('No hay sesión activa');
+          const syncStatus = await invoke<{ configured: boolean; enabled: boolean }>(
+            'get_sync_status', { sessionToken }
+          );
+          if (!syncStatus.configured || !syncStatus.enabled) {
+            updateStep('sync', { status: 'ok', detail: 'Sincronización no configurada — omitido' });
+          } else {
+            const result = await invoke<{ success: boolean; recordsPushed: number; errors: string[] }>(
+              'sync_push', { sessionToken }
+            );
+            if (result.success) {
+              updateStep('sync', { status: 'ok', detail: `${result.recordsPushed} registros enviados` });
+            } else {
+              const firstError = result.errors[0] ?? 'Error desconocido';
+              updateStep('sync', { status: 'warning', detail: firstError });
+            }
+          }
+        } catch (err: any) {
+          console.error('[Updates] Pre-install sync failed:', err);
+          updateStep('sync', { status: 'warning', detail: 'No se pudo sincronizar — continuar con precaución' });
+        }
+
+        set((state) => ({
+          updateState: {
+            ...(state.updateState as ConfirmingState),
+            preparing: false,
+            readyToInstall: true,
+          },
+        }));
+      },
+
       installAndRelaunch: async () => {
-        await relaunch();
+        if (!_pendingUpdate) {
+          console.warn('[Updates] _pendingUpdate lost — using relaunch fallback');
+          await relaunch();
+          return;
+        }
+        try {
+          await _pendingUpdate.install();
+          _pendingUpdate = null;
+          await relaunch();
+        } catch (error: any) {
+          console.error('[Updates] Install failed:', error);
+          _pendingUpdate = null;
+          set({ updateState: { status: 'error', message: error?.message || 'Error al instalar' } });
+        }
       },
 
       postponeUpdate: async (sessionToken: string, version: string) => {
         try {
-          await invoke('postpone_update', {
-            sessionToken,
-            input: { version },
-          });
+          await invoke('postpone_update', { sessionToken, input: { version } });
+          _pendingUpdate = null;
           set({ updateState: { status: 'idle' } });
         } catch (error) {
           console.error('[Updates] Postpone failed:', error);
@@ -220,20 +283,18 @@ export const useUpdatesStore = create<UpdatesState>()(
       },
 
       dismissUpdate: () => {
+        _pendingUpdate = null;
         set({ updateState: { status: 'idle' } });
       },
 
       clearState: () => {
-        set({
-          preferences: null,
-          updateState: { status: 'idle' },
-        });
+        _pendingUpdate = null;
+        set({ preferences: null, updateState: { status: 'idle' } });
       },
     }),
     {
       name: 'updates-storage',
       partialize: (state) => ({
-        // Only persist preferences cache — URL is always read from sync_config.json by Rust
         preferences: state.preferences,
       }),
     }
