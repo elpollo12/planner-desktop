@@ -46,7 +46,7 @@ function CompanyCard({ company, logoDataUrl, onEdit, onDelete, onUploadLogo, onR
     >
       <div className="flex items-start gap-4">
         {/* Logo */}
-        <div className="relative group flex-shrink-0">
+        <div className="relative group shrink-0">
           <div className="w-14 h-14 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center bg-white dark:bg-gray-700 overflow-hidden">
             {logoDataUrl ? (
               <img src={logoDataUrl} alt={company.name} className="w-full h-full object-contain" />
@@ -91,7 +91,7 @@ function CompanyCard({ company, logoDataUrl, onEdit, onDelete, onUploadLogo, onR
         </div>
 
         {/* Actions */}
-        <div className="flex gap-1 flex-shrink-0">
+        <div className="flex gap-1 shrink-0">
           <Button variant="ghost" size="sm" onClick={() => onEdit(company)} title="Editar">
             <Pencil className="w-4 h-4" />
           </Button>
@@ -235,7 +235,7 @@ function CompanySection({
                   <button
                     key={p}
                     onClick={() => setPage(p)}
-                    className={`min-w-[28px] h-7 rounded-md text-xs font-medium transition-colors ${
+                    className={`min-w-7 h-7 rounded-md text-xs font-medium transition-colors ${
                       p === page
                         ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900'
                         : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'

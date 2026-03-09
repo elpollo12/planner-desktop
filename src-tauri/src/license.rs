@@ -1,9 +1,45 @@
 use ed25519_dalek::{Signature, Verifier, VerifyingKey};
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
-/// Ed25519 public key embedded at compile time (32 bytes raw)
-const LICENSE_PUBLIC_KEY: &[u8; 32] = include_bytes!("../license_pub.key");
+/// Ed25519 public key embedded at compile time — used as fallback only
+const LICENSE_PUBLIC_KEY_FALLBACK: &[u8; 32] = include_bytes!("../license_pub.key");
+
+/// Load the Ed25519 public key.
+/// Priority:
+///   1. <resource_dir>/license_pub.key  (producción: Tauri resource dir)
+///   2. <exe_dir>/../../keys/license_pub.key  (desarrollo: planner-desktop/keys/)
+///   3. Clave embebida en el binario (fallback)
+fn load_public_key(resource_dir: &Path) -> [u8; 32] {
+    let candidates: Vec<PathBuf> = vec![
+        // Producción: Tauri resource dir
+        resource_dir.join("license_pub.key"),
+        // Desarrollo: planner-desktop/keys/license_pub.key
+        std::env::current_exe()
+            .ok()
+            .and_then(|p| {
+                // target/debug/ → ../.. → src-tauri → .. → planner-desktop
+                p.parent()?.parent()?.parent()
+                    .map(|d| d.join("keys").join("license_pub.key"))
+            })
+            .unwrap_or_default(),
+    ];
+
+    for path in &candidates {
+        if path.exists() {
+            if let Ok(bytes) = std::fs::read(path) {
+                if bytes.len() == 32 {
+                    let mut arr = [0u8; 32];
+                    arr.copy_from_slice(&bytes);
+                    return arr;
+                }
+            }
+        }
+    }
+
+    // Fallback: clave embebida
+    *LICENSE_PUBLIC_KEY_FALLBACK
+}
 
 /// License payload — the data that gets signed
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -70,10 +106,9 @@ fn check_expiry(expiry: Option<&str>) -> bool {
 }
 
 /// Verify the Ed25519 signature of a license payload
-fn verify_signature(payload: &LicensePayload, signature_b64: &str) -> Result<(), String> {
+fn verify_signature(payload: &LicensePayload, signature_b64: &str, resource_dir: &Path) -> Result<(), String> {
     use base64::{engine::general_purpose, Engine as _};
 
-    // Decode signature from base64
     let sig_bytes = general_purpose::STANDARD
         .decode(signature_b64)
         .map_err(|e| format!("Firma inválida (base64): {}", e))?;
@@ -81,15 +116,13 @@ fn verify_signature(payload: &LicensePayload, signature_b64: &str) -> Result<(),
     let signature = Signature::from_slice(&sig_bytes)
         .map_err(|e| format!("Firma inválida (Ed25519): {}", e))?;
 
-    // Load public key
-    let verifying_key = VerifyingKey::from_bytes(LICENSE_PUBLIC_KEY)
+    let pub_key_bytes = load_public_key(resource_dir);
+    let verifying_key = VerifyingKey::from_bytes(&pub_key_bytes)
         .map_err(|e| format!("Error cargando clave pública: {}", e))?;
 
-    // Serialize payload to canonical JSON for verification
     let payload_json = serde_json::to_string(payload)
         .map_err(|e| format!("Error serializando payload: {}", e))?;
 
-    // Verify
     verifying_key
         .verify(payload_json.as_bytes(), &signature)
         .map_err(|_| "Licencia inválida: firma no válida".to_string())
@@ -113,10 +146,9 @@ fn get_license_path() -> Result<PathBuf, String> {
 }
 
 /// Decode a license key (base64-encoded JSON) and verify it
-pub fn verify_license_key(license_key: &str) -> Result<License, String> {
+pub fn verify_license_key(license_key: &str, resource_dir: &Path) -> Result<License, String> {
     use base64::{engine::general_purpose, Engine as _};
 
-    // Decode the license key from base64
     let json_bytes = general_purpose::STANDARD
         .decode(license_key.trim())
         .map_err(|e| format!("Clave de licencia inválida (formato): {}", e))?;
@@ -124,14 +156,11 @@ pub fn verify_license_key(license_key: &str) -> Result<License, String> {
     let json_str = String::from_utf8(json_bytes)
         .map_err(|e| format!("Clave de licencia inválida (UTF-8): {}", e))?;
 
-    // Parse the license
     let license: License = serde_json::from_str(&json_str)
         .map_err(|e| format!("Clave de licencia inválida (JSON): {}", e))?;
 
-    // Verify signature
-    verify_signature(&license.payload, &license.signature)?;
+    verify_signature(&license.payload, &license.signature, resource_dir)?;
 
-    // Check expiry
     if !check_expiry(license.payload.expiry.as_deref()) {
         return Err("Licencia expirada".to_string());
     }
@@ -180,20 +209,18 @@ fn delete_license_from_disk() -> Result<(), String> {
 }
 
 /// Activate a license: verify + save + return info
-pub fn activate_license(license_key: &str) -> Result<LicenseInfo, String> {
-    let license = verify_license_key(license_key)?;
+pub fn activate_license(license_key: &str, resource_dir: &Path) -> Result<LicenseInfo, String> {
+    let license = verify_license_key(license_key, resource_dir)?;
     save_license_to_disk(&license)?;
     Ok(LicenseInfo::from(&license.payload))
 }
 
 /// Get current license status
-pub fn get_license_status() -> Result<Option<LicenseInfo>, String> {
+pub fn get_license_status(resource_dir: &Path) -> Result<Option<LicenseInfo>, String> {
     match load_license()? {
         None => Ok(None),
         Some(license) => {
-            // Re-verify signature to prevent file tampering
-            verify_signature(&license.payload, &license.signature)?;
-
+            verify_signature(&license.payload, &license.signature, resource_dir)?;
             let info = LicenseInfo::from(&license.payload);
             Ok(Some(info))
         }
