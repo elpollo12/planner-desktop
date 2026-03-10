@@ -47,9 +47,12 @@ fn load_public_key(resource_dir: &Path) -> [u8; 32] {
 pub struct LicensePayload {
     pub id: String,
     pub customer: String,
+    pub tenant: String,        // Slug del cliente en planner-sync (ej: "pdvsa-occidente")
+    pub api_endpoint: String,  // URL del servidor planner-sync asignado al cliente
     pub issued_at: String,
     pub expiry: Option<String>, // None = lifetime license
-    pub max_users: u32,
+    /// None = usuarios ilimitados
+    pub max_users: Option<u32>,
 }
 
 /// Full license with payload + signature
@@ -66,9 +69,12 @@ pub struct License {
 pub struct LicenseInfo {
     pub id: String,
     pub customer: String,
+    pub tenant: String,
+    pub api_endpoint: String,
     pub issued_at: String,
     pub expiry: Option<String>,
-    pub max_users: u32,
+    /// None = usuarios ilimitados
+    pub max_users: Option<u32>,
     pub is_valid: bool,
     pub is_lifetime: bool,
 }
@@ -85,6 +91,8 @@ impl From<&LicensePayload> for LicenseInfo {
         Self {
             id: p.id.clone(),
             customer: p.customer.clone(),
+            tenant: p.tenant.clone(),
+            api_endpoint: p.api_endpoint.clone(),
             issued_at: p.issued_at.clone(),
             expiry: p.expiry.clone(),
             max_users: p.max_users,

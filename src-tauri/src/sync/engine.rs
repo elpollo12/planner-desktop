@@ -22,7 +22,7 @@ const SYNC_TABLES: &[TableDef] = &[
         columns: &[
             "id", "username", "password_hash", "full_name", "ci", "role",
             "position", "active", "has_all_rigs", "supervisor_id", "last_login", "created_by", "updated_by",
-            "created_at", "updated_at", "is_deleted",
+            "created_at", "updated_at", "is_deleted", "company_id",
         ],
         id_col: "id",
         has_updated_at: true,
@@ -47,7 +47,7 @@ const SYNC_TABLES: &[TableDef] = &[
     },
     TableDef {
         name: "companies",
-        columns: &["id", "name", "logo", "company_type", "active", "is_deleted", "created_at", "updated_at"],
+        columns: &["id", "name", "logo", "company_type", "active", "is_deleted", "created_at", "updated_at", "slug"],
         id_col: "id", has_updated_at: true, parent_col: None, skip_cleanup: false,
     },
     TableDef {
@@ -806,6 +806,25 @@ pub async fn push_data_to_server(
         errors: result.errors,
         timestamp: result.timestamp,
     })
+}
+
+/// Convert a list of TablePayloads (from PullResponse) to the indexed format
+/// expected by write_pulled_data. Tables not found in SYNC_TABLES are ignored.
+pub fn pull_response_to_indexed(
+    table_payloads: &[crate::sync::sync_client::TablePayload],
+) -> Vec<(usize, Vec<Vec<TursoValue>>)> {
+    let mut pulled_data: Vec<(usize, Vec<Vec<TursoValue>>)> = Vec::new();
+    for table_payload in table_payloads {
+        if let Some(idx) = SYNC_TABLES.iter().position(|t| t.name == table_payload.name) {
+            let rows: Vec<Vec<TursoValue>> = table_payload.rows.iter()
+                .map(|row| row.iter().map(TursoValue::from).collect())
+                .collect();
+            if !rows.is_empty() {
+                pulled_data.push((idx, rows));
+            }
+        }
+    }
+    pulled_data
 }
 
 /// Pull data from planner-sync server, returns data to be written locally.
