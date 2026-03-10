@@ -205,47 +205,6 @@ impl SyncClient {
             .map_err(|e| format!("Error parseando respuesta de push: {e}"))
     }
 
-    /// Bootstrap handshake — público, sin JWT.
-    /// Devuelve las tablas mínimas para que el login funcione en una instalación nueva.
-    pub async fn handshake(&self, tenant: &str) -> Result<PullResponse, String> {
-        let body = serde_json::json!({ "tenant": tenant });
-
-        let resp = self.client
-            .post(format!("{}/api/v1/sync/handshake", self.base_url))
-            .json(&body)
-            .send()
-            .await
-            .map_err(|e| format!("Error de conexión al handshake: {e}"))?;
-
-        if !resp.status().is_success() {
-            let status = resp.status();
-            let body = resp.text().await.unwrap_or_default();
-            // 403 = tenant inválido o empresa inactiva (licencia revocada)
-            if status == reqwest::StatusCode::FORBIDDEN {
-                return Err("Licencia no válida o empresa inactiva en el servidor.".to_string());
-            }
-            return Err(format!("Handshake fallido ({}): {}", status, body));
-        }
-
-        // El servidor retorna { tables, recordsSynced } — adaptamos a PullResponse
-        // para reutilizar la lógica de write_pulled_data del engine.
-        #[derive(serde::Deserialize)]
-        #[serde(rename_all = "camelCase")]
-        struct HandshakeResponse {
-            tables: Vec<TablePayload>,
-            records_synced: u32,
-        }
-
-        let handshake: HandshakeResponse = resp.json().await
-            .map_err(|e| format!("Error parseando respuesta de handshake: {e}"))?;
-
-        Ok(PullResponse {
-            tables: handshake.tables,
-            records_pulled: handshake.records_synced,
-            timestamp: chrono::Utc::now().to_rfc3339(),
-        })
-    }
-
     /// Pull tables from planner-sync (incremental or full).
     pub async fn pull(&self, since: Option<&str>) -> Result<PullResponse, String> {
         let auth = self.auth_header()?;

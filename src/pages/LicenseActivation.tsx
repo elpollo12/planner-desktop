@@ -2,11 +2,11 @@
 import { useLicenseStore } from '../store/licenseStore';
 import { useAppSettingsStore } from '../store/appSettingsStore';
 import { Button, Card } from '../components/ui';
-import { KeyRound, CheckCircle, AlertCircle, Loader2, CloudDownload } from 'lucide-react';
+import { KeyRound, CheckCircle, AlertCircle } from 'lucide-react';
 
 export default function LicenseActivation() {
   const [licenseKey, setLicenseKey] = useState('');
-  const { activateLicense, isLoading, error, license, handshake } = useLicenseStore();
+  const { activateLicense, isLoading, error, license } = useLicenseStore();
   const { settings } = useAppSettingsStore();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -102,40 +102,12 @@ export default function LicenseActivation() {
             size="lg"
             className="w-full"
             loading={isLoading}
-            disabled={isLoading || handshake.status === 'loading' || !licenseKey.trim()}
+            disabled={isLoading || !licenseKey.trim()}
             icon={<CheckCircle size={18} />}
           >
             Activar Licencia
           </Button>
         </form>
-
-        {/* Feedback handshake */}
-        {handshake.status === 'loading' && (
-          <div className="flex items-center gap-2 mt-4 p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
-            <Loader2 size={16} className="text-blue-500 animate-spin shrink-0" />
-            <p className="text-sm text-blue-700 dark:text-blue-300">
-              Sincronizando configuración inicial con el servidor…
-            </p>
-          </div>
-        )}
-
-        {handshake.status === 'done' && handshake.recordsSynced > 0 && (
-          <div className="flex items-center gap-2 mt-4 p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
-            <CloudDownload size={16} className="text-green-600 dark:text-green-400 shrink-0" />
-            <p className="text-sm text-green-700 dark:text-green-300">
-              {handshake.recordsSynced} registros descargados del servidor.
-            </p>
-          </div>
-        )}
-
-        {handshake.status === 'error' && (
-          <div className="flex items-center gap-2 mt-4 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
-            <AlertCircle size={16} className="text-amber-600 dark:text-amber-400 shrink-0" />
-            <p className="text-sm text-amber-700 dark:text-amber-300">
-              No se pudo contactar el servidor. El administrador deberá ejecutar una sincronización manual.
-            </p>
-          </div>
-        )}
 
         <p className="text-[10px] text-gray-400 dark:text-gray-600 text-center mt-6">
           Contacte a su administrador si no posee una clave de licencia.
@@ -144,4 +116,3 @@ export default function LicenseActivation() {
     </div>
   );
 }
-

@@ -195,7 +195,6 @@ pub fn run() {
             commands::license::activate_license,
             commands::license::get_license_status,
             commands::license::deactivate_license,
-            commands::license::sync_handshake,
             commands::last_report_snapshot::get_last_report_snapshot,
             commands::last_report_snapshot::update_report_snapshot,
             commands::report_reviews::create_report_review,
