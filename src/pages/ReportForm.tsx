@@ -24,6 +24,7 @@ import { transformFormToReportData } from '../lib/reportHelpers';
 import { toast } from '../lib/toast';
 import { backgroundPush } from '../lib/syncHelper';
 import { WIZARD_TABS, DEFAULT_REPORT_VALUES } from '../types/reportForm';
+import { useTranslation } from 'react-i18next';
 
 // Import form sections & step components
 import { RigSelectionStep } from '../components/forms/RigSelectionStep';
@@ -46,6 +47,7 @@ export default function ReportForm() {
   const navigate = useNavigate();
   const { sessionToken, user } = useAuthStore();
   const { openModal } = useModal();
+  const { t } = useTranslation();
 
   // Loading states (kept here because they're used in handleSaveDraft/onSubmit)
   const [isSaving, setIsSaving] = useState(false);
@@ -134,11 +136,11 @@ export default function ReportForm() {
     opts: { submit?: boolean } = {},
   ): Promise<void> => {
     if (!sessionToken) {
-      toast.error('No hay sesión activa');
+      toast.error(t('reports.form.noSession'));
       return;
     }
     if (!isHeaderValid) {
-      toast.error('Completa el encabezado antes de guardar');
+      toast.error(t('reports.form.completeHeader'));
       return;
     }
 
@@ -149,12 +151,12 @@ export default function ReportForm() {
     // ── Phase 1: Save data (header + sections) — no status changes yet ──
     if (currentReportId) {
       await reportsApi.update(sessionToken, currentReportId, reportData);
-      if (!opts.submit) toast.success('Reporte actualizado');
+      if (!opts.submit) toast.success(t('reports.form.updated'));
     } else {
       const newReport = await reportsApi.create(sessionToken, reportData);
       currentReportId = newReport.id;
       setReportId(currentReportId);
-      if (!opts.submit) toast.success('Reporte guardado como borrador');
+      if (!opts.submit) toast.success(t('reports.form.savedAsDraft'));
     }
 
     await saveAllSections(currentReportId);
@@ -164,7 +166,7 @@ export default function ReportForm() {
 
     // Safety guard: approved reports should not be re-submitted through this flow
     if (opts.submit && originalStatus === 'approved') {
-      toast.error('Un reporte aprobado no puede ser re-enviado directamente. Contacta a un administrador.');
+      toast.error(t('reports.form.approvedCannotResubmit'));
       return;
     }
 
@@ -178,9 +180,7 @@ export default function ReportForm() {
       } catch (submitError) {
         // Submit failed after reopen — report is stuck in draft
         console.error('[ReportForm] Submit failed after reopen:', submitError);
-        toast.error(
-          'Los datos se guardaron pero el envío falló. El reporte quedó como borrador. Intenta enviarlo de nuevo.',
-        );
+        toast.error(t('reports.form.submitFailedAfterReopen'));
         // Refresh so UI reflects the actual draft state
         await loadReport(currentReportId).catch(() => {});
         // Don't rethrow — data IS saved, only the status transition failed
@@ -200,7 +200,7 @@ export default function ReportForm() {
     clearAutoSave();
     backgroundPush(sessionToken);
 
-    if (opts.submit) toast.success('Reporte enviado exitosamente');
+    if (opts.submit) toast.success(t('reports.form.submittedSuccess'));
     navigate('/reports');
   };
 
@@ -210,7 +210,7 @@ export default function ReportForm() {
       await persistReport(formData);
     } catch (error) {
       console.error('Error saving draft:', error);
-      toast.error(`Error al guardar: ${error}`);
+      toast.error(t('reports.form.errorSaving', { error: String(error) }));
     } finally {
       setIsSaving(false);
     }
@@ -222,7 +222,7 @@ export default function ReportForm() {
       await persistReport(formData, { submit: true });
     } catch (error) {
       console.error('Error submitting report:', error);
-      toast.error(`Error al enviar el reporte: ${error}`);
+      toast.error(t('reports.form.errorSubmitting', { error: String(error) }));
     } finally {
       setIsSubmitting(false);
     }
@@ -245,7 +245,7 @@ export default function ReportForm() {
   // Clear all data from the active section, resetting it to defaults
   const handleClearSection = () => {
     const defaults = DEFAULT_REPORT_VALUES;
-    const sectionName = currentTab?.label ?? 'Sección';
+    const sectionName = currentTab ? t(currentTab.labelKey) : t('reports.form.selectSection');
     switch (activeTab) {
       case 'crew':
         methods.setValue('crew', defaults.crew!, { shouldDirty: true });
@@ -272,7 +272,7 @@ export default function ReportForm() {
         return;
     }
     setActiveTab('none');
-    toast.success(`Sección "${sectionName}" ha sido borrada exitosamente`);
+    toast.success(t('reports.form.sectionCleared', { name: sectionName }));
   };
 
   const handleFormKeyDown = (e: React.KeyboardEvent<HTMLFormElement>) => {
@@ -290,7 +290,7 @@ export default function ReportForm() {
 
   if (isLoadingReport) {
     return (
-      <MainLayout title="Cargando reporte...">
+      <MainLayout title={t('reports.form.loadingReport')}>
         <div className="flex items-center justify-center h-64">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500" />
         </div>
@@ -302,15 +302,15 @@ export default function ReportForm() {
     <FormProvider {...methods}>
       <form onSubmit={(e) => e.preventDefault()} onKeyDown={handleFormKeyDown}>
         <MainLayout
-          title={isEditMode ? 'Editar Reporte DDR' : 'Nuevo Reporte DDR'}
+          title={isEditMode ? t('reports.form.editTitle') : t('reports.form.newTitle')}
           subtitle={
             isEditMode
-              ? `Reporte #${existingReport?.reportNumber || id}`
+              ? t('reports.form.editSubtitle', { number: existingReport?.reportNumber || id })
               : wizardStep === 'rig'
-                ? 'Paso 1: Selecciona el taladro'
+                ? t('reports.form.step1Subtitle')
                 : wizardStep === 'header'
-                  ? 'Paso 2: Completa el encabezado del reporte'
-                  : 'Paso 3: Selecciona y llena una sección'
+                  ? t('reports.form.step2Subtitle')
+                  : t('reports.form.step3Subtitle')
           }
           headerActions={
             <div className="flex gap-2 items-center flex-wrap">
@@ -324,7 +324,7 @@ export default function ReportForm() {
                     disabled={!canEdit}
                     icon={<Save size={16} />}
                   >
-                    Guardar Borrador
+                    {t('reports.form.saveDraft')}
                   </Button>
 
                   <Button
@@ -335,7 +335,7 @@ export default function ReportForm() {
                     disabled={!canEdit}
                     icon={<Send size={16} />}
                   >
-                    Enviar Reporte
+                    {t('reports.form.submitReport')}
                   </Button>
                 </>
               )}
@@ -389,11 +389,11 @@ export default function ReportForm() {
                           <div className="flex items-center gap-2 mb-2">
                             <CheckCircle2 className="text-green-600" size={20} />
                             <h3 className="font-semibold text-green-900 dark:text-green-100">
-                              {sectionsWithData.length} Sección{sectionsWithData.length > 1 ? 'es' : ''} con Datos
+                              {t('reports.form.sectionsWithData', { count: sectionsWithData.length })}
                             </h3>
                           </div>
                           <p className="text-sm text-green-800 dark:text-green-200">
-                            Al guardar, se registrarán: <strong>{sectionsWithData.map(t => t.label).join(', ')}</strong>
+                            {t('reports.form.sectionsWillSave')} <strong>{sectionsWithData.map(tab => t(tab.labelKey)).join(', ')}</strong>
                           </p>
                         </div>
                       </Card>
@@ -411,10 +411,10 @@ export default function ReportForm() {
                       </div>
                       <div>
                         <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                          Selecciona una Sección
+                          {t('reports.form.selectSection')}
                         </h2>
                         <p className="text-sm text-gray-600 dark:text-gray-400">
-                          Elige el tipo de reporte que deseas completar
+                          {t('reports.form.selectSectionDesc')}
                         </p>
                       </div>
                     </div>
@@ -424,7 +424,7 @@ export default function ReportForm() {
                       {WIZARD_TABS.map((tab) => {
                         const isActive = activeTab === tab.id;
                         const isFailed = failedSections.has(tab.id);
-                        const summary = isFailed ? '⚠ Error al cargar' : getSectionSummary(tab.id);
+                        const summary = isFailed ? t('reports.form.loadError') : getSectionSummary(tab.id);
 
                         return (
                           <button
@@ -446,14 +446,14 @@ export default function ReportForm() {
                               <div className="flex-1">
                                 <h3 className={`font-semibold mb-1 ${isActive ? 'text-primary-700 dark:text-primary-400' : 'text-gray-900 dark:text-gray-100'
                                   }`}>
-                                  {tab.label}
+                                  {t(tab.labelKey)}
                                 </h3>
                                 <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">
-                                  {tab.description}
+                                  {t(tab.descriptionKey)}
                                 </p>
                                 <p className={`text-xs font-medium ${isFailed
                                     ? 'text-amber-600 dark:text-amber-400'
-                                    : summary !== 'Sin datos'
+                                    : summary !== t('reports.form.noData')
                                       ? 'text-green-600 dark:text-green-400'
                                       : 'text-gray-500 dark:text-gray-500'
                                   }`}>
@@ -477,10 +477,10 @@ export default function ReportForm() {
                     <div className="flex flex-col items-center justify-center py-16 text-center">
                       <span className="text-4xl mb-4">📋</span>
                       <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                        Selecciona una pestaña para ingresar datos
+                        {t('reports.form.selectTabPrompt')}
                       </h3>
                       <p className="text-sm text-gray-500 dark:text-gray-400">
-                        Elige una de las secciones de arriba para comenzar a llenar la información del reporte.
+                        {t('reports.form.selectTabDesc')}
                       </p>
                     </div>
                                       <div className='flex justify-end items-end'>
@@ -492,7 +492,7 @@ export default function ReportForm() {
                     onClick={handleCancel}
                     icon={<ChevronLeft size={20} />}
                   >
-                    Cancelar
+                    {t('actions.cancel')}
                   </Button>
                   </div>
                   </Card>
@@ -503,10 +503,10 @@ export default function ReportForm() {
                       <span className="text-2xl">{currentTab?.icon}</span>
                       <div>
                         <h3 className="font-semibold text-gray-900 dark:text-gray-100">
-                          {currentTab?.label}
+                          {currentTab ? t(currentTab.labelKey) : ''}
                         </h3>
                         <p className="text-sm text-gray-600 dark:text-gray-400">
-                          {currentTab?.description}
+                          {currentTab ? t(currentTab.descriptionKey) : ''}
                         </p>
                       </div>
                     </div>
@@ -520,7 +520,7 @@ export default function ReportForm() {
                         icon={<Trash2 size={14} />}
                         className="text-red-600 border-red-300 hover:bg-red-50 dark:text-red-400 dark:border-red-700 dark:hover:bg-red-900/20"
                       >
-                        Limpiar sección
+                        {t('reports.form.clearSection')}
                       </Button>
                     )}
                   </div>
@@ -536,7 +536,7 @@ export default function ReportForm() {
                     onClick={handleCancel}
                     icon={<ChevronLeft size={20} />}
                   >
-                    Cancelar
+                    {t('actions.cancel')}
                   </Button>
                   </div>
                 </Card>
@@ -552,7 +552,7 @@ export default function ReportForm() {
                     disabled={!canEdit}
                     className="flex-1"
                   >
-                    Guardar
+                    {t('reports.form.save')}
                   </Button>
                   <Button
                     variant="primary"
@@ -562,7 +562,7 @@ export default function ReportForm() {
                     disabled={!canEdit}
                     className="flex-1"
                   >
-                    Enviar
+                    {t('reports.form.send')}
                   </Button>
                 </div>
               </>

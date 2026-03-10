@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import i18next from 'i18next';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -17,10 +19,10 @@ import type { Rig } from '@/types/rig';
 // ─── Schemas ──────────────────────────────────────────────────────────────────
 
 const userDataSchema = z.object({
-  username:     z.string().min(3, 'Mínimo 3 caracteres').max(50, 'Máximo 50 caracteres'),
-  password:     z.string().min(6, 'Mínimo 6 caracteres'),
-  fullName:     z.string().max(100, 'Máximo 100 caracteres').optional().or(z.literal('')),
-  ci:           z.string().max(20,  'Máximo 20 caracteres').optional().or(z.literal('')),
+  username:     z.string().min(3, i18next.t('admin.forms.minChars', { count: 3 })).max(50, i18next.t('admin.forms.maxChars', { count: 50 })),
+  password:     z.string().min(6, i18next.t('admin.forms.minChars', { count: 6 })),
+  fullName:     z.string().max(100, i18next.t('admin.forms.maxChars', { count: 100 })).optional().or(z.literal('')),
+  ci:           z.string().max(20,  i18next.t('admin.forms.maxChars', { count: 20 })).optional().or(z.literal('')),
   role:         z.enum(['admin', 'supervisor', 'operator']),
   supervisorId: z.string().optional(),
 });
@@ -89,15 +91,16 @@ interface StepFooterProps {
 }
 
 function StepFooter({ onBack, onContinue, continueLabel, loading, disabled }: StepFooterProps) {
+  const { t } = useTranslation();
   return (
     <div className="flex justify-between gap-3 pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">
       {onBack ? (
         <Button type="button" variant="ghost" onClick={onBack} icon={<ChevronLeft size={15} />}>
-          Atrás
+          {t('admin.forms.back')}
         </Button>
       ) : (
         <Button type="button" variant="outline" onClick={() => useModalStore.getState().closeModal()}>
-          Cancelar
+          {t('admin.forms.cancel')}
         </Button>
       )}
       <Button
@@ -208,6 +211,7 @@ interface StepUserDataProps {
 }
 
 function StepUserData({ wizard, supervisors, onContinue }: StepUserDataProps) {
+  const { t } = useTranslation();
   const [showPassword, setShowPassword] = useState(false);
   const [submitting,   setSubmitting]   = useState(false);
 
@@ -246,25 +250,25 @@ function StepUserData({ wizard, supervisors, onContinue }: StepUserDataProps) {
     <div className="flex flex-col min-h-[55vh] h-full">
       <div className="flex-1 space-y-4">
         <p className="text-sm text-gray-500 dark:text-gray-400">
-          Ingresa las credenciales e información del nuevo usuario.
+          {t('admin.forms.enterCredentials')}
         </p>
 
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-              Usuario <span className="text-red-500">*</span>
+              {t('admin.forms.username')} <span className="text-red-500">*</span>
             </label>
             <Input
               {...register('username')}
-              placeholder="Ej: juan.perez"
+              placeholder={t('admin.forms.usernamePlaceholder')}
               error={errors.username?.message}
               autoComplete="off"
             />
-            <p className="mt-0.5 text-[11px] text-gray-400">Sin espacios, mín. 3 caracteres</p>
+            <p className="mt-0.5 text-[11px] text-gray-400">{t('admin.forms.usernameHint')}</p>
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-              Contraseña <span className="text-red-500">*</span>
+              {t('admin.forms.password')} <span className="text-red-500">*</span>
             </label>
             <div className="relative w-full">
               <input
@@ -290,60 +294,60 @@ function StepUserData({ wizard, supervisors, onContinue }: StepUserDataProps) {
             {errors.password && (
               <p className="mt-1 text-xs text-red-600">{errors.password.message}</p>
             )}
-            <p className="mt-0.5 text-[11px] text-gray-400">Mín. 6 caracteres</p>
+            <p className="mt-0.5 text-[11px] text-gray-400">{t('admin.forms.passwordHint')}</p>
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Nombre Completo</label>
-            <Input {...register('fullName')} placeholder="Ej: Juan Pérez" error={errors.fullName?.message} />
+            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">{t('admin.forms.fullName')}</label>
+            <Input {...register('fullName')} placeholder={t('admin.forms.fullNamePlaceholder')} error={errors.fullName?.message} />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Cédula (CI)</label>
-            <Input {...register('ci')} placeholder="Ej: 12345678" error={errors.ci?.message} />
+            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">{t('admin.forms.idCard')}</label>
+            <Input {...register('ci')} placeholder={t('admin.forms.idCardPlaceholder')} error={errors.ci?.message} />
           </div>
         </div>
 
         <div>
           <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-            Rol <span className="text-red-500">*</span>
+            {t('admin.forms.role')} <span className="text-red-500">*</span>
           </label>
           <Select
             {...register('role')}
             options={[
-              { value: 'operator',   label: 'Operador'      },
-              { value: 'supervisor', label: 'Supervisor'    },
-              { value: 'admin',      label: 'Administrador' },
+              { value: 'operator',   label: t('admin.forms.operator')      },
+              { value: 'supervisor', label: t('admin.forms.supervisorRole')    },
+              { value: 'admin',      label: t('admin.forms.admin') },
             ]}
           />
           <p className="mt-0.5 text-[11px] text-gray-400">
             {role === 'admin'
-              ? 'Acceso completo al sistema, sin restricciones'
+              ? t('admin.forms.roleHintAdmin')
               : role === 'supervisor'
-              ? 'Puede aprobar reportes y ver todos los datos de sus taladros'
-              : 'Crea reportes y registros operacionales'}
+              ? t('admin.forms.roleHintSupervisor')
+              : t('admin.forms.roleHintOperator')}
           </p>
         </div>
 
         {role === 'operator' && (
           <div>
             <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-              Supervisor <span className="text-red-500">*</span>
+              {t('admin.forms.supervisor')} <span className="text-red-500">*</span>
             </label>
             <Select
               {...register('supervisorId')}
               options={[
-                { value: '', label: 'Seleccionar supervisor...' },
+                { value: '', label: t('admin.forms.selectSupervisor') },
                 ...supervisors.map((s) => ({ value: s.id, label: s.fullName || s.username })),
               ]}
             />
-            <p className="mt-0.5 text-[11px] text-gray-400">El supervisor aprobará los reportes de este operador</p>
+            <p className="mt-0.5 text-[11px] text-gray-400">{t('admin.forms.supervisorHint')}</p>
           </div>
         )}
       </div>
 
-      <StepFooter onBack={null} onContinue={handleContinue} continueLabel="Continuar" loading={submitting} />
+      <StepFooter onBack={null} onContinue={handleContinue} continueLabel={t('admin.forms.continue')} loading={submitting} />
     </div>
   );
 }
@@ -360,6 +364,7 @@ interface StepRigsProps {
 }
 
 function StepRigs({ wizard, rigs, onBack, onContinue }: StepRigsProps) {
+  const { t } = useTranslation();
   const isAdmin = wizard.role === 'admin';
   const noRigs  = !isAdmin && rigs.length === 0;
 
@@ -377,7 +382,7 @@ function StepRigs({ wizard, rigs, onBack, onContinue }: StepRigsProps) {
 
   const handleContinue = async () => {
     if (!isAdmin && !hasAllRigs && assignedRigIds.length === 0) {
-      setError('Asigna al menos un taladro o activa "Acceso a todos"');
+      setError(t('admin.forms.assignAtLeastOneRig'));
       return;
     }
     setError('');
@@ -397,8 +402,8 @@ function StepRigs({ wizard, rigs, onBack, onContinue }: StepRigsProps) {
         <div className="flex items-center justify-between">
           <p className="text-sm text-gray-500 dark:text-gray-400">
             {isAdmin
-              ? 'Los administradores tienen acceso automático a todos los taladros.'
-              : 'Define a qué taladros tendrá acceso este usuario.'}
+              ? t('admin.forms.adminAutoAccess')
+              : t('admin.forms.defineRigAccess')}
           </p>
           {!isAdmin && !noRigs && (
             <label className="flex items-center gap-2 cursor-pointer shrink-0">
@@ -412,7 +417,7 @@ function StepRigs({ wizard, rigs, onBack, onContinue }: StepRigsProps) {
                 }}
                 className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
               />
-              <span className="text-sm text-gray-700 dark:text-gray-300">Acceso a todos</span>
+              <span className="text-sm text-gray-700 dark:text-gray-300">{t('admin.forms.accessAll')}</span>
             </label>
           )}
         </div>
@@ -421,7 +426,7 @@ function StepRigs({ wizard, rigs, onBack, onContinue }: StepRigsProps) {
         {isAdmin ? (
           <div className="rounded-lg bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 px-4 py-3">
             <p className="text-sm text-purple-700 dark:text-purple-300">
-              Este usuario tendrá acceso a todos los taladros presentes y futuros.
+              {t('admin.forms.adminAllRigsNote')}
             </p>
           </div>
         ) : noRigs ? (
@@ -429,19 +434,17 @@ function StepRigs({ wizard, rigs, onBack, onContinue }: StepRigsProps) {
             <span className="text-amber-500 dark:text-amber-400 shrink-0 mt-0.5">⚠</span>
             <div className="space-y-1">
               <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
-                No hay taladros disponibles
+                {t('admin.forms.noRigsAvailable')}
               </p>
               <p className="text-xs text-amber-700 dark:text-amber-400">
-                Un usuario activo debe tener al menos un taladro asignado. Crea un taladro
-                desde la sección <span className="font-semibold">Taladros</span> del panel
-                de administración antes de continuar.
+                {t('admin.forms.noRigsHint')}
               </p>
             </div>
           </div>
         ) : hasAllRigs ? (
           <div className="rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 px-4 py-3">
             <p className="text-sm text-green-700 dark:text-green-300">
-              Acceso completo a todos los taladros del sistema.
+              {t('admin.forms.fullRigAccess')}
             </p>
           </div>
         ) : (
@@ -453,7 +456,7 @@ function StepRigs({ wizard, rigs, onBack, onContinue }: StepRigsProps) {
                   onClick={() => { setAssignedRigIds(rigs.map((r) => r.id)); setError(''); }}
                   className="text-xs text-primary-600 hover:text-primary-800 dark:text-primary-400"
                 >
-                  Seleccionar todos
+                  {t('admin.forms.selectAll')}
                 </button>
                 <span className="text-gray-300 dark:text-gray-600">|</span>
                 <button
@@ -461,10 +464,10 @@ function StepRigs({ wizard, rigs, onBack, onContinue }: StepRigsProps) {
                   onClick={() => setAssignedRigIds([])}
                   className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400"
                 >
-                  Deseleccionar todos
+                  {t('admin.forms.deselectAll')}
                 </button>
               </div>
-              <span className="text-xs text-gray-400">{assignedRigIds.length} seleccionados</span>
+              <span className="text-xs text-gray-400">{t('admin.forms.selected', { count: assignedRigIds.length })}</span>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-56 overflow-y-auto pr-1">
@@ -504,7 +507,7 @@ function StepRigs({ wizard, rigs, onBack, onContinue }: StepRigsProps) {
       <StepFooter
         onBack={onBack}
         onContinue={handleContinue}
-        continueLabel={wizard.role === 'admin' ? 'Crear Usuario' : 'Continuar'}
+        continueLabel={wizard.role === 'admin' ? t('admin.forms.createUser') : t('admin.forms.continue')}
         loading={submitting}
         disabled={noRigs}
       />
@@ -523,6 +526,7 @@ interface StepPermissionsProps {
 }
 
 function StepPermissions({ wizard, onBack, onContinue }: StepPermissionsProps) {
+  const { t } = useTranslation();
   const [perms,      setPerms]      = useState<Record<AppModule, boolean>>({ ...wizard.modulePermissions });
   const [submitting, setSubmitting] = useState(false);
 
@@ -543,7 +547,7 @@ function StepPermissions({ wizard, onBack, onContinue }: StepPermissionsProps) {
       <div className="flex-1 space-y-4">
         <div className="flex items-center justify-between">
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Personaliza los módulos a los que tendrá acceso este usuario.
+            {t('admin.forms.customizeModules')}
           </p>
           {hasAnyOverride && (
             <button
@@ -552,7 +556,7 @@ function StepPermissions({ wizard, onBack, onContinue }: StepPermissionsProps) {
               className="flex items-center gap-1.5 text-xs text-primary-600 hover:text-primary-800 dark:text-primary-400 shrink-0"
             >
               <RotateCcw size={12} />
-              Restaurar defaults
+              {t('admin.forms.restoreDefaults')}
             </button>
           )}
         </div>
@@ -583,7 +587,7 @@ function StepPermissions({ wizard, onBack, onContinue }: StepPermissionsProps) {
                 </div>
                 {overridden && (
                   <span className="text-[10px] px-1.5 py-0.5 rounded-full text-amber-700 bg-amber-100 dark:bg-amber-900/30 dark:text-amber-400">
-                    personalizado
+                    {t('admin.forms.customized')}
                   </span>
                 )}
               </label>
@@ -592,7 +596,7 @@ function StepPermissions({ wizard, onBack, onContinue }: StepPermissionsProps) {
         </div>
       </div>
 
-      <StepFooter onBack={onBack} onContinue={handleContinue} continueLabel="Crear Usuario" loading={submitting} />
+      <StepFooter onBack={onBack} onContinue={handleContinue} continueLabel={t('admin.forms.createUser')} loading={submitting} />
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import i18n from '../lib/i18n';
 import type { User, LoginResponse, ModulePermissions } from '../types';
 import { invoke } from '@tauri-apps/api/core';
 import { modulePermissionsApi } from '../lib/api';
@@ -45,7 +46,7 @@ export const useAuthStore = create<AuthState>()(
                 response.sessionToken,
               ) as ModulePermissions;
             } catch {
-              throw 'No se pudieron cargar tus permisos de acceso. Por favor, intenta de nuevo.';
+              throw i18n.t('auth.errors.permissionsLoadFailed');
             }
           }
 
@@ -61,14 +62,16 @@ export const useAuthStore = create<AuthState>()(
           useConnectionStore.getState().checkConnection(response.sessionToken);
         } catch (error) {
           const rawError = error as string;
-          // Map backend error messages to user-friendly Spanish messages
+          // Map backend error messages to user-friendly translated messages
           let errorMessage = rawError;
-          if (rawError.includes('User account is disabled')) {
-            errorMessage = 'Tu cuenta está desactivada. Contacta al administrador para más información.';
+          if (rawError.includes('Rate limit exceeded')) {
+            errorMessage = i18n.t('auth.errors.rateLimited');
+          } else if (rawError.includes('User account is disabled')) {
+            errorMessage = i18n.t('auth.errors.disabled');
           } else if (rawError.includes('Invalid password')) {
-            errorMessage = 'Contraseña incorrecta.';
+            errorMessage = i18n.t('auth.errors.invalidPassword');
           } else if (rawError.includes('Authentication failed')) {
-            errorMessage = 'Credenciales inválidas. Verifica tu usuario y contraseña.';
+            errorMessage = i18n.t('auth.errors.invalidCredentials');
           }
           set({
             user: null,
@@ -126,7 +129,7 @@ export const useAuthStore = create<AuthState>()(
               sessionToken: null,
               isAuthenticated: false,
               isLoading: false,
-              error: 'Tu cuenta ha sido desactivada. Contacta al administrador.',
+              error: i18n.t('auth.errors.accountDeactivated'),
             });
             return;
           }
@@ -153,6 +156,11 @@ export const useAuthStore = create<AuthState>()(
             isAuthenticated: true,
             isLoading: false,
             error: null,
+          });
+
+          // Extend session expiry on app startup (fire and forget)
+          invoke('refresh_session', { sessionToken }).catch((err) => {
+            console.error('Failed to refresh session:', err);
           });
 
           // Check connection status on session restore (fire and forget)

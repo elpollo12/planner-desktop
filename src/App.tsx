@@ -7,7 +7,6 @@ import { useAuthStore } from './store/authStore';
 import { useLicenseStore } from './store/licenseStore';
 import { usePreferencesStore } from './store/preferencesStore';
 import { useAppSettingsStore } from './store/appSettingsStore';
-import { useModal } from './store/modalStore';
 import { useThemeApplicator, applyThemeToDOM } from './hooks/useThemeApplicator';
 import { useAutoSync } from './hooks/useAutoSync';
 import { useConnectionPing } from './hooks/useConnectionPing';
@@ -30,7 +29,6 @@ import Forbidden from './pages/Forbidden';
 import Profile from './pages/Profile';
 import { RoleGuard } from './components/guards';
 import { canViewReport } from './lib/permissions';
-import { HandshakeResultContent, type HandshakeOutcome } from './components/ui/HandshakeResultModal';
 import './App.css';
 
 interface HandshakeResult {
@@ -51,10 +49,9 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 function App() {
   const { sessionToken, getCurrentUser, isAuthenticated } = useAuthStore();
-  const { isLicensed, isLoading: licenseLoading, checkLicense, license } = useLicenseStore();
+  const { isLicensed, isLoading: licenseLoading, checkLicense } = useLicenseStore();
   const { loadPreferences, clearPreferences } = usePreferencesStore();
   const { loadSettings } = useAppSettingsStore();
-  const { openModal } = useModal();
   const [validating, setValidating] = useState(true);
   const [bootstrapping, setBootstrapping] = useState(false);
   // Check license on startup
@@ -62,46 +59,25 @@ function App() {
     checkLicense();
   }, []);
 
-  // Cuando la licencia queda validada, hacer handshake y mostrar resultado en modal.
+  // Cuando la licencia queda validada, hacer handshake silencioso (sin modal).
+  // El modal solo se muestra al activar una licencia nueva (en LicenseActivation.tsx).
   useEffect(() => {
     if (!isLicensed || licenseLoading || bootstrapDone) return;
     bootstrapDone = true;
     setBootstrapping(true);
 
-    const tenant = license?.tenant ?? '';
-
     invoke<HandshakeResult>('sync_handshake')
       .then(async (result) => {
         await loadSettings().catch(() => {});
-
-        let outcome: HandshakeOutcome;
         if (result.success) {
-          outcome = { type: 'success', tablesWritten: result.tablesWritten, tenant };
-        } else if (result.error?.includes('tenant no') || result.error?.includes('403') || result.error?.includes('not found')) {
-          outcome = { type: 'tenant_not_found', tenant };
+          console.log(`[Handshake] OK — ${result.tablesWritten} tablas sincronizadas`);
         } else {
-          outcome = { type: 'error', message: result.error ?? 'Error desconocido' };
+          console.warn('[Handshake] Error:', result.error);
         }
-
-        openModal(<HandshakeResultContent outcome={outcome} />, {
-          title: 'Estado de conexión al servidor',
-          size: 'sm',
-          showCloseButton: false,
-          closeOnOutsideClick: false,
-          closeOnEsc: false,
-        });
       })
       .catch((err: unknown) => {
         loadSettings().catch(() => {});
-        const message = err instanceof Error ? err.message : String(err);
-        const outcome: HandshakeOutcome = { type: 'error', message };
-        openModal(<HandshakeResultContent outcome={outcome} />, {
-          title: 'Estado de conexion al servidor',
-          size: 'sm',
-          showCloseButton: false,
-          closeOnOutsideClick: false,
-          closeOnEsc: false,
-        });
+        console.warn('[Handshake] Error:', err);
       })
       .finally(() => setBootstrapping(false));
   }, [isLicensed, licenseLoading]);

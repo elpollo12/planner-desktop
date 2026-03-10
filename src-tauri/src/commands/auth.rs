@@ -3,6 +3,7 @@ use crate::models::user::User;
 use crate::notification_helper;
 use crate::state::{self, AppState, SessionInfo};
 use serde::{Deserialize, Serialize};
+use std::time::{Duration, Instant};
 use tauri::State;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -18,6 +19,30 @@ pub async fn login(
     password: String,
     state: State<'_, AppState>,
 ) -> Result<LoginResponse, String> {
+    // Rate limiting: 5 attempts per minute per username
+    {
+        const MAX_ATTEMPTS: usize = 5;
+        const WINDOW: Duration = Duration::from_secs(60);
+
+        let mut attempts = state
+            .login_attempts
+            .lock()
+            .map_err(|e| format!("Internal error: {}", e))?;
+
+        let now = Instant::now();
+        let entry = attempts.entry(username.to_lowercase()).or_default();
+
+        // Remove attempts older than the window
+        entry.retain(|t| now.duration_since(*t) < WINDOW);
+
+        if entry.len() >= MAX_ATTEMPTS {
+            return Err("Rate limit exceeded: Too many login attempts".to_string());
+        }
+
+        // Record this attempt before password check
+        entry.push(now);
+    }
+
     // Get database connection
     let conn = state
         .db
@@ -118,4 +143,42 @@ pub async fn get_current_user(
     let user = User::get_by_id(&conn, &session.user_id).map_err(|e| e.to_string())?;
 
     Ok(user)
+}
+
+#[tauri::command]
+pub async fn refresh_session(
+    session_token: String,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    // Verify the session is valid (includes expiry check)
+    let _session = get_session(&session_token, &state).map_err(|e| e.to_string())?;
+
+    // Extend expiry by 30 days from now
+    let new_expires_at = (chrono::Utc::now() + chrono::Duration::days(30)).to_rfc3339();
+
+    // Update in-memory session
+    {
+        let mut sessions = state
+            .sessions
+            .lock()
+            .map_err(|e| format!("Failed to lock sessions: {}", e))?;
+
+        if let Some(session_info) = sessions.get_mut(&session_token) {
+            session_info.expires_at = new_expires_at.clone();
+        }
+    }
+
+    // Update in SQLite
+    let conn = state
+        .db
+        .lock()
+        .map_err(|e| format!("Failed to lock database: {}", e))?;
+
+    conn.execute(
+        "UPDATE sessions SET expires_at = ?1 WHERE token = ?2",
+        rusqlite::params![&new_expires_at, &session_token],
+    )
+    .map_err(|e| format!("Failed to update session expiry: {}", e))?;
+
+    Ok(())
 }

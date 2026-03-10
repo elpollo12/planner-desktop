@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'react-toastify';
@@ -33,12 +34,13 @@ const CREW_POSITIONS = [
 
 type EditTab = 'personal' | 'basics' | 'area' | 'operator' | 'contractors';
 
-const EDIT_TABS: { id: EditTab; label: string; icon: React.ReactNode }[] = [
-  { id: 'basics',      label: 'General',      icon: <Settings2 size={14} /> },
-  { id: 'area',        label: 'Área',         icon: <MapPin    size={14} /> },
-  { id: 'operator',    label: 'Operadora',    icon: <Building2 size={14} /> },
-  { id: 'contractors', label: 'Contratistas', icon: <HardHat   size={14} /> },
-  { id: 'personal',    label: 'Personal',     icon: <Users     size={14} /> },
+// Tab labels are resolved via t() inside the component to support i18n
+const EDIT_TAB_IDS: { id: EditTab; icon: React.ReactNode }[] = [
+  { id: 'basics',      icon: <Settings2 size={14} /> },
+  { id: 'area',        icon: <MapPin    size={14} /> },
+  { id: 'operator',    icon: <Building2 size={14} /> },
+  { id: 'contractors', icon: <HardHat   size={14} /> },
+  { id: 'personal',    icon: <Users     size={14} /> },
 ];
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -54,6 +56,7 @@ export interface RigUpdateFormProps {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function RigUpdateForm({ rig, onSubmit, onContractorsChanged }: RigUpdateFormProps) {
+  const { t } = useTranslation();
   const { sessionToken } = useAuthStore();
   const [activeTab, setActiveTab] = useState<EditTab>('basics');
 
@@ -70,21 +73,29 @@ export default function RigUpdateForm({ rig, onSubmit, onContractorsChanged }: R
 
   // ── Tab bar ────────────────────────────────────────────────────────────────
 
+  const tabLabels: Record<EditTab, string> = {
+    basics: t('admin.forms.tabGeneral'),
+    area: t('admin.forms.tabArea'),
+    operator: t('admin.forms.tabOperator'),
+    contractors: t('admin.forms.tabContractors'),
+    personal: t('admin.forms.tabPersonnel'),
+  };
+
   const TabBar = () => (
     <div className="flex border-b border-gray-200 dark:border-gray-700 mb-4 -mx-1">
-      {EDIT_TABS.map((t) => (
+      {EDIT_TAB_IDS.map((tab) => (
         <button
-          key={t.id}
+          key={tab.id}
           type="button"
-          onClick={() => setActiveTab(t.id)}
+          onClick={() => setActiveTab(tab.id)}
           className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium border-b-2 transition-colors whitespace-nowrap ${
-            activeTab === t.id
+            activeTab === tab.id
               ? 'border-primary-500 text-primary-600 dark:text-primary-400'
               : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
           }`}
         >
-          {t.icon}
-          {t.label}
+          {tab.icon}
+          {tabLabels[tab.id]}
         </button>
       ))}
     </div>
@@ -106,7 +117,7 @@ export default function RigUpdateForm({ rig, onSubmit, onContractorsChanged }: R
       try {
         await onSubmit({ name: out.name, power: out.power, active: out.active });
         setLocalRig((r) => ({ ...r, name: out.name, power: out.power, active: out.active }));
-        toast.success('Datos generales actualizados');
+        toast.success(t('admin.forms.basicsUpdated'));
       } finally {
         setSaving(false);
       }
@@ -115,27 +126,27 @@ export default function RigUpdateForm({ rig, onSubmit, onContractorsChanged }: R
     return (
       <div className="space-y-4 min-h-[50vh]">
         <p className="text-sm text-gray-500 dark:text-gray-400">
-          Nombre, potencia y estado operativo del taladro.
+          {t('admin.forms.basicsDescription')}
         </p>
         <div>
           <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-            Nombre <span className="text-red-500">*</span>
+            {t('admin.forms.rigName')} <span className="text-red-500">*</span>
           </label>
-          <Input {...register('name')} placeholder="Ej: TAL-001" error={errors.name?.message} />
+          <Input {...register('name')} placeholder={t('admin.forms.rigNamePlaceholder')} error={errors.name?.message} />
         </div>
         <div>
           <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-            Potencia <span className="text-red-500">*</span>
+            {t('admin.forms.power')} <span className="text-red-500">*</span>
           </label>
-          <Input {...register('power')} placeholder="Ej: 2000 HP" error={errors.power?.message} />
+          <Input {...register('power')} placeholder={t('admin.forms.powerPlaceholder')} error={errors.power?.message} />
         </div>
         <label className="flex items-center gap-2 cursor-pointer select-none">
           <input type="checkbox" {...register('active')} className="h-4 w-4 rounded text-primary-600 border-gray-300" />
-          <span className="text-sm text-gray-700 dark:text-gray-300">Taladro activo</span>
+          <span className="text-sm text-gray-700 dark:text-gray-300">{t('admin.forms.active')}</span>
         </label>
         <div className="flex justify-end pt-2">
           <Button type="button" variant="primary" size="sm" loading={saving} disabled={!isDirty} onClick={onSave}>
-            Guardar cambios
+            {t('admin.forms.saveChanges')}
           </Button>
         </div>
       </div>
@@ -179,20 +190,20 @@ export default function RigUpdateForm({ rig, onSubmit, onContractorsChanged }: R
         setSelectedArea(a);
         setShowInline(false);
         resetInline();
-        toast.success(`Área "${a.name}" creada`);
-      } catch { toast.error('Error al crear el área'); }
+        toast.success(t('admin.forms.areaCreated', { name: a.name }));
+      } catch { toast.error(t('admin.forms.areaCreateError')); }
       finally { setInlineSaving(false); }
     };
 
     const handleSave = async () => {
-      if (!selectedId) { setError('Debes seleccionar un área'); return; }
+      if (!selectedId) { setError(t('admin.forms.areaRequired')); return; }
       setSaving(true);
       try {
         await onSubmit({ areaId: selectedId });
         const area = selectedArea ?? areas.find((a) => a.id === selectedId);
         setLocalRig((r) => ({ ...r, areaId: selectedId, areaName: area?.name ?? r.areaName }));
         setError('');
-        toast.success('Área actualizada');
+        toast.success(t('admin.forms.areaUpdated'));
       } finally { setSaving(false); }
     };
 
@@ -202,12 +213,12 @@ export default function RigUpdateForm({ rig, onSubmit, onContractorsChanged }: R
       <div className="space-y-4 min-h-[50vh]">
         <div className="flex items-center justify-between">
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Área geográfica donde opera este taladro.
+            {t('admin.forms.areaDescription')}
           </p>
           {!showInline && (
             <Button type="button" variant="outline" size="sm" icon={<Plus size={13} />}
               onClick={() => setShowInline(true)}>
-              Nueva
+              {t('admin.forms.new')}
             </Button>
           )}
         </div>
@@ -215,21 +226,21 @@ export default function RigUpdateForm({ rig, onSubmit, onContractorsChanged }: R
         {showInline && (
           <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/10 p-3 space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-blue-700 dark:text-blue-300 uppercase tracking-wide">Nueva área</span>
+              <span className="text-xs font-semibold text-blue-700 dark:text-blue-300 uppercase tracking-wide">{t('admin.forms.newArea')}</span>
               <button type="button" onClick={() => { setShowInline(false); resetInline(); }}>
                 <X size={14} className="text-gray-400" />
               </button>
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div className="col-span-2">
-                <Input {...regInline('name')} placeholder="Nombre del área" error={inlineErrors.name?.message} />
+                <Input {...regInline('name')} placeholder={t('admin.forms.areaNamePlaceholder')} error={inlineErrors.name?.message} />
               </div>
               <div>
-                <label className="block text-xs text-gray-500 mb-1">País</label>
+                <label className="block text-xs text-gray-500 mb-1">{t('admin.forms.country')}</label>
                 <input
                   {...regInline('country')}
                   list="update-tab-country-list"
-                  placeholder="País"
+                  placeholder={t('admin.forms.country')}
                   className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
                 <datalist id="update-tab-country-list">
@@ -240,17 +251,17 @@ export default function RigUpdateForm({ rig, onSubmit, onContractorsChanged }: R
                 )}
               </div>
               <div>
-                <label className="block text-xs text-gray-500 mb-1">Estado / Región</label>
+                <label className="block text-xs text-gray-500 mb-1">{t('admin.forms.stateRegion')}</label>
                 {isVenezuela ? (
                   <select
                     {...regInline('state')}
                     className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   >
-                    <option value="">Seleccionar estado...</option>
+                    <option value="">{t('admin.forms.selectState')}</option>
                     {VENEZUELA_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
                   </select>
                 ) : (
-                  <Input {...regInline('state')} placeholder="Estado / Región" error={inlineErrors.state?.message} />
+                  <Input {...regInline('state')} placeholder={t('admin.forms.stateRegion')} error={inlineErrors.state?.message} />
                 )}
                 {isVenezuela && inlineErrors.state && (
                   <p className="text-xs text-red-500 mt-0.5">{inlineErrors.state.message}</p>
@@ -260,17 +271,17 @@ export default function RigUpdateForm({ rig, onSubmit, onContractorsChanged }: R
             <div className="flex justify-end">
               <Button type="button" variant="primary" size="sm" loading={inlineSaving}
                 onClick={handleInline(handleCreateArea)}>
-                Guardar área
+                {t('admin.forms.saveArea')}
               </Button>
             </div>
           </div>
         )}
 
         {loadingAreas ? (
-          <div className="py-4 text-center text-sm text-gray-400">Cargando áreas...</div>
+          <div className="py-4 text-center text-sm text-gray-400">{t('admin.forms.loadingAreas')}</div>
         ) : (
           <SearchableSelect
-            label="Área geográfica" required placeholder="Seleccionar área..."
+            label={t('admin.forms.geographicArea')} required placeholder={t('admin.forms.selectArea')}
             value={selectedId} options={areaOptions}
             onChange={(v) => { setSelectedId(v); setSelectedArea(areas.find((a) => a.id === v) ?? null); setError(''); }}
           />
@@ -294,7 +305,7 @@ export default function RigUpdateForm({ rig, onSubmit, onContractorsChanged }: R
           <Button type="button" variant="primary" size="sm" loading={saving}
             disabled={!selectedId || selectedId === localRig.areaId}
             onClick={handleSave}>
-            Guardar área
+            {t('admin.forms.saveArea')}
           </Button>
         </div>
       </div>
@@ -334,20 +345,20 @@ export default function RigUpdateForm({ rig, onSubmit, onContractorsChanged }: R
         setSelectedOp(op);
         setShowInline(false);
         resetInline();
-        toast.success(`Operadora "${op.name}" creada`);
-      } catch { toast.error('Error al crear operadora'); }
+        toast.success(t('admin.forms.operatorCreated', { name: op.name }));
+      } catch { toast.error(t('admin.forms.operatorCreateError')); }
       finally { setInlineSaving(false); }
     };
 
     const handleSave = async () => {
-      if (!selectedId) { setError('Debes seleccionar una operadora'); return; }
+      if (!selectedId) { setError(t('admin.forms.operatorRequired')); return; }
       setSaving(true);
       try {
         const op = selectedOp ?? operators.find((o) => o.id === selectedId);
         await onSubmit({ operatorId: selectedId, operator: op?.name });
         setLocalRig((r) => ({ ...r, operatorId: selectedId, operatorName: op?.name ?? r.operatorName }));
         setError('');
-        toast.success('Operadora actualizada');
+        toast.success(t('admin.forms.operatorUpdated'));
       } finally { setSaving(false); }
     };
 
@@ -357,19 +368,19 @@ export default function RigUpdateForm({ rig, onSubmit, onContractorsChanged }: R
       <div className="space-y-4 min-h-[50vh]">
         <div className="flex items-center justify-between">
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Empresa operadora responsable de este taladro.
+            {t('admin.forms.operatorDescription')}
           </p>
           {!showInline && (
             <Button type="button" variant="outline" size="sm" icon={<Plus size={13} />}
               onClick={() => setShowInline(true)}>
-              Nueva
+              {t('admin.forms.new')}
             </Button>
           )}
         </div>
 
         {showInline && (
           <InlineCompanyForm
-            label="Nueva operadora" placeholder="Ej: PDVSA, Chevron"
+            label={t('admin.forms.newOperator')} placeholder={t('admin.forms.operatorPlaceholder')}
             saving={inlineSaving} errors={inlineErrors} register={regInline}
             onCancel={() => { setShowInline(false); resetInline(); }}
             onSave={handleInline(handleCreateOp)}
@@ -377,10 +388,10 @@ export default function RigUpdateForm({ rig, onSubmit, onContractorsChanged }: R
         )}
 
         {loadingOps ? (
-          <div className="py-4 text-center text-sm text-gray-400">Cargando operadoras...</div>
+          <div className="py-4 text-center text-sm text-gray-400">{t('admin.forms.loadingOperators')}</div>
         ) : (
           <SearchableSelect
-            label="Operadora" required placeholder="Seleccionar operadora..."
+            label={t('admin.forms.operatorLabel')} required placeholder={t('admin.forms.selectOperator')}
             value={selectedId} options={operatorOptions}
             onChange={(v) => { setSelectedId(v); setSelectedOp(operators.find((o) => o.id === v) ?? null); setError(''); }}
           />
@@ -404,7 +415,7 @@ export default function RigUpdateForm({ rig, onSubmit, onContractorsChanged }: R
           <Button type="button" variant="primary" size="sm" loading={saving}
             disabled={!selectedId || selectedId === localRig.operatorId}
             onClick={handleSave}>
-            Guardar operadora
+            {t('admin.forms.saveOperator')}
           </Button>
         </div>
       </div>
@@ -442,7 +453,7 @@ export default function RigUpdateForm({ rig, onSubmit, onContractorsChanged }: R
         setNewRow(null);
         await load();
       } catch {
-        toast.error('Error al agregar personal');
+        toast.error(t('admin.forms.personnelAddError'));
       } finally {
         setSaving(false);
       }
@@ -461,7 +472,7 @@ export default function RigUpdateForm({ rig, onSubmit, onContractorsChanged }: R
         setEditingId(null);
         await load();
       } catch {
-        toast.error('Error al actualizar personal');
+        toast.error(t('admin.forms.personnelUpdateError'));
       } finally {
         setSaving(false);
       }
@@ -473,14 +484,14 @@ export default function RigUpdateForm({ rig, onSubmit, onContractorsChanged }: R
         await rigPersonnelApi.delete(id);
         await load();
       } catch {
-        toast.error('Error al eliminar personal');
+        toast.error(t('admin.forms.personnelDeleteError'));
       } finally {
         setSaving(false);
       }
     };
 
     const positionOptions = [
-      { value: '', label: 'Seleccionar...' },
+      { value: '', label: t('admin.forms.select') },
       ...CREW_POSITIONS.map((p) => ({ value: p, label: p })),
     ];
 
@@ -494,18 +505,18 @@ export default function RigUpdateForm({ rig, onSubmit, onContractorsChanged }: R
           <Button type="button" variant="secondary" size="sm" icon={<Plus size={14} />}
             disabled={!!newRow || saving}
             onClick={() => setNewRow({ name: '', ci: '', position: '' })}>
-            Agregar
+            {t('admin.forms.add')}
           </Button>
         </div>
 
         {loading ? (
-          <div className="py-6 text-center text-sm text-gray-400">Cargando personal...</div>
+          <div className="py-6 text-center text-sm text-gray-400">{t('admin.forms.loadingPersonnel')}</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm divide-y divide-gray-200 dark:divide-gray-700">
               <thead>
                 <tr className="text-xs text-gray-500 dark:text-gray-400">
-                  {['Nombre', 'CI', 'Posición', 'Estado', ''].map((h) => (
+                  {[t('admin.forms.personnelName'), t('admin.forms.personnelCI'), t('admin.forms.personnelPosition'), t('admin.forms.personnelStatus'), ''].map((h) => (
                     <th key={h} className="px-2 py-2 text-left font-medium">{h}</th>
                   ))}
                 </tr>
@@ -513,15 +524,15 @@ export default function RigUpdateForm({ rig, onSubmit, onContractorsChanged }: R
               <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                 {newRow && (
                   <tr className="bg-blue-50/50 dark:bg-blue-900/10">
-                    <td className="px-2 py-1.5"><Input value={newRow.name} onChange={(e) => setNewRow({ ...newRow, name: e.target.value })} placeholder="Nombre" /></td>
-                    <td className="px-2 py-1.5"><Input value={newRow.ci} onChange={(e) => setNewRow({ ...newRow, ci: e.target.value })} placeholder="CI" /></td>
+                    <td className="px-2 py-1.5"><Input value={newRow.name} onChange={(e) => setNewRow({ ...newRow, name: e.target.value })} placeholder={t('admin.forms.personnelName')} /></td>
+                    <td className="px-2 py-1.5"><Input value={newRow.ci} onChange={(e) => setNewRow({ ...newRow, ci: e.target.value })} placeholder={t('admin.forms.personnelCI')} /></td>
                     <td className="px-2 py-1.5">
                       <select value={newRow.position} onChange={(e) => setNewRow({ ...newRow, position: e.target.value })}
                         className="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-2 py-1.5 focus:outline-none">
                         {positionOptions.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
                       </select>
                     </td>
-                    <td className="px-2 py-1.5 text-xs text-green-600">Activo</td>
+                    <td className="px-2 py-1.5 text-xs text-green-600">{t('admin.forms.active')}</td>
                     <td className="px-2 py-1.5">
                       <div className="flex gap-1">
                         <Button type="button" variant="primary" size="sm" loading={saving}
@@ -536,7 +547,7 @@ export default function RigUpdateForm({ rig, onSubmit, onContractorsChanged }: R
                 {personnel.length === 0 && !newRow && (
                   <tr>
                     <td colSpan={5} className="px-2 py-6 text-center text-xs text-gray-400">
-                      Sin personal — haz clic en "Agregar" para comenzar
+                      {t('admin.forms.noPersonnel')}
                     </td>
                   </tr>
                 )}
@@ -556,7 +567,7 @@ export default function RigUpdateForm({ rig, onSubmit, onContractorsChanged }: R
                         <button type="button" onClick={() => setEditData({ ...editData, active: !editData.active })}
                           className={`flex items-center gap-1 text-xs ${editData.active ? 'text-green-600' : 'text-red-500'}`}>
                           {editData.active ? <UserCheck size={12} /> : <UserX size={12} />}
-                          {editData.active ? 'Activo' : 'Inactivo'}
+                          {editData.active ? t('admin.forms.active') : t('admin.forms.inactive')}
                         </button>
                       </td>
                       <td className="px-2 py-1.5">
@@ -575,7 +586,7 @@ export default function RigUpdateForm({ rig, onSubmit, onContractorsChanged }: R
                       <td className="px-2 py-2 text-gray-600 dark:text-gray-300">{p.defaultPosition}</td>
                       <td className="px-2 py-2">
                         <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${p.active ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-600'}`}>
-                          {p.active ? 'Activo' : 'Inact.'}
+                          {p.active ? t('admin.forms.active') : t('admin.forms.inactive')}
                         </span>
                       </td>
                       <td className="px-2 py-2">
@@ -583,7 +594,7 @@ export default function RigUpdateForm({ rig, onSubmit, onContractorsChanged }: R
                           <button type="button"
                             onClick={() => { setEditingId(p.id); setEditData({ name: p.name, ci: p.ci ?? '', position: p.defaultPosition, active: p.active }); }}
                             className="text-blue-500 hover:text-blue-700 text-xs">
-                            Editar
+                            {t('admin.forms.edit')}
                           </button>
                           <button type="button" onClick={() => handleDelete(p.id)} className="text-red-400 hover:text-red-600">
                             <Trash2 size={13} />
@@ -644,6 +655,7 @@ function TabContractors({
   onSaved,
   onContractorsChanged,
 }: TabContractorsProps) {
+  const { t } = useTranslation();
   const [contractors, setContractors] = useState<Company[]>([]);
   const [loadingCon, setLoadingCon] = useState(true);
   // initialContractors viene como prop estable — no hay closure stale
@@ -677,13 +689,13 @@ function TabContractors({
       setSelected((prev) => [...prev.filter((x) => x.id !== c.id), { id: c.id, name: c.name }]);
       setShowInline(false);
       resetInline();
-      toast.success(`Contratista "${c.name}" creado`);
-    } catch { toast.error('Error al crear contratista'); }
+      toast.success(t('admin.forms.contractorCreated', { name: c.name }));
+    } catch { toast.error(t('admin.forms.contractorCreateError')); }
     finally { setInlineSaving(false); }
   };
 
   const handleSave = async () => {
-    if (selected.length === 0) { setError('Se requiere al menos un contratista'); return; }
+    if (selected.length === 0) { setError(t('admin.forms.contractorRequired')); return; }
     if (!sessionToken) return;
     setSaving(true);
     try {
@@ -693,7 +705,7 @@ function TabContractors({
       // Callback opcional para side-effects externos (ej: backgroundPush)
       await onContractorsChanged?.(rigId, selected.map((s) => s.id));
       setError('');
-      toast.success('Contratistas actualizados');
+      toast.success(t('admin.forms.contractorsUpdated'));
     } finally { setSaving(false); }
   };
 
@@ -701,19 +713,19 @@ function TabContractors({
     <div className="space-y-4 min-h-[50vh]">
       <div className="flex items-center justify-between">
         <p className="text-sm text-gray-500 dark:text-gray-400">
-          Empresas contratistas asignadas a este taladro.
+          {t('admin.forms.contractorsAssignedDescription')}
         </p>
         {!showInline && (
           <Button type="button" variant="outline" size="sm" icon={<Plus size={13} />}
             onClick={() => setShowInline(true)}>
-            Nuevo
+            {t('admin.forms.newMasc')}
           </Button>
         )}
       </div>
 
       {showInline && (
         <InlineCompanyForm
-          label="Nuevo contratista" placeholder="Ej: Schlumberger, Halliburton"
+          label={t('admin.forms.newContractor')} placeholder={t('admin.forms.contractorPlaceholder')}
           saving={inlineSaving} errors={inlineErrors} register={regInline}
           onCancel={() => { setShowInline(false); resetInline(); }}
           onSave={handleInline(handleCreateContractor)}
@@ -721,13 +733,13 @@ function TabContractors({
       )}
 
       {loadingCon ? (
-        <div className="py-4 text-center text-sm text-gray-400">Cargando contratistas...</div>
+        <div className="py-4 text-center text-sm text-gray-400">{t('admin.forms.loadingContractors')}</div>
       ) : (
         <div className="flex gap-2 items-end">
           <div className="flex-1">
             <SearchableSelect
-              label="Agregar contratista"
-              placeholder={availableOptions.length === 0 ? 'Sin disponibles' : 'Seleccionar...'}
+              label={t('admin.forms.addContractor')}
+              placeholder={availableOptions.length === 0 ? t('admin.forms.noneAvailable') : t('admin.forms.select')}
               value={pendingAdd} options={availableOptions} onChange={setPendingAdd}
               disabled={availableOptions.length === 0}
             />
@@ -738,7 +750,7 @@ function TabContractors({
               const c = contractors.find((x) => x.id === pendingAdd);
               if (c) { setSelected((p) => [...p, { id: c.id, name: c.name }]); setPendingAdd(''); setError(''); }
             }}>
-            Agregar
+            {t('admin.forms.add')}
           </Button>
         </div>
       )}
@@ -760,7 +772,7 @@ function TabContractors({
           );
         })}
         {selected.length === 0 && !loadingCon && (
-          <p className="text-xs text-center text-gray-400 py-2">Sin contratistas asignados</p>
+          <p className="text-xs text-center text-gray-400 py-2">{t('admin.forms.noContractorsAssigned')}</p>
         )}
       </div>
 
@@ -772,7 +784,7 @@ function TabContractors({
 
       <div className="flex justify-end pt-2">
         <Button type="button" variant="primary" size="sm" loading={saving} onClick={handleSave}>
-          Guardar contratistas
+          {t('admin.forms.saveContractors')}
         </Button>
       </div>
     </div>
@@ -794,6 +806,7 @@ interface InlineCompanyFormProps {
 }
 
 function InlineCompanyForm({ label, placeholder, saving, errors, register, onCancel, onSave }: InlineCompanyFormProps) {
+  const { t } = useTranslation();
   return (
     <div className="rounded-lg border border-primary-200 dark:border-primary-800 bg-primary-50 dark:bg-primary-900/10 p-3 space-y-2">
       <div className="flex items-center justify-between">
@@ -804,7 +817,7 @@ function InlineCompanyForm({ label, placeholder, saving, errors, register, onCan
         <div className="flex-1">
           <Input {...register('name')} placeholder={placeholder} error={errors.name?.message} />
         </div>
-        <Button type="button" variant="primary" size="sm" loading={saving} onClick={onSave}>Guardar</Button>
+        <Button type="button" variant="primary" size="sm" loading={saving} onClick={onSave}>{t('admin.forms.save')}</Button>
       </div>
     </div>
   );

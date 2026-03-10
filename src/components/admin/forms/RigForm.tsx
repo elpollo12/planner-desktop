@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'react-toastify';
@@ -55,12 +56,13 @@ interface WizardState {
 const ACTIVE_OR_DONE_BAR = 'bg-primary-500 dark:bg-primary-400';
 const PENDING_BAR        = 'bg-gray-200 dark:bg-gray-700';
 
-const STEPS: { step: WizardStep; label: string }[] = [
-  { step: 1, label: 'Datos'        },
-  { step: 2, label: 'Área'         },
-  { step: 3, label: 'Operador'     },
-  { step: 4, label: 'Contratistas' },
-  { step: 5, label: 'Personal'     },
+// Step labels are resolved via t() inside component — these are just IDs
+const STEPS: { step: WizardStep }[] = [
+  { step: 1 },
+  { step: 2 },
+  { step: 3 },
+  { step: 4 },
+  { step: 5 },
 ];
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -186,6 +188,7 @@ interface StepBasicsProps {
 }
 
 function StepBasics({ wizard, mode = 'create', onContinue }: StepBasicsProps) {
+  const { t } = useTranslation();
   const [submitting, setSubmitting] = useState(false);
   const {
     register,
@@ -210,25 +213,25 @@ function StepBasics({ wizard, mode = 'create', onContinue }: StepBasicsProps) {
     <div className="flex flex-col min-h-[70vh] h-full">
       <div className="flex-1 space-y-4">
         <p className="text-sm text-gray-500 dark:text-gray-400">
-          {mode === 'edit' ? 'Modifica los datos identificadores del taladro.' : 'Ingresa los datos identificadores del taladro.'}
+          {mode === 'edit' ? t('admin.forms.editBasicDataDescription') : t('admin.forms.basicDataDescription')}
         </p>
         <div>
           <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-            Nombre <span className="text-red-500">*</span>
+            {t('admin.forms.rigName')} <span className="text-red-500">*</span>
           </label>
           <Input
             {...register('name')}
-            placeholder="Ej: TAL-001"
+            placeholder={t('admin.forms.rigNamePlaceholder')}
             error={errors.name?.message}
           />
         </div>
         <div>
           <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-            Potencia <span className="text-red-500">*</span>
+            {t('admin.forms.power')} <span className="text-red-500">*</span>
           </label>
           <Input
             {...register('power')}
-            placeholder="Ej: 2000 HP"
+            placeholder={t('admin.forms.powerPlaceholder')}
             error={errors.power?.message}
           />
         </div>
@@ -238,10 +241,10 @@ function StepBasics({ wizard, mode = 'create', onContinue }: StepBasicsProps) {
             {...register('active')}
             className="h-4 w-4 rounded text-primary-600 border-gray-300"
           />
-          <span className="text-sm text-gray-700 dark:text-gray-300">Taladro activo</span>
+          <span className="text-sm text-gray-700 dark:text-gray-300">{t('admin.forms.active')}</span>
         </label>
       </div>
-      <StepFooter onBack={null} onContinue={handleContinue} continueLabel={mode === 'edit' ? 'Guardar y continuar' : 'Continuar'} loading={submitting} />
+      <StepFooter onBack={null} onContinue={handleContinue} continueLabel={mode === 'edit' ? t('admin.forms.saveAndContinue') : t('admin.forms.continue')} loading={submitting} />
     </div>
   );
 }
@@ -257,6 +260,7 @@ interface StepAreaProps {
 }
 
 function StepArea({ wizard, onBack, onContinue }: StepAreaProps) {
+  const { t } = useTranslation();
   const [submitting, setSubmitting] = useState(false);
   const { user } = useAuthStore();
   const [areas, setAreas] = useState<Area[]>([]);
@@ -299,9 +303,9 @@ function StepArea({ wizard, onBack, onContinue }: StepAreaProps) {
       setSelectedArea(newArea);
       setShowInline(false);
       resetInline();
-      toast.success(`Área "${newArea.name}" creada`);
+      toast.success(t('admin.forms.areaCreated', { name: newArea.name }));
     } catch {
-      toast.error('Error al crear el área');
+      toast.error(t('admin.forms.areaCreateError'));
     } finally {
       setSaving(false);
     }
@@ -309,7 +313,7 @@ function StepArea({ wizard, onBack, onContinue }: StepAreaProps) {
 
   const handleContinue = async () => {
     if (!selectedId) {
-      setStepError('Debes seleccionar un área para continuar');
+      setStepError(t('admin.forms.areaRequired'));
       return;
     }
     setStepError('');
@@ -327,12 +331,12 @@ function StepArea({ wizard, onBack, onContinue }: StepAreaProps) {
       <div className="flex-1 space-y-4">
         <div className="flex items-center justify-between">
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Área geográfica donde opera este taladro.
+            {t('admin.forms.areaDescription')}
           </p>
           {!showInline && (
             <Button type="button" variant="outline" size="sm" icon={<Plus size={13} />}
               onClick={() => setShowInline(true)}>
-              Nueva
+              {t('admin.forms.new')}
             </Button>
           )}
         </div>
@@ -340,22 +344,22 @@ function StepArea({ wizard, onBack, onContinue }: StepAreaProps) {
         {showInline && (
           <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/10 p-3 space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-blue-700 dark:text-blue-300 uppercase tracking-wide">Nueva área</span>
+              <span className="text-xs font-semibold text-blue-700 dark:text-blue-300 uppercase tracking-wide">{t('admin.forms.newArea')}</span>
               <button type="button" onClick={() => { setShowInline(false); resetInline(); }}>
                 <X size={14} className="text-gray-400 hover:text-gray-600" />
               </button>
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div className="col-span-2">
-                <Input {...regInline('name')} placeholder="Nombre del área" error={inlineErrors.name?.message} />
+                <Input {...regInline('name')} placeholder={t('admin.forms.areaNamePlaceholder')} error={inlineErrors.name?.message} />
               </div>
               <div>
-                <label className="block text-xs text-gray-500 mb-1">País</label>
+                <label className="block text-xs text-gray-500 mb-1">{t('admin.forms.country')}</label>
                 {/* País con datalist para sugerencias pero tipado libre */}
                 <input
                   {...regInline('country')}
                   list="country-list"
-                  placeholder="País"
+                  placeholder={t('admin.forms.country')}
                   className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                 />
                 <datalist id="country-list">
@@ -366,18 +370,18 @@ function StepArea({ wizard, onBack, onContinue }: StepAreaProps) {
                 )}
               </div>
               <div>
-                <label className="block text-xs text-gray-500 mb-1">Estado / Región</label>
+                <label className="block text-xs text-gray-500 mb-1">{t('admin.forms.stateRegion')}</label>
                 {isVenezuela ? (
                   // Dropdown when Venezuela is selected
                   <select
                     {...regInline('state')}
                     className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   >
-                    <option value="">Seleccionar estado...</option>
+                    <option value="">{t('admin.forms.selectState')}</option>
                     {VENEZUELA_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
                   </select>
                 ) : (
-                  <Input {...regInline('state')} placeholder="Estado / Región" error={inlineErrors.state?.message} />
+                  <Input {...regInline('state')} placeholder={t('admin.forms.stateRegion')} error={inlineErrors.state?.message} />
                 )}
                 {isVenezuela && inlineErrors.state && (
                   <p className="text-xs text-red-500 mt-0.5">{inlineErrors.state.message}</p>
@@ -387,19 +391,19 @@ function StepArea({ wizard, onBack, onContinue }: StepAreaProps) {
             <div className="flex justify-end">
               <Button type="button" variant="primary" size="sm" loading={saving}
                 onClick={handleInline(handleCreateArea)}>
-                Guardar área
+                {t('admin.forms.saveArea')}
               </Button>
             </div>
           </div>
         )}
 
         {loading ? (
-          <div className="py-4 text-center text-sm text-gray-400">Cargando áreas...</div>
+          <div className="py-4 text-center text-sm text-gray-400">{t('admin.forms.loadingAreas')}</div>
         ) : (
           <SearchableSelect
-            label="Área geográfica"
+            label={t('admin.forms.geographicArea')}
             required
-            placeholder="Seleccionar área..."
+            placeholder={t('admin.forms.selectArea')}
             value={selectedId}
             options={areaOptions}
             onChange={(v) => { setSelectedId(v); setSelectedArea(areas.find((a) => a.id === v) ?? null); setStepError(''); }}
@@ -424,7 +428,7 @@ function StepArea({ wizard, onBack, onContinue }: StepAreaProps) {
         )}
       </div>
 
-      <StepFooter onBack={onBack} onContinue={handleContinue} continueLabel="Continuar" loading={submitting} />
+      <StepFooter onBack={onBack} onContinue={handleContinue} continueLabel={t('admin.forms.continue')} loading={submitting} />
     </div>
   );
 }
@@ -440,6 +444,7 @@ interface StepOperatorProps {
 }
 
 function StepOperator({ wizard, onBack, onContinue }: StepOperatorProps) {
+  const { t } = useTranslation();
   const [submitting, setSubmitting] = useState(false);
   const { sessionToken } = useAuthStore();
   const [operators, setOperators] = useState<Company[]>([]);
@@ -474,9 +479,9 @@ function StepOperator({ wizard, onBack, onContinue }: StepOperatorProps) {
       setSelectedOp(newOp);
       setShowInline(false);
       resetInline();
-      toast.success(`Operadora "${newOp.name}" creada`);
+      toast.success(t('admin.forms.operatorCreated', { name: newOp.name }));
     } catch {
-      toast.error('Error al crear la operadora');
+      toast.error(t('admin.forms.operatorCreateError'));
     } finally {
       setSaving(false);
     }
@@ -484,7 +489,7 @@ function StepOperator({ wizard, onBack, onContinue }: StepOperatorProps) {
 
   const handleContinue = async () => {
     if (!selectedId) {
-      setStepError('Debes seleccionar un operador para continuar');
+      setStepError(t('admin.forms.operatorRequired'));
       return;
     }
     setStepError('');
@@ -502,20 +507,20 @@ function StepOperator({ wizard, onBack, onContinue }: StepOperatorProps) {
       <div className="flex-1 space-y-4">
         <div className="flex items-center justify-between">
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Empresa operadora responsable de este taladro.
+            {t('admin.forms.operatorDescription')}
           </p>
           {!showInline && (
             <Button type="button" variant="outline" size="sm" icon={<Plus size={13} />}
               onClick={() => setShowInline(true)}>
-              Nueva
+              {t('admin.forms.new')}
             </Button>
           )}
         </div>
 
         {showInline && (
           <InlineCompanyForm
-            label="Nueva operadora"
-            placeholder="Ej: PDVSA, Chevron"
+            label={t('admin.forms.newOperator')}
+            placeholder={t('admin.forms.operatorPlaceholder')}
             saving={saving}
             errors={inlineErrors}
             register={regInline}
@@ -525,12 +530,12 @@ function StepOperator({ wizard, onBack, onContinue }: StepOperatorProps) {
         )}
 
         {loading ? (
-          <div className="py-4 text-center text-sm text-gray-400">Cargando operadoras...</div>
+          <div className="py-4 text-center text-sm text-gray-400">{t('admin.forms.loadingOperators')}</div>
         ) : (
           <SearchableSelect
-            label="Operadora"
+            label={t('admin.forms.operatorLabel')}
             required
-            placeholder="Seleccionar operadora..."
+            placeholder={t('admin.forms.selectOperator')}
             value={selectedId}
             options={operatorOptions}
             onChange={(v) => { setSelectedId(v); setSelectedOp(operators.find((o) => o.id === v) ?? null); setStepError(''); }}
@@ -555,7 +560,7 @@ function StepOperator({ wizard, onBack, onContinue }: StepOperatorProps) {
         )}
       </div>
 
-      <StepFooter onBack={onBack} onContinue={handleContinue} continueLabel="Continuar" loading={submitting} />
+      <StepFooter onBack={onBack} onContinue={handleContinue} continueLabel={t('admin.forms.continue')} loading={submitting} />
     </div>
   );
 }
@@ -572,6 +577,7 @@ interface StepContractorsProps {
 }
 
 function StepContractors({ wizard, onBack, mode = 'create', onContinue }: StepContractorsProps) {
+  const { t } = useTranslation();
   const { sessionToken } = useAuthStore();
   const [contractors, setContractors] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);

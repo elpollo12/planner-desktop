@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { User, HardHat, Shield, KeyRound, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -13,10 +14,11 @@ import type { Rig } from '@/types/rig';
 
 type EditTab = 'user-data' | 'rigs' | 'permissions';
 
-const EDIT_TABS: { id: EditTab; label: string; icon: React.ReactNode }[] = [
-  { id: 'user-data',    label: 'Datos',    icon: <User    size={14} /> },
-  { id: 'rigs',         label: 'Taladros', icon: <HardHat size={14} /> },
-  { id: 'permissions',  label: 'Permisos', icon: <Shield  size={14} /> },
+// Tab labels are resolved at render time via useTranslation
+const EDIT_TAB_IDS: { id: EditTab; icon: React.ReactNode }[] = [
+  { id: 'user-data',    icon: <User    size={14} /> },
+  { id: 'rigs',         icon: <HardHat size={14} /> },
+  { id: 'permissions',  icon: <Shield  size={14} /> },
 ];
 
 export interface UserEditFormProps {
@@ -44,6 +46,7 @@ export interface UserEditFormProps {
 export default function UserEditForm({
   user, rigs, supervisors, currentUserId, sessionToken, onSubmit,
 }: UserEditFormProps) {
+  const { t } = useTranslation();
   const isSelf   = !!currentUserId && user.id === currentUserId;
   const isAdmin  = user.role === 'admin';
   const [activeTab, setActiveTab] = useState<EditTab>('user-data');
@@ -61,25 +64,33 @@ export default function UserEditForm({
 
   // ── Tab bar ────────────────────────────────────────────────────────────────
 
+  const TAB_LABELS: Record<EditTab, string> = {
+    'user-data':   t('admin.forms.tabData'),
+    'rigs':        t('admin.forms.tabRigs'),
+    'permissions': t('admin.forms.tabPermissions'),
+  };
+
+  const EDIT_TABS = EDIT_TAB_IDS.map((tab) => ({ ...tab, label: TAB_LABELS[tab.id] }));
+
   const visibleTabs = EDIT_TABS.filter(
-    (t) => !(t.id === 'permissions' && localUser.role === 'admin')
+    (tab) => !(tab.id === 'permissions' && localUser.role === 'admin')
   );
 
   const TabBar = () => (
     <div className="flex border-b border-gray-200 dark:border-gray-700 mb-4 -mx-1">
-      {visibleTabs.map((t) => (
+      {visibleTabs.map((tab) => (
         <button
-          key={t.id}
+          key={tab.id}
           type="button"
-          onClick={() => setActiveTab(t.id)}
+          onClick={() => setActiveTab(tab.id)}
           className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium border-b-2 transition-colors whitespace-nowrap ${
-            activeTab === t.id
+            activeTab === tab.id
               ? 'border-primary-500 text-primary-600 dark:text-primary-400'
               : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
           }`}
         >
-          {t.icon}
-          {t.label}
+          {tab.icon}
+          {tab.label}
         </button>
       ))}
     </div>
@@ -174,6 +185,7 @@ function buildLocalUser(user: UserWithRigs) {
 }
 
 function TabUserData({ localUser, isSelf, supervisors, sessionToken, userId, onSave }: TabUserDataProps) {
+  const { t } = useTranslation();
   const [fullName,     setFullName]     = useState(localUser.fullName);
   const [ci,           setCi]           = useState(localUser.ci);
   const [role,         setRole]         = useState<UserRole>(localUser.role as UserRole);
@@ -196,7 +208,7 @@ function TabUserData({ localUser, isSelf, supervisors, sessionToken, userId, onS
     setSaving(true);
     try {
       await onSave({ fullName, ci, role, supervisorId, active });
-      toast.success('Datos actualizados');
+      toast.success(t('admin.forms.dataUpdated'));
     } finally {
       setSaving(false);
     }
@@ -212,40 +224,40 @@ function TabUserData({ localUser, isSelf, supervisors, sessionToken, userId, onS
     <div className="space-y-4 min-h-[50vh]">
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Nombre Completo</label>
-          <Input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Ej: Juan Pérez" maxLength={100} />
+          <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">{t('admin.forms.fullName')}</label>
+          <Input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder={t('admin.forms.fullNamePlaceholder')} maxLength={100} />
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Cédula (CI)</label>
-          <Input value={ci} onChange={(e) => setCi(e.target.value)} placeholder="Ej: 12345678" maxLength={20} />
+          <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">{t('admin.forms.idCard')}</label>
+          <Input value={ci} onChange={(e) => setCi(e.target.value)} placeholder={t('admin.forms.idCardPlaceholder')} maxLength={20} />
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-            Rol {isSelf && <span className="text-gray-400">(no editable)</span>}
+            {t('admin.forms.role')} {isSelf && <span className="text-gray-400">({t('admin.forms.notEditable')})</span>}
           </label>
           <Select
             value={role}
             onChange={(e) => handleRoleChange(e.target.value)}
             disabled={isSelf}
             options={[
-              { value: 'operator',   label: 'Operador'      },
-              { value: 'supervisor', label: 'Supervisor'    },
-              { value: 'admin',      label: 'Administrador' },
+              { value: 'operator',   label: t('admin.forms.operator')      },
+              { value: 'supervisor', label: t('admin.forms.supervisorRole')    },
+              { value: 'admin',      label: t('admin.forms.admin') },
             ]}
           />
         </div>
 
         {role === 'operator' && (
           <div>
-            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Supervisor</label>
+            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">{t('admin.forms.supervisor')}</label>
             <Select
               value={supervisorId}
               onChange={(e) => setSupervisorId(e.target.value)}
               options={[
-                { value: '', label: 'Seleccionar supervisor...' },
+                { value: '', label: t('admin.forms.selectSupervisor') },
                 ...supervisors.map((s) => ({
                   value: s.id,
                   label: s.fullName || s.username,
@@ -263,13 +275,13 @@ function TabUserData({ localUser, isSelf, supervisors, sessionToken, userId, onS
           : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700'
       }`}>
         <div>
-          <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Estado del Usuario</p>
+          <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('admin.forms.userStatus')}</p>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
             {isSelf
-              ? 'No puedes desactivar tu propia cuenta'
+              ? t('admin.forms.cannotDeactivateSelf')
               : active
-              ? 'Activo — puede iniciar sesión'
-              : 'Inactivo — sin acceso al sistema'}
+              ? t('admin.forms.activeCanLogin')
+              : t('admin.forms.inactiveNoAccess')}
           </p>
         </div>
         <label className={`relative inline-flex items-center ${isSelf ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
@@ -288,14 +300,14 @@ function TabUserData({ localUser, isSelf, supervisors, sessionToken, userId, onS
       <div className="bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3">
         <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">
           <KeyRound size={13} className="inline mr-1.5 -mt-0.5" />
-          Cambiar Contraseña
+          {t('admin.forms.changePassword')}
         </label>
         <div className="flex gap-2">
           <Input
             type="password"
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
-            placeholder="Nueva contraseña (mín. 4 caracteres)"
+            placeholder={t('admin.forms.newPasswordPlaceholder')}
             disabled={changingPassword}
             className="flex-1"
           />
@@ -308,23 +320,23 @@ function TabUserData({ localUser, isSelf, supervisors, sessionToken, userId, onS
               setChangingPassword(true);
               try {
                 await usersApi.adminChangePassword(sessionToken, userId, newPassword);
-                toast.success('Contraseña actualizada');
+                toast.success(t('admin.forms.passwordUpdated'));
                 setNewPassword('');
               } catch (err: any) {
-                toast.error(err.message || 'Error al cambiar contraseña');
+                toast.error(err.message || t('admin.forms.passwordChangeError'));
               } finally {
                 setChangingPassword(false);
               }
             }}
           >
-            {changingPassword ? 'Cambiando...' : 'Cambiar'}
+            {changingPassword ? t('admin.forms.changing') : t('admin.forms.change')}
           </Button>
         </div>
       </div>
 
       <div className="flex justify-end pt-1">
         <Button type="button" variant="primary" size="sm" loading={saving} disabled={!isDirty} onClick={handleSave}>
-          Guardar cambios
+          {t('admin.forms.saveChanges')}
         </Button>
       </div>
     </div>
@@ -342,6 +354,7 @@ interface TabRigsProps {
 }
 
 function TabRigs({ localUser, rigs, onSave }: TabRigsProps) {
+  const { t } = useTranslation();
   const isAdmin = localUser.role === 'admin';
   const [hasAllRigs,     setHasAllRigs]     = useState(isAdmin ? true : localUser.hasAllRigs);
   const [assignedRigIds, setAssignedRigIds] = useState<string[]>(localUser.assignedRigIds);
@@ -361,14 +374,14 @@ function TabRigs({ localUser, rigs, onSave }: TabRigsProps) {
 
   const handleSave = async () => {
     if (!isAdmin && !hasAllRigs && assignedRigIds.length === 0) {
-      setError('Asigna al menos un taladro o activa "Acceso a todos"');
+      setError(t('admin.forms.assignAtLeastOneRig'));
       return;
     }
     setSaving(true);
     try {
       await onSave({ hasAllRigs, assignedRigIds });
       setError('');
-      toast.success('Acceso a taladros actualizado');
+      toast.success(t('admin.forms.rigAccessUpdated'));
     } finally {
       setSaving(false);
     }
@@ -379,8 +392,8 @@ function TabRigs({ localUser, rigs, onSave }: TabRigsProps) {
       <div className="flex items-center justify-between">
         <p className="text-sm text-gray-500 dark:text-gray-400">
           {isAdmin
-            ? 'Los administradores tienen acceso a todos los taladros.'
-            : 'Define a qué taladros tiene acceso este usuario.'}
+            ? t('admin.forms.adminAllRigsAccess')
+            : t('admin.forms.defineRigAccessEdit')}
         </p>
         {!isAdmin && rigs.length > 0 && (
         <label className="flex items-center gap-2 cursor-pointer shrink-0">
@@ -394,7 +407,7 @@ function TabRigs({ localUser, rigs, onSave }: TabRigsProps) {
               }}
               className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
             />
-            <span className="text-sm text-gray-700 dark:text-gray-300">Acceso a todos</span>
+            <span className="text-sm text-gray-700 dark:text-gray-300">{t('admin.forms.accessAll')}</span>
           </label>
         )}
       </div>
@@ -402,7 +415,7 @@ function TabRigs({ localUser, rigs, onSave }: TabRigsProps) {
       {isAdmin ? (
         <div className="rounded-lg px-4 py-3 border bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800">
           <p className="text-sm text-purple-700 dark:text-purple-300">
-            Acceso completo — administrador del sistema.
+            {t('admin.forms.fullAccessAdmin')}
           </p>
         </div>
       ) : !isAdmin && rigs.length === 0 ? (
@@ -410,19 +423,17 @@ function TabRigs({ localUser, rigs, onSave }: TabRigsProps) {
           <span className="text-amber-500 dark:text-amber-400 shrink-0 mt-0.5">⚠</span>
           <div className="space-y-1">
             <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
-              No hay taladros disponibles
+              {t('admin.forms.noRigsAvailable')}
             </p>
             <p className="text-xs text-amber-700 dark:text-amber-400">
-              Un usuario activo debe tener al menos un taladro asignado. Crea un taladro
-              desde la sección <span className="font-semibold">Taladros</span> del panel
-              de administración antes de continuar.
+              {t('admin.forms.noRigsHint')}
             </p>
           </div>
         </div>
       ) : hasAllRigs ? (
         <div className="rounded-lg px-4 py-3 border bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800">
           <p className="text-sm text-green-700 dark:text-green-300">
-            Acceso completo a todos los taladros del sistema.
+            {t('admin.forms.fullRigAccess')}
           </p>
         </div>
       ) : (
@@ -434,7 +445,7 @@ function TabRigs({ localUser, rigs, onSave }: TabRigsProps) {
                 onClick={() => { setAssignedRigIds(rigs.map((r) => r.id)); setError(''); }}
                 className="text-xs text-primary-600 hover:text-primary-800 dark:text-primary-400"
               >
-                Seleccionar todos
+                {t('admin.forms.selectAll')}
               </button>
               <span className="text-gray-300 dark:text-gray-600">|</span>
               <button
@@ -442,10 +453,10 @@ function TabRigs({ localUser, rigs, onSave }: TabRigsProps) {
                 onClick={() => setAssignedRigIds([])}
                 className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400"
               >
-                Deseleccionar todos
+                {t('admin.forms.deselectAll')}
               </button>
             </div>
-            <span className="text-xs text-gray-400">{assignedRigIds.length} seleccionados</span>
+            <span className="text-xs text-gray-400">{t('admin.forms.selected', { count: assignedRigIds.length })}</span>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-56 overflow-y-auto pr-1">
@@ -484,7 +495,7 @@ function TabRigs({ localUser, rigs, onSave }: TabRigsProps) {
       {!isAdmin && rigs.length > 0 && (
         <div className="flex justify-end pt-1">
           <Button type="button" variant="primary" size="sm" loading={saving} disabled={!isDirty} onClick={handleSave}>
-            Guardar acceso
+            {t('admin.forms.saveAccess')}
           </Button>
         </div>
       )}
@@ -504,6 +515,7 @@ interface TabPermissionsProps {
 }
 
 function TabPermissions({ userId, role, sessionToken, onSave }: TabPermissionsProps) {
+  const { t } = useTranslation();
   const [perms,   setPerms]   = useState<Record<AppModule, boolean>>({ ...MODULE_DEFAULTS[role] });
   const [loading, setLoading] = useState(true);
   const [saving,  setSaving]  = useState(false);
@@ -523,7 +535,7 @@ function TabPermissions({ userId, role, sessionToken, onSave }: TabPermissionsPr
     setSaving(true);
     try {
       await onSave(perms);
-      toast.success('Permisos actualizados');
+      toast.success(t('admin.forms.permissionsUpdated'));
     } finally {
       setSaving(false);
     }
@@ -533,7 +545,7 @@ function TabPermissions({ userId, role, sessionToken, onSave }: TabPermissionsPr
     return (
       <div className="flex items-center justify-center py-12">
         <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary-500" />
-        <span className="ml-2 text-sm text-gray-500">Cargando permisos...</span>
+        <span className="ml-2 text-sm text-gray-500">{t('admin.forms.loadingPermissions')}</span>
       </div>
     );
   }
@@ -542,7 +554,7 @@ function TabPermissions({ userId, role, sessionToken, onSave }: TabPermissionsPr
     <div className="space-y-4 min-h-[50vh]">
       <div className="flex items-center justify-between">
         <p className="text-sm text-gray-500 dark:text-gray-400">
-          Personaliza los módulos a los que tiene acceso este usuario.
+          {t('admin.forms.customizeModulesEdit')}
         </p>
         {hasAnyOverride && (
           <button
@@ -551,7 +563,7 @@ function TabPermissions({ userId, role, sessionToken, onSave }: TabPermissionsPr
             className="flex items-center gap-1.5 text-xs text-primary-600 hover:text-primary-800 dark:text-primary-400 shrink-0"
           >
             <RotateCcw size={12} />
-            Restaurar defaults
+            {t('admin.forms.restoreDefaults')}
           </button>
         )}
       </div>
@@ -582,7 +594,7 @@ function TabPermissions({ userId, role, sessionToken, onSave }: TabPermissionsPr
               </div>
               {overridden && (
                 <span className="text-[10px] px-1.5 py-0.5 rounded-full text-amber-700 bg-amber-100 dark:bg-amber-900/30 dark:text-amber-400">
-                  personalizado
+                  {t('admin.forms.customized')}
                 </span>
               )}
             </label>
@@ -592,7 +604,7 @@ function TabPermissions({ userId, role, sessionToken, onSave }: TabPermissionsPr
 
       <div className="flex justify-end pt-1">
         <Button type="button" variant="primary" size="sm" loading={saving} onClick={handleSave}>
-          Guardar permisos
+          {t('admin.forms.savePermissions')}
         </Button>
       </div>
     </div>

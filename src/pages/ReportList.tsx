@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MainLayout } from '../components/layout';
 import { Button, Card, Input, Select, ReportStatusBadge, PaginationControls } from '../components/ui';
@@ -15,6 +15,7 @@ import { syncEvents } from '../lib/syncEvents';
 import { formatDateDMY, formatTimeHM } from '../lib/dateUtils';
 import type { Report, ReportStatus } from '../types/report';
 import { RigWithArea } from '@/types';
+import { useTranslation } from 'react-i18next';
 
 interface PaginatedReportsResponse {
   reports: Report[];
@@ -55,6 +56,7 @@ export default function ReportList() {
   const navigate = useNavigate();
   const { sessionToken, user } = useAuthStore();
   const { openModal } = useModal();
+  const { t } = useTranslation();
 
   const [reports, setReports] = useState<Report[]>([]);
   const [rigs, setRigs] = useState<RigWithArea[]>([]);
@@ -135,7 +137,7 @@ export default function ReportList() {
       setTotalPages(response.total_pages);
     } catch (error) {
       console.error('Error loading reports:', error);
-      toast.error('Error al cargar reportes');
+      toast.error(t('reports.list.errorLoading'));
     } finally {
       setLoading(false);
     }
@@ -171,7 +173,7 @@ export default function ReportList() {
       if (!sessionToken) return;
       try {
         await reportsApi.delete(sessionToken, report.id);
-        toast.success('Reporte eliminado exitosamente');
+        toast.success(t('reports.list.deletedSuccess'));
         backgroundPush(sessionToken);
 
         if (reports.length === 1 && currentPage > 1) {
@@ -181,18 +183,18 @@ export default function ReportList() {
         }
       } catch (error) {
         console.error('Error deleting report:', error);
-        toast.error('Error al eliminar reporte');
+        toast.error(t('reports.list.errorDeleting'));
         throw error;
       }
     };
 
     openModal(
       <ConfirmDeleteModal
-        message="¿Estás seguro de que deseas eliminar este reporte?"
-        itemName={`Reporte #${report.reportNumber} - ${formatDateDMY(report.reportDate)}`}
+        message={t('reports.list.deleteConfirm')}
+        itemName={t('reports.list.reportNumber', { number: report.reportNumber }) + ' - ' + formatDateDMY(report.reportDate)}
         onConfirm={onConfirm}
       />,
-      { title: '¿Eliminar reporte?', size: 'sm', showCloseButton: true },
+      { title: t('reports.list.deleteTitle'), size: 'sm', showCloseButton: true },
     );
   };
 
@@ -200,8 +202,8 @@ export default function ReportList() {
 
   return (
     <MainLayout
-      title="Reportes DDR"
-      subtitle="Lista de reportes diarios de operaciones"
+      title={t('reports.list.title')}
+      subtitle={t('reports.list.subtitle')}
       headerActions={
         <div className="flex gap-2">
           <Button
@@ -209,7 +211,7 @@ export default function ReportList() {
             onClick={() => navigate('/reports/new')}
             icon={<Plus size={16} />}
           >
-            Nuevo Reporte
+            {t('reports.list.newReport')}
           </Button>
         </div>
       }
@@ -218,34 +220,34 @@ export default function ReportList() {
         {/* Filters */}
         <Card>
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Filtros</h3>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{t('reports.list.filters')}</h3>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
               <Select
-                label="Estado"
+                label={t('reports.list.statusFilter')}
                 value={filters.status}
                 onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value as ReportStatus | '' }))}
               >
-                <option value="">Todos</option>
-                <option value="draft">Borrador</option>
-                <option value="submitted">Enviado</option>
-                <option value="approved">Aprobado</option>
-                <option value="rejected">Rechazado</option>
+                <option value="">{t('reports.list.allStatuses')}</option>
+                <option value="draft">{t('status.draft')}</option>
+                <option value="submitted">{t('status.submitted')}</option>
+                <option value="approved">{t('status.approved')}</option>
+                <option value="rejected">{t('status.rejected')}</option>
               </Select>
 
               <Input
-                label="Pozo"
+                label={t('reports.list.wellFilter')}
                 value={filters.wellNumber}
                 onChange={(e) => setFilters((f) => ({ ...f, wellNumber: e.target.value }))}
-                placeholder="Ej: Well-123"
+                placeholder={t('reports.list.wellPlaceholder')}
               />
 
               <Select
-                label="Taladro"
+                label={t('reports.list.rigFilter')}
                 value={filters.rigNumber}
                 onChange={(e) => setFilters((f) => ({ ...f, rigNumber: e.target.value }))}
               >
-                <option value="">Todos</option>
+                <option value="">{t('reports.list.allRigs')}</option>
                 {rigs.map((rig) => (
                   <option key={rig.id} value={rig.name}>
                     {rig.name}
@@ -254,14 +256,14 @@ export default function ReportList() {
               </Select>
 
               <Input
-                label="Fecha Desde"
+                label={t('reports.list.dateFrom')}
                 type="date"
                 value={filters.dateFrom}
                 onChange={(e) => setFilters((f) => ({ ...f, dateFrom: e.target.value }))}
               />
 
               <Input
-                label="Fecha Hasta"
+                label={t('reports.list.dateTo')}
                 type="date"
                 value={filters.dateTo}
                 onChange={(e) => setFilters((f) => ({ ...f, dateTo: e.target.value }))}
@@ -270,7 +272,7 @@ export default function ReportList() {
 
             <div className="flex gap-2">
               <Button variant="outline" onClick={handleClearFilters}>
-                Limpiar Filtros
+                {t('reports.list.clearFilters')}
               </Button>
             </div>
           </div>
@@ -279,12 +281,12 @@ export default function ReportList() {
         {/* Reports Table */}
         <Card>
           {loading ? (
-            <div className="p-8 text-center text-gray-500">Cargando reportes...</div>
+            <div className="p-8 text-center text-gray-500">{t('reports.list.loading')}</div>
           ) : reports.length === 0 ? (
             <div className="p-8 text-center">
-              <p className="text-gray-500 mb-4">No hay reportes para mostrar</p>
+              <p className="text-gray-500 mb-4">{t('reports.list.noReports')}</p>
               <Button variant="primary" onClick={() => navigate('/reports/new')} icon={<Plus size={16} />}>
-                Crear Primer Reporte
+                {t('reports.list.createFirst')}
               </Button>
             </div>
           ) : (
@@ -293,11 +295,11 @@ export default function ReportList() {
                 <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                   <thead className="bg-gray-50 dark:bg-gray-800">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Taladro</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Pozo</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Estado</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Fecha Creación</th>
-                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Acciones</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('reports.list.colRig')}</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('reports.list.colWell')}</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('reports.list.colStatus')}</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('reports.list.colCreated')}</th>
+                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('reports.list.colActions')}</th>
                     </tr>
                   </thead>
                   <tbody className="bg-gray-50 dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -308,7 +310,7 @@ export default function ReportList() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-gray-900 dark:text-gray-100">{report.wellNumber || '-'}</div>
-                          <div className="text-xs text-gray-500 dark:text-gray-400">Reporte #{report.reportNumber}</div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400">{t('reports.list.reportNumber', { number: report.reportNumber })}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <ReportStatusBadge status={report.status} />
@@ -322,7 +324,7 @@ export default function ReportList() {
                             <button
                               onClick={() => navigate(`/reports/view/${report.id}`)}
                               className="p-1 text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 cursor-pointer"
-                              title="Ver detalle"
+                              title={t('reports.list.viewDetail')}
                             >
                               <Eye size={18} />
                             </button>
@@ -330,7 +332,7 @@ export default function ReportList() {
                               <button
                                 onClick={() => navigate(`/reports/edit/${report.id}`)}
                                 className="p-1 text-yellow-600 hover:text-yellow-900 dark:text-yellow-400 dark:hover:text-yellow-300 cursor-pointer"
-                                title="Editar"
+                                title={t('actions.edit')}
                               >
                                 <Edit size={18} />
                               </button>
@@ -339,7 +341,7 @@ export default function ReportList() {
                               <button
                                 onClick={() => handleDelete(report)}
                                 className="p-1 text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 cursor-pointer"
-                                title="Eliminar"
+                                title={t('actions.delete')}
                               >
                                 <Trash2 size={18} />
                               </button>
@@ -356,7 +358,7 @@ export default function ReportList() {
                 totalPages={totalPages}
                 totalItems={totalReports}
                 pageSize={pageSize}
-                itemLabel="reportes"
+                itemLabel={t('reports.list.itemLabel')}
                 pageSizeOptions={[5, 10, 50, 100]}
                 onPageChange={setCurrentPage}
                 onPageSizeChange={handlePageSizeChange}

@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { FileText } from 'lucide-react';
 import { useModal } from '../../store/modalStore';
 import { Button } from '../ui';
@@ -13,6 +14,7 @@ export default function SnapshotConfirmModal({
   onConfirm,
   onReject,
 }: SnapshotConfirmModalProps) {
+  const { t } = useTranslation();
   const { closeModal } = useModal();
 
   const handleConfirm = async () => {
@@ -37,13 +39,13 @@ export default function SnapshotConfirmModal({
       {/* Message */}
       <div className="text-center">
         <p className="text-gray-700 dark:text-gray-300">
-          Se encontraron datos de un reporte anterior para el taladro:
+          {t('reports.modals.snapshotFound')}
         </p>
         <p className="mt-2 font-semibold text-gray-900 dark:text-gray-100">
           {rigName}
         </p>
         <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">
-          ¿Deseas precargar los datos del último reporte? Esto incluye cuadrilla, distribución de tiempo, mechas, lodo y demás secciones.
+          {t('reports.modals.snapshotDetail')}
         </p>
       </div>
 
@@ -53,13 +55,13 @@ export default function SnapshotConfirmModal({
           variant="outline"
           onClick={handleReject}
         >
-          No, comenzar vacío
+          {t('reports.modals.snapshotReject')}
         </Button>
         <Button
           variant="primary"
           onClick={handleConfirm}
         >
-          Sí, precargar datos
+          {t('reports.modals.snapshotConfirm')}
         </Button>
       </div>
     </div>

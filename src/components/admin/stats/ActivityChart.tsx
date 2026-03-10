@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   AreaChart,
   Area,
@@ -16,6 +17,7 @@ import { PeriodSelector } from './PeriodSelector';
 import { useAxisTickColor, useGridStroke, useChartReady } from './chartHelpers';
 
 export function ActivityChart() {
+  const { t } = useTranslation();
   const [days, setDays] = useState(30);
   const { data, isLoading } = useActivityStats(days);
   const tickColor = useAxisTickColor();
@@ -34,7 +36,7 @@ export function ActivityChart() {
     return (
       <div className="text-center py-12 text-gray-500">
         <TrendingUp className="mx-auto mb-4 text-gray-400" size={48} />
-        <p>No hay actividad de reportes en los últimos {days} días</p>
+        <p>{t('admin.activityChart.noActivity', { days })}</p>
       </div>
     );
   }
@@ -49,9 +51,9 @@ export function ActivityChart() {
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Total en el período:{' '}
+            {t('admin.activityChart.totalInPeriod')}{' '}
             <span className="font-semibold text-gray-900 dark:text-gray-100">
-              {data.totalPeriod} reportes
+              {t('admin.activityChart.reports', { count: data.totalPeriod })}
             </span>
           </p>
         </div>
@@ -90,7 +92,7 @@ export function ActivityChart() {
                       {format(parseISO(item.day), "d 'de' MMMM", { locale: es })}
                     </p>
                     <p className="text-blue-600">
-                      {item.count} {item.count === 1 ? 'reporte' : 'reportes'}
+                      {t('admin.activityChart.reports', { count: item.count })}
                     </p>
                   </div>
                 );

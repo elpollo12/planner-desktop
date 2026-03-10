@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   PieChart,
   Pie,
@@ -20,8 +21,8 @@ import { Card } from '../../ui';
 import { useLogisticsStats } from '../../../hooks/useAdminStats';
 import { PeriodSelector } from './PeriodSelector';
 import {
-  REQUEST_TYPE_LABELS,
-  REQUEST_STATUS_LABELS,
+  getRequestTypeLabel,
+  getRequestStatusLabel,
   STATUS_COLOR_MAP,
   CHART_COLORS,
   useAxisTickColor,
@@ -30,6 +31,7 @@ import {
 } from './chartHelpers';
 
 export function LogisticsMetrics() {
+  const { t } = useTranslation();
   const [days, setDays] = useState(30);
   const { data, isLoading } = useLogisticsStats(days);
   const tickColor = useAxisTickColor();
@@ -51,21 +53,21 @@ export function LogisticsMetrics() {
     return (
       <div className="text-center py-12 text-gray-500">
         <PackageOpen className="mx-auto mb-4 text-gray-400" size={48} />
-        <p>No hay datos de logística disponibles</p>
+        <p>{t('admin.logisticsMetrics.noData')}</p>
       </div>
     );
   }
 
-  // Prepare data with Spanish labels
+  // Prepare data with translated labels
   const statusData = data.byStatus.map((s: { category: string; count: number }) => ({
-    name: REQUEST_STATUS_LABELS[s.category] ?? s.category,
+    name: getRequestStatusLabel(s.category),
     value: s.count,
     color: STATUS_COLOR_MAP[s.category] ?? '#6b7280',
   }));
 
-  const typeData = data.byType.map((t: { category: string; count: number }, i: number) => ({
-    name: REQUEST_TYPE_LABELS[t.category] ?? t.category,
-    value: t.count,
+  const typeData = data.byType.map((tp: { category: string; count: number }, i: number) => ({
+    name: getRequestTypeLabel(tp.category),
+    value: tp.count,
     color: CHART_COLORS[i % CHART_COLORS.length],
   }));
 
@@ -81,17 +83,17 @@ export function LogisticsMetrics() {
     <div className="space-y-6">
       {/* Summary cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <SummaryCard icon={Package} color="text-blue-500" label="Total Solicitudes" value={data.totalRequests} />
-        <SummaryCard icon={Clock} color="text-yellow-500" label="Pendientes" value={data.pendingCount} />
-        <SummaryCard icon={CheckCircle} color="text-green-500" label="Aprobadas" value={approvedCount} />
-        <SummaryCard icon={XCircle} color="text-red-500" label="Rechazadas" value={rejectedCount} />
+        <SummaryCard icon={Package} color="text-blue-500" label={t('admin.logisticsMetrics.totalRequests')} value={data.totalRequests} />
+        <SummaryCard icon={Clock} color="text-yellow-500" label={t('admin.logisticsMetrics.pending')} value={data.pendingCount} />
+        <SummaryCard icon={CheckCircle} color="text-green-500" label={t('admin.logisticsMetrics.approved')} value={approvedCount} />
+        <SummaryCard icon={XCircle} color="text-red-500" label={t('admin.logisticsMetrics.rejected')} value={rejectedCount} />
       </div>
 
       {/* Charts row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Pie: by type */}
         <Card className="p-5">
-          <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Por Tipo de Solicitud</h4>
+          <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">{t('admin.logisticsMetrics.byRequestType')}</h4>
           <div ref={chart1Ref} className="h-48" style={{ minWidth: 0, overflow: 'hidden' }}>
             {chart1Ready && <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -125,7 +127,7 @@ export function LogisticsMetrics() {
 
         {/* Pie: by status */}
         <Card className="p-5">
-          <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Por Estado</h4>
+          <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">{t('admin.logisticsMetrics.byStatus')}</h4>
           <div ref={chart2Ref} className="h-48" style={{ minWidth: 0, overflow: 'hidden' }}>
             {chart2Ready && <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -161,7 +163,7 @@ export function LogisticsMetrics() {
       {/* Top rigs bar chart */}
       {data.topRigs.length > 0 && (
         <Card className="p-5">
-          <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Top Taladros por Solicitudes</h4>
+          <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">{t('admin.logisticsMetrics.topRigsByRequests')}</h4>
           <div ref={chart3Ref} className="h-56" style={{ minWidth: 0, overflow: 'hidden' }}>
             {chart3Ready && <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data.topRigs} layout="vertical" margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
@@ -175,7 +177,7 @@ export function LogisticsMetrics() {
                     return (
                       <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg px-3 py-2 text-sm">
                         <p className="font-medium text-gray-900 dark:text-gray-100">{item.rigName}</p>
-                        <p className="text-blue-600">{item.count} solicitudes</p>
+                        <p className="text-blue-600">{t('admin.logisticsMetrics.requests', { count: item.count })}</p>
                       </div>
                     );
                   }}
@@ -191,7 +193,7 @@ export function LogisticsMetrics() {
       {dailyData.length > 0 && (
         <Card className="p-5">
           <div className="flex items-center justify-between mb-4">
-            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Tendencia de Solicitudes</h4>
+            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">{t('admin.logisticsMetrics.requestsTrend')}</h4>
             <PeriodSelector value={days} onChange={setDays} />
           </div>
           <div ref={chart4Ref} className="h-56" style={{ minWidth: 0, overflow: 'hidden' }}>
@@ -215,7 +217,7 @@ export function LogisticsMetrics() {
                         <p className="font-medium text-gray-900 dark:text-gray-100">
                           {format(parseISO(item.day), "d 'de' MMMM", { locale: es })}
                         </p>
-                        <p className="text-emerald-600">{item.count} solicitudes</p>
+                        <p className="text-emerald-600">{t('admin.logisticsMetrics.requests', { count: item.count })}</p>
                       </div>
                     );
                   }}

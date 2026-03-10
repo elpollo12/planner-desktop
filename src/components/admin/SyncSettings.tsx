@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Card, Button } from '../ui';
 import {
   Cloud,
@@ -23,17 +24,8 @@ import { syncApi } from '../../lib/api';
 import { syncEvents } from '../../lib/syncEvents';
 import type { SyncStatus, SyncResult } from '../../types/sync';
 
-const INTERVAL_OPTIONS = [
-  { value: 0, label: 'Desactivado' },
-  { value: 1, label: '1 minuto' },
-  { value: 5, label: '5 minutos' },
-  { value: 10, label: '10 minutos' },
-  { value: 15, label: '15 minutos' },
-  { value: 30, label: '30 minutos' },
-  { value: 60, label: '1 hora' },
-];
-
 export default function SyncSettings() {
+  const { t } = useTranslation();
   const { sessionToken } = useAuthStore();
   const { setOnline, setOffline, setSyncing: setSyncingConnection, setError, setSyncEnabled } = useConnectionStore();
   const { openModal, closeModal } = useModal();
@@ -51,6 +43,16 @@ export default function SyncSettings() {
   const [showPassword, setShowPassword] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
+
+  const INTERVAL_OPTIONS = [
+    { value: 0, label: t('admin.sync.disabled') },
+    { value: 1, label: t('admin.sync.minute1') },
+    { value: 5, label: t('admin.sync.minutes5') },
+    { value: 10, label: t('admin.sync.minutes10') },
+    { value: 15, label: t('admin.sync.minutes15') },
+    { value: 30, label: t('admin.sync.minutes30') },
+    { value: 60, label: t('admin.sync.hour1') },
+  ];
 
   useEffect(() => {
     if (sessionToken) {
@@ -93,7 +95,7 @@ export default function SyncSettings() {
       setOnline();
       setUsername('');
       setPassword('');
-      showMessage('success', `Servidor vinculado correctamente`);
+      showMessage('success', t('admin.sync.linked'));
     } catch (error) {
       showMessage('error', String(error));
     } finally {
@@ -113,9 +115,9 @@ export default function SyncSettings() {
       setLastResult(null);
       setSyncEnabled(true, false);
       setOffline();
-      showMessage('success', 'Servidor desvinculado');
+      showMessage('success', t('admin.sync.disconnected'));
     } catch (error) {
-      showMessage('error', `Error: ${error}`);
+      showMessage('error', t('admin.sync.disconnectError', { error: String(error) }));
     } finally {
       setDisconnecting(false);
     }
@@ -125,20 +127,19 @@ export default function SyncSettings() {
     openModal(
       <div className="space-y-2">
         <p className="text-sm text-gray-700 dark:text-gray-300">
-          Se eliminará la conexión con el servidor de sincronización y se
-          desactivará la sincronización automática.
+          {t('admin.sync.disconnectConfirmMsg')}
         </p>
         <p className="text-sm text-gray-500 dark:text-gray-400">
-          Los datos locales no se verán afectados.
+          {t('admin.sync.disconnectLocalSafe')}
         </p>
       </div>,
       {
-        title: '¿Desvincular servidor?',
+        title: t('admin.sync.disconnectConfirmTitle'),
         size: 'sm',
         showConfirmButton: true,
         showCancelButton: true,
-        confirmText: 'Desvincular',
-        cancelText: 'Cancelar',
+        confirmText: t('admin.sync.disconnectBtn'),
+        cancelText: t('actions.cancel'),
         onConfirm: doDisconnect,
       }
     );
@@ -153,17 +154,17 @@ export default function SyncSettings() {
       const result = await syncApi.fullSync(sessionToken);
       setLastResult(result);
       if (result.success) {
-        showMessage('success', `Sync completo — ${result.recordsPushed} enviados, ${result.recordsPulled} recibidos`);
+        showMessage('success', t('admin.sync.fullSyncSuccess', { pushed: result.recordsPushed, pulled: result.recordsPulled }));
         setOnline();
         syncEvents.emit();
       } else {
-        showMessage('error', `Sync con errores: ${result.errors.join(', ')}`);
+        showMessage('error', t('admin.sync.syncErrors', { errors: result.errors.join(', ') }));
         if (result.errors.length > 0) setError(result.errors[0]);
       }
       const s = await syncApi.getStatus(sessionToken);
       setStatus(s);
     } catch (error) {
-      showMessage('error', `Error de sincronización: ${error}`);
+      showMessage('error', t('admin.sync.syncError', { error: String(error) }));
       setOffline(String(error));
     } finally {
       setSyncing(false);
@@ -178,12 +179,12 @@ export default function SyncSettings() {
       const result = await syncApi.push(sessionToken);
       setLastResult(result);
       showMessage(result.success ? 'success' : 'error',
-        result.success ? `${result.recordsPushed} registros enviados` : `Push con errores: ${result.errors.join(', ')}`);
+        result.success ? t('admin.sync.pushSuccess', { count: result.recordsPushed }) : t('admin.sync.pushErrors', { errors: result.errors.join(', ') }));
       if (result.success) setOnline();
       const s = await syncApi.getStatus(sessionToken);
       setStatus(s);
     } catch (error) {
-      showMessage('error', `Error al enviar: ${error}`);
+      showMessage('error', t('admin.sync.pushError', { error: String(error) }));
       setOffline(String(error));
     } finally {
       setSyncing(false);
@@ -198,15 +199,15 @@ export default function SyncSettings() {
       const result = await syncApi.pull(sessionToken);
       setLastResult(result);
       showMessage(result.success ? 'success' : 'error',
-        result.success ? `${result.recordsPulled} registros recibidos` : `Pull con errores: ${result.errors.join(', ')}`);
+        result.success ? t('admin.sync.pullSuccess', { count: result.recordsPulled }) : t('admin.sync.pullErrors', { errors: result.errors.join(', ') }));
       if (result.success) {
         setOnline();
-        syncEvents.emit(); // Recargar app_settings, notificaciones, etc.
+        syncEvents.emit();
       }
       const s = await syncApi.getStatus(sessionToken);
       setStatus(s);
     } catch (error) {
-      showMessage('error', `Error al recibir: ${error}`);
+      showMessage('error', t('admin.sync.pullError', { error: String(error) }));
       setOffline(String(error));
     } finally {
       setSyncing(false);
@@ -219,16 +220,16 @@ export default function SyncSettings() {
       const s = await syncApi.setInterval(sessionToken, intervalMinutes);
       setStatus(s);
       showMessage('success', intervalMinutes > 0
-        ? `Auto-sync cada ${intervalMinutes} minutos`
-        : 'Auto-sync desactivado');
+        ? t('admin.sync.autoSyncSet', { minutes: intervalMinutes })
+        : t('admin.sync.autoSyncDisabled'));
     } catch (error) {
-      showMessage('error', `Error al cambiar intervalo: ${error}`);
+      showMessage('error', t('admin.sync.intervalError', { error: String(error) }));
     }
   };
 
   // ── RENDER ────────────────────────────────────────────────────────────────
   if (loading) {
-    return <div className="text-center py-12 text-gray-500">Cargando configuración de sincronización...</div>;
+    return <div className="text-center py-12 text-gray-500">{t('admin.sync.loading')}</div>;
   }
 
   const isConnected = status?.configured && status?.enabled;
@@ -249,24 +250,24 @@ export default function SyncSettings() {
         }
         <div className="flex-1 min-w-0">
           <p className={`font-semibold ${isConnected ? 'text-green-800 dark:text-green-300' : 'text-gray-700 dark:text-gray-300'}`}>
-            {isConnected ? 'Servidor vinculado' : 'Sin servidor vinculado'}
+            {isConnected ? t('admin.sync.serverLinked') : t('admin.sync.noServerLinked')}
           </p>
           <p className={`text-sm truncate ${isConnected ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}`}>
             {isConnected
-              ? (serverUrl || 'Sincronización activa')
-              : 'Vincula un servidor para comenzar a sincronizar datos'
+              ? (serverUrl || t('admin.sync.syncActive'))
+              : t('admin.sync.linkPrompt')
             }
           </p>
           {isConnected && status?.lastSyncAt && (
             <p className="text-xs text-green-500 mt-0.5">
-              Última sync: {new Date(status.lastSyncAt).toLocaleString()}
+              {t('admin.sync.lastSync', { date: new Date(status.lastSyncAt).toLocaleString() })}
             </p>
           )}
         </div>
         {isConnected && (
           <div className="flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/40 px-2.5 py-1 rounded-full flex-shrink-0">
             <ShieldCheck size={13} />
-            Activo
+            {t('admin.sync.active')}
           </div>
         )}
       </div>
@@ -290,19 +291,17 @@ export default function SyncSettings() {
         <Card className="p-6">
           <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-1 flex items-center gap-2">
             <Server size={18} />
-            Vincular servidor
+            {t('admin.sync.linkServer')}
           </h3>
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">
-            Ingresa la URL del servidor planner-sync y las credenciales de acceso.
-            Si el servidor principal no responde, la app intentará con{' '}
-            <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded text-xs">localhost:3001</code> automáticamente.
+            {t('admin.sync.linkServerDesc')}
           </p>
 
           <div className="space-y-4">
             {/* URL */}
             <div>
               <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">
-                URL del servidor
+                {t('admin.sync.serverUrl')}
               </label>
               <input
                 list="sync-server-options"
@@ -323,7 +322,7 @@ export default function SyncSettings() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">
-                  Usuario
+                  {t('admin.sync.username')}
                 </label>
                 <input
                   type="text"
@@ -336,7 +335,7 @@ export default function SyncSettings() {
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">
-                  Contraseña
+                  {t('admin.sync.password')}
                 </label>
                 <div className="relative">
                   <input
@@ -367,7 +366,7 @@ export default function SyncSettings() {
               icon={<Link2 size={16} />}
               className="w-full justify-center"
             >
-              {connecting ? 'Vinculando...' : 'Vincular servidor'}
+              {connecting ? t('admin.sync.linking') : t('admin.sync.linkServer')}
             </Button>
           </div>
         </Card>
@@ -382,7 +381,7 @@ export default function SyncSettings() {
           <Card className="p-6">
             <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
               <RefreshCw size={18} />
-              Acciones de sincronización
+              {t('admin.sync.syncActions')}
             </h3>
             <div className="grid grid-cols-3 gap-3 mb-5">
               <button
@@ -391,8 +390,8 @@ export default function SyncSettings() {
                 className="flex flex-col items-center gap-2 p-5 rounded-xl border-2 border-gray-200 dark:border-gray-600 hover:border-primary-400 dark:hover:border-primary-500 transition-colors disabled:opacity-50"
               >
                 <RefreshCw size={28} className={`text-primary-500 ${syncing ? 'animate-spin' : ''}`} />
-                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Completa</span>
-                <span className="text-xs text-gray-400">Enviar y recibir todo</span>
+                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{t('admin.sync.fullSync')}</span>
+                <span className="text-xs text-gray-400">{t('admin.sync.fullSyncDesc')}</span>
               </button>
               <button
                 onClick={handlePush}
@@ -400,8 +399,8 @@ export default function SyncSettings() {
                 className="flex flex-col items-center gap-2 p-5 rounded-xl border-2 border-gray-200 dark:border-gray-600 hover:border-green-400 transition-colors disabled:opacity-50"
               >
                 <Upload size={28} className="text-green-500" />
-                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Enviar</span>
-                <span className="text-xs text-gray-400">Local → servidor</span>
+                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{t('admin.sync.push')}</span>
+                <span className="text-xs text-gray-400">{t('admin.sync.pushDesc')}</span>
               </button>
               <button
                 onClick={handlePull}
@@ -409,22 +408,22 @@ export default function SyncSettings() {
                 className="flex flex-col items-center gap-2 p-5 rounded-xl border-2 border-gray-200 dark:border-gray-600 hover:border-blue-400 transition-colors disabled:opacity-50"
               >
                 <Download size={28} className="text-blue-500" />
-                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Recibir</span>
-                <span className="text-xs text-gray-400">Servidor → local</span>
+                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{t('admin.sync.pull')}</span>
+                <span className="text-xs text-gray-400">{t('admin.sync.pullDesc')}</span>
               </button>
             </div>
 
             {/* Timestamps */}
             <div className="grid grid-cols-3 gap-3 text-xs text-center border-t border-gray-100 dark:border-gray-700 pt-4">
               {[
-                { label: 'Última sync', value: status?.lastSyncAt },
-                { label: 'Último push', value: status?.lastPushAt },
-                { label: 'Último pull', value: status?.lastPullAt },
+                { label: t('admin.sync.lastSyncLabel'), value: status?.lastSyncAt },
+                { label: t('admin.sync.lastPush'), value: status?.lastPushAt },
+                { label: t('admin.sync.lastPull'), value: status?.lastPullAt },
               ].map(({ label, value }) => (
                 <div key={label}>
                   <p className="text-gray-400 mb-0.5">{label}</p>
                   <p className="font-medium text-gray-700 dark:text-gray-300">
-                    {value ? new Date(value).toLocaleString() : 'Nunca'}
+                    {value ? new Date(value).toLocaleString() : t('admin.sync.never')}
                   </p>
                 </div>
               ))}
@@ -437,8 +436,8 @@ export default function SyncSettings() {
               <div className="flex items-center gap-3">
                 <Clock className="text-purple-500" size={20} />
                 <div>
-                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Sincronización automática</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Se ejecuta en segundo plano</p>
+                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{t('admin.sync.autoSync')}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">{t('admin.sync.autoSyncDesc')}</p>
                 </div>
               </div>
               <select
@@ -456,28 +455,28 @@ export default function SyncSettings() {
           {/* Last result */}
           {lastResult && (
             <Card className="p-5">
-              <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Último resultado</p>
+              <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">{t('admin.sync.lastResult')}</p>
               <div className="flex items-center gap-2 mb-3">
                 {lastResult.success
                   ? <CheckCircle className="text-green-500" size={18} />
                   : <XCircle className="text-red-500" size={18} />
                 }
                 <span className={`text-sm font-medium ${lastResult.success ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}`}>
-                  {lastResult.success ? 'Exitosa' : 'Con errores'}
+                  {lastResult.success ? t('admin.sync.successful') : t('admin.sync.withErrors')}
                 </span>
               </div>
               <div className="grid grid-cols-3 gap-3 text-center text-sm">
                 <div className="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg">
                   <p className="text-xl font-bold text-gray-900 dark:text-gray-100">{lastResult.tablesSynced}</p>
-                  <p className="text-xs text-gray-500">Tablas</p>
+                  <p className="text-xs text-gray-500">{t('admin.sync.tables')}</p>
                 </div>
                 <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded-lg">
                   <p className="text-xl font-bold text-green-600">{lastResult.recordsPushed}</p>
-                  <p className="text-xs text-gray-500">Enviados</p>
+                  <p className="text-xs text-gray-500">{t('admin.sync.sent')}</p>
                 </div>
                 <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
                   <p className="text-xl font-bold text-blue-600">{lastResult.recordsPulled}</p>
-                  <p className="text-xs text-gray-500">Recibidos</p>
+                  <p className="text-xs text-gray-500">{t('admin.sync.received')}</p>
                 </div>
               </div>
               {lastResult.errors.length > 0 && (
@@ -493,9 +492,9 @@ export default function SyncSettings() {
           {/* Disconnect */}
           <div className="flex items-center justify-between p-4 rounded-xl border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-900/10">
             <div>
-              <p className="text-sm font-medium text-red-700 dark:text-red-400">Desvincular servidor</p>
+              <p className="text-sm font-medium text-red-700 dark:text-red-400">{t('admin.sync.disconnect')}</p>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                Los datos locales no se verán afectados.
+                {t('admin.sync.disconnectLocalSafe')}
               </p>
             </div>
             <Button
@@ -504,7 +503,7 @@ export default function SyncSettings() {
               loading={disconnecting}
               icon={<Link2Off size={15} />}
             >
-              Desvincular
+              {t('admin.sync.disconnectBtn')}
             </Button>
           </div>
         </>

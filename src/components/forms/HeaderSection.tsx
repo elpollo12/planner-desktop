@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation, Trans } from 'react-i18next';
 import { useFormContext, Controller } from 'react-hook-form';
 import { AlertTriangle } from 'lucide-react';
 import { Input, DateInput, Select } from '../ui';
@@ -33,6 +34,7 @@ interface HeaderSectionProps {
 }
 
 export function HeaderSection({ isEditMode = false }: HeaderSectionProps) {
+  const { t } = useTranslation();
   const {
     register,
     control,
@@ -114,10 +116,14 @@ export function HeaderSection({ isEditMode = false }: HeaderSectionProps) {
         </div>
         <div className="text-center">
           <p className="text-gray-700 dark:text-gray-300">
-            Estás cambiando el taladro de <strong>{previousRig}</strong> a <strong>{newRigName}</strong>.
+            <Trans
+              i18nKey="reports.header.changeRigMsg"
+              values={{ from: previousRig, to: newRigName }}
+              components={{ strong: <strong /> }}
+            />
           </p>
           <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">
-            Esto eliminará todos los datos de las secciones (cuadrilla, distribución de tiempo, mechas, lodo, etc.) ya que son específicos del taladro. Los datos del encabezado se mantendrán.
+            {t('reports.header.changeRigWarning')}
           </p>
         </div>
         <div className="flex gap-3 justify-end pt-4">
@@ -129,7 +135,7 @@ export function HeaderSection({ isEditMode = false }: HeaderSectionProps) {
               closeModal();
             }}
           >
-            Cancelar
+            {t('actions.cancel')}
           </Button>
           <Button
             variant="primary"
@@ -143,15 +149,15 @@ export function HeaderSection({ isEditMode = false }: HeaderSectionProps) {
               });
               confirmedRigRef.current = newRigName;
               closeModal();
-              toast.info(`Taladro cambiado a ${newRigName}. Las secciones fueron reiniciadas.`);
+              toast.info(t('reports.header.rigChanged', { rig: newRigName }));
             }}
           >
-            Cambiar taladro
+            {t('reports.header.changeRig')}
           </Button>
         </div>
       </div>,
       {
-        title: '¿Cambiar de taladro?',
+        title: t('reports.header.changeRigTitle'),
         size: 'sm',
         showCloseButton: false,
         closeOnOutsideClick: false,
@@ -161,17 +167,17 @@ export function HeaderSection({ isEditMode = false }: HeaderSectionProps) {
   };
 
   const operatorOptions = [
-    { value: '', label: 'Selecciona un operador' },
+    { value: '', label: t('reports.header.selectOperator') },
     ...operators().map((op) => ({ value: op.name, label: op.name })),
   ];
 
   const contractorOptions = [
-    { value: '', label: 'Selecciona un contratista' },
+    { value: '', label: t('reports.header.selectContractor') },
     ...contractors().map((c) => ({ value: c.name, label: c.name })),
   ];
 
   const areaOptions = [
-    { value: '', label: 'Selecciona un campo/distrito' },
+    { value: '', label: t('reports.header.selectField') },
     ...areas.map((area) => ({
       value: area.name,
       label: `${area.name} (${area.state})`,
@@ -179,7 +185,7 @@ export function HeaderSection({ isEditMode = false }: HeaderSectionProps) {
   ];
 
   const rigOptions = [
-    { value: '', label: 'Selecciona un taladro' },
+    { value: '', label: t('reports.header.selectRig') },
     ...accessibleRigs.map((rig) => ({
       value: rig.name,
       label: rig.name,
@@ -189,12 +195,12 @@ export function HeaderSection({ isEditMode = false }: HeaderSectionProps) {
   return (
     <div className="p-6">
       <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-6">
-        Datos Generales del Reporte
+        {t('reports.header.title')}
       </h3>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <Input
-          label="Número de Reporte"
+          label={t('reports.header.reportNumber')}
           type="number"
           {...register('header.reportNumber', { valueAsNumber: true })}
           error={errors.header?.reportNumber?.message}
@@ -206,7 +212,7 @@ export function HeaderSection({ isEditMode = false }: HeaderSectionProps) {
           control={control}
           render={({ field }) => (
             <DateInput
-              label="Fecha del Reporte"
+              label={t('reports.header.reportDate')}
               value={field.value}
               onChange={field.onChange}
               error={errors.header?.reportDate?.message}
@@ -216,21 +222,21 @@ export function HeaderSection({ isEditMode = false }: HeaderSectionProps) {
         />
 
         <Input
-          label="Nombre del Pozo"
+          label={t('reports.header.wellName')}
           {...register('header.wellNumber')}
           error={errors.header?.wellNumber?.message}
-          placeholder="Ej: Pozo Norte-1"
+          placeholder={t('reports.header.wellPlaceholder')}
         />
 
         <Input
-          label="API Number"
+          label={t('reports.header.apiNumber')}
           {...register('header.apiNumber')}
           error={errors.header?.apiNumber?.message}
-          placeholder="Ej: 42-123-45678"
+          placeholder={t('reports.header.apiPlaceholder')}
         />
 
         <Input
-          label="Contrato"
+          label={t('reports.header.contract')}
           {...register('header.contract')}
           error={errors.header?.contract?.message}
         />
@@ -240,7 +246,7 @@ export function HeaderSection({ isEditMode = false }: HeaderSectionProps) {
           control={control}
           render={({ field }) => (
             <Select
-              label="Contratista"
+              label={t('reports.header.contractor')}
               value={field.value}
               onChange={field.onChange}
               onBlur={field.onBlur}
@@ -258,7 +264,7 @@ export function HeaderSection({ isEditMode = false }: HeaderSectionProps) {
           control={control}
           render={({ field }) => (
             <Select
-              label="Operador"
+              label={t('reports.header.operator')}
               value={field.value}
               onChange={field.onChange}
               onBlur={field.onBlur}
@@ -275,7 +281,7 @@ export function HeaderSection({ isEditMode = false }: HeaderSectionProps) {
           control={control}
           render={({ field }) => (
             <Select
-              label="Campo o Distrito"
+              label={t('reports.header.fieldDistrict')}
               value={field.value}
               onChange={field.onChange}
               onBlur={field.onBlur}
@@ -295,7 +301,7 @@ export function HeaderSection({ isEditMode = false }: HeaderSectionProps) {
             control={control}
             render={({ field }) => (
               <Select
-                label="TAL N°"
+                label={t('reports.header.rigNumber')}
                 value={field.value}
                 onChange={(e) => handleEditModeRigChange(e.target.value)}
                 options={rigOptions}
@@ -305,7 +311,7 @@ export function HeaderSection({ isEditMode = false }: HeaderSectionProps) {
           />
         ) : (
           <Input
-            label="Taladro"
+            label={t('reports.header.rigDisabled')}
             value={control._formValues?.header?.rigNumber || ''}
             disabled
           />
@@ -317,14 +323,14 @@ export function HeaderSection({ isEditMode = false }: HeaderSectionProps) {
           render={({ field }) =>
             supervisors.length > 0 ? (
               <Select
-                label="Supervisor 24h"
+                label={t('reports.header.supervisor24h')}
                 value={field.value ?? ''}
                 onChange={field.onChange}
                 onBlur={field.onBlur}
                 name={field.name}
                 ref={field.ref}
                 options={[
-                  { value: '', label: 'Selecciona un supervisor' },
+                  { value: '', label: t('reports.header.selectSupervisor') },
                   ...supervisors.map((s) => ({ value: s.name, label: s.name })),
                 ]}
                 error={errors.header?.supervisor24h?.message}
@@ -332,13 +338,13 @@ export function HeaderSection({ isEditMode = false }: HeaderSectionProps) {
               />
             ) : (
               <Input
-                label="Supervisor 24h"
+                label={t('reports.header.supervisor24h')}
                 value={field.value ?? ''}
                 onChange={field.onChange}
                 onBlur={field.onBlur}
                 name={field.name}
                 ref={field.ref}
-                placeholder={rigNumber ? 'Sin supervisores registrados' : 'Selecciona un taladro primero'}
+                placeholder={rigNumber ? t('reports.header.noSupervisors') : t('reports.header.selectRigFirst')}
                 error={errors.header?.supervisor24h?.message}
                 required
               />
@@ -349,8 +355,7 @@ export function HeaderSection({ isEditMode = false }: HeaderSectionProps) {
 
       <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
         <p className="text-sm text-blue-800">
-          <strong>Nota:</strong> Los campos marcados con asterisco (*) son obligatorios.
-          El resto de campos son opcionales pero recomendados para un reporte completo.
+          <strong>Nota:</strong> {t('reports.header.requiredNote')}
         </p>
       </div>
     </div>

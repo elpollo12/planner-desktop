@@ -1,15 +1,19 @@
+import { useTranslation } from 'react-i18next';
+
 interface PeriodSelectorProps {
   value: number;
   onChange: (days: number) => void;
 }
 
-const OPTIONS = [
-  { label: '7 días', value: 7 },
-  { label: '15 días', value: 15 },
-  { label: '30 días', value: 30 },
-];
-
 export function PeriodSelector({ value, onChange }: PeriodSelectorProps) {
+  const { t } = useTranslation();
+
+  const OPTIONS = [
+    { label: t('admin.periodSelector.days7'), value: 7 },
+    { label: t('admin.periodSelector.days15'), value: 15 },
+    { label: t('admin.periodSelector.days30'), value: 30 },
+  ];
+
   return (
     <div className="inline-flex rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden text-sm">
       {OPTIONS.map((opt) => (

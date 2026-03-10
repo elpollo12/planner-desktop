@@ -1,6 +1,7 @@
 use rusqlite::{params, Connection};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
+use std::time::Instant;
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct SessionInfo {
@@ -14,6 +15,7 @@ pub struct SessionInfo {
 pub struct AppState {
     pub db: Arc<Mutex<Connection>>,
     pub sessions: Arc<Mutex<HashMap<String, SessionInfo>>>,
+    pub login_attempts: Arc<Mutex<HashMap<String, Vec<Instant>>>>,
 }
 
 impl AppState {
@@ -21,6 +23,7 @@ impl AppState {
         Self {
             db: Arc::new(Mutex::new(db)),
             sessions: Arc::new(Mutex::new(HashMap::new())),
+            login_attempts: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 }

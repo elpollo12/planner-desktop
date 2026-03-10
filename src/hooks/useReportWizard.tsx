@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { rigsApi, reportsApi } from '../lib/api';
 import { buildFormFromSnapshot } from '../lib/reportHelpers';
@@ -65,6 +66,7 @@ export function useReportWizard({
   openModal,
   id,
 }: UseReportWizardOptions): UseReportWizardReturn {
+  const { t } = useTranslation();
   const navigate = useNavigate();
 
   // ── State ──────────────────────────────────────────────────────────────
@@ -102,44 +104,45 @@ export function useReportWizard({
 
   const getSectionSummary = useCallback(
     (tabId: TabId): string => {
+      const noData = t('reports.wizardHook.noData');
       switch (tabId) {
         case 'crew': {
           const memberCount =
             formData.crew?.shifts?.reduce((sum, shift) => sum + shift.members.length, 0) || 0;
-          return memberCount > 0 ? `${memberCount} miembros` : 'Sin datos';
+          return memberCount > 0 ? t('reports.wizardHook.members', { count: memberCount }) : noData;
         }
         case 'time': {
           const distCount = formData.timeDistribution?.distributions?.length || 0;
-          return distCount > 0 ? `${distCount} operaciones` : 'Sin datos';
+          return distCount > 0 ? t('reports.wizardHook.operations', { count: distCount }) : noData;
         }
         case 'bits': {
           const bitCount = formData.bitRecords?.records?.length || 0;
-          return bitCount > 0 ? `${bitCount} mechas` : 'Sin datos';
+          return bitCount > 0 ? t('reports.wizardHook.bits', { count: bitCount }) : noData;
         }
         case 'mud': {
           const mudCount = formData.mudRecords?.records?.length || 0;
-          return mudCount > 0 ? `${mudCount} registros` : 'Sin datos';
+          return mudCount > 0 ? t('reports.wizardHook.records', { count: mudCount }) : noData;
         }
         case 'lithology': {
           const paramCount = formData.lithology?.drillingParameters?.length || 0;
           const devCount = formData.lithology?.deviationHistory?.length || 0;
           return paramCount > 0 || devCount > 0
-            ? `${paramCount} parámetros, ${devCount} desviaciones`
-            : 'Sin datos';
+            ? t('reports.wizardHook.paramsAndDevs', { params: paramCount, devs: devCount })
+            : noData;
         }
         case 'observations': {
           const opsCount = formData.observations?.operations?.length || 0;
-          return opsCount > 0 ? `${opsCount} observaciones` : 'Sin datos';
+          return opsCount > 0 ? t('reports.wizardHook.observations', { count: opsCount }) : noData;
         }
         case 'drillString': {
           const compCount = formData.drillString?.components?.length || 0;
-          return compCount > 0 ? `${compCount} piezas` : 'Sin datos';
+          return compCount > 0 ? t('reports.wizardHook.pieces', { count: compCount }) : noData;
         }
         default:
-          return 'Sin datos';
+          return noData;
       }
     },
-    [formData],
+    [formData, t],
   );
 
   // ── Effects ─────────────────────────────────────────────────────────────
@@ -198,7 +201,7 @@ export function useReportWizard({
           }
         } catch (error) {
           console.error('[ReportForm] Failed to load rigs:', error);
-          toast.error('Error al cargar taladros');
+          toast.error(t('reports.wizardHook.errorLoadingRigs'));
         } finally {
           setIsLoadingRigs(false);
         }
@@ -241,7 +244,7 @@ export function useReportWizard({
             onConfirm={() => {
               const data = buildFormFromSnapshot(snapshot);
               methods.reset(data);
-              toast.success('Datos del último reporte precargados');
+              toast.success(t('reports.wizardHook.snapshotPreloaded'));
               setWizardStep('header');
             }}
             onReject={() => {
@@ -250,7 +253,7 @@ export function useReportWizard({
             }}
           />,
           {
-            title: 'Datos disponibles',
+            title: t('reports.wizardHook.snapshotTitle'),
             size: 'sm',
             showCloseButton: false,
             closeOnOutsideClick: false,
@@ -277,22 +280,22 @@ export function useReportWizard({
     const isValid = await trigger('header');
 
     if (!isValid) {
-      toast.error('Por favor completa todos los campos obligatorios del encabezado');
+      toast.error(t('reports.wizardHook.completeRequiredFields'));
       return;
     }
 
     if (!isHeaderValid) {
-      toast.error('Debes completar al menos el número y fecha del reporte');
+      toast.error(t('reports.wizardHook.completeNumberAndDate'));
       return;
     }
 
     setWizardStep('sections');
-    toast.success('Encabezado completado. Ahora selecciona una sección para llenar.');
+    toast.success(t('reports.wizardHook.headerDone'));
   }, [trigger, isHeaderValid]);
 
   const handleBackToHeader = useCallback(() => {
     setWizardStep('header');
-    toast.info('Ahora puedes modificar el encabezado');
+    toast.info(t('reports.wizardHook.editHeader'));
   }, []);
 
   // ── Return ─────────────────────────────────────────────────────────────

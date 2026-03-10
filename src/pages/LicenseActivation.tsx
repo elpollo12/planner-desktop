@@ -1,5 +1,6 @@
 ﻿import { useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { useTranslation } from 'react-i18next';
 import { useLicenseStore } from '../store/licenseStore';
 import { useAppSettingsStore } from '../store/appSettingsStore';
 import { Button, Card } from '../components/ui';
@@ -17,6 +18,7 @@ export default function LicenseActivation() {
   const [licenseKey, setLicenseKey] = useState('');
   const [handshakeStatus, setHandshakeStatus] = useState<HandshakeStatus>('idle');
   const [handshakeError, setHandshakeError] = useState<string | null>(null);
+  const { t } = useTranslation();
   const { activateLicense, isLoading, error, license } = useLicenseStore();
   const { settings } = useAppSettingsStore();
 
@@ -69,9 +71,9 @@ export default function LicenseActivation() {
           ) : (
             <>
               <h1 className="text-3xl font-bold text-primary-500 mb-2">
-                Sistema de Reportes DDR
+                {t('license.title')}
               </h1>
-              <p className="text-gray-600 dark:text-gray-400">Gestión de Taladros Petroleros</p>
+              <p className="text-gray-600 dark:text-gray-400">{t('license.subtitle')}</p>
             </>
           )}
         </div>
@@ -79,7 +81,7 @@ export default function LicenseActivation() {
         <div className="flex items-center gap-2 mb-6 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
           <KeyRound size={20} className="text-amber-600 dark:text-amber-400 shrink-0" />
           <p className="text-sm text-amber-700 dark:text-amber-300">
-            Se requiere una licencia válida para utilizar el sistema.
+            {t('license.required')}
           </p>
         </div>
 
@@ -87,9 +89,9 @@ export default function LicenseActivation() {
           <div className="flex items-center gap-2 mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
             <AlertCircle size={20} className="text-red-600 dark:text-red-400 shrink-0" />
             <div>
-              <p className="text-sm font-medium text-red-700 dark:text-red-300">Licencia expirada</p>
+              <p className="text-sm font-medium text-red-700 dark:text-red-300">{t('license.expired')}</p>
               <p className="text-xs text-red-600 dark:text-red-400">
-                Cliente: {license.customer} | Expiró: {license.expiry}
+                {t('license.customer')}: {license.customer} | {t('license.expiredAt')}: {license.expiry}
               </p>
             </div>
           </div>
@@ -98,12 +100,12 @@ export default function LicenseActivation() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Clave de Licencia
+              {t('license.keyLabel')}
             </label>
             <textarea
               value={licenseKey}
               onChange={(e) => setLicenseKey(e.target.value)}
-              placeholder="Pegue aquí su clave de licencia..."
+              placeholder={t('license.keyPlaceholder')}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
                          bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100
                          focus:ring-2 focus:ring-primary-500 focus:border-transparent
@@ -125,14 +127,14 @@ export default function LicenseActivation() {
           {handshakeStatus === 'loading' && (
             <div className="flex items-center gap-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 px-4 py-3 rounded-lg">
               <Loader2 size={16} className="shrink-0 animate-spin" />
-              <p className="text-sm">Descargando datos del servidor...</p>
+              <p className="text-sm">{t('license.downloading')}</p>
             </div>
           )}
 
           {handshakeStatus === 'success' && (
             <div className="flex items-center gap-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-300 px-4 py-3 rounded-lg">
               <CloudDownload size={16} className="shrink-0" />
-              <p className="text-sm">Datos del servidor descargados correctamente.</p>
+              <p className="text-sm">{t('license.downloadSuccess')}</p>
             </div>
           )}
 
@@ -140,9 +142,9 @@ export default function LicenseActivation() {
             <div className="flex items-center gap-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 px-4 py-3 rounded-lg">
               <AlertCircle size={16} className="shrink-0" />
               <div>
-                <p className="text-sm font-medium">Licencia activada, pero no se pudo conectar al servidor.</p>
+                <p className="text-sm font-medium">{t('license.downloadErrorTitle')}</p>
                 <p className="text-xs mt-0.5 opacity-80">
-                  {handshakeError ?? 'Puede sincronizar manualmente desde el Panel de Administración.'}
+                  {handshakeError ?? t('license.downloadErrorHint')}
                 </p>
               </div>
             </div>
@@ -157,12 +159,12 @@ export default function LicenseActivation() {
             disabled={isLoading || handshakeStatus === 'loading' || !licenseKey.trim()}
             icon={<CheckCircle size={18} />}
           >
-            Activar Licencia
+            {t('license.activate')}
           </Button>
         </form>
 
         <p className="text-[10px] text-gray-400 dark:text-gray-600 text-center mt-6">
-          Contacte a su administrador si no posee una clave de licencia.
+          {t('license.contactAdmin')}
         </p>
       </Card>
     </div>

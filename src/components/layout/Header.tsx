@@ -1,8 +1,8 @@
-import { Sun, Moon } from 'lucide-react';
+import { Sun, Moon, Languages } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { usePreferencesStore } from '../../store/preferencesStore';
 import { useAuthStore } from '../../store/authStore';
 import { NotificationBell } from '../notifications';
-import { ConnectionStatus } from '../ui/ConnectionStatus';
 
 interface HeaderProps {
   title?: string;
@@ -12,8 +12,13 @@ interface HeaderProps {
 }
 
 export function Header({ title, subtitle, actions, className = '' }: HeaderProps) {
+  const { t, i18n } = useTranslation();
   const { sessionToken } = useAuthStore();
   const { preferences, toggleTheme } = usePreferencesStore();
+
+  const toggleLanguage = () => {
+    i18n.changeLanguage(i18n.language === 'es' ? 'en' : 'es');
+  };
 
   const isDarkMode = preferences?.themeMode === 'dark';
 
@@ -45,14 +50,21 @@ export function Header({ title, subtitle, actions, className = '' }: HeaderProps
           <div className="flex items-center gap-2">
             {actions}
 
-            {/* Connection Status */}
-            <ConnectionStatus />
+            {/* Language Toggle */}
+            <button
+              onClick={toggleLanguage}
+              className="relative flex items-center gap-1 px-2 py-1.5 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              title={t('language.label')}
+            >
+              <Languages size={18} />
+              <span className="text-xs font-medium uppercase">{i18n.language}</span>
+            </button>
 
             {/* Theme Toggle */}
             <button
               onClick={handleToggleTheme}
               className="relative p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-              title={isDarkMode ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+              title={isDarkMode ? t('theme.switchToLight') : t('theme.switchToDark')}
             >
               {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
             </button>

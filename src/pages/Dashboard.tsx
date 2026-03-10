@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { ShieldOff, ChevronDown, Tag, Cpu, Calendar } from 'lucide-react';
 import { getVersion } from '@tauri-apps/api/app';
 import { useAuthStore } from '../store/authStore';
@@ -24,6 +25,7 @@ interface QuickAction {
 }
 
 export default function Dashboard() {
+  const { t } = useTranslation();
   const { user, isAuthenticated, sessionToken } = useAuthStore();
   const { canAccess } = usePermissions();
   const navigate = useNavigate();
@@ -81,24 +83,24 @@ export default function Dashboard() {
   const quickActions = useMemo(() => {
     const actions: QuickAction[] = [];
     if (canAccess.reports) {
-      actions.push({ icon: '📝', title: 'Nuevo Reporte', description: 'Crear un nuevo DDR', href: '/reports/new' });
-      actions.push({ icon: '📊', title: 'Ver Reportes', description: 'Consultar reportes existentes', href: '/reports' });
+      actions.push({ icon: '📝', title: t('dashboard.newReport'), description: t('dashboard.newReportDesc'), href: '/reports/new' });
+      actions.push({ icon: '📊', title: t('dashboard.viewReports'), description: t('dashboard.viewReportsDesc'), href: '/reports' });
     }
     if (canAccess.incidents) {
-      actions.push({ icon: '⚠️', title: 'Incidencias', description: 'Registrar y consultar incidencias', href: '/incidents' });
+      actions.push({ icon: '⚠️', title: t('dashboard.incidents'), description: t('dashboard.incidentsDesc'), href: '/incidents' });
     }
     if (canAccess.approvals) {
       actions.push({
-        icon: '✅', title: 'Aprobaciones',
-        description: stats.submitted > 0 ? `${stats.submitted} pendiente${stats.submitted !== 1 ? 's' : ''}` : 'Revisar reportes enviados',
+        icon: '✅', title: t('dashboard.approvals'),
+        description: stats.submitted > 0 ? t('dashboard.approvalsDescPending', { count: stats.submitted }) : t('dashboard.approvalsDescEmpty'),
         href: '/approvals',
       });
     }
     if (canAccess.admin) {
-      actions.push({ icon: '👥', title: 'Usuarios', description: 'Gestionar usuarios del sistema', href: '/admin/' });
+      actions.push({ icon: '👥', title: t('dashboard.users'), description: t('dashboard.usersDesc'), href: '/admin/' });
     }
     if (canAccess.logistics) {
-      actions.push({ icon: '🚚', title: 'Logística', description: 'Gestión de recursos y materiales', href: '/logistics' });
+      actions.push({ icon: '🚚', title: t('dashboard.logistics'), description: t('dashboard.logisticsDesc'), href: '/logistics' });
     }
     return actions;
   }, [canAccess.reports, canAccess.incidents, canAccess.approvals, canAccess.admin, canAccess.logistics, stats.submitted]);
@@ -106,7 +108,7 @@ export default function Dashboard() {
   if (!user) return null;
 
   return (
-    <MainLayout title="Dashboard" subtitle={`Bienvenido, ${user.fullName}`}>
+    <MainLayout title="Dashboard" subtitle={t('dashboard.welcome', { name: user.fullName })}>
       {/* Version badge dropdown */}
       {appVersion && (
         <div className="flex justify-end mb-4">
@@ -122,14 +124,14 @@ export default function Dashboard() {
             {versionOpen && (
               <div className="absolute right-0 mt-1 w-56 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-10 overflow-hidden">
                 <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Versión instalada</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">{t('dashboard.versionInstalled')}</p>
                   <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">D-Planner v{appVersion}</p>
                 </div>
                 <div className="px-4 py-2 flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
                   <Cpu size={12} /><span>Windows x64</span>
                 </div>
                 <div className="px-4 py-2 flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 border-t border-gray-100 dark:border-gray-700">
-                  <Calendar size={12} /><span>Actualizado correctamente ✓</span>
+                  <Calendar size={12} /><span>{t('dashboard.updatedOk')}</span>
                 </div>
               </div>
             )}
@@ -141,10 +143,10 @@ export default function Dashboard() {
       {canAccess.reports && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {[
-            { label: 'Reportes Totales', value: stats.total, color: 'bg-blue-500', href: '/reports' },
-            { label: 'Borradores', value: stats.drafts, color: 'bg-yellow-500', href: '/reports' },
-            { label: 'Pendientes', value: stats.submitted, color: 'bg-purple-500', href: canAccess.approvals ? '/approvals' : '/reports' },
-            { label: 'Aprobados', value: stats.approved, color: 'bg-green-500', href: '/reports' },
+            { label: t('dashboard.totalReports'), value: stats.total, color: 'bg-blue-500', href: '/reports' },
+            { label: t('dashboard.drafts'), value: stats.drafts, color: 'bg-yellow-500', href: '/reports' },
+            { label: t('dashboard.pending'), value: stats.submitted, color: 'bg-purple-500', href: canAccess.approvals ? '/approvals' : '/reports' },
+            { label: t('dashboard.approved'), value: stats.approved, color: 'bg-green-500', href: '/reports' },
           ].map((stat) => (
             <div key={stat.label} onClick={() => navigate(stat.href)} className="cursor-pointer hover:shadow-md transition-shadow rounded-lg">
               <Card className="p-0! overflow-hidden">
@@ -165,17 +167,16 @@ export default function Dashboard() {
           <div className="flex flex-col items-center justify-center py-12 text-center gap-4">
             <ShieldOff size={48} className="text-gray-300 dark:text-gray-600" />
             <div>
-              <p className="text-lg font-semibold text-gray-700 dark:text-gray-300">Sin acceso a módulos</p>
+              <p className="text-lg font-semibold text-gray-700 dark:text-gray-300">{t('dashboard.noModules')}</p>
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                Actualmente no tienes permisos para acceder a ningún módulo.<br />
-                Contacta con un administrador para que te asigne los permisos necesarios.
+                {t('dashboard.noModulesDesc')}
               </p>
             </div>
           </div>
         </Card>
       ) : (
         <Card>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Acciones Rápidas</h3>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">{t('dashboard.quickActions')}</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {quickActions.map((action) => (
               <button

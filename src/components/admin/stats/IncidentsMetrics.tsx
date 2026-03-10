@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   PieChart,
   Pie,
@@ -22,6 +23,7 @@ import { PeriodSelector } from './PeriodSelector';
 import { getIncidentColor, useAxisTickColor, useGridStroke, useChartReady } from './chartHelpers';
 
 export function IncidentsMetrics() {
+  const { t } = useTranslation();
   const [days, setDays] = useState(30);
   const { data, isLoading } = useIncidentsStats(days);
   const tickColor = useAxisTickColor();
@@ -42,7 +44,7 @@ export function IncidentsMetrics() {
     return (
       <div className="text-center py-12 text-gray-500">
         <AlertTriangle className="mx-auto mb-4 text-gray-400" size={48} />
-        <p>No hay datos de incidencias disponibles</p>
+        <p>{t('admin.incidentsMetrics.noData')}</p>
       </div>
     );
   }
@@ -65,7 +67,7 @@ export function IncidentsMetrics() {
         <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-50 dark:bg-gray-800/50">
           <AlertTriangle className="text-orange-500" size={20} />
           <span className="text-2xl font-bold text-gray-900 dark:text-gray-100">{data.totalIncidents}</span>
-          <span className="text-sm text-gray-500 dark:text-gray-400">Total Incidencias</span>
+          <span className="text-sm text-gray-500 dark:text-gray-400">{t('admin.incidentsMetrics.totalIncidents')}</span>
         </div>
 
         {data.byType.map((t: { typeName: string; count: number; color: string; typeId: string }) => (
@@ -87,7 +89,7 @@ export function IncidentsMetrics() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Pie: by type */}
         <Card className="p-5">
-          <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Distribución por Tipo</h4>
+          <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">{t('admin.incidentsMetrics.distributionByType')}</h4>
           <div ref={chart1Ref} className="h-48" style={{ minWidth: 0, overflow: 'hidden' }}>
             {chart1Ready && <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -122,7 +124,7 @@ export function IncidentsMetrics() {
         {/* Top rigs */}
         {data.topRigs.length > 0 && (
           <Card className="p-5">
-            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Top Taladros con Incidencias</h4>
+            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">{t('admin.incidentsMetrics.topRigsWithIncidents')}</h4>
             <div ref={chart2Ref} className="h-56" style={{ minWidth: 0, overflow: 'hidden' }}>
               {chart2Ready && <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={data.topRigs} layout="vertical" margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
@@ -136,7 +138,7 @@ export function IncidentsMetrics() {
                       return (
                         <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg px-3 py-2 text-sm">
                           <p className="font-medium text-gray-900 dark:text-gray-100">{item.rigName}</p>
-                          <p className="text-orange-600">{item.count} incidencias</p>
+                          <p className="text-orange-600">{t('admin.incidentsMetrics.incidents', { count: item.count })}</p>
                         </div>
                       );
                     }}
@@ -153,7 +155,7 @@ export function IncidentsMetrics() {
       {dailyData.length > 0 && (
         <Card className="p-5">
           <div className="flex items-center justify-between mb-4">
-            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Tendencia de Incidencias</h4>
+            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">{t('admin.incidentsMetrics.incidentsTrend')}</h4>
             <PeriodSelector value={days} onChange={setDays} />
           </div>
           <div ref={chart3Ref} className="h-56" style={{ minWidth: 0, overflow: 'hidden' }}>
@@ -177,7 +179,7 @@ export function IncidentsMetrics() {
                         <p className="font-medium text-gray-900 dark:text-gray-100">
                           {format(parseISO(item.day), "d 'de' MMMM", { locale: es })}
                         </p>
-                        <p className="text-orange-600">{item.count} incidencias</p>
+                        <p className="text-orange-600">{t('admin.incidentsMetrics.incidents', { count: item.count })}</p>
                       </div>
                     );
                   }}

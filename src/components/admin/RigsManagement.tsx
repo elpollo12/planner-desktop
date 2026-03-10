@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
 import { Plus, Pencil, Trash2, Search, Filter, Building2, HardHat } from 'lucide-react';
 import { rigsApi } from '@/lib/api';
@@ -16,6 +17,7 @@ import { Table } from '@/components/ui/Table';
 import { Card } from '@/components/ui/Card';
 
 export default function RigsManagement() {
+  const { t } = useTranslation();
   const { user, sessionToken } = useAuthStore();
   const { openModal } = useModal();
 
@@ -34,7 +36,7 @@ export default function RigsManagement() {
       const data = await rigsApi.list(includeInactive);
       setRigs(data);
     } catch {
-      toast.error('Error al cargar los taladros');
+      toast.error(t('admin.rigs.loadRigsError'));
     } finally {
       setLoading(false);
     }
@@ -66,14 +68,14 @@ export default function RigsManagement() {
       <RigCreateForm
         onSubmit={async (data) => {
           const newRig = await rigsApi.create(user!.id, data);
-          toast.success(`Taladro "${newRig.name}" creado exitosamente`);
+          toast.success(t('admin.rigs.created', { name: newRig.name }));
           pushInBackground();
           loadData();
           return newRig.id;
         }}
       />,
       {
-        title: 'Crear Nuevo Taladro',
+        title: t('admin.rigs.createTitle'),
         size: 'lg',
         showCloseButton: true,
         onClose: () => loadData(),
@@ -88,7 +90,7 @@ export default function RigsManagement() {
     try {
       rigFull = await loadRigFull(rig.id);
     } catch {
-      toast.error('Error al cargar el taladro');
+      toast.error(t('admin.rigs.loadError'));
       return;
     }
 
@@ -97,7 +99,7 @@ export default function RigsManagement() {
         rig={rigFull}
         onSubmit={async (data) => {
           await rigsApi.update(rig.id, user!.id, data);
-          toast.success('Taladro actualizado exitosamente');
+          toast.success(t('admin.rigs.updated'));
           pushInBackground();
           loadData();
         }}
@@ -107,7 +109,7 @@ export default function RigsManagement() {
         }}
       />,
       {
-        title: 'Editar Taladro',
+        title: t('admin.rigs.editTitle'),
         size: 'lg',
         showCloseButton: true,
         onClose: () => loadData(),
@@ -121,26 +123,25 @@ export default function RigsManagement() {
     openModal(
       <div className="space-y-3">
         <p className="text-gray-700 dark:text-gray-300">
-          ¿Estás seguro de eliminar el taladro{' '}
-          <strong className="text-gray-900 dark:text-gray-100">"{rig.name}"</strong>?
+          {t('admin.rigs.confirmDelete', { name: rig.name })}
         </p>
         <div className="text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg space-y-1">
-          {rig.operatorName && <p><strong>Operador:</strong> {rig.operatorName}</p>}
-          <p><strong>Potencia:</strong> {rig.power}</p>
-          {rig.areaName && <p><strong>Área:</strong> {rig.areaName}</p>}
+          {rig.operatorName && <p><strong>{t('admin.rigs.operator')}:</strong> {rig.operatorName}</p>}
+          <p><strong>{t('admin.rigs.power')}:</strong> {rig.power}</p>
+          {rig.areaName && <p><strong>{t('admin.rigs.area')}:</strong> {rig.areaName}</p>}
         </div>
-        <p className="text-sm text-red-500">Esta acción no se puede deshacer.</p>
+        <p className="text-sm text-red-500">{t('admin.rigs.deleteWarning')}</p>
       </div>,
       {
-        title: 'Confirmar Eliminación',
+        title: t('admin.rigs.confirmDeletion'),
         size: 'md',
         showConfirmButton: true,
         showCancelButton: true,
-        confirmText: 'Eliminar',
-        cancelText: 'Cancelar',
+        confirmText: t('admin.rigs.delete'),
+        cancelText: t('admin.rigs.cancel'),
         onConfirm: async () => {
           await rigsApi.delete(rig.id);
-          toast.success('Taladro eliminado');
+          toast.success(t('admin.rigs.deleted'));
           pushInBackground();
           loadData();
         },
@@ -163,7 +164,7 @@ export default function RigsManagement() {
 
   // Unique areas from loaded rigs for the filter dropdown
   const areaOptions = [
-    { value: '', label: 'Todas las áreas' },
+    { value: '', label: t('admin.rigs.allAreas') },
     ...Array.from(
       new Map(
         rigs
@@ -178,14 +179,14 @@ export default function RigsManagement() {
   const columns = [
     {
       key: 'name',
-      header: 'Nombre',
+      header: t('admin.rigs.name'),
       render: (rig: RigWithArea) => (
         <span className="font-semibold text-gray-900 dark:text-gray-100">{rig.name}</span>
       ),
     },
     {
       key: 'operator',
-      header: 'Operador',
+      header: t('admin.rigs.operator'),
       render: (rig: RigWithArea) => {
         const name = rig.operatorName ?? rig.operator;
         return name ? (
@@ -194,20 +195,20 @@ export default function RigsManagement() {
             <span className="text-gray-700 dark:text-gray-300">{name}</span>
           </div>
         ) : (
-          <span className="text-xs text-gray-400 italic">Sin asignar</span>
+          <span className="text-xs text-gray-400 italic">{t('admin.rigs.unassigned')}</span>
         );
       },
     },
     {
       key: 'power',
-      header: 'Potencia',
+      header: t('admin.rigs.power'),
       render: (rig: RigWithArea) => (
         <span className="text-sm text-gray-600 dark:text-gray-400">{rig.power}</span>
       ),
     },
     {
       key: 'area',
-      header: 'Área',
+      header: t('admin.rigs.area'),
       render: (rig: RigWithArea) =>
         rig.areaName ? (
           <div className="text-sm">
@@ -219,12 +220,12 @@ export default function RigsManagement() {
             )}
           </div>
         ) : (
-          <span className="text-xs text-gray-400 italic">Sin área</span>
+          <span className="text-xs text-gray-400 italic">{t('admin.rigs.noArea')}</span>
         ),
     },
     {
       key: 'status',
-      header: 'Estado',
+      header: t('admin.rigs.status'),
       render: (rig: RigWithArea) => (
         <span
           className={`px-2 py-0.5 text-xs font-medium rounded-full ${
@@ -233,19 +234,19 @@ export default function RigsManagement() {
               : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
           }`}
         >
-          {rig.active ? 'Activo' : 'Inactivo'}
+          {rig.active ? t('admin.rigs.active') : t('admin.rigs.inactive')}
         </span>
       ),
     },
     {
       key: 'actions',
-      header: 'Acciones',
+      header: t('admin.rigs.actions'),
       render: (rig: RigWithArea) => (
         <div className="flex gap-2">
-          <Button variant="secondary" size="sm" onClick={() => handleEdit(rig)} title="Editar">
+          <Button variant="secondary" size="sm" onClick={() => handleEdit(rig)} title={t('admin.rigs.edit')}>
             <Pencil className="w-4 h-4" />
           </Button>
-          <Button variant="danger" size="sm" onClick={() => handleDelete(rig)} title="Eliminar">
+          <Button variant="danger" size="sm" onClick={() => handleDelete(rig)} title={t('admin.rigs.delete')}>
             <Trash2 className="w-4 h-4" />
           </Button>
         </div>
@@ -261,14 +262,14 @@ export default function RigsManagement() {
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-            Gestión de Taladros
+            {t('admin.rigs.title')}
           </h2>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-            Administra los taladros, sus operadores, contratistas y cuadrilla
+            {t('admin.rigs.subtitle')}
           </p>
         </div>
         <Button variant="primary" onClick={handleCreate} icon={<Plus />}>
-          Crear Taladro
+          {t('admin.rigs.create')}
         </Button>
       </div>
 
@@ -277,13 +278,13 @@ export default function RigsManagement() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="md:col-span-2">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Buscar
+              {t('admin.rigs.search')}
             </label>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <Input
                 type="text"
-                placeholder="Nombre, operador o área..."
+                placeholder={t('admin.rigs.searchPlaceholder')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -293,7 +294,7 @@ export default function RigsManagement() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Filtrar por Área
+              {t('admin.rigs.filterByArea')}
             </label>
             <div className="relative">
               <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -316,7 +317,7 @@ export default function RigsManagement() {
             className="h-4 w-4 text-primary-600 border-gray-300 rounded"
           />
           <label htmlFor="includeInactive" className="text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
-            Incluir taladros inactivos
+            {t('admin.rigs.includeInactive')}
           </label>
         </div>
       </Card>
@@ -326,19 +327,19 @@ export default function RigsManagement() {
         {loading ? (
           <div className="text-center py-12">
             <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600" />
-            <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">Cargando taladros...</p>
+            <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">{t('admin.rigs.loading')}</p>
           </div>
         ) : filteredRigs.length === 0 ? (
           <div className="text-center py-12">
             <HardHat className="mx-auto w-10 h-10 text-gray-300 dark:text-gray-600 mb-3" />
             <p className="text-gray-500 dark:text-gray-400">
               {searchTerm || filterArea
-                ? 'No se encontraron taladros con los filtros aplicados'
-                : 'No hay taladros registrados'}
+                ? t('admin.rigs.noResults')
+                : t('admin.rigs.noRigs')}
             </p>
             {!searchTerm && !filterArea && (
               <Button variant="primary" onClick={handleCreate} className="mt-4" icon={<Plus className="w-4 h-4" />}>
-                Crear Primer Taladro
+                {t('admin.rigs.createFirst')}
               </Button>
             )}
           </div>

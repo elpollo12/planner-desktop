@@ -13,9 +13,9 @@ export type TabId = 'crew' | 'time' | 'bits' | 'mud' | 'lithology' | 'observatio
 /** Metadata for a section tab in the wizard UI */
 export interface WizardTab {
   id: TabId;
-  label: string;
+  labelKey: string;
   icon: string;
-  description: string;
+  descriptionKey: string;
 }
 
 // ============================================================================
@@ -25,45 +25,45 @@ export interface WizardTab {
 export const WIZARD_TABS: WizardTab[] = [
   {
     id: 'crew',
-    label: 'Cuadrilla',
+    labelKey: 'reports.wizard.crew',
     icon: '👥',
-    description: 'Personal y turnos de trabajo',
+    descriptionKey: 'reports.wizard.crewDesc',
   },
   {
     id: 'time',
-    label: 'Distribución de Tiempo',
+    labelKey: 'reports.wizard.time',
     icon: '⏱️',
-    description: 'Horas por operación y turno',
+    descriptionKey: 'reports.wizard.timeDesc',
   },
   {
     id: 'bits',
-    label: 'Mechas',
+    labelKey: 'reports.wizard.bits',
     icon: '🔩',
-    description: 'Record de brocas utilizadas',
+    descriptionKey: 'reports.wizard.bitsDesc',
   },
   {
     id: 'mud',
-    label: 'Lodo',
+    labelKey: 'reports.wizard.mud',
     icon: '🧪',
-    description: 'Propiedades y aditivos del lodo',
+    descriptionKey: 'reports.wizard.mudDesc',
   },
   {
     id: 'lithology',
-    label: 'Litología',
+    labelKey: 'reports.wizard.lithology',
     icon: '⛏️',
-    description: 'Parámetros de perforación y desviación',
+    descriptionKey: 'reports.wizard.lithologyDesc',
   },
   {
     id: 'observations',
-    label: 'Observaciones',
+    labelKey: 'reports.wizard.observations',
     icon: '📝',
-    description: 'Bitácora de operaciones',
+    descriptionKey: 'reports.wizard.observationsDesc',
   },
   {
     id: 'drillString',
-    label: 'Sarta de Perforación',
+    labelKey: 'reports.wizard.drillString',
     icon: '🔗',
-    description: 'Datos de la sarta',
+    descriptionKey: 'reports.wizard.drillStringDesc',
   },
 ];
 

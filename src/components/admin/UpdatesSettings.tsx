@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Card, Button } from '../ui';
 import {
   Download,
@@ -17,16 +18,8 @@ import { useUpdateChecker } from '../../hooks/useUpdateChecker';
 import { useModal } from '../../store/modalStore';
 import { openUpdateModal } from '../modals/UpdateModal';
 
-const INTERVAL_OPTIONS = [
-  { value: 1, label: '1 hora' },
-  { value: 6, label: '6 horas' },
-  { value: 12, label: '12 horas' },
-  { value: 24, label: '24 horas' },
-  { value: 48, label: '2 días' },
-  { value: 168, label: '1 semana' },
-];
-
 export default function UpdatesSettings() {
+  const { t } = useTranslation();
   const { sessionToken, user } = useAuthStore();
   const { openModal } = useModal();
   const { 
@@ -51,6 +44,15 @@ export default function UpdatesSettings() {
   // Local state for form
   const [autoUpdate, setAutoUpdate] = useState(false);
   const [checkInterval, setCheckInterval] = useState(24);
+
+  const INTERVAL_OPTIONS = [
+    { value: 1, label: t('admin.updates.hour1') },
+    { value: 6, label: t('admin.updates.hours6') },
+    { value: 12, label: t('admin.updates.hours12') },
+    { value: 24, label: t('admin.updates.hours24') },
+    { value: 48, label: t('admin.updates.days2') },
+    { value: 168, label: t('admin.updates.week1') },
+  ];
 
   useEffect(() => {
     if (sessionToken) {
@@ -90,9 +92,9 @@ export default function UpdatesSettings() {
         channel: 'stable',
         checkIntervalHours: checkInterval,
       });
-      showMessage('success', 'Preferencias de actualización guardadas');
+      showMessage('success', t('admin.updates.preferencesSaved'));
     } catch (error) {
-      showMessage('error', `Error al guardar: ${error}`);
+      showMessage('error', t('admin.updates.saveError', { error: String(error) }));
     } finally {
       setSaving(false);
     }
@@ -103,12 +105,12 @@ export default function UpdatesSettings() {
     try {
       await checkForUpdate();
       if (state.status === 'available') {
-        showMessage('success', `Nueva versión disponible: ${releaseInfo?.version}`);
+        showMessage('success', t('admin.updates.newVersionAvailable', { version: releaseInfo?.version }));
       } else {
-        showMessage('success', 'Ya tienes la última versión');
+        showMessage('success', t('admin.updates.alreadyLatest'));
       }
     } catch (error) {
-      showMessage('error', `Error al verificar: ${error}`);
+      showMessage('error', t('admin.updates.checkError', { error: String(error) }));
     } finally {
       setChecking(false);
     }
@@ -122,7 +124,7 @@ export default function UpdatesSettings() {
     return (
       <div className="flex items-center justify-center py-12">
         <RefreshCw className="animate-spin text-primary-500" size={24} />
-        <span className="ml-2 text-gray-500">Cargando configuración...</span>
+        <span className="ml-2 text-gray-500">{t('admin.updates.loading')}</span>
       </div>
     );
   }
@@ -137,10 +139,10 @@ export default function UpdatesSettings() {
           </div>
           <div>
             <p className="font-semibold text-primary-800 dark:text-primary-300">
-              Versión Actual: {currentVersion}
+              {t('admin.updates.currentVersion', { version: currentVersion })}
             </p>
             <p className="text-sm text-primary-600 dark:text-primary-400">
-              Canal: Estable
+              {t('admin.updates.channel')}
             </p>
           </div>
         </div>
@@ -151,7 +153,7 @@ export default function UpdatesSettings() {
               onClick={handleViewUpdateDetails}
               icon={<Zap size={16} />}
             >
-              v{releaseInfo.version} disponible
+              {t('admin.updates.versionAvailable', { version: releaseInfo.version })}
             </Button>
           )}
           <Button 
@@ -160,7 +162,7 @@ export default function UpdatesSettings() {
             loading={checking || state.status === 'checking'}
             icon={<RefreshCw size={16} />}
           >
-            Buscar actualizaciones
+            {t('admin.updates.checkUpdates')}
           </Button>
         </div>
       </div>
@@ -186,10 +188,10 @@ export default function UpdatesSettings() {
             </div>
             <div className="flex-1">
               <h3 className="text-lg font-semibold text-primary-800 dark:text-primary-300">
-                ¡Nueva versión disponible!
+                {t('admin.updates.newVersionTitle')}
               </h3>
               <p className="text-primary-600 dark:text-primary-400 mt-1">
-                Versión {releaseInfo.version} está lista para descargar.
+                {t('admin.updates.newVersionDesc', { version: releaseInfo.version })}
               </p>
               {releaseInfo.notes && (
                 <p className="text-sm text-primary-500 dark:text-primary-500 mt-2 line-clamp-2">
@@ -198,10 +200,10 @@ export default function UpdatesSettings() {
               )}
               <div className="flex gap-3 mt-4">
                 <Button variant="primary" onClick={downloadAndInstall} icon={<Download size={16} />}>
-                  Descargar e instalar
+                  {t('admin.updates.downloadInstall')}
                 </Button>
                 <Button variant="outline" onClick={handleViewUpdateDetails} icon={<Info size={16} />}>
-                  Ver detalles
+                  {t('admin.updates.viewDetails')}
                 </Button>
               </div>
             </div>
@@ -215,7 +217,7 @@ export default function UpdatesSettings() {
           <div className="flex items-center gap-3 mb-4">
             <RefreshCw className="animate-spin text-primary-500" size={24} />
             <span className="font-medium text-gray-900 dark:text-gray-100">
-              Descargando actualización... {state.progress}%
+              {t('admin.updates.downloading', { progress: state.progress })}
             </span>
           </div>
           <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
@@ -231,7 +233,7 @@ export default function UpdatesSettings() {
       <Card className="p-6">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
           <Settings size={20} />
-          Configuración de Actualizaciones
+          {t('admin.updates.settingsTitle')}
         </h3>
 
         <div className="space-y-6">
@@ -241,10 +243,10 @@ export default function UpdatesSettings() {
               <Zap className="text-amber-500" size={24} />
               <div>
                 <p className="font-medium text-gray-900 dark:text-gray-100">
-                  Actualización Automática
+                  {t('admin.updates.autoUpdate')}
                 </p>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Descargar e instalar actualizaciones automáticamente
+                  {t('admin.updates.autoUpdateDesc')}
                 </p>
               </div>
             </div>
@@ -262,7 +264,7 @@ export default function UpdatesSettings() {
           {/* Check interval */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Verificar actualizaciones cada
+              {t('admin.updates.checkEvery')}
             </label>
             <div className="flex items-center gap-3">
               <Clock className="text-gray-400" size={20} />
@@ -286,7 +288,7 @@ export default function UpdatesSettings() {
               loading={saving}
               icon={<CheckCircle size={16} />}
             >
-              Guardar preferencias
+              {t('admin.updates.savePreferences')}
             </Button>
           </div>
         </div>
@@ -297,12 +299,10 @@ export default function UpdatesSettings() {
         <Card className="p-6">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2 flex items-center gap-2">
             <Settings size={20} />
-            Servidor de Actualizaciones
+            {t('admin.updates.serverTitle')}
           </h3>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Las actualizaciones se verifican automáticamente en el servidor sync vinculado
-            desde <strong>Configuración → Sincronización</strong>. Si no hay servidor vinculado,
-            se usa el canal de GitHub Releases como respaldo.
+            {t('admin.updates.serverDesc')}
           </p>
         </Card>
       )}
@@ -311,26 +311,26 @@ export default function UpdatesSettings() {
       <Card className="p-6">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
           <BarChart3 size={20} />
-          Estado de Actualizaciones
+          {t('admin.updates.statusTitle')}
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg text-center">
             <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{currentVersion}</p>
-            <p className="text-sm text-gray-500 dark:text-gray-400">Versión instalada</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">{t('admin.updates.installedVersion')}</p>
           </div>
           <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg text-center">
             <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-              {preferences?.lastCheckAt 
-                ? new Date(preferences.lastCheckAt).toLocaleDateString() 
-                : 'Nunca'}
+              {preferences?.lastCheckAt
+                ? new Date(preferences.lastCheckAt).toLocaleDateString()
+                : t('admin.updates.never')}
             </p>
-            <p className="text-sm text-gray-500 dark:text-gray-400">Última verificación</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">{t('admin.updates.lastCheck')}</p>
           </div>
           <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg text-center">
             <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
               {preferences?.postponeCount || 0} / 3
             </p>
-            <p className="text-sm text-gray-500 dark:text-gray-400">Postergaciones usadas</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">{t('admin.updates.postponementsUsed')}</p>
           </div>
         </div>
       </Card>
@@ -338,18 +338,15 @@ export default function UpdatesSettings() {
       {/* Help Info */}
       <Card className="p-6">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">
-          Información
+          {t('admin.updates.infoTitle')}
         </h3>
         <div className="text-sm text-gray-600 dark:text-gray-400 space-y-3">
           <p>
-            Las actualizaciones automáticas mantienen tu aplicación al día con las últimas
-            mejoras y correcciones de seguridad.
+            {t('admin.updates.infoText')}
           </p>
           <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
             <p className="text-blue-800 dark:text-blue-300">
-              <strong>Postergación:</strong> Puedes postergar una actualización hasta 3 veces.
-              Después de eso, se te pedirá que actualices para continuar usando la aplicación
-              de forma óptima.
+              <strong>{t('admin.updates.postponeNote')}</strong> {t('admin.updates.postponeText')}
             </p>
           </div>
         </div>

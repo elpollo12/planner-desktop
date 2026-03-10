@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { MainLayout } from '../components/layout';
 import { Card } from '../components/ui';
 import { Users, BarChart3, Activity, MapPin, Palette, Cloud, Building2, Download, LayoutGrid } from 'lucide-react';
@@ -24,6 +25,7 @@ interface AdminStats {
 }
 
 export default function AdminPanel() {
+  const { t } = useTranslation();
   const { sessionToken } = useAuthStore();
   const [activeTab, setActiveTab] = useState<AdminTab>('stats');
   const [stats, setStats] = useState<AdminStats>({
@@ -70,27 +72,27 @@ export default function AdminPanel() {
   };
 
   const tabs = [
-    { id: 'stats' as AdminTab, label: 'Estadísticas', icon: BarChart3 },
-    { id: 'rigs' as AdminTab, label: 'Taladros', icon: OilRigIcon },
-    { id: 'users' as AdminTab, label: 'Usuarios', icon: Users },
-    { id: 'companies' as AdminTab, label: 'Empresas', icon: Building2 },
-    { id: 'misc' as AdminTab, label: 'Misceláneos', icon: LayoutGrid },
-    { id: 'sync' as AdminTab, label: 'Sincronización', icon: Cloud },
-    { id: 'updates' as AdminTab, label: 'Actualizaciones', icon: Download },
-    { id: 'appearance' as AdminTab, label: 'Apariencia', icon: Palette },
+    { id: 'stats' as AdminTab, label: t('admin.panel.tabs.stats'), icon: BarChart3 },
+    { id: 'rigs' as AdminTab, label: t('admin.panel.tabs.rigs'), icon: OilRigIcon },
+    { id: 'users' as AdminTab, label: t('admin.panel.tabs.users'), icon: Users },
+    { id: 'companies' as AdminTab, label: t('admin.panel.tabs.companies'), icon: Building2 },
+    { id: 'misc' as AdminTab, label: t('admin.panel.tabs.misc'), icon: LayoutGrid },
+    { id: 'sync' as AdminTab, label: t('admin.panel.tabs.sync'), icon: Cloud },
+    { id: 'updates' as AdminTab, label: t('admin.panel.tabs.updates'), icon: Download },
+    { id: 'appearance' as AdminTab, label: t('admin.panel.tabs.appearance'), icon: Palette },
   ];
 
   return (
     <MainLayout
-      title="Panel de Administración"
-      subtitle="Gestión del sistema"
+      title={t('admin.panel.title')}
+      subtitle={t('admin.panel.subtitle')}
     >
       {activeTab !== 'stats' && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
           <Card className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Total Usuarios</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">{t('admin.panel.totalUsers')}</p>
                 <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">
                   {loadingStats ? '...' : stats.totalUsers}
                 </p>
@@ -102,7 +104,7 @@ export default function AdminPanel() {
           <Card className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Áreas Activas</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">{t('admin.panel.activeAreas')}</p>
                 <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">
                   {loadingStats ? '...' : stats.activeAreas}
                 </p>
@@ -114,7 +116,7 @@ export default function AdminPanel() {
           <Card className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Taladros Activos</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">{t('admin.panel.activeRigs')}</p>
                 <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">
                   {loadingStats ? '...' : stats.activeRigs}
                 </p>
@@ -126,7 +128,7 @@ export default function AdminPanel() {
           <Card className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Reportes Creados Hoy</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">{t('admin.panel.reportsToday')}</p>
                 <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">
                   {loadingStats ? '...' : stats.activityToday}
                 </p>

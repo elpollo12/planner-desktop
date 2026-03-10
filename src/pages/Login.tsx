@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { Languages } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useAppSettingsStore } from '../store/appSettingsStore';
 import { Button, Input, Card } from '../components/ui';
@@ -7,6 +9,7 @@ import { Button, Input, Card } from '../components/ui';
 export default function Login() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const { t, i18n } = useTranslation();
   const { login, isLoading, error, isAuthenticated, setError } = useAuthStore();
   const { settings } = useAppSettingsStore();
   const navigate = useNavigate();
@@ -42,6 +45,16 @@ export default function Login() {
       {/* Dark overlay for better readability */}
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
 
+      {/* Language toggle */}
+      <button
+        onClick={() => i18n.changeLanguage(i18n.language === 'es' ? 'en' : 'es')}
+        className="absolute top-4 right-4 z-20 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 backdrop-blur-sm text-white/80 hover:bg-white/20 transition-colors"
+        title={t('language.label')}
+      >
+        <Languages size={16} />
+        <span className="text-xs font-medium uppercase">{i18n.language}</span>
+      </button>
+
       <Card className="sm:min-w-1/2 md:min-w-1/3 max-w-md relative z-10 shadow-2xl">
         <div className="text-center mb-6">
           {settings?.logoPath ? (
@@ -55,30 +68,30 @@ export default function Login() {
           ) : (
             <>
               <h1 className="text-3xl font-bold text-primary-500 mb-2">
-                Sistema de Reportes DDR
+                {t('license.title')}
               </h1>
-              <p className="text-gray-600 dark:text-gray-400">Gestión de Taladros Petroleros</p>
+              <p className="text-gray-600 dark:text-gray-400">{t('license.subtitle')}</p>
             </>
           )}
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input
-            label="Usuario"
+            label={t('auth.username')}
             type="text"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
-            placeholder="Ingrese su usuario"
+            placeholder={t('auth.enterUsername')}
             required
             autoFocus
           />
 
           <Input
-            label="Contraseña"
+            label={t('auth.password')}
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="Ingrese su contraseña"
+            placeholder={t('auth.enterPassword')}
             required
             allowSubmitOnEnter
           />
@@ -97,7 +110,7 @@ export default function Login() {
             loading={isLoading}
             disabled={isLoading || !username || !password}
           >
-            Iniciar Sesión
+            {t('auth.login')}
           </Button>
         </form>
 

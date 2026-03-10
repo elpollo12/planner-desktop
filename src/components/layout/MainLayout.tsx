@@ -2,6 +2,7 @@ import React from 'react';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { Breadcrumbs } from '../ui';
+import { ConnectionStatus } from '../ui/ConnectionStatus';
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -26,8 +27,9 @@ export function MainLayout({
         {/* Header */}
         <Header title={title} subtitle={subtitle} actions={headerActions} />
         
-        <div className="px-6 py-2 bg-gray-100 dark:bg-gray-900 relative z-10">
+        <div className="px-6 py-2 bg-gray-100 dark:bg-gray-900 relative z-10 flex items-center justify-between">
           <Breadcrumbs />
+          <ConnectionStatus />
         </div>
 
         {/* Page Content */}

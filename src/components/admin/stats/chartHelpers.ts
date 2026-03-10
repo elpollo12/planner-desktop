@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
+import i18n from '../../../lib/i18n';
 
 // Palette for pie/bar charts (category colors)
 export const CHART_COLORS = [
@@ -30,21 +31,15 @@ export const INCIDENT_COLOR_MAP: Record<string, string> = {
   yellow: '#eab308',
 };
 
-// Logistics request type → label (Spanish)
-export const REQUEST_TYPE_LABELS: Record<string, string> = {
-  water_bottles: 'Botellones',
-  fuel: 'Combustible',
-  material: 'Materiales',
-  vacuum: 'Vacuum',
-};
+// Logistics request type → label (i18n)
+export function getRequestTypeLabel(type: string): string {
+  return i18n.t(`admin.chartHelpers.requestType.${type}`, { defaultValue: type });
+}
 
-// Logistics request status → label (Spanish)
-export const REQUEST_STATUS_LABELS: Record<string, string> = {
-  requested: 'Solicitado',
-  pending: 'En espera',
-  approved: 'Aprobado',
-  rejected: 'Rechazado',
-};
+// Logistics request status → label (i18n)
+export function getRequestStatusLabel(status: string): string {
+  return i18n.t(`admin.chartHelpers.requestStatus.${status}`, { defaultValue: status });
+}
 
 // Status → color hex
 export const STATUS_COLOR_MAP: Record<string, string> = {

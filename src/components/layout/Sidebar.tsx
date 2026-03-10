@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
 import { getVersion } from '@tauri-apps/api/app';
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../../store/authStore';
 import { useAppSettingsStore } from '../../store/appSettingsStore';
 import { Button } from '../ui';
@@ -24,6 +25,7 @@ interface SidebarProps {
 
 export function Sidebar({ className = '' }: SidebarProps) {
   const location = useLocation();
+  const { t } = useTranslation();
   const { user, logout } = useAuthStore();
   const logoPath = useAppSettingsStore((s) => s.settings?.logoPath ?? null);
   const [appVersion, setAppVersion] = useState('');
@@ -38,13 +40,13 @@ export function Sidebar({ className = '' }: SidebarProps) {
     icon: typeof LayoutDashboard;
     module: AppModule;
   }> = [
-    { name: 'Dashboard',      href: '/dashboard',  icon: LayoutDashboard, module: 'dashboard' },
-    { name: 'Aprobaciones',   href: '/approvals',  icon: ClipboardCheck,  module: 'approvals' },
-    { name: 'Reportes',       href: '/reports',     icon: List,            module: 'reports' },
-    { name: 'Logística',      href: '/logistics',   icon: Forklift,        module: 'logistics' },
-    { name: 'Incidencias',       href: '/incidents',   icon: AlertTriangle,  module: 'incidents' },
-    { name: 'Registros Diarios', href: '/cloud-logs',  icon: CloudDownload,  module: 'cloud-logs' },
-    { name: 'Administración',    href: '/admin',       icon: Shield,         module: 'admin' },
+    { name: t('nav.dashboard'),  href: '/dashboard',  icon: LayoutDashboard, module: 'dashboard' },
+    { name: t('nav.approvals'),  href: '/approvals',  icon: ClipboardCheck,  module: 'approvals' },
+    { name: t('nav.reports'),    href: '/reports',     icon: List,            module: 'reports' },
+    { name: t('nav.logistics'),  href: '/logistics',   icon: Forklift,        module: 'logistics' },
+    { name: t('nav.incidents'),  href: '/incidents',   icon: AlertTriangle,  module: 'incidents' },
+    { name: t('nav.cloudLogs'),  href: '/cloud-logs',  icon: CloudDownload,  module: 'cloud-logs' },
+    { name: t('nav.admin'),      href: '/admin',       icon: Shield,         module: 'admin' },
   ];
 
   const isActive = (href: string) => {
@@ -137,7 +139,7 @@ export function Sidebar({ className = '' }: SidebarProps) {
             </p>
             <p className={`text-xs capitalize ${
               location.pathname === '/profile' ? 'opacity-80' : 'text-gray-500'
-            }`}>Rol: {user?.role}</p>
+            }`}>{t('auth.role')} {user?.role}</p>
           </div>
         </Link>
         <Button
@@ -147,7 +149,7 @@ export function Sidebar({ className = '' }: SidebarProps) {
           icon={<LogOut size={16} />}
           className="w-full"
         >
-          <span>Cerrar Sesión</span>
+          <span>{t('auth.logout')}</span>
         </Button>
         {appVersion && (
           <p className="text-[10px] text-gray-400 dark:text-gray-600 text-center mt-3">
