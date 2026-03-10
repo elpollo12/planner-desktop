@@ -1,11 +1,13 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { invoke } from '@tauri-apps/api/core';
 import { useAuthStore } from './store/authStore';
 import { useLicenseStore } from './store/licenseStore';
 import { usePreferencesStore } from './store/preferencesStore';
 import { useAppSettingsStore } from './store/appSettingsStore';
+import { useModal } from './store/modalStore';
 import { useThemeApplicator, applyThemeToDOM } from './hooks/useThemeApplicator';
 import { useAutoSync } from './hooks/useAutoSync';
 import { useConnectionPing } from './hooks/useConnectionPing';
@@ -28,30 +30,81 @@ import Forbidden from './pages/Forbidden';
 import Profile from './pages/Profile';
 import { RoleGuard } from './components/guards';
 import { canViewReport } from './lib/permissions';
+import { HandshakeResultContent, type HandshakeOutcome } from './components/ui/HandshakeResultModal';
 import './App.css';
+
+interface HandshakeResult {
+  success: boolean;
+  tablesWritten: number;
+  error: string | null;
+}
+
+// Flag global — evita doble handshake por React StrictMode (monta efectos 2x en dev)
+let bootstrapDone = false;
 
 // Protected Route Component
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuthStore();
-
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
-
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
   return <>{children}</>;
 }
 
 function App() {
   const { sessionToken, getCurrentUser, isAuthenticated } = useAuthStore();
-  const { isLicensed, isLoading: licenseLoading, checkLicense } = useLicenseStore();
+  const { isLicensed, isLoading: licenseLoading, checkLicense, license } = useLicenseStore();
   const { loadPreferences, clearPreferences } = usePreferencesStore();
   const { loadSettings } = useAppSettingsStore();
+  const { openModal } = useModal();
   const [validating, setValidating] = useState(true);
-
+  const [bootstrapping, setBootstrapping] = useState(false);
   // Check license on startup
   useEffect(() => {
     checkLicense();
   }, []);
+
+  // Cuando la licencia queda validada, hacer handshake y mostrar resultado en modal.
+  useEffect(() => {
+    if (!isLicensed || licenseLoading || bootstrapDone) return;
+    bootstrapDone = true;
+    setBootstrapping(true);
+
+    const tenant = license?.tenant ?? '';
+
+    invoke<HandshakeResult>('sync_handshake')
+      .then(async (result) => {
+        await loadSettings().catch(() => {});
+
+        let outcome: HandshakeOutcome;
+        if (result.success) {
+          outcome = { type: 'success', tablesWritten: result.tablesWritten, tenant };
+        } else if (result.error?.includes('tenant no') || result.error?.includes('403') || result.error?.includes('not found')) {
+          outcome = { type: 'tenant_not_found', tenant };
+        } else {
+          outcome = { type: 'error', message: result.error ?? 'Error desconocido' };
+        }
+
+        openModal(<HandshakeResultContent outcome={outcome} />, {
+          title: 'Estado de conexión al servidor',
+          size: 'sm',
+          showCloseButton: false,
+          closeOnOutsideClick: false,
+          closeOnEsc: false,
+        });
+      })
+      .catch((err: unknown) => {
+        loadSettings().catch(() => {});
+        const message = err instanceof Error ? err.message : String(err);
+        const outcome: HandshakeOutcome = { type: 'error', message };
+        openModal(<HandshakeResultContent outcome={outcome} />, {
+          title: 'Estado de conexion al servidor',
+          size: 'sm',
+          showCloseButton: false,
+          closeOnOutsideClick: false,
+          closeOnEsc: false,
+        });
+      })
+      .finally(() => setBootstrapping(false));
+  }, [isLicensed, licenseLoading]);
 
   // Apply theme reactively whenever preferences change
   useThemeApplicator();
@@ -87,18 +140,15 @@ function App() {
         .catch((error) => {
           console.error('Error reloading settings after sync:', error);
         });
-      // Refresh notifications after sync pull (new notifications from other instances)
       queryClient.invalidateQueries({ queryKey: notificationKeys.all() });
     });
     return unsubscribe;
   }, []);
 
   // Validate session on startup
-  // (useAutoSync handles the initial pull after 5s)
   useEffect(() => {
     if (sessionToken) {
-      getCurrentUser()
-        .finally(() => setValidating(false));
+      getCurrentUser().finally(() => setValidating(false));
     } else {
       setValidating(false);
     }
@@ -113,7 +163,7 @@ function App() {
     }
   }, [isAuthenticated, sessionToken]);
 
-  if (licenseLoading || validating) {
+  if (licenseLoading || validating || bootstrapping) {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500" />
@@ -142,105 +192,17 @@ function App() {
       />
       <Routes>
         <Route path="/login" element={<Login />} />
-
-        <Route
-          path="/dashboard"
-          element={
-            <RoleGuard module="dashboard">
-              <Dashboard />
-            </RoleGuard>
-          }
-        />
-
-        <Route
-          path="/reports/new"
-          element={
-            <RoleGuard module="reports">
-              <ReportForm />
-            </RoleGuard>
-          }
-        />
-
-        <Route
-          path="/reports/edit/:id"
-          element={
-            <RoleGuard module="reports">
-              <ReportForm />
-            </RoleGuard>
-          }
-        />
-
-        <Route
-          path="/reports/view/:id"
-          element={
-            <RoleGuard check={canViewReport}>
-              <ReportView />
-            </RoleGuard>
-          }
-        />
-
-        <Route
-          path="/reports"
-          element={
-            <RoleGuard module="reports">
-              <ReportList />
-            </RoleGuard>
-          }
-        />
-
-        <Route
-          path="/approvals"
-          element={
-            <RoleGuard module="approvals">
-              <ReportApprovals />
-            </RoleGuard>
-          }
-        />
-
-        <Route
-          path="/admin"
-          element={
-            <RoleGuard module="admin">
-              <AdminPanel />
-            </RoleGuard>
-          }
-        /> 
-        <Route
-          path="/logistics"
-          element={
-            <RoleGuard module="logistics">
-              <Logistics />
-            </RoleGuard>
-          }
-        />
-
-        <Route
-          path="/incidents"
-          element={
-            <RoleGuard module="incidents">
-              <Incidents />
-            </RoleGuard>
-          }
-        />
-
-        <Route
-          path="/cloud-logs"
-          element={
-            <RoleGuard module="cloud-logs">
-              <CloudLogs />
-            </RoleGuard>
-          }
-        />
-
-        <Route
-          path="/profile"
-          element={
-            <ProtectedRoute>
-              <Profile />
-            </ProtectedRoute>
-          }
-        />
-
+        <Route path="/dashboard" element={<RoleGuard module="dashboard"><Dashboard /></RoleGuard>} />
+        <Route path="/reports/new" element={<RoleGuard module="reports"><ReportForm /></RoleGuard>} />
+        <Route path="/reports/edit/:id" element={<RoleGuard module="reports"><ReportForm /></RoleGuard>} />
+        <Route path="/reports/view/:id" element={<RoleGuard check={canViewReport}><ReportView /></RoleGuard>} />
+        <Route path="/reports" element={<RoleGuard module="reports"><ReportList /></RoleGuard>} />
+        <Route path="/approvals" element={<RoleGuard module="approvals"><ReportApprovals /></RoleGuard>} />
+        <Route path="/admin" element={<RoleGuard module="admin"><AdminPanel /></RoleGuard>} />
+        <Route path="/logistics" element={<RoleGuard module="logistics"><Logistics /></RoleGuard>} />
+        <Route path="/incidents" element={<RoleGuard module="incidents"><Incidents /></RoleGuard>} />
+        <Route path="/cloud-logs" element={<RoleGuard module="cloud-logs"><CloudLogs /></RoleGuard>} />
+        <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
         <Route path="/forbidden" element={<Forbidden />} />
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
       </Routes>

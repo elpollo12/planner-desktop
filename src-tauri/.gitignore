@@ -10,3 +10,7 @@
 .env
 planner-new.key
 planner-new.key.pub
+
+# License signing keys (NEVER commit private keys)
+license_sign.key
+license_verify.key
