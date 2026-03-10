@@ -4,9 +4,11 @@ import { invoke } from '@tauri-apps/api/core';
 export interface LicenseInfo {
   id: string;
   customer: string;
+  tenant: string;
+  apiEndpoint: string;
   issuedAt: string;
   expiry: string | null;
-  maxUsers: number;
+  maxUsers: number | null; // null = usuarios ilimitados
   isValid: boolean;
   isLifetime: boolean;
 }

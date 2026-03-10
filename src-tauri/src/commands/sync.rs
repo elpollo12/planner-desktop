@@ -4,6 +4,7 @@ use crate::state::AppState;
 use crate::sync::config::{self, SyncCredentials};
 use crate::sync::sync_client::SyncClient;
 use crate::sync::engine::{self, SyncResult};
+use crate::sync::turso_client::TursoValue;
 use serde::{Deserialize, Serialize};
 use tauri::State;
 
@@ -466,4 +467,184 @@ pub async fn disable_sync(
     cfg.sync_token = None;
     config::save_config(&cfg)?;
     Ok(())
+}
+
+// ─── Handshake ────────────────────────────────────────────────────────────────
+
+/// Respuesta del servidor para una tabla en el handshake
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct HandshakeTablePayload {
+    pub name: String,
+    pub columns: Vec<String>,
+    pub rows: Vec<Vec<serde_json::Value>>,
+}
+
+/// Respuesta completa del endpoint /api/v1/sync/handshake
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct HandshakeResponse {
+    pub tables: Vec<HandshakeTablePayload>,
+}
+
+/// Resultado del handshake retornado al frontend
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HandshakeResult {
+    pub success: bool,
+    pub tables_written: u32,
+    pub error: Option<String>,
+}
+
+/// Handshake post-activación de licencia: descarga tablas bootstrap del servidor
+/// (users, rigs, app_settings, etc.) usando el tenant como credencial.
+/// Best-effort: si falla, la licencia queda activa igual. Sin JWT.
+#[tauri::command]
+pub async fn sync_handshake(
+    state: State<'_, AppState>,
+) -> Result<HandshakeResult, String> {
+    // Leer tenant y api_endpoint de la licencia activada
+    let license = match crate::license::load_license() {
+        Ok(Some(lic)) => lic,
+        Ok(None) => {
+            return Ok(HandshakeResult {
+                success: false,
+                tables_written: 0,
+                error: Some("No hay licencia activa".to_string()),
+            });
+        }
+        Err(e) => {
+            return Ok(HandshakeResult {
+                success: false,
+                tables_written: 0,
+                error: Some(format!("Error leyendo licencia: {}", e)),
+            });
+        }
+    };
+
+    let api_endpoint = license.payload.api_endpoint.trim_end_matches('/').to_string();
+    let tenant = &license.payload.tenant;
+    let url = format!("{}/api/v1/sync/handshake", api_endpoint);
+
+    // POST sin JWT — usa tenant como credencial
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(30))
+        .build()
+        .map_err(|e| format!("Error creando cliente HTTP: {}", e))?;
+
+    let resp = match client
+        .post(&url)
+        .json(&serde_json::json!({ "tenant": tenant }))
+        .send()
+        .await
+    {
+        Ok(r) => r,
+        Err(e) => {
+            return Ok(HandshakeResult {
+                success: false,
+                tables_written: 0,
+                error: Some(format!("Error conectando al servidor: {}", e)),
+            });
+        }
+    };
+
+    if !resp.status().is_success() {
+        let status = resp.status().as_u16();
+        let body = resp.text().await.unwrap_or_default();
+        return Ok(HandshakeResult {
+            success: false,
+            tables_written: 0,
+            error: Some(format!("Servidor rechazó handshake ({}): {}", status, body)),
+        });
+    }
+
+    let handshake: HandshakeResponse = match resp.json().await {
+        Ok(h) => h,
+        Err(e) => {
+            return Ok(HandshakeResult {
+                success: false,
+                tables_written: 0,
+                error: Some(format!("Error parseando respuesta del servidor: {}", e)),
+            });
+        }
+    };
+
+    // Convertir a formato que espera engine::write_pulled_data
+    // Necesitamos mapear por índice en SYNC_TABLES
+    let sync_tables_names: Vec<&str> = [
+        "app_settings", "users", "operation_codes", "areas", "companies",
+        "rigs", "rig_contractors", "rig_personnel", "user_rigs",
+        "user_module_permissions", "reports", "drill_string_components",
+        "crew_shifts", "crew_members", "time_distribution", "bit_records",
+        "mud_records", "mud_additives", "drilling_parameters", "deviation_history",
+        "operations_log", "report_reviews", "update_preferences",
+        "logistics_materials", "logistics_water_bottles_movements",
+        "logistics_fuel_movements", "logistics_vacuum_actions",
+        "logistics_materials_movements", "logistics_requests", "crew_positions",
+        "incident_types", "incidents", "incident_personnel",
+        "last_report_snapshot", "notifications",
+    ].iter().copied().collect();
+
+    let mut table_results: Vec<(usize, Vec<Vec<TursoValue>>)> = Vec::new();
+
+    for table_payload in &handshake.tables {
+        // Encontrar índice en SYNC_TABLES
+        let idx = match sync_tables_names.iter().position(|&n| n == table_payload.name) {
+            Some(i) => i,
+            None => {
+                println!("[Handshake] Tabla desconocida ignorada: {}", table_payload.name);
+                continue;
+            }
+        };
+
+        // Convertir filas de serde_json::Value a TursoValue
+        let rows: Vec<Vec<TursoValue>> = table_payload.rows.iter().map(|row| {
+            row.iter().map(|cell| match cell {
+                serde_json::Value::String(s) => TursoValue::Text(s.clone()),
+                serde_json::Value::Number(n) => {
+                    if let Some(i) = n.as_i64() {
+                        TursoValue::Integer(i.to_string())
+                    } else if let Some(f) = n.as_f64() {
+                        TursoValue::Float(f)
+                    } else {
+                        TursoValue::Null
+                    }
+                }
+                serde_json::Value::Null => TursoValue::Null,
+                serde_json::Value::Bool(b) => TursoValue::Integer(if *b { "1" } else { "0" }.to_string()),
+                _ => TursoValue::Null,
+            }).collect()
+        }).collect();
+
+        if !rows.is_empty() {
+            println!("[Handshake] Tabla '{}': {} registros recibidos", table_payload.name, rows.len());
+            table_results.push((idx, rows));
+        }
+    }
+
+    if table_results.is_empty() {
+        return Ok(HandshakeResult {
+            success: true,
+            tables_written: 0,
+            error: None,
+        });
+    }
+
+    // Escribir en DB local
+    let conn = state.db.lock().map_err(|e| format!("Failed to lock database: {}", e))?;
+    match engine::write_pulled_data(&conn, &table_results) {
+        Ok(count) => {
+            println!("[Handshake] {} registros escritos exitosamente", count);
+            Ok(HandshakeResult {
+                success: true,
+                tables_written: count,
+                error: None,
+            })
+        }
+        Err(e) => Ok(HandshakeResult {
+            success: false,
+            tables_written: 0,
+            error: Some(format!("Error escribiendo datos: {}", e)),
+        }),
+    }
 }

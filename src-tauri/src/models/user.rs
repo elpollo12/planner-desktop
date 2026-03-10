@@ -61,6 +61,7 @@ pub struct User {
     pub updated_by: Option<String>,
     pub created_at: String,
     pub updated_at: String,
+    pub company_id: Option<String>,
 }
 
 /// User with assigned rigs (for API responses)
@@ -86,6 +87,7 @@ pub struct CreateUserRequest {
     #[serde(default)]
     pub assigned_rig_ids: Vec<String>,
     pub supervisor_id: Option<String>,
+    pub company_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -99,6 +101,7 @@ pub struct UpdateUserRequest {
     pub has_all_rigs: Option<bool>,
     pub assigned_rig_ids: Option<Vec<String>>,
     pub supervisor_id: Option<Option<String>>,
+    pub company_id: Option<Option<String>>,
 }
 
 impl User {
@@ -119,6 +122,7 @@ impl User {
             updated_by: row.get(12)?,
             created_at: row.get(13)?,
             updated_at: row.get(14)?,
+            company_id: row.get(15)?,
         })
     }
 
@@ -136,8 +140,8 @@ impl User {
         UserRole::from_str(&request.role)?;
 
         conn.execute(
-            "INSERT INTO users (id, username, password_hash, full_name, ci, role, position, active, has_all_rigs, supervisor_id, created_by, created_at, updated_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
+            "INSERT INTO users (id, username, password_hash, full_name, ci, role, position, active, has_all_rigs, supervisor_id, created_by, created_at, updated_at, company_id)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)",
             params![
                 &id,
                 &request.username,
@@ -151,7 +155,8 @@ impl User {
                 &request.supervisor_id,
                 &created_by,
                 &now,
-                &now
+                &now,
+                &request.company_id,
             ],
         )?;
 
@@ -166,7 +171,7 @@ impl User {
     /// Get user by ID (excludes soft-deleted users)
     pub fn get_by_id(conn: &Connection, user_id: &str) -> Result<User, AppError> {
         let user = conn.query_row(
-            "SELECT id, username, password_hash, full_name, ci, role, position, active, has_all_rigs, supervisor_id, last_login, created_by, updated_by, created_at, updated_at
+            "SELECT id, username, password_hash, full_name, ci, role, position, active, has_all_rigs, supervisor_id, last_login, created_by, updated_by, created_at, updated_at, company_id
              FROM users WHERE id = ?1 AND (is_deleted IS NULL OR is_deleted = 0)",
             params![user_id],
             User::from_row,
@@ -178,7 +183,7 @@ impl User {
     /// Get user by username (excludes soft-deleted users)
     pub fn get_by_username(conn: &Connection, username: &str) -> Result<User, AppError> {
         let user = conn.query_row(
-            "SELECT id, username, password_hash, full_name, ci, role, position, active, has_all_rigs, supervisor_id, last_login, created_by, updated_by, created_at, updated_at
+            "SELECT id, username, password_hash, full_name, ci, role, position, active, has_all_rigs, supervisor_id, last_login, created_by, updated_by, created_at, updated_at, company_id
              FROM users WHERE username = ?1 AND (is_deleted IS NULL OR is_deleted = 0)",
             params![username],
             User::from_row,
@@ -190,7 +195,7 @@ impl User {
     /// List all users (excludes soft-deleted)
     pub fn list(conn: &Connection) -> Result<Vec<User>, AppError> {
         let mut stmt = conn.prepare(
-            "SELECT id, username, password_hash, full_name, ci, role, position, active, has_all_rigs, supervisor_id, last_login, created_by, updated_by, created_at, updated_at
+            "SELECT id, username, password_hash, full_name, ci, role, position, active, has_all_rigs, supervisor_id, last_login, created_by, updated_by, created_at, updated_at, company_id
              FROM users WHERE (is_deleted IS NULL OR is_deleted = 0) ORDER BY created_at DESC"
         )?;
 
@@ -363,6 +368,10 @@ impl User {
         if let Some(ref supervisor_id) = request.supervisor_id {
             updates.push("supervisor_id = ?");
             params_vec.push(Box::new(supervisor_id.clone()));
+        }
+        if let Some(ref company_id) = request.company_id {
+            updates.push("company_id = ?");
+            params_vec.push(Box::new(company_id.clone()));
         }
 
         updates.push("updated_by = ?");

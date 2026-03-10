@@ -1,20 +1,46 @@
 ﻿import { useState } from 'react';
+import { invoke } from '@tauri-apps/api/core';
 import { useLicenseStore } from '../store/licenseStore';
 import { useAppSettingsStore } from '../store/appSettingsStore';
 import { Button, Card } from '../components/ui';
-import { KeyRound, CheckCircle, AlertCircle } from 'lucide-react';
+import { KeyRound, CheckCircle, AlertCircle, Loader2, CloudDownload } from 'lucide-react';
+
+type HandshakeStatus = 'idle' | 'loading' | 'success' | 'error';
+
+interface HandshakeResult {
+  success: boolean;
+  tablesWritten: number;
+  error: string | null;
+}
 
 export default function LicenseActivation() {
   const [licenseKey, setLicenseKey] = useState('');
+  const [handshakeStatus, setHandshakeStatus] = useState<HandshakeStatus>('idle');
+  const [handshakeError, setHandshakeError] = useState<string | null>(null);
   const { activateLicense, isLoading, error, license } = useLicenseStore();
   const { settings } = useAppSettingsStore();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setHandshakeStatus('idle');
+    setHandshakeError(null);
+
     try {
+      // Paso 1: activar licencia (guarda license.json + sync_config.json)
       await activateLicense(licenseKey.trim());
+
+      // Paso 2: handshake best-effort (descarga datos del servidor)
+      setHandshakeStatus('loading');
+      try {
+        const result = await invoke<HandshakeResult>('sync_handshake');
+        setHandshakeStatus(result.success ? 'success' : 'error');
+        if (!result.success) setHandshakeError(result.error ?? 'Error desconocido');
+      } catch (err) {
+        setHandshakeStatus('error');
+        setHandshakeError(String(err));
+      }
     } catch {
-      // Error is set in the store
+      // Error de activación ya está en el store
     }
   };
 
@@ -96,13 +122,39 @@ export default function LicenseActivation() {
             </div>
           )}
 
+          {handshakeStatus === 'loading' && (
+            <div className="flex items-center gap-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 px-4 py-3 rounded-lg">
+              <Loader2 size={16} className="shrink-0 animate-spin" />
+              <p className="text-sm">Descargando datos del servidor...</p>
+            </div>
+          )}
+
+          {handshakeStatus === 'success' && (
+            <div className="flex items-center gap-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-300 px-4 py-3 rounded-lg">
+              <CloudDownload size={16} className="shrink-0" />
+              <p className="text-sm">Datos del servidor descargados correctamente.</p>
+            </div>
+          )}
+
+          {handshakeStatus === 'error' && (
+            <div className="flex items-center gap-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 px-4 py-3 rounded-lg">
+              <AlertCircle size={16} className="shrink-0" />
+              <div>
+                <p className="text-sm font-medium">Licencia activada, pero no se pudo conectar al servidor.</p>
+                <p className="text-xs mt-0.5 opacity-80">
+                  {handshakeError ?? 'Puede sincronizar manualmente desde el Panel de Administración.'}
+                </p>
+              </div>
+            </div>
+          )}
+
           <Button
             type="submit"
             variant="primary"
             size="lg"
             className="w-full"
-            loading={isLoading}
-            disabled={isLoading || !licenseKey.trim()}
+            loading={isLoading || handshakeStatus === 'loading'}
+            disabled={isLoading || handshakeStatus === 'loading' || !licenseKey.trim()}
             icon={<CheckCircle size={18} />}
           >
             Activar Licencia

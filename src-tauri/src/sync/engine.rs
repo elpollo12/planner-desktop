@@ -22,7 +22,7 @@ const SYNC_TABLES: &[TableDef] = &[
         columns: &[
             "id", "username", "password_hash", "full_name", "ci", "role",
             "position", "active", "has_all_rigs", "supervisor_id", "last_login", "created_by", "updated_by",
-            "created_at", "updated_at", "is_deleted",
+            "created_at", "updated_at", "is_deleted", "company_id",
         ],
         id_col: "id",
         has_updated_at: true,

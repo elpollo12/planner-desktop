@@ -1,6 +1,7 @@
 use ed25519_dalek::{Signature, Verifier, VerifyingKey};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
+use crate::sync::config as sync_config;
 
 /// Ed25519 public key embedded at compile time — used as fallback only
 const LICENSE_PUBLIC_KEY_FALLBACK: &[u8; 32] = include_bytes!("../license_pub.key");
@@ -47,9 +48,11 @@ fn load_public_key(resource_dir: &Path) -> [u8; 32] {
 pub struct LicensePayload {
     pub id: String,
     pub customer: String,
+    pub tenant: String,        // Slug del cliente en planner-sync (ej: "pdvsa-occidente")
+    pub api_endpoint: String,  // URL del servidor planner-sync asignado al cliente
     pub issued_at: String,
     pub expiry: Option<String>, // None = lifetime license
-    pub max_users: u32,
+    pub max_users: Option<u32>, // None = usuarios ilimitados
 }
 
 /// Full license with payload + signature
@@ -66,9 +69,11 @@ pub struct License {
 pub struct LicenseInfo {
     pub id: String,
     pub customer: String,
+    pub tenant: String,
+    pub api_endpoint: String,
     pub issued_at: String,
     pub expiry: Option<String>,
-    pub max_users: u32,
+    pub max_users: Option<u32>, // None = usuarios ilimitados
     pub is_valid: bool,
     pub is_lifetime: bool,
 }
@@ -85,6 +90,8 @@ impl From<&LicensePayload> for LicenseInfo {
         Self {
             id: p.id.clone(),
             customer: p.customer.clone(),
+            tenant: p.tenant.clone(),
+            api_endpoint: p.api_endpoint.clone(),
             issued_at: p.issued_at.clone(),
             expiry: p.expiry.clone(),
             max_users: p.max_users,
@@ -208,10 +215,19 @@ fn delete_license_from_disk() -> Result<(), String> {
     Ok(())
 }
 
-/// Activate a license: verify + save + return info
+/// Activate a license: verify + save + persist api_endpoint + return info
 pub fn activate_license(license_key: &str, resource_dir: &Path) -> Result<LicenseInfo, String> {
     let license = verify_license_key(license_key, resource_dir)?;
     save_license_to_disk(&license)?;
+
+    // Guardar apiEndpoint en sync_config.json como server_url (nivel 1 de SyncCredentials).
+    // Cualquier usuario puede conectarse sin configurar la URL manualmente.
+    let mut cfg = sync_config::load_config().unwrap_or_default();
+    cfg.server_url = Some(license.payload.api_endpoint.clone());
+    if let Err(e) = sync_config::save_config(&cfg) {
+        eprintln!("[License] Advertencia: no se pudo guardar server_url en sync_config: {}", e);
+    }
+
     Ok(LicenseInfo::from(&license.payload))
 }
 
