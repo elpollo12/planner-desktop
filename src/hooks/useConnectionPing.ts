@@ -3,7 +3,7 @@ import { useAuthStore } from '../store/authStore';
 import { useConnectionStore } from '../store/connectionStore';
 import { syncApi } from '../lib/api';
 
-/** Interval for connection ping in milliseconds (30 seconds) */
+/** Interval for connection ping in milliseconds (20 seconds) */
 const PING_INTERVAL_MS = 20 * 1000;
 
 /**

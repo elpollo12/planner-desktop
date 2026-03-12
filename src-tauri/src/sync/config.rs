@@ -25,6 +25,10 @@ pub struct SyncConfig {
     /// User-configured sync server URL
     #[serde(default)]
     pub server_url: Option<String>,
+    /// true una vez que el handshake inicial post-licencia se completó con éxito.
+    /// Se resetea a false únicamente al activar una nueva licencia.
+    #[serde(default)]
+    pub handshake_done: bool,
 }
 
 fn default_sync_interval() -> u32 {
@@ -41,6 +45,7 @@ impl Default for SyncConfig {
             sync_interval_minutes: default_sync_interval(),
             sync_token: None,
             server_url: None,
+            handshake_done: false,
         }
     }
 }

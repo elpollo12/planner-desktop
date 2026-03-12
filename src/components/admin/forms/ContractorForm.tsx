@@ -1,11 +1,12 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Upload, Trash2, HardHat } from 'lucide-react';
+import { HardHat } from 'lucide-react';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
+import LogoUploader from '@/components/ui/LogoUploader';
 import type { Company, CreateCompanyInput, UpdateCompanyInput } from '@/types/company';
 
 // ── Schema ────────────────────────────────────────────────────────────────────
@@ -28,7 +29,8 @@ export interface ContractorFormProps {
   contractor?: Company;
   logoDataUrl?: string | null;
   onSubmit: (data: CreateCompanyInput | UpdateCompanyInput) => Promise<void>;
-  onUploadLogo?: (file: File) => Promise<void>;
+  /** Recibe bytes ya procesados (puede incluir remoción de fondo via imgly) */
+  onUploadLogo?: (bytes: Uint8Array, fileName: string) => Promise<void>;
   onRemoveLogo?: () => Promise<void>;
 }
 
@@ -43,8 +45,7 @@ export default function ContractorForm({
 }: ContractorFormProps) {
   const { t } = useTranslation();
   const isEditing = !!contractor;
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [currentLogoUrl, setCurrentLogoUrl] = useState<string | null | undefined>(logoDataUrl);
 
   const {
     register,
@@ -70,17 +71,20 @@ export default function ContractorForm({
     }
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !onUploadLogo) return;
-    if (file.size > 2 * 1024 * 1024) return;
-    setUploadingLogo(true);
-    try {
-      await onUploadLogo(file);
-    } finally {
-      setUploadingLogo(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
+  // ── Logo handlers ──────────────────────────────────────────────────────────
+
+  const handleUpload = async (bytes: Uint8Array, fileName: string) => {
+    if (!onUploadLogo) return;
+    await onUploadLogo(bytes, fileName);
+    // Actualizar preview local con blob generado
+    const blob = new Blob([bytes], { type: 'image/png' });
+    setCurrentLogoUrl(URL.createObjectURL(blob));
+  };
+
+  const handleRemove = async () => {
+    if (!onRemoveLogo) return;
+    await onRemoveLogo();
+    setCurrentLogoUrl(null);
   };
 
   return (
@@ -106,51 +110,27 @@ export default function ContractorForm({
       {/* Logo — solo al editar */}
       {isEditing && (
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
             {t('admin.forms.logo')}
           </label>
-          <div className="flex items-center gap-4">
-            <div className="w-20 h-20 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center bg-gray-50 dark:bg-gray-700 overflow-hidden shrink-0">
-              {logoDataUrl ? (
-                <img src={logoDataUrl} alt={contractor!.name} className="w-full h-full object-contain" />
-              ) : (
-                <HardHat className="w-9 h-9 text-gray-400" />
-              )}
-            </div>
-            <div className="flex flex-col gap-2">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/png,image/jpeg,image/svg+xml,image/webp"
-                onChange={handleFileChange}
-                className="hidden"
-              />
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploadingLogo || isSubmitting}
-                icon={<Upload className="w-4 h-4" />}
-              >
-                {uploadingLogo ? t('admin.forms.uploading') : t('admin.forms.uploadLogo')}
-              </Button>
-              {logoDataUrl && onRemoveLogo && (
-                <Button
-                  type="button"
-                  variant="danger"
-                  size="sm"
-                  onClick={onRemoveLogo}
-                  disabled={isSubmitting}
-                  icon={<Trash2 className="w-4 h-4" />}
-                >
-                  {t('admin.forms.delete')}
-                </Button>
-              )}
-            </div>
-          </div>
-          <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-            {t('admin.forms.logoHint')}
+          <LogoUploader
+            currentLogoUrl={currentLogoUrl}
+            onUpload={onUploadLogo ? handleUpload : async () => {}}
+            onRemove={onRemoveLogo ? handleRemove : undefined}
+            disabled={isSubmitting || !onUploadLogo}
+            previewSize={72}
+            label={t('admin.forms.uploadLogo')}
+            hint={t('admin.forms.logoHint')}
+          />
+        </div>
+      )}
+
+      {/* Placeholder logo para creación */}
+      {!isEditing && (
+        <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50 border border-dashed border-gray-300 dark:border-gray-600">
+          <HardHat className="w-7 h-7 text-gray-400 shrink-0" />
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            {t('admin.forms.logoAfterCreate')}
           </p>
         </div>
       )}

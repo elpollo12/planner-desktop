@@ -303,31 +303,46 @@ pub async fn sync_full(
     Ok(result)
 }
 
-/// Incremental sync: push changes + pull changes.
+/// Incremental sync: pull primero, push después (solo si el usuario tiene historial de push).
+///
+/// Usuarios no-admin sin `last_push_at` (primer login o DB fresca) solo hacen pull.
+/// Esto evita empujar datos locales vacíos/default al servidor antes de recibir
+/// la verdad del servidor. A partir del segundo ciclo hacen push+pull normalmente.
 #[tauri::command]
 pub async fn sync_incremental(
     session_token: String,
     state: State<'_, AppState>,
 ) -> Result<SyncResult, String> {
-    get_session(&session_token, &state).map_err(|e| e.to_string())?;
+    let session = get_session(&session_token, &state).map_err(|e| e.to_string())?;
     let cfg = config::load_config()?;
     let client = build_sync_client().await?;
     let now = chrono::Utc::now().to_rfc3339();
 
-    // Incremental push
-    let table_data = {
-        let conn = state.db.lock().map_err(|e| format!("Failed to lock database: {}", e))?;
-        engine::read_all_local_data(&conn, cfg.last_push_at.as_deref(), &[])?
+    // Un usuario no-admin salta el push SOLO en el primer ciclo de vida de la sesión
+    // (cuando last_push_at es null y aún no ha hecho su primer push esta sesión).
+    // Garantiza que recibe la verdad del servidor antes de empujar cualquier dato local.
+    // El flag `initial_push_done` vive en memoria y se resetea al reiniciar la app.
+    let is_admin = session.role == "admin";
+    let has_push_history = cfg.last_push_at.is_some();
+
+    let skip_push = if is_admin || has_push_history {
+        // Admin siempre empuja. Usuario con historial también.
+        false
+    } else {
+        // No-admin sin historial: saltar solo si NO ha completado su primer push esta sesión.
+        let mut done_set = state.initial_push_done.lock()
+            .map_err(|e| format!("Internal error: {}", e))?;
+        if done_set.contains(&session.user_id) {
+            // Ya hizo su primer push en este arranque de la app → empujar normalmente
+            false
+        } else {
+            // Primer ciclo sin historial → saltar push, marcar como "primer ciclo cumplido"
+            done_set.insert(session.user_id.clone());
+            true
+        }
     };
-    let push_result = engine::push_data_to_server(&client, table_data).await?;
 
-    let push_succeeded = push_result.success;
-    if push_succeeded {
-        let conn = state.db.lock().map_err(|e| format!("Failed to lock database: {}", e))?;
-        engine::mark_reports_synced(&conn);
-    }
-
-    // Incremental pull
+    // ── PULL primero ──────────────────────────────────────────────────────────
     let (pulled_data, pull_result) =
         engine::pull_data_from_server(&client, cfg.last_pull_at.as_deref()).await?;
 
@@ -344,6 +359,31 @@ pub async fn sync_incremental(
         }
     }
 
+    // ── PUSH después (omitir si es primer ciclo de no-admin) ──────────────────
+    let push_result = if skip_push {
+        println!("[Sync] Primer ciclo no-admin — omitiendo push, solo pull");
+        SyncResult {
+            success: true,
+            tables_synced: 0,
+            records_pushed: 0,
+            records_pulled: 0,
+            errors: vec![],
+            timestamp: now.clone(),
+        }
+    } else {
+        let table_data = {
+            let conn = state.db.lock().map_err(|e| format!("Failed to lock database: {}", e))?;
+            engine::read_all_local_data(&conn, cfg.last_push_at.as_deref(), &[])?
+        };
+        engine::push_data_to_server(&client, table_data).await?
+    };
+
+    let push_succeeded = push_result.success;
+    if push_succeeded && !skip_push {
+        let conn = state.db.lock().map_err(|e| format!("Failed to lock database: {}", e))?;
+        engine::mark_reports_synced(&conn);
+    }
+
     let mut all_errors = push_result.errors;
     all_errors.extend(pull_result.errors);
     all_errors.extend(pull_errors);
@@ -357,15 +397,16 @@ pub async fn sync_incremental(
         timestamp: now.clone(),
     };
 
-    // Solo avanzar timestamps de operaciones exitosas
+    // Solo avanzar timestamps de operaciones exitosas.
+    // last_push_at solo avanza si realmente se hizo push (no en ciclo skip_push).
     let mut cfg = config::load_config()?;
-    if push_succeeded {
+    if push_succeeded && !skip_push {
         cfg.last_push_at = Some(now.clone());
     }
     if pull_write_succeeded {
         cfg.last_pull_at = Some(now.clone());
     }
-    if push_succeeded && pull_write_succeeded {
+    if (push_succeeded || skip_push) && pull_write_succeeded {
         cfg.last_sync_at = Some(now);
     }
     config::save_config(&cfg)?;
@@ -503,6 +544,19 @@ pub struct HandshakeResult {
 pub async fn sync_handshake(
     state: State<'_, AppState>,
 ) -> Result<HandshakeResult, String> {
+    // Si el handshake ya se completó para esta licencia, no repetirlo.
+    // Solo se resetea al activar una nueva licencia (activate_license).
+    if let Ok(cfg) = config::load_config() {
+        if cfg.handshake_done {
+            println!("[Handshake] Ya completado, omitiendo.");
+            return Ok(HandshakeResult {
+                success: true,
+                tables_written: 0,
+                error: None,
+            });
+        }
+    }
+
     // Leer tenant y api_endpoint de la licencia activada
     let license = match crate::license::load_license() {
         Ok(Some(lic)) => lic,
@@ -635,6 +689,11 @@ pub async fn sync_handshake(
     match engine::write_pulled_data(&conn, &table_results) {
         Ok(count) => {
             println!("[Handshake] {} registros escritos exitosamente", count);
+            // Marcar handshake como completado para no repetirlo en arranques futuros
+            if let Ok(mut cfg) = config::load_config() {
+                cfg.handshake_done = true;
+                let _ = config::save_config(&cfg);
+            }
             Ok(HandshakeResult {
                 success: true,
                 tables_written: count,

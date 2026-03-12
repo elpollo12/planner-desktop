@@ -2,7 +2,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { invoke } from '@tauri-apps/api/core';
 import { useAuthStore } from './store/authStore';
 import { useLicenseStore } from './store/licenseStore';
 import { usePreferencesStore } from './store/preferencesStore';
@@ -31,15 +30,6 @@ import { RoleGuard } from './components/guards';
 import { canViewReport } from './lib/permissions';
 import './App.css';
 
-interface HandshakeResult {
-  success: boolean;
-  tablesWritten: number;
-  error: string | null;
-}
-
-// Flag global — evita doble handshake por React StrictMode (monta efectos 2x en dev)
-let bootstrapDone = false;
-
 // Protected Route Component
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuthStore();
@@ -53,34 +43,10 @@ function App() {
   const { loadPreferences, clearPreferences } = usePreferencesStore();
   const { loadSettings } = useAppSettingsStore();
   const [validating, setValidating] = useState(true);
-  const [bootstrapping, setBootstrapping] = useState(false);
   // Check license on startup
   useEffect(() => {
     checkLicense();
   }, []);
-
-  // Cuando la licencia queda validada, hacer handshake silencioso (sin modal).
-  // El modal solo se muestra al activar una licencia nueva (en LicenseActivation.tsx).
-  useEffect(() => {
-    if (!isLicensed || licenseLoading || bootstrapDone) return;
-    bootstrapDone = true;
-    setBootstrapping(true);
-
-    invoke<HandshakeResult>('sync_handshake')
-      .then(async (result) => {
-        await loadSettings().catch(() => {});
-        if (result.success) {
-          console.log(`[Handshake] OK — ${result.tablesWritten} tablas sincronizadas`);
-        } else {
-          console.warn('[Handshake] Error:', result.error);
-        }
-      })
-      .catch((err: unknown) => {
-        loadSettings().catch(() => {});
-        console.warn('[Handshake] Error:', err);
-      })
-      .finally(() => setBootstrapping(false));
-  }, [isLicensed, licenseLoading]);
 
   // Apply theme reactively whenever preferences change
   useThemeApplicator();
@@ -139,7 +105,7 @@ function App() {
     }
   }, [isAuthenticated, sessionToken]);
 
-  if (licenseLoading || validating || bootstrapping) {
+  if (licenseLoading || validating) {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500" />

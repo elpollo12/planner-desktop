@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
-import { Plus, Pencil, Trash2, Search, Upload, X, Building2, HardHat, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, Building2, HardHat, ChevronLeft, ChevronRight } from 'lucide-react';
 import i18n from '@/lib/i18n';
 import { useAuthStore } from '@/store/authStore';
 import { backgroundPush } from '@/lib/syncHelper';
@@ -11,6 +11,7 @@ import type { Company, CompanyType, UpdateCompanyInput } from '@/types/company';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
+import LogoUploader from '@/components/ui/LogoUploader';
 import OperatorForm from './forms/OperatorForm';
 import ContractorForm from './forms/ContractorForm';
 
@@ -33,12 +34,14 @@ interface CompanyCardProps {
   logoDataUrl: string | null | undefined;
   onEdit: (company: Company) => void;
   onDelete: (company: Company) => void;
-  onUploadLogo: (companyId: string) => void;
-  onRemoveLogo: (companyId: string) => void;
+  onUploadBytes: (companyId: string, bytes: Uint8Array, fileName: string) => Promise<void>;
+  onRemoveLogo: (companyId: string) => Promise<void>;
 }
 
-function CompanyCard({ company, logoDataUrl, onEdit, onDelete, onUploadLogo, onRemoveLogo }: CompanyCardProps) {
+function CompanyCard({ company, logoDataUrl, onEdit, onDelete, onUploadBytes, onRemoveLogo }: CompanyCardProps) {
   const { t } = useTranslation();
+  const [showLogoUploader, setShowLogoUploader] = useState(false);
+
   return (
     <div
       className={`border rounded-lg p-4 ${
@@ -48,34 +51,19 @@ function CompanyCard({ company, logoDataUrl, onEdit, onDelete, onUploadLogo, onR
       }`}
     >
       <div className="flex items-start gap-4">
-        {/* Logo */}
-        <div className="relative group shrink-0">
-          <div className="w-14 h-14 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center bg-white dark:bg-gray-700 overflow-hidden">
-            {logoDataUrl ? (
-              <img src={logoDataUrl} alt={company.name} className="w-full h-full object-contain" />
-            ) : (
-              <CompanyTypeIcon type={company.companyType} className="w-7 h-7 text-gray-400" />
-            )}
-          </div>
-          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-1">
-            <button
-              onClick={() => onUploadLogo(company.id)}
-              className="p-1 bg-gray-50 rounded-full hover:bg-gray-100"
-              title={t('admin.forms.uploadLogo')}
-            >
-              <Upload className="w-3.5 h-3.5 text-gray-700" />
-            </button>
-            {company.logo && (
-              <button
-                onClick={() => onRemoveLogo(company.id)}
-                className="p-1 bg-gray-50 rounded-full hover:bg-gray-100"
-                title={t('admin.forms.delete')}
-              >
-                <X className="w-3.5 h-3.5 text-red-600" />
-              </button>
-            )}
-          </div>
-        </div>
+        {/* Logo — clickable para abrir/cerrar el uploader inline */}
+        <button
+          type="button"
+          onClick={() => setShowLogoUploader((v) => !v)}
+          title={t('admin.forms.uploadLogo')}
+          className="shrink-0 w-14 h-14 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center bg-white dark:bg-gray-700 overflow-hidden hover:border-blue-400 transition-colors"
+        >
+          {logoDataUrl ? (
+            <img src={logoDataUrl} alt={company.name} className="w-full h-full object-contain" />
+          ) : (
+            <CompanyTypeIcon type={company.companyType} className="w-7 h-7 text-gray-400" />
+          )}
+        </button>
 
         {/* Info */}
         <div className="flex-1 min-w-0">
@@ -109,6 +97,26 @@ function CompanyCard({ company, logoDataUrl, onEdit, onDelete, onUploadLogo, onR
           </Button>
         </div>
       </div>
+
+      {/* Logo uploader inline (se expande al hacer click en el logo) */}
+      {showLogoUploader && (
+        <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
+          <LogoUploader
+            currentLogoUrl={logoDataUrl}
+            onUpload={async (bytes, fileName) => {
+              await onUploadBytes(company.id, bytes, fileName);
+              setShowLogoUploader(false);
+            }}
+            onRemove={logoDataUrl ? async () => {
+              await onRemoveLogo(company.id);
+              setShowLogoUploader(false);
+            } : undefined}
+            previewSize={56}
+            label={t('admin.forms.uploadLogo')}
+            hint="PNG, JPG, SVG o WEBP · Máx. 2 MB"
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -127,15 +135,15 @@ interface CompanySectionProps {
   onEdit: (company: Company) => void;
   onDelete: (company: Company) => void;
   onCreateForType: (type: CompanyType) => void;
-  onUploadLogo: (companyId: string) => void;
-  onRemoveLogo: (companyId: string) => void;
+  onUploadBytes: (companyId: string, bytes: Uint8Array, fileName: string) => Promise<void>;
+  onRemoveLogo: (companyId: string) => Promise<void>;
 }
 
 const PAGE_SIZE = 3;
 
 function CompanySection({
   title, type, companies, companyLogos, searchTerm, isLoading,
-  onEdit, onDelete, onCreateForType, onUploadLogo, onRemoveLogo,
+  onEdit, onDelete, onCreateForType, onUploadBytes, onRemoveLogo,
 }: CompanySectionProps) {
   const { t } = useTranslation();
   const [page, setPage] = useState(1);
@@ -146,10 +154,10 @@ function CompanySection({
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
 
-  // Clamp page whenever the list shrinks (delete) or search changes
   useEffect(() => {
     setPage((p) => Math.min(p, Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))));
   }, [filtered.length, searchTerm]);
+
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const isOperator = type === 'operator';
@@ -215,7 +223,7 @@ function CompanySection({
                 logoDataUrl={companyLogos[company.id]}
                 onEdit={onEdit}
                 onDelete={onDelete}
-                onUploadLogo={onUploadLogo}
+                onUploadBytes={onUploadBytes}
                 onRemoveLogo={onRemoveLogo}
               />
             ))}
@@ -280,8 +288,6 @@ export default function CompaniesManagement() {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [includeInactive, setIncludeInactive] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [uploadingCompanyId, setUploadingCompanyId] = useState<string | null>(null);
 
   useEffect(() => {
     if (sessionToken) {
@@ -289,12 +295,29 @@ export default function CompaniesManagement() {
     }
   }, [sessionToken, includeInactive]);
 
+  // ── Handlers de logo (usados por CompanyCard y OperatorForm/ContractorForm) ──
+
+  const handleLogoUploadBytes = async (companyId: string, bytes: Uint8Array, fileName: string) => {
+    if (!sessionToken) return;
+    await uploadLogo(sessionToken, companyId, { bytes, name: fileName });
+    toast.success(t('admin.companies.logoUploaded'));
+    backgroundPush(sessionToken);
+  };
+
+  const handleRemoveLogo = async (companyId: string) => {
+    if (!sessionToken) return;
+    await removeLogo(sessionToken, companyId);
+    toast.success(t('admin.companies.logoDeleted'));
+    backgroundPush(sessionToken);
+  };
+
+  // ── Modales ────────────────────────────────────────────────────────────────
+
   const openCreateModal = (type: CompanyType = 'operator') => {
     const isOperator = type === 'operator';
 
     const handleCreateSubmit = async (data: UpdateCompanyInput) => {
       try {
-        // Forms already set companyType in the payload when creating
         await createCompany(sessionToken!, data as any);
         toast.success(isOperator ? t('admin.companies.operatorCreated') : t('admin.companies.contractorCreated'));
         closeModal();
@@ -321,10 +344,27 @@ export default function CompaniesManagement() {
     const FormComponent = isOperator ? OperatorForm : ContractorForm;
     const companyProp = isOperator ? 'operator' : 'contractor';
 
+    // Wrapper que mantiene el logo actual del modal sincronizado
     const EditForm = () => {
       const [currentLogo, setCurrentLogo] = useState<string | null>(
         companyLogos[company.id] || null
       );
+
+      const handleUploadInModal = async (bytes: Uint8Array, fileName: string) => {
+        if (!sessionToken) return;
+        await uploadLogo(sessionToken, company.id, { bytes, name: fileName });
+        await useCompaniesStore.getState().loadCompanyLogo(sessionToken, company.id);
+        setCurrentLogo(useCompaniesStore.getState().companyLogos[company.id] || null);
+        backgroundPush(sessionToken);
+      };
+
+      const handleRemoveInModal = async () => {
+        if (!sessionToken) return;
+        await removeLogo(sessionToken, company.id);
+        setCurrentLogo(null);
+        backgroundPush(sessionToken);
+      };
+
       return (
         <FormComponent
           {...{ [companyProp]: company }}
@@ -339,18 +379,12 @@ export default function CompaniesManagement() {
               toast.error(error as string);
             }
           }}
-          onUploadLogo={async (file) => {
-            await uploadLogo(sessionToken!, company.id, file);
-            await useCompaniesStore.getState().loadCompanyLogo(sessionToken!, company.id);
-            setCurrentLogo(useCompaniesStore.getState().companyLogos[company.id] || null);
-          }}
-          onRemoveLogo={async () => {
-            await removeLogo(sessionToken!, company.id);
-            setCurrentLogo(null);
-          }}
+          onUploadLogo={handleUploadInModal}
+          onRemoveLogo={handleRemoveInModal}
         />
       );
     };
+
     openModal(<EditForm />, {
       title: t('admin.companies.editCompany', { type: companyTypeLabel(company.companyType) }),
       size: 'md',
@@ -389,39 +423,6 @@ export default function CompaniesManagement() {
     );
   };
 
-  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !uploadingCompanyId || !sessionToken) return;
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error(t('admin.companies.fileSizeExceeded'));
-      return;
-    }
-    try {
-      await uploadLogo(sessionToken, uploadingCompanyId, file);
-      toast.success(t('admin.companies.logoUploaded'));
-    } catch (error) {
-      toast.error(error as string);
-    } finally {
-      setUploadingCompanyId(null);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
-  };
-
-  const triggerLogoUpload = (companyId: string) => {
-    setUploadingCompanyId(companyId);
-    fileInputRef.current?.click();
-  };
-
-  const handleRemoveLogo = async (companyId: string) => {
-    if (!sessionToken) return;
-    try {
-      await removeLogo(sessionToken, companyId);
-      toast.success(t('admin.companies.logoDeleted'));
-    } catch (error) {
-      toast.error(error as string);
-    }
-  };
-
   const sharedSectionProps = {
     companies,
     companyLogos,
@@ -430,21 +431,12 @@ export default function CompaniesManagement() {
     onEdit: handleEdit,
     onDelete: handleDelete,
     onCreateForType: openCreateModal,
-    onUploadLogo: triggerLogoUpload,
+    onUploadBytes: handleLogoUploadBytes,
     onRemoveLogo: handleRemoveLogo,
   };
 
   return (
     <div className="space-y-6">
-      {/* Hidden file input */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/png,image/jpeg,image/svg+xml,image/webp"
-        onChange={handleLogoUpload}
-        className="hidden"
-      />
-
       {/* Header */}
       <div>
         <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{t('admin.companies.title')}</h2>

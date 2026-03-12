@@ -1298,6 +1298,8 @@
       "uploading": "Subiendo...",
       "uploadLogo": "Subir Logo",
       "logoHint": "PNG, JPG, SVG o WEBP · Máx. 2 MB",
+      "removeBgModelHint": "El modelo se descarga una sola vez (~27 MB) y queda en caché para uso offline.",
+      "logoAfterCreate": "Podrás subir un logo después de crear la empresa.",
       "operatorStatus": "Estado de la operadora",
       "contractorStatus": "Estado del contratista",
       "activeAvailable": "Activa: aparece disponible en los reportes",

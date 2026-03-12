@@ -1,10 +1,13 @@
-import { create } from 'zustand';
+﻿import { create } from 'zustand';
 import { companiesApi } from '../lib/api';
 import type { Company, CompanyType, CreateCompanyInput, UpdateCompanyInput } from '../types/company';
 
 interface CompanyLogos {
   [companyId: string]: string | null;
 }
+
+/** Argumento flexible para uploadLogo: File del browser o bytes ya procesados */
+type LogoSource = File | { bytes: Uint8Array; name: string };
 
 interface CompaniesState {
   companies: Company[];
@@ -17,7 +20,8 @@ interface CompaniesState {
   createCompany: (sessionToken: string, input: CreateCompanyInput) => Promise<Company>;
   updateCompany: (sessionToken: string, companyId: string, input: UpdateCompanyInput) => Promise<Company>;
   deleteCompany: (sessionToken: string, companyId: string) => Promise<void>;
-  uploadLogo: (sessionToken: string, companyId: string, file: File) => Promise<void>;
+  /** Acepta un File del browser O un objeto { bytes, name } de bytes ya procesados (ej: post-imgly) */
+  uploadLogo: (sessionToken: string, companyId: string, source: LogoSource) => Promise<void>;
   removeLogo: (sessionToken: string, companyId: string) => Promise<void>;
   loadCompanyLogo: (sessionToken: string, companyId: string) => Promise<void>;
   clearCompanies: () => void;
@@ -39,7 +43,7 @@ export const useCompaniesStore = create<CompaniesState>()((set, get) => ({
       const companies = await companiesApi.list(sessionToken, onlyActive, companyType);
       set({ companies, isLoading: false });
 
-      // Load logos for companies that have one
+      // Cargar logos para empresas que ya tienen uno registrado
       for (const company of companies) {
         if (company.logo) {
           get().loadCompanyLogo(sessionToken, company.id);
@@ -98,10 +102,22 @@ export const useCompaniesStore = create<CompaniesState>()((set, get) => ({
     }
   },
 
-  uploadLogo: async (sessionToken, companyId, file) => {
-    const buffer = await file.arrayBuffer();
-    const fileData = Array.from(new Uint8Array(buffer));
-    const company = await companiesApi.uploadLogo(sessionToken, companyId, fileData, file.name);
+  uploadLogo: async (sessionToken, companyId, source) => {
+    // Normalizar la fuente a (bytes: number[], name: string)
+    let fileData: number[];
+    let fileName: string;
+
+    if (source instanceof File) {
+      const buffer = await source.arrayBuffer();
+      fileData = Array.from(new Uint8Array(buffer));
+      fileName = source.name;
+    } else {
+      // { bytes: Uint8Array, name: string } — ya procesado por imgly u otra vía
+      fileData = Array.from(source.bytes);
+      fileName = source.name;
+    }
+
+    const company = await companiesApi.uploadLogo(sessionToken, companyId, fileData, fileName);
 
     set((state) => ({
       companies: state.companies.map((c) => (c.id === companyId ? company : c)),
@@ -133,7 +149,7 @@ export const useCompaniesStore = create<CompaniesState>()((set, get) => ({
     set({ companies: [], companyLogos: {}, isLoading: false, error: null });
   },
 
-  // Derived selectors — filter from cached companies list
+  // Derived selectors
   operators: () => get().companies.filter((c) => c.companyType === 'operator'),
   contractors: () => get().companies.filter((c) => c.companyType === 'contractor'),
 }));

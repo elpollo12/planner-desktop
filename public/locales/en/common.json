@@ -1298,6 +1298,7 @@
       "uploading": "Uploading...",
       "uploadLogo": "Upload Logo",
       "logoHint": "PNG, JPG, SVG or WEBP · Max. 2 MB",
+      "removeBgModelHint": "The model is downloaded once (~27 MB) and cached for offline use.",
       "operatorStatus": "Operator status",
       "contractorStatus": "Contractor status",
       "activeAvailable": "Active: appears available in reports",
