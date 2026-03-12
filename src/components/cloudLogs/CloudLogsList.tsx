@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Loader2, AlertTriangle, MessageSquare } from 'lucide-react';
 import { PaginationControls } from '../ui/PaginationControls';
 import { useCloudLogsList, useMessageDetail } from '../../hooks/useCloudLogs';
@@ -22,6 +23,7 @@ function fmt(val: number | null, decimals = 2): string {
 // ============================================================================
 
 export function MessageDetailContent({ messageId }: { messageId: number }) {
+  const { t } = useTranslation();
   const { data: msg, isLoading } = useMessageDetail(messageId);
 
   if (isLoading) {
@@ -36,15 +38,15 @@ export function MessageDetailContent({ messageId }: { messageId: number }) {
 
   return (
     <div className="space-y-3">
-      <Row label="De" value={msg.fromNumber} />
-      <Row label="Grupo" value={msg.groupName} />
-      <Row label="Tipo" value={msg.messageType} />
-      <Row label="Recibido" value={msg.createdAt ? formatDateTime(msg.createdAt) : null} />
+      <Row label={t('cloudLogs.messageDetail.from')} value={msg.fromNumber} />
+      <Row label={t('cloudLogs.messageDetail.group')} value={msg.groupName} />
+      <Row label={t('cloudLogs.messageDetail.type')} value={msg.messageType} />
+      <Row label={t('cloudLogs.messageDetail.received')} value={msg.createdAt ? formatDateTime(msg.createdAt) : null} />
 
       {msg.message && (
         <div>
           <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wide">
-            Mensaje
+            {t('cloudLogs.messageDetail.message')}
           </p>
           <pre className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap bg-gray-50 dark:bg-gray-700/50 rounded-md p-3 font-mono leading-relaxed">
             {msg.message}
@@ -55,7 +57,7 @@ export function MessageDetailContent({ messageId }: { messageId: number }) {
       {msg.rawData && (
         <div>
           <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wide">
-            Datos crudos
+            {t('cloudLogs.messageDetail.rawData')}
           </p>
           <pre className="text-xs text-gray-600 dark:text-gray-400 whitespace-pre-wrap bg-gray-50 dark:bg-gray-700/50 rounded-md p-3 font-mono overflow-auto max-h-40">
             {msg.rawData}
@@ -83,6 +85,7 @@ function Row({ label, value }: { label: string; value: string | null | undefined
 // ============================================================================
 
 export function CloudLogsList({ taladro, dateFrom, dateTo }: CloudLogsListProps) {
+  const { t } = useTranslation();
   const [page, setPage] = useState(1);
   const pageSize = 10;
   const { openModal } = useModal();
@@ -111,10 +114,10 @@ export function CloudLogsList({ taladro, dateFrom, dateTo }: CloudLogsListProps)
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <AlertTriangle size={40} className="text-gray-300 dark:text-gray-600 mb-3" />
           <p className="text-gray-500 dark:text-gray-400 font-medium">
-            No hay registros para este taladro
+            {t('cloudLogs.list.emptyTitle')}
           </p>
           <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
-            Prueba ajustando el rango de fechas
+            {t('cloudLogs.list.emptyHint')}
           </p>
         </div>
       )}
@@ -124,7 +127,7 @@ export function CloudLogsList({ taladro, dateFrom, dateTo }: CloudLogsListProps)
         <>
           <div className="flex items-center justify-between mb-3">
             <span className="text-sm text-gray-500 dark:text-gray-400">
-              {total} registro{total !== 1 ? 's' : ''}
+              {total !== 1 ? t('cloudLogs.list.recordCountPlural', { count: total }) : t('cloudLogs.list.recordCount', { count: total })}
             </span>
           </div>
 
@@ -132,15 +135,15 @@ export function CloudLogsList({ taladro, dateFrom, dateTo }: CloudLogsListProps)
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-200 dark:border-gray-700">
-                  <th className="text-left py-3 px-3 font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap">Fecha</th>
-                  <th className="text-right py-3 px-3 font-medium text-gray-500 dark:text-gray-400">ROP</th>
-                  <th className="text-right py-3 px-3 font-medium text-gray-500 dark:text-gray-400">WOB</th>
-                  <th className="text-right py-3 px-3 font-medium text-gray-500 dark:text-gray-400">RPM</th>
-                  <th className="text-right py-3 px-3 font-medium text-gray-500 dark:text-gray-400">Prof. (m)</th>
-                  <th className="text-right py-3 px-3 font-medium text-gray-500 dark:text-gray-400">NPT (hrs)</th>
-                  <th className="text-left py-3 px-3 font-medium text-gray-500 dark:text-gray-400">Actividad</th>
-                  <th className="text-left py-3 px-3 font-medium text-gray-500 dark:text-gray-400">Observaciones</th>
-                  <th className="text-center py-3 px-3 font-medium text-gray-500 dark:text-gray-400">Msg</th>
+                  <th className="text-left py-3 px-3 font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap">{t('cloudLogs.list.dateCol')}</th>
+                  <th className="text-right py-3 px-3 font-medium text-gray-500 dark:text-gray-400">{t('cloudLogs.list.ropCol')}</th>
+                  <th className="text-right py-3 px-3 font-medium text-gray-500 dark:text-gray-400">{t('cloudLogs.list.wobCol')}</th>
+                  <th className="text-right py-3 px-3 font-medium text-gray-500 dark:text-gray-400">{t('cloudLogs.list.rpmCol')}</th>
+                  <th className="text-right py-3 px-3 font-medium text-gray-500 dark:text-gray-400">{t('cloudLogs.list.depthCol')}</th>
+                  <th className="text-right py-3 px-3 font-medium text-gray-500 dark:text-gray-400">{t('cloudLogs.list.nptCol')}</th>
+                  <th className="text-left py-3 px-3 font-medium text-gray-500 dark:text-gray-400">{t('cloudLogs.list.activityCol')}</th>
+                  <th className="text-left py-3 px-3 font-medium text-gray-500 dark:text-gray-400">{t('cloudLogs.list.observationsCol')}</th>
+                  <th className="text-center py-3 px-3 font-medium text-gray-500 dark:text-gray-400">{t('cloudLogs.list.msgCol')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -188,10 +191,10 @@ export function CloudLogsList({ taladro, dateFrom, dateTo }: CloudLogsListProps)
                         <button
                           onClick={() => openModal(
                             <MessageDetailContent messageId={r.messageId!} />,
-                            { title: 'Mensaje de origen', size: 'md', showCloseButton: true }
+                            { title: t('cloudLogs.messageDetail.modalTitle'), size: 'md', showCloseButton: true }
                           )}
                           className="p-1.5 rounded-md text-gray-400 hover:text-primary-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                          title="Ver mensaje de origen"
+                          title={t('cloudLogs.messageDetail.viewTooltip')}
                         >
                           <MessageSquare size={15} />
                         </button>
@@ -211,7 +214,7 @@ export function CloudLogsList({ taladro, dateFrom, dateTo }: CloudLogsListProps)
               totalPages={totalPages}
               totalItems={total}
               pageSize={pageSize}
-              itemLabel="registros"
+              itemLabel={t('cloudLogs.list.itemLabel')}
               onPageChange={handlePageChange}
               onPageSizeChange={() => {}}
             />

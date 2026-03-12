@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
 import { useAuthStore } from '@/store/authStore';
 import { useModal } from '@/store/modalStore';
@@ -9,11 +10,13 @@ import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Tabs, TabPanel } from '@/components/ui/Tabs';
 import { KeyRound, User, HardHat, Shield, MapPin, AlertTriangle, ArrowRight, ShieldCheck } from 'lucide-react';
+import i18n from '@/lib/i18n';
 import type { RigWithArea } from '@/types/rig';
 
 export default function Profile() {
     const { user, sessionToken } = useAuthStore();
     const { openModal } = useModal();
+    const { t } = useTranslation();
     const [activeTab, setActiveTab] = useState('rigs');
     const [rigs, setRigs] = useState<RigWithArea[]>([]);
     const [rigsLoading, setRigsLoading] = useState(true);
@@ -53,11 +56,11 @@ export default function Profile() {
 
     const handleChangePassword = async () => {
         if (newPassword.length < 4) {
-            toast.error('La nueva contraseña debe tener al menos 4 caracteres');
+            toast.error(t('profile.password.minLength'));
             return;
         }
         if (newPassword !== confirmPassword) {
-            toast.error('Las contraseñas no coinciden');
+            toast.error(t('profile.password.mismatchError'));
             return;
         }
 
@@ -74,14 +77,14 @@ export default function Profile() {
                             <AlertTriangle size={24} className="text-red-600 dark:text-red-400" />
                         </div>
                         <p className="text-sm text-gray-700 dark:text-gray-300">
-                            La contraseña introducida no es correcta. Verifica e intenta de nuevo.
+                            {t('profile.password.wrongPassword')}
                         </p>
                     </div>,
                     {
-                        title: 'Contraseña Incorrecta',
+                        title: t('profile.password.wrongPasswordTitle'),
                         size: 'sm',
                         showCancelButton: true,
-                        cancelText: 'Cerrar',
+                        cancelText: t('profile.password.closeBtn'),
                         onClose: clearPasswordFields,
                     }
                 );
@@ -97,22 +100,22 @@ export default function Profile() {
                         <AlertTriangle size={24} className="text-amber-600 dark:text-amber-400" />
                     </div>
                     <p className="text-sm text-gray-700 dark:text-gray-300 text-center">
-                        Tu contraseña antigua no podrá ser recuperada. ¿Deseas continuar con el cambio?
+                        {t('profile.password.confirmMessage')}
                     </p>
                 </div>,
                 {
-                    title: 'Confirmar Cambio de Contraseña',
+                    title: t('profile.password.confirmTitle'),
                     size: 'sm',
                     showConfirmButton: true,
                     showCancelButton: true,
-                    confirmText: 'Sí, cambiar',
-                    cancelText: 'Cancelar',
+                    confirmText: t('profile.password.confirmBtn'),
+                    cancelText: t('incidents.common.cancel'),
                     onConfirm: async () => {
                         try {
                             await usersApi.changeOwnPassword(sessionToken!, currentPassword, newPassword);
-                            toast.success('Contraseña actualizada exitosamente');
+                            toast.success(t('profile.password.changedSuccess'));
                         } catch (err: any) {
-                            toast.error(err.message || err || 'Error al cambiar contraseña');
+                            toast.error(err.message || String(err) || t('profile.password.changeError'));
                         }
                         clearPasswordFields();
                     },
@@ -120,15 +123,9 @@ export default function Profile() {
                 }
             );
         } catch (err: any) {
-            toast.error(err.message || err || 'Error al verificar contraseña');
+            toast.error(err.message || String(err) || t('profile.password.verifyError'));
             setProcessing(false);
         }
-    };
-
-    const roleLabels: Record<string, string> = {
-        admin: 'Administrador',
-        supervisor: 'Supervisor',
-        operator: 'Operador',
     };
 
     const roleBadgeClass: Record<string, string> = {
@@ -138,14 +135,14 @@ export default function Profile() {
     };
 
     const tabs = [
-        { id: 'rigs', label: 'Taladros', icon: <HardHat size={16} /> },
-        { id: 'password', label: 'Contraseña', icon: <KeyRound size={16} /> },
+        { id: 'rigs', label: t('profile.tabs.rigs'), icon: <HardHat size={16} /> },
+        { id: 'password', label: t('profile.tabs.password'), icon: <KeyRound size={16} /> },
     ];
 
     if (!user) return null;
 
     return (
-        <MainLayout title="Mi Perfil" subtitle='Gestion de Usuario'>
+        <MainLayout title={t('profile.title')} subtitle={t('profile.subtitle')}>
             <div className="max-w-3xl mx-auto space-y-6">
 
                 {/* Profile Header */}
@@ -163,12 +160,12 @@ export default function Profile() {
                         <div className="flex items-center gap-3 shrink-0">
                             {user.ci && (
                                 <div className="text-right hidden sm:block">
-                                    <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wider">Cédula</p>
+                                    <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wider">{t('profile.header.cedula')}</p>
                                     <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{user.ci}</p>
                                 </div>
                             )}
                             <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${roleBadgeClass[user.role] || ''}`}>
-                                {roleLabels[user.role] || user.role}
+                                {t(`profile.roles.${user.role}`, { defaultValue: user.role })}
                             </span>
                         </div>
                     </div>
@@ -181,12 +178,12 @@ export default function Profile() {
                             <ShieldCheck size={16} className="text-amber-500 dark:text-amber-400 shrink-0" />
                             <div>
                                 <p className="text-[11px] text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-0.5">
-                                    Última modificación de permisos
+                                    {t('profile.permissions.lastModification')}
                                 </p>
                                 <p className="text-sm text-gray-700 dark:text-gray-300">
-                                    Por <span className="font-medium">{permissionModifier.modifiedBy}</span>
+                                    {t('profile.permissions.by')} <span className="font-medium">{permissionModifier.modifiedBy}</span>
                                     {' · '}
-                                    {new Date(permissionModifier.modifiedAt).toLocaleString('es-ES', {
+                                    {new Date(permissionModifier.modifiedAt).toLocaleString(i18n.language === 'en' ? 'en-US' : 'es-ES', {
                                         dateStyle: 'medium',
                                         timeStyle: 'short',
                                     })}
@@ -210,17 +207,17 @@ export default function Profile() {
                                 <div className="flex items-center gap-2 py-3 px-4 bg-green-50 dark:bg-green-900/15 rounded-lg">
                                     <Shield size={16} className="text-green-600 dark:text-green-400" />
                                     <span className="text-sm text-green-700 dark:text-green-300">
-                                        Tienes acceso a todos los taladros del sistema ({rigs.length})
+                                        {t('profile.rigs.allAccess', { count: rigs.length })}
                                     </span>
                                 </div>
                             ) : rigs.length === 0 ? (
                                 <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-8">
-                                    No tienes taladros asignados. Contacta al administrador.
+                                    {t('profile.rigs.noRigs')}
                                 </p>
                             ) : (
                                 <>
                                     <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
-                                        Tienes acceso a {rigs.length} taladro{rigs.length !== 1 ? 's' : ''}
+                                        {rigs.length !== 1 ? t('profile.rigs.rigCountPlural', { count: rigs.length }) : t('profile.rigs.rigCount', { count: rigs.length })}
                                     </p>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                         {rigs.map((rig) => (
@@ -248,45 +245,45 @@ export default function Profile() {
                         <TabPanel id="password" activeTab={activeTab}>
                             <div className="flex flex-col gap-4">
                                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                                    Ingresa tu contraseña actual y elige una nueva para actualizarla.
+                                    {t('profile.password.instructions')}
                                 </p>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                        Contraseña actual
+                                        {t('profile.password.currentLabel')}
                                     </label>
                                     <Input
                                         type="password"
                                         value={currentPassword}
                                         onChange={(e) => setCurrentPassword(e.target.value)}
-                                        placeholder="Ingresa tu contraseña actual"
+                                        placeholder={t('profile.password.currentPlaceholder')}
                                         disabled={processing}
                                     />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                        Nueva contraseña
+                                        {t('profile.password.newLabel')}
                                     </label>
                                     <Input
                                         type="password"
                                         value={newPassword}
                                         onChange={(e) => setNewPassword(e.target.value)}
-                                        placeholder="Mínimo 4 caracteres"
+                                        placeholder={t('profile.password.newPlaceholder')}
                                         disabled={processing}
                                     />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                        Confirmar nueva contraseña
+                                        {t('profile.password.confirmLabel')}
                                     </label>
                                     <Input
                                         type="password"
                                         value={confirmPassword}
                                         onChange={(e) => setConfirmPassword(e.target.value)}
-                                        placeholder="Repite la nueva contraseña"
+                                        placeholder={t('profile.password.confirmPlaceholder')}
                                         disabled={processing}
                                     />
                                     {confirmPassword && newPassword !== confirmPassword && (
-                                        <p className="mt-1 text-xs text-red-500">Las contraseñas no coinciden</p>
+                                        <p className="mt-1 text-xs text-red-500">{t('profile.password.mismatch')}</p>
                                     )}
                                 </div>
                                 <div className='min-w-full flex justify-end items-center'>
@@ -298,7 +295,7 @@ export default function Profile() {
                                         icon={<ArrowRight size={16} />}
                                         iconPosition='right'
                                     >
-                                        {processing ? 'Verificando...' : 'Cambiar Contraseña'}
+                                        {processing ? t('profile.password.processing') : t('profile.password.changeBtn')}
                                     </Button>
                                 </div>
                             </div>

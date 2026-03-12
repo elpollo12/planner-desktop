@@ -1,4 +1,5 @@
-﻿import { Droplets } from 'lucide-react';
+import { Droplets } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { waterBottlesApi } from '@/lib/api';
 import { waterBottlesMovementSchema, type WaterBottlesMovementForm } from '@/schemas';
 import { MovementFormTab } from '../MovementFormTab';
@@ -11,6 +12,7 @@ interface BotellonesIngresoTabProps {
 }
 
 export function BotellonesIngresoTab({ rigId, onSuccess }: BotellonesIngresoTabProps) {
+  const { t } = useTranslation();
   const qc = useQueryClient();
 
   return (
@@ -18,11 +20,11 @@ export function BotellonesIngresoTab({ rigId, onSuccess }: BotellonesIngresoTabP
       direction="entry"
       schema={waterBottlesMovementSchema}
       defaultValues={{ quantity: undefined as unknown as number, notes: '' }}
-      bannerText="Registrar ingreso de botellones al inventario"
+      bannerText={t('logistics.waterBottles.entryBanner')}
       icon={Droplets}
-      successMessage="Ingreso de botellones registrado"
-      errorMessage="Error al registrar el ingreso"
-      submitLabel="Registrar Ingreso"
+      successMessage={t('logistics.waterBottles.entrySuccess')}
+      errorMessage={t('logistics.waterBottles.entryError')}
+      submitLabel={t('logistics.common.registerEntry')}
       onSubmit={async (sessionToken, data) => {
         await waterBottlesApi.createMovement(sessionToken, rigId, {
           movementType: 'entry',
@@ -37,7 +39,7 @@ export function BotellonesIngresoTab({ rigId, onSuccess }: BotellonesIngresoTabP
         <>
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Cantidad de Botellones <span className="text-red-500">*</span>
+              {t('logistics.waterBottles.quantityLabel')} <span className="text-red-500">*</span>
             </label>
             <div className="relative">
               <Droplets className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
@@ -55,12 +57,12 @@ export function BotellonesIngresoTab({ rigId, onSuccess }: BotellonesIngresoTabP
             {errors.quantity && <p className="mt-1 text-sm text-red-500">{errors.quantity.message}</p>}
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Observaciones</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('logistics.common.notes')}</label>
             <textarea
               {...register('notes')}
               rows={3}
               className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500"
-              placeholder="Observaciones adicionales..."
+              placeholder={t('logistics.common.notesPlaceholder')}
             />
           </div>
         </>

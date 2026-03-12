@@ -1,4 +1,5 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '../ui';
 import { ArrowUpDown, FileText, Trash2, Plus, Minus, Eye } from 'lucide-react';
 import { useModalStore } from '../../store';
@@ -23,6 +24,7 @@ interface MaterialesInventoryProps {
 }
 
 export function MaterialesInventory({ rigId }: MaterialesInventoryProps) {
+  const { t } = useTranslation();
   const { openModal } = useModalStore();
   const { sessionToken, user } = useAuthStore();
 
@@ -43,21 +45,21 @@ export function MaterialesInventory({ rigId }: MaterialesInventoryProps) {
   const handleRegistrar = () => {
     openModal(
       <MaterialesForm rigId={rigId} materials={materials} />,
-      { title: 'Registrar Movimiento de Material', size: 'xl', showCloseButton: true, closeOnOutsideClick: false }
+      { title: t('logistics.materials.registerMovement'), size: 'xl', showCloseButton: true, closeOnOutsideClick: false }
     );
   };
 
   const handleSolicitar = () => {
     openModal(
       <RequestForm rigId={rigId} defaultType="material" materials={materials} />,
-      { title: 'Solicitar Material', size: 'md', showCloseButton: true, closeOnOutsideClick: false }
+      { title: t('logistics.materials.requestTitle'), size: 'md', showCloseButton: true, closeOnOutsideClick: false }
     );
   };
 
   const handleOpenCatalog = () => {
     openModal(
       <MaterialsCatalogModal />,
-      { title: 'Catálogo de Materiales', size: 'xl', showCloseButton: true }
+      { title: t('logistics.materials.catalogTitle'), size: 'xl', showCloseButton: true }
     );
   };
 
@@ -67,20 +69,20 @@ export function MaterialesInventory({ rigId }: MaterialesInventoryProps) {
 
     openModal(
       <ConfirmDeleteModal
-        message="¿Estás seguro de que deseas eliminar este registro?"
+        message={t('logistics.common.confirmDeleteRecord')}
         itemName={label}
         onConfirm={async () => {
           try {
             await deleteMutation.mutateAsync(movement.id);
-            toast.success('Registro eliminado');
+            toast.success(t('logistics.common.recordDeleted'));
             if (movements.length === 1 && currentPage > 1) setCurrentPage(currentPage - 1);
           } catch (error: any) {
-            toast.error(error?.toString() || 'Error al eliminar');
+            toast.error(error?.toString() || t('logistics.common.deleteError'));
             throw error;
           }
         }}
       />,
-      { title: '¿Eliminar movimiento?', size: 'sm', showCloseButton: true }
+      { title: t('logistics.common.deleteMovement'), size: 'sm', showCloseButton: true }
     );
   };
 
@@ -94,8 +96,8 @@ export function MaterialesInventory({ rigId }: MaterialesInventoryProps) {
       } catch { /* ignore */ }
     }
     openModal(
-      <MovementDetailModal fields={buildMaterialFields(movement, mat ? capitalize(mat.name) : 'Desconocido', mat?.unit || '', createdByName)} />,
-      { title: 'Detalle del Movimiento', size: 'sm', showCloseButton: true, closeOnOutsideClick: true }
+      <MovementDetailModal fields={buildMaterialFields(movement, mat ? capitalize(mat.name) : t('logistics.common.unknown'), mat?.unit || '', createdByName)} />,
+      { title: t('logistics.common.movementDetail'), size: 'sm', showCloseButton: true, closeOnOutsideClick: true }
     );
   };
 
@@ -111,21 +113,21 @@ export function MaterialesInventory({ rigId }: MaterialesInventoryProps) {
 
   return (
     <InventoryShell
-      title="Materiales"
+      title={t('logistics.materials.title')}
       stockBadge={filteredMaterial ? <StockBadge stock={stock ?? null} unit={filteredMaterial.unit} /> : undefined}
       loading={isLoading}
       isEmpty={movements.length === 0}
-      emptyMessage="No hay movimientos registrados"
+      emptyMessage={t('logistics.common.noMovements')}
       actions={
         <>
-          <Button variant="secondary" size="sm" icon={<ArrowUpDown size={18} />} iconPosition="right" onClick={handleRegistrar}>Registrar</Button>
-          <Button variant="outline" size="sm" icon={<FileText size={18} />} iconPosition="right" onClick={handleSolicitar}>Solicitar</Button>
+          <Button variant="secondary" size="sm" icon={<ArrowUpDown size={18} />} iconPosition="right" onClick={handleRegistrar}>{t('logistics.common.register')}</Button>
+          <Button variant="outline" size="sm" icon={<FileText size={18} />} iconPosition="right" onClick={handleSolicitar}>{t('logistics.common.request')}</Button>
         </>
       }
       filters={
         <div className="flex flex-col space-y-2">
           <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Filtrar por material:
+            {t('logistics.materials.filterByMaterial')}
           </label>
           <div className="flex gap-2">
             <select
@@ -133,7 +135,7 @@ export function MaterialesInventory({ rigId }: MaterialesInventoryProps) {
               onChange={(e) => handleFilterChange(e.target.value)}
               className="flex-1 text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500"
             >
-              <option value="">Todos los materiales</option>
+              <option value="">{t('logistics.materials.allMaterials')}</option>
               {materials.map(m => (
                 <option key={m.id} value={m.id}>
                   {capitalize(m.name)} ({m.unit})
@@ -150,23 +152,23 @@ export function MaterialesInventory({ rigId }: MaterialesInventoryProps) {
                 iconPosition="right"
                 onClick={handleOpenCatalog}
               >
-                Ver Catálogo
+                {t('logistics.materials.viewCatalog')}
               </Button>
             )}
           </div>
         </div>
       }
-      pagination={{ currentPage, totalPages, totalItems, pageSize, itemLabel: 'movimientos', onPageChange: handlePageChange, onPageSizeChange: handlePageSizeChange }}
+      pagination={{ currentPage, totalPages, totalItems, pageSize, itemLabel: t('logistics.common.movements'), onPageChange: handlePageChange, onPageSizeChange: handlePageSizeChange }}
     >
       <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
         <thead className="bg-gray-50 dark:bg-gray-800">
           <tr>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tipo</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Material</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Cantidad</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Fecha</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Observaciones</th>
-            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Acciones</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('logistics.common.type')}</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('logistics.materials.materialLabel')}</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('logistics.common.quantity')}</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('logistics.common.date')}</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('logistics.common.notes')}</th>
+            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('logistics.common.actions')}</th>
           </tr>
         </thead>
         <tbody className="bg-gray-50 dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -188,11 +190,11 @@ export function MaterialesInventory({ rigId }: MaterialesInventoryProps) {
               <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400 max-w-xs truncate">{m.notes || '-'}</td>
               <td className="px-6 py-4 whitespace-nowrap text-center">
                 <div className="flex items-center justify-center gap-1">
-                  <button onClick={() => handleViewDetail(m)} className="p-1 text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300" title="Ver detalle">
+                  <button onClick={() => handleViewDetail(m)} className="p-1 text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300" title={t('logistics.common.viewDetail')}>
                     <Eye size={18} />
                   </button>
                   {canDelete && (
-                    <button onClick={() => handleDelete(m)} className="p-1 text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300" title="Eliminar"><Trash2 size={18} /></button>
+                    <button onClick={() => handleDelete(m)} className="p-1 text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300" title={t('logistics.common.delete')}><Trash2 size={18} /></button>
                   )}
                 </div>
               </td>

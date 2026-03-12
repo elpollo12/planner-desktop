@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
 import { Plus, Pencil, Trash2, Search, Upload, X, Building2, HardHat, ChevronLeft, ChevronRight } from 'lucide-react';
+import i18n from '@/lib/i18n';
 import { useAuthStore } from '@/store/authStore';
 import { backgroundPush } from '@/lib/syncHelper';
 import { useCompaniesStore } from '@/store/companiesStore';
@@ -13,7 +15,7 @@ import OperatorForm from './forms/OperatorForm';
 import ContractorForm from './forms/ContractorForm';
 
 function companyTypeLabel(type: CompanyType): string {
-  return type === 'operator' ? 'Operadora' : 'Contratista';
+  return type === 'operator' ? i18n.t('admin.companies.operatorType') : i18n.t('admin.companies.contractorType');
 }
 
 function CompanyTypeIcon({ type, className }: { type: CompanyType; className?: string }) {
@@ -36,6 +38,7 @@ interface CompanyCardProps {
 }
 
 function CompanyCard({ company, logoDataUrl, onEdit, onDelete, onUploadLogo, onRemoveLogo }: CompanyCardProps) {
+  const { t } = useTranslation();
   return (
     <div
       className={`border rounded-lg p-4 ${
@@ -58,7 +61,7 @@ function CompanyCard({ company, logoDataUrl, onEdit, onDelete, onUploadLogo, onR
             <button
               onClick={() => onUploadLogo(company.id)}
               className="p-1 bg-gray-50 rounded-full hover:bg-gray-100"
-              title="Subir logo"
+              title={t('admin.forms.uploadLogo')}
             >
               <Upload className="w-3.5 h-3.5 text-gray-700" />
             </button>
@@ -66,7 +69,7 @@ function CompanyCard({ company, logoDataUrl, onEdit, onDelete, onUploadLogo, onR
               <button
                 onClick={() => onRemoveLogo(company.id)}
                 className="p-1 bg-gray-50 rounded-full hover:bg-gray-100"
-                title="Eliminar logo"
+                title={t('admin.forms.delete')}
               >
                 <X className="w-3.5 h-3.5 text-red-600" />
               </button>
@@ -86,20 +89,20 @@ function CompanyCard({ company, logoDataUrl, onEdit, onDelete, onUploadLogo, onR
                 : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-400'
             }`}
           >
-            {company.active ? 'Activo' : 'Inactivo'}
+            {company.active ? t('admin.companies.active') : t('admin.companies.inactive')}
           </span>
         </div>
 
         {/* Actions */}
         <div className="flex gap-1 shrink-0">
-          <Button variant="ghost" size="sm" onClick={() => onEdit(company)} title="Editar">
+          <Button variant="ghost" size="sm" onClick={() => onEdit(company)} title={t('admin.forms.edit')}>
             <Pencil className="w-4 h-4" />
           </Button>
           <Button
             variant="ghost"
             size="sm"
             onClick={() => onDelete(company)}
-            title="Eliminar"
+            title={t('admin.forms.delete')}
             className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
           >
             <Trash2 className="w-4 h-4" />
@@ -134,6 +137,7 @@ function CompanySection({
   title, type, companies, companyLogos, searchTerm, isLoading,
   onEdit, onDelete, onCreateForType, onUploadLogo, onRemoveLogo,
 }: CompanySectionProps) {
+  const { t } = useTranslation();
   const [page, setPage] = useState(1);
 
   const filtered = companies.filter(
@@ -174,7 +178,7 @@ function CompanySection({
           onClick={() => onCreateForType(type)}
           icon={<Plus className="w-4 h-4" />}
         >
-          Agregar
+          {t('admin.companies.add')}
         </Button>
       </div>
 
@@ -190,14 +194,14 @@ function CompanySection({
             : <HardHat className="mx-auto h-8 w-8 text-gray-300 dark:text-gray-600" />
           }
           <p className="mt-2 text-sm text-gray-400 dark:text-gray-500">
-            {searchTerm ? 'Sin resultados' : `No hay ${title.toLowerCase()} registradas`}
+            {searchTerm ? t('admin.companies.noResults') : t('admin.companies.noRegistered', { type: title.toLowerCase() })}
           </p>
           {!searchTerm && (
             <button
               onClick={() => onCreateForType(type)}
               className="mt-2 text-xs text-blue-500 hover:text-blue-700 dark:hover:text-blue-300 underline"
             >
-              Agregar primera
+              {t('admin.companies.addFirst')}
             </button>
           )}
         </div>
@@ -265,6 +269,7 @@ function CompanySection({
 // ============================================================================
 
 export default function CompaniesManagement() {
+  const { t } = useTranslation();
   const { sessionToken } = useAuthStore();
   const {
     companies, companyLogos, isLoading,
@@ -291,7 +296,7 @@ export default function CompaniesManagement() {
       try {
         // Forms already set companyType in the payload when creating
         await createCompany(sessionToken!, data as any);
-        toast.success(isOperator ? 'Operadora creada exitosamente' : 'Contratista creado exitosamente');
+        toast.success(isOperator ? t('admin.companies.operatorCreated') : t('admin.companies.contractorCreated'));
         closeModal();
         backgroundPush(sessionToken!);
       } catch (error) {
@@ -304,7 +309,7 @@ export default function CompaniesManagement() {
         ? <OperatorForm onSubmit={handleCreateSubmit} />
         : <ContractorForm onSubmit={handleCreateSubmit} />,
       {
-        title: isOperator ? 'Nueva Operadora' : 'Nuevo Contratista',
+        title: isOperator ? t('admin.companies.newOperator') : t('admin.companies.newContractor'),
         size: 'md',
         showCloseButton: true,
       }
@@ -327,7 +332,7 @@ export default function CompaniesManagement() {
           onSubmit={async (data) => {
             try {
               await updateCompany(sessionToken!, company.id, data as UpdateCompanyInput);
-              toast.success(`${companyTypeLabel(company.companyType)} actualizada exitosamente`);
+              toast.success(t('admin.companies.companyUpdated'));
               closeModal();
               backgroundPush(sessionToken!);
             } catch (error) {
@@ -347,7 +352,7 @@ export default function CompaniesManagement() {
       );
     };
     openModal(<EditForm />, {
-      title: `Editar ${companyTypeLabel(company.companyType)}`,
+      title: t('admin.companies.editCompany', { type: companyTypeLabel(company.companyType) }),
       size: 'md',
       showCloseButton: true,
     });
@@ -357,24 +362,24 @@ export default function CompaniesManagement() {
     openModal(
       <div className="space-y-3">
         <p className="text-gray-700 dark:text-gray-300">
-          ¿Estás seguro de eliminar{' '}
+          {t('admin.companies.confirmDelete')}{' '}
           <strong className="text-gray-900 dark:text-gray-100">"{company.name}"</strong>?
         </p>
         <p className="text-sm text-gray-500 dark:text-gray-400">
-          Los reportes que tengan esta empresa asignada mantendrán el nombre actual como texto.
+          {t('admin.companies.deleteWarning')}
         </p>
       </div>,
       {
-        title: 'Confirmar Eliminación',
+        title: t('admin.companies.confirmDeletion'),
         size: 'md',
         showConfirmButton: true,
         showCancelButton: true,
-        confirmText: 'Eliminar',
-        cancelText: 'Cancelar',
+        confirmText: t('admin.forms.delete'),
+        cancelText: t('admin.forms.cancel'),
         onConfirm: async () => {
           try {
             await deleteCompany(sessionToken!, company.id);
-            toast.success('Empresa eliminada exitosamente');
+            toast.success(t('admin.companies.companyDeleted'));
             backgroundPush(sessionToken!);
           } catch (error) {
             toast.error(error as string);
@@ -388,12 +393,12 @@ export default function CompaniesManagement() {
     const file = e.target.files?.[0];
     if (!file || !uploadingCompanyId || !sessionToken) return;
     if (file.size > 2 * 1024 * 1024) {
-      toast.error('El archivo excede el límite de 2MB');
+      toast.error(t('admin.companies.fileSizeExceeded'));
       return;
     }
     try {
       await uploadLogo(sessionToken, uploadingCompanyId, file);
-      toast.success('Logo subido exitosamente');
+      toast.success(t('admin.companies.logoUploaded'));
     } catch (error) {
       toast.error(error as string);
     } finally {
@@ -411,7 +416,7 @@ export default function CompaniesManagement() {
     if (!sessionToken) return;
     try {
       await removeLogo(sessionToken, companyId);
-      toast.success('Logo eliminado');
+      toast.success(t('admin.companies.logoDeleted'));
     } catch (error) {
       toast.error(error as string);
     }
@@ -442,9 +447,9 @@ export default function CompaniesManagement() {
 
       {/* Header */}
       <div>
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Gestión de Empresas</h2>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{t('admin.companies.title')}</h2>
         <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-          Administra operadoras y contratistas que aparecen en los reportes
+          {t('admin.companies.subtitle')}
         </p>
       </div>
 
@@ -456,7 +461,7 @@ export default function CompaniesManagement() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <Input
                 type="text"
-                placeholder="Buscar por nombre en ambas listas..."
+                placeholder={t('admin.companies.searchPlaceholder')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-9"
@@ -471,7 +476,7 @@ export default function CompaniesManagement() {
                 onChange={(e) => setIncludeInactive(e.target.checked)}
                 className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
               />
-              <span className="text-sm text-gray-700 dark:text-gray-300">Incluir inactivos</span>
+              <span className="text-sm text-gray-700 dark:text-gray-300">{t('admin.companies.includeInactive')}</span>
             </label>
           </div>
         </div>
@@ -480,12 +485,12 @@ export default function CompaniesManagement() {
       {/* Dos secciones side-by-side */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
         <CompanySection
-          title="Operadoras"
+          title={t('admin.companies.operators')}
           type="operator"
           {...sharedSectionProps}
         />
         <CompanySection
-          title="Contratistas"
+          title={t('admin.companies.contractors')}
           type="contractor"
           {...sharedSectionProps}
         />

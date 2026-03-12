@@ -1,4 +1,5 @@
-﻿import { useForm } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ClipboardSignature } from 'lucide-react';
 import { useModalStore } from '@/store';
@@ -21,6 +22,7 @@ interface RequestFormProps {
 }
 
 export function RequestForm({ rigId, onSuccess, defaultType, materials = [] }: RequestFormProps) {
+  const { t } = useTranslation();
   const sessionToken = useAuthStore((s) => s.sessionToken);
   const qc = useQueryClient();
 
@@ -54,11 +56,11 @@ export function RequestForm({ rigId, onSuccess, defaultType, materials = [] }: R
         notes: data.notes || undefined,
       });
       qc.invalidateQueries({ queryKey: logisticsKeys.requests(rigId) });
-      toast.success('Solicitud creada exitosamente');
+      toast.success(t('logistics.requests.requestCreated'));
       onSuccess?.();
       useModalStore.getState().closeModal();
     } catch (error: any) {
-      toast.error(error?.toString() || 'Error al crear solicitud');
+      toast.error(error?.toString() || t('logistics.requests.createError'));
     }
   };
 
@@ -69,8 +71,8 @@ export function RequestForm({ rigId, onSuccess, defaultType, materials = [] }: R
           <ClipboardSignature className="text-indigo-600 dark:text-indigo-400" size={24} />
         </div>
         <div>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Nueva Solicitud</h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Crear una solicitud de logística</p>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{t('logistics.requests.newRequest')}</h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400">{t('logistics.requests.createDesc')}</p>
         </div>
       </div>
 
@@ -79,7 +81,7 @@ export function RequestForm({ rigId, onSuccess, defaultType, materials = [] }: R
           {/* Tipo de solicitud */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Tipo de Solicitud <span className="text-red-500">*</span>
+              {t('logistics.requests.requestType')} <span className="text-red-500">*</span>
             </label>
             <select
               {...register('requestType', {
@@ -97,7 +99,7 @@ export function RequestForm({ rigId, onSuccess, defaultType, materials = [] }: R
                 errors.requestType ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
               }`}
             >
-              <option value="">Seleccionar tipo</option>
+              <option value="">{t('logistics.requests.selectType')}</option>
               {Object.entries(REQUEST_TYPE_LABELS).map(([key, label]) => (
                 <option key={key} value={key}>{label}</option>
               ))}
@@ -109,7 +111,7 @@ export function RequestForm({ rigId, onSuccess, defaultType, materials = [] }: R
           {(type === 'water_bottles' || type === 'fuel') && (
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Cantidad {type === 'fuel' ? '(Litros)' : '(Botellones)'} <span className="text-red-500">*</span>
+                {type === 'fuel' ? t('logistics.requests.quantityLiters') : t('logistics.requests.quantityBottles')} <span className="text-red-500">*</span>
               </label>
               <input
                 type="number"
@@ -129,7 +131,7 @@ export function RequestForm({ rigId, onSuccess, defaultType, materials = [] }: R
             <>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Material <span className="text-red-500">*</span>
+                  {t('logistics.materials.materialLabel')} <span className="text-red-500">*</span>
                 </label>
                 <select
                   {...register('materialId')}
@@ -137,7 +139,7 @@ export function RequestForm({ rigId, onSuccess, defaultType, materials = [] }: R
                     errors.materialId ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
                   }`}
                 >
-                  <option value="">Seleccionar material</option>
+                  <option value="">{t('logistics.requests.selectMaterial')}</option>
                   {materials.map((m) => (
                     <option key={m.id} value={m.id}>{capitalize(m.name)} ({m.unit})</option>
                   ))}
@@ -146,7 +148,7 @@ export function RequestForm({ rigId, onSuccess, defaultType, materials = [] }: R
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Cantidad <span className="text-red-500">*</span>
+                  {t('logistics.common.quantity')} <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="number"
@@ -166,7 +168,7 @@ export function RequestForm({ rigId, onSuccess, defaultType, materials = [] }: R
           {type === 'vacuum' && (
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Acción Solicitada <span className="text-red-500">*</span>
+                {t('logistics.requests.requestedAction')} <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -174,19 +176,19 @@ export function RequestForm({ rigId, onSuccess, defaultType, materials = [] }: R
                 className={`w-full px-4 py-2.5 border rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 ${
                   errors.actionRequested ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
                 }`}
-                placeholder="Ej: Limpieza de cisterna..."
+                placeholder={t('logistics.requests.actionPlaceholder')}
               />
               {errors.actionRequested && <p className="mt-1 text-sm text-red-500">{errors.actionRequested.message}</p>}
             </div>
           )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Observaciones</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('logistics.common.notes')}</label>
             <textarea
               {...register('notes')}
               rows={3}
               className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500"
-              placeholder="Observaciones adicionales..."
+              placeholder={t('logistics.common.notesPlaceholder')}
             />
             {errors.notes && <p className="mt-1 text-sm text-red-500">{errors.notes.message}</p>}
           </div>
@@ -194,10 +196,10 @@ export function RequestForm({ rigId, onSuccess, defaultType, materials = [] }: R
 
         <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
           <Button onClick={() => useModalStore.getState().closeModal()} variant="outline">
-            Cancelar
+            {t('logistics.common.cancel')}
           </Button>
           <Button type="submit" disabled={isSubmitting} icon={<ClipboardSignature size={16} />}>
-            {isSubmitting ? 'Creando...' : 'Crear Solicitud'}
+            {isSubmitting ? t('logistics.requests.creating') : t('logistics.requests.createRequestBtn')}
           </Button>
         </div>
       </form>

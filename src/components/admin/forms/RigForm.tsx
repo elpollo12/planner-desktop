@@ -577,7 +577,7 @@ interface StepContractorsProps {
 }
 
 function StepContractors({ wizard, onBack, mode = 'create', onContinue }: StepContractorsProps) {
-  const { t } = useTranslation();
+  // const { t } = useTranslation();
   const { sessionToken } = useAuthStore();
   const [contractors, setContractors] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);

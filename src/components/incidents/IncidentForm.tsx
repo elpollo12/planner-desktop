@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button, SearchableSelect } from '../ui';
 import { useModal } from '../../store/modalStore';
 import { useCreateIncident, useRigPersonnel, useIncidentTypes } from '../../hooks/useIncidents';
@@ -10,6 +11,7 @@ interface IncidentFormProps {
 }
 
 export function IncidentForm({ rigId }: IncidentFormProps) {
+  const { t } = useTranslation();
   const { closeModal } = useModal();
   const createMutation = useCreateIncident(rigId);
   const { data: personnel = [], isLoading: loadingPersonnel } = useRigPersonnel(rigId);
@@ -39,11 +41,11 @@ export function IncidentForm({ rigId }: IncidentFormProps) {
 
   const handleSubmit = async () => {
     if (!incidentType) {
-      toast.error('Selecciona el tipo de incidencia');
+      toast.error(t('incidents.form.selectTypeError'));
       return;
     }
     if (!description.trim()) {
-      toast.error('La descripción es requerida');
+      toast.error(t('incidents.form.descriptionRequired'));
       return;
     }
 
@@ -53,7 +55,7 @@ export function IncidentForm({ rigId }: IncidentFormProps) {
         description: description.trim(),
         personnelIds: selectedPersonnelIds,
       });
-      toast.success('Incidencia creada exitosamente');
+      toast.success(t('incidents.form.createdSuccess'));
       closeModal();
     } catch (error) {
       toast.error(String(error));
@@ -66,8 +68,8 @@ export function IncidentForm({ rigId }: IncidentFormProps) {
     <div className="space-y-5">
       {/* Incident Type - Searchable */}
       <SearchableSelect
-        label="Tipo de Incidencia"
-        placeholder="Buscar o seleccionar tipo..."
+        label={t('incidents.form.typeLabel')}
+        placeholder={t('incidents.form.typePlaceholder')}
         value={incidentType}
         options={typeOptions}
         onChange={setIncidentType}
@@ -77,13 +79,13 @@ export function IncidentForm({ rigId }: IncidentFormProps) {
       {/* Description */}
       <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-          Descripción <span className="text-red-500">*</span>
+          {t('incidents.form.descriptionLabel')} <span className="text-red-500">*</span>
         </label>
         <textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           rows={5}
-          placeholder="Detalla lo sucedido..."
+          placeholder={t('incidents.form.descriptionPlaceholder')}
           className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-gray-100 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 hover:border-gray-400 dark:hover:border-gray-500 resize-y"
         />
       </div>
@@ -91,16 +93,16 @@ export function IncidentForm({ rigId }: IncidentFormProps) {
       {/* Personnel Multi-Select */}
       <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-          Personal Involucrado
+          {t('incidents.form.personnelLabel')}
         </label>
         {loadingPersonnel ? (
           <div className="flex items-center gap-2 text-sm text-gray-500">
             <Loader2 size={14} className="animate-spin" />
-            Cargando personal...
+            {t('incidents.form.loadingPersonnel')}
           </div>
         ) : activePersonnel.length === 0 ? (
           <p className="text-sm text-gray-400 dark:text-gray-500">
-            No hay personal registrado para este taladro.
+            {t('incidents.form.noPersonnelForRig')}
           </p>
         ) : (
           <div className="border border-gray-300 dark:border-gray-600 rounded-lg max-h-48 overflow-y-auto">
@@ -139,7 +141,7 @@ export function IncidentForm({ rigId }: IncidentFormProps) {
         )}
         {selectedPersonnelIds.length > 0 && (
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            {selectedPersonnelIds.length} persona{selectedPersonnelIds.length !== 1 ? 's' : ''} seleccionada{selectedPersonnelIds.length !== 1 ? 's' : ''}
+            {selectedPersonnelIds.length !== 1 ? t('incidents.form.selectedCountPlural', { count: selectedPersonnelIds.length }) : t('incidents.form.selectedCount', { count: selectedPersonnelIds.length })}
           </p>
         )}
       </div>
@@ -147,7 +149,7 @@ export function IncidentForm({ rigId }: IncidentFormProps) {
       {/* Actions */}
       <div className="flex gap-3 justify-end pt-2">
         <Button variant="outline" onClick={closeModal}>
-          Cancelar
+          {t('incidents.common.cancel')}
         </Button>
         <Button
           variant="primary"
@@ -155,7 +157,7 @@ export function IncidentForm({ rigId }: IncidentFormProps) {
           loading={createMutation.isPending}
           disabled={!incidentType || !description.trim()}
         >
-          Crear Incidencia
+          {t('incidents.form.createBtn')}
         </Button>
       </div>
     </div>

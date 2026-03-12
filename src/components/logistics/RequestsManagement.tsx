@@ -1,4 +1,5 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Card } from '../ui';
 import { CheckCircle, XCircle, Clock, AlertCircle, Eye, Trash2 } from 'lucide-react';
 import { useModalStore } from '../../store';
@@ -19,6 +20,7 @@ interface RequestsManagementProps {
 }
 
 export function RequestsManagement({ rigId }: RequestsManagementProps) {
+  const { t } = useTranslation();
   const { openModal } = useModalStore();
   const { sessionToken, user } = useAuthStore();
 
@@ -40,9 +42,9 @@ export function RequestsManagement({ rigId }: RequestsManagementProps) {
   const handleUpdateStatus = async (requestId: string, newStatus: RequestStatus) => {
     try {
       await updateStatusMutation.mutateAsync({ requestId, status: newStatus });
-      toast.success(`Solicitud ${REQUEST_STATUS_LABELS[newStatus].toLowerCase()}`);
+      toast.success(t('logistics.requests.statusUpdated', { status: REQUEST_STATUS_LABELS[newStatus].toLowerCase() }));
     } catch (error: any) {
-      toast.error(error?.toString() || 'Error al actualizar');
+      toast.error(error?.toString() || t('logistics.requests.updateError'));
     }
   };
 
@@ -81,7 +83,7 @@ export function RequestsManagement({ rigId }: RequestsManagementProps) {
 
     openModal(
       <MovementDetailModal fields={buildRequestFields(r, requestedByName, statusChangedByName, typeLabel, statusLabel, materialName)} />,
-      { title: 'Detalle de la Solicitud', size: 'sm', showCloseButton: true }
+      { title: t('logistics.requests.requestDetail'), size: 'sm', showCloseButton: true }
     );
   };
 
@@ -94,20 +96,20 @@ export function RequestsManagement({ rigId }: RequestsManagementProps) {
 
     openModal(
       <ConfirmDeleteModal
-        message="¿Estás seguro de que deseas eliminar esta solicitud?"
+        message={t('logistics.requests.confirmDeleteRequest')}
         itemName={label}
         onConfirm={async () => {
           try {
             await deleteMutation.mutateAsync(r.id);
-            toast.success('Solicitud eliminada');
+            toast.success(t('logistics.requests.requestDeleted'));
             if (requests.length === 1 && currentPage > 1) setCurrentPage(currentPage - 1);
           } catch (error: any) {
-            toast.error(error?.toString() || 'Error al eliminar');
+            toast.error(error?.toString() || t('logistics.common.deleteError'));
             throw error;
           }
         }}
       />,
-      { title: '¿Eliminar solicitud?', size: 'sm', showCloseButton: true }
+      { title: t('logistics.requests.deleteRequest'), size: 'sm', showCloseButton: true }
     );
   };
 
@@ -138,24 +140,24 @@ export function RequestsManagement({ rigId }: RequestsManagementProps) {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Solicitudes</h2>
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{t('logistics.requests.title')}</h2>
       </div>
 
       {/* Filtros */}
       <div className="flex items-center gap-4 flex-wrap">
         <div className="flex items-center gap-2">
-          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Tipo:</label>
+          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('logistics.requests.typeFilter')}</label>
           <select value={filterType} onChange={(e) => { setFilterType(e.target.value); setCurrentPage(1); }}
             className="text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100">
-            <option value="">Todos</option>
+            <option value="">{t('logistics.common.all')}</option>
             {Object.entries(REQUEST_TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
         </div>
         <div className="flex items-center gap-2">
-          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Estado:</label>
+          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('logistics.requests.statusFilter')}</label>
           <select value={filterStatus} onChange={(e) => { setFilterStatus(e.target.value); setCurrentPage(1); }}
             className="text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100">
-            <option value="">Todos</option>
+            <option value="">{t('logistics.common.all')}</option>
             {Object.entries(REQUEST_STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
         </div>
@@ -165,23 +167,23 @@ export function RequestsManagement({ rigId }: RequestsManagementProps) {
         {isLoading ? (
           <div className="p-8 text-center">
             <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            <p className="mt-2 text-gray-500">Cargando solicitudes...</p>
+            <p className="mt-2 text-gray-500">{t('logistics.requests.loadingRequests')}</p>
           </div>
         ) : requests.length === 0 ? (
-          <div className="p-8 text-center text-gray-500 dark:text-gray-400"><p>No hay solicitudes</p></div>
+          <div className="p-8 text-center text-gray-500 dark:text-gray-400"><p>{t('logistics.requests.noRequests')}</p></div>
         ) : (
           <>
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                 <thead className="bg-gray-50 dark:bg-gray-800">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tipo</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Detalle</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Estado</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Fecha</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Notas</th>
-                    {canManage && <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Cambiar Estado</th>}
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Acciones</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('logistics.common.type')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('logistics.requests.detail')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('logistics.requests.status')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('logistics.common.date')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('logistics.requests.notesColumn')}</th>
+                    {canManage && <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('logistics.requests.changeStatus')}</th>}
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('logistics.common.actions')}</th>
                   </tr>
                 </thead>
                 <tbody className="bg-gray-50 dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -209,19 +211,19 @@ export function RequestsManagement({ rigId }: RequestsManagementProps) {
                               <div className="flex items-center justify-center gap-1">
                                 {transitions.includes('approved') && (
                                   <button onClick={() => handleUpdateStatus(r.id, 'approved')}
-                                    className="p-1 text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300" title="Aprobar">
+                                    className="p-1 text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300" title={t('logistics.requests.approve')}>
                                     <CheckCircle size={18} />
                                   </button>
                                 )}
                                 {transitions.includes('pending') && (
                                   <button onClick={() => handleUpdateStatus(r.id, 'pending')}
-                                    className="p-1 text-yellow-600 hover:text-yellow-900 dark:text-yellow-400 dark:hover:text-yellow-300" title="En espera">
+                                    className="p-1 text-yellow-600 hover:text-yellow-900 dark:text-yellow-400 dark:hover:text-yellow-300" title={t('logistics.requests.pending')}>
                                     <Clock size={18} />
                                   </button>
                                 )}
                                 {transitions.includes('rejected') && (
                                   <button onClick={() => handleUpdateStatus(r.id, 'rejected')}
-                                    className="p-1 text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300" title="Rechazar">
+                                    className="p-1 text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300" title={t('logistics.requests.reject')}>
                                     <XCircle size={18} />
                                   </button>
                                 )}
@@ -234,12 +236,12 @@ export function RequestsManagement({ rigId }: RequestsManagementProps) {
                         <td className="px-6 py-4 whitespace-nowrap text-center">
                           <div className="flex items-center justify-center gap-1">
                             <button onClick={() => handleViewDetail(r)}
-                              className="p-1 text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300" title="Ver detalle">
+                              className="p-1 text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300" title={t('logistics.common.viewDetail')}>
                               <Eye size={18} />
                             </button>
                             {showDelete && (
                               <button onClick={() => handleDelete(r)}
-                                className="p-1 text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300" title="Eliminar">
+                                className="p-1 text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300" title={t('logistics.common.delete')}>
                                 <Trash2 size={18} />
                               </button>
                             )}
@@ -252,7 +254,7 @@ export function RequestsManagement({ rigId }: RequestsManagementProps) {
               </table>
             </div>
             <PaginationControls currentPage={currentPage} totalPages={totalPages} totalItems={totalItems} pageSize={pageSize}
-              itemLabel="solicitudes" onPageChange={handlePageChange} onPageSizeChange={handlePageSizeChange} />
+              itemLabel={t('logistics.requests.requestsLabel')} onPageChange={handlePageChange} onPageSizeChange={handlePageSizeChange} />
           </>
         )}
       </Card>

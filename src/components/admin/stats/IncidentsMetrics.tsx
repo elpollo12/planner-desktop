@@ -49,10 +49,10 @@ export function IncidentsMetrics() {
     );
   }
 
-  const typeData = data.byType.map((t: { typeName: string; count: number; color: string; typeId: string }) => ({
-    name: t.typeName,
-    value: t.count,
-    color: getIncidentColor(t.color),
+  const typeData = data.byType.map((item: { typeName: string; count: number; color: string; typeId: string }) => ({
+    name: item.typeName,
+    value: item.count,
+    color: getIncidentColor(item.color),
   }));
 
   const dailyData = data.dailyIncidents.map((d: { day: string; count: number }) => ({
@@ -70,17 +70,17 @@ export function IncidentsMetrics() {
           <span className="text-sm text-gray-500 dark:text-gray-400">{t('admin.incidentsMetrics.totalIncidents')}</span>
         </div>
 
-        {data.byType.map((t: { typeName: string; count: number; color: string; typeId: string }) => (
+        {data.byType.map((item: { typeName: string; count: number; color: string; typeId: string }) => (
           <div
-            key={t.typeId}
+            key={item.typeId}
             className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium"
             style={{
-              backgroundColor: `${getIncidentColor(t.color)}18`,
-              color: getIncidentColor(t.color),
+              backgroundColor: `${getIncidentColor(item.color)}18`,
+              color: getIncidentColor(item.color),
             }}
           >
-            <span className="inline-block w-2 h-2 rounded-full" style={{ backgroundColor: getIncidentColor(t.color) }} />
-            {t.typeName}: {t.count}
+            <span className="inline-block w-2 h-2 rounded-full" style={{ backgroundColor: getIncidentColor(item.color) }} />
+            {item.typeName}: {item.count}
           </div>
         ))}
       </div>

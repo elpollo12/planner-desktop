@@ -13,8 +13,10 @@ import type {
   DetailedLogisticsReport,
   DetailedMovement,
 } from '../types/logistics';
-import { REQUEST_TYPE_LABELS, REQUEST_STATUS_LABELS } from '../types/logistics';
 import type { MovementFilter } from '../schemas/logisticsSchemas';
+import i18n from '@/lib/i18n';
+
+const t = (key: string, opts?: Record<string, any>) => i18n.t(key, opts) as string;
 
 // ============================================================================
 // HELPERS
@@ -22,7 +24,7 @@ import type { MovementFilter } from '../schemas/logisticsSchemas';
 
 const ensureText = (v: any): string => (v === null || v === undefined ? '' : String(v));
 
-const MOVEMENT_TYPE_LABELS: Record<string, string> = { entry: 'Entrada', exit: 'Salida' };
+const movementTypeLabel = (type: string) => t(`exports.common.movementTypes.${type}`, { defaultValue: type });
 
 /** Parse a hex color string to an [R, G, B] tuple for jsPDF / autoTable. */
 function hexToRgb(hex: string): [number, number, number] {
@@ -197,9 +199,9 @@ export function buildGeneralReportExcel(opts: GeneralExportOptions): { workbook:
 
   // --- Info sheet ---
   const info = [
-    ['Reporte General de Logística'],
-    ['Período', `${formatDateDMY(periodStart)} — ${formatDateDMY(periodEnd)}`],
-    ['Generado', getTodayDMY()],
+    [t('exports.logistics.generalTitle')],
+    [t('exports.common.period'), `${formatDateDMY(periodStart)} — ${formatDateDMY(periodEnd)}`],
+    [t('exports.common.generated'), getTodayDMY()],
   ];
   const wsInfo = XLSX.utils.aoa_to_sheet(info);
   wsInfo['!cols'] = [{ wch: 20 }, { wch: 35 }];
@@ -208,29 +210,29 @@ export function buildGeneralReportExcel(opts: GeneralExportOptions): { workbook:
   if (sections.botellones) {
     const s = report.waterBottlesSummary;
     const ws = XLSX.utils.aoa_to_sheet([
-      ['Botellones de Agua — Resumen'],
+      [t('exports.logistics.waterBottlesTitle')],
       [],
-      ['Métrica', 'Valor'],
-      ['Total Entradas', s.totalEntries],
-      ['Total Salidas', s.totalExits],
-      ['Neto', s.net],
+      [t('exports.logistics.metric'), t('exports.logistics.value')],
+      [t('exports.logistics.totalEntries'), s.totalEntries],
+      [t('exports.logistics.totalExits'), s.totalExits],
+      [t('exports.logistics.net'), s.net],
     ]);
     ws['!cols'] = [{ wch: 18 }, { wch: 12 }];
-    XLSX.utils.book_append_sheet(wb, ws, 'Botellones');
+    XLSX.utils.book_append_sheet(wb, ws, t('exports.logistics.sectionBotellones'));
   }
 
   if (sections.combustible) {
     const s = report.fuelSummary;
     const ws = XLSX.utils.aoa_to_sheet([
-      ['Combustible — Resumen'],
+      [t('exports.logistics.fuelTitle')],
       [],
-      ['Métrica', 'Valor'],
-      ['Total Entradas (L)', s.totalEntries.toFixed(2)],
-      ['Total Salidas (L)', s.totalExits.toFixed(2)],
-      ['Neto (L)', s.net.toFixed(2)],
+      [t('exports.logistics.metric'), t('exports.logistics.value')],
+      [t('exports.logistics.totalEntriesL'), s.totalEntries.toFixed(2)],
+      [t('exports.logistics.totalExitsL'), s.totalExits.toFixed(2)],
+      [t('exports.logistics.netL'), s.net.toFixed(2)],
     ]);
     ws['!cols'] = [{ wch: 20 }, { wch: 14 }];
-    XLSX.utils.book_append_sheet(wb, ws, 'Combustible');
+    XLSX.utils.book_append_sheet(wb, ws, t('exports.logistics.sectionFuel'));
   }
 
   if (sections.vacuum) {
@@ -426,19 +428,23 @@ function filterMovements(movements: DetailedMovement[], filter: MovementFilter):
 }
 
 function getDetailedSectionLabel(section: string): string {
-  if (section === 'water_bottles') return 'Botellones';
-  if (section === 'fuel') return 'Combustible';
-  if (section === 'vacuum') return 'Vacuum';
-  if (section === 'materials') return 'Materiales';
-  return 'Solicitudes';
+  const map: Record<string, string> = {
+    water_bottles: t('exports.logistics.sectionBotellones'),
+    fuel: t('exports.logistics.sectionFuel'),
+    vacuum: t('exports.logistics.sectionVacuum'),
+    materials: t('exports.logistics.sectionMaterials'),
+  };
+  return map[section] ?? t('exports.logistics.sectionRequests');
 }
 
 function getDetailedPdfSectionLabel(section: string): string {
-  if (section === 'water_bottles') return 'Botellones';
-  if (section === 'fuel') return 'Combustible';
-  if (section === 'vacuum') return 'Vacuum / Cisterna';
-  if (section === 'materials') return 'Materiales';
-  return 'Solicitudes';
+  const map: Record<string, string> = {
+    water_bottles: t('exports.logistics.sectionBotellones'),
+    fuel: t('exports.logistics.sectionFuel'),
+    vacuum: t('exports.logistics.sectionVacuumPdf'),
+    materials: t('exports.logistics.sectionMaterials'),
+  };
+  return map[section] ?? t('exports.logistics.sectionRequests');
 }
 
 // ============================================================================

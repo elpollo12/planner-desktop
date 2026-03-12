@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useIncidentDetail, useIncidentTypes } from '../../hooks/useIncidents';
 import { IncidentTypeBadge } from './IncidentTypeBadge';
 import { formatDateTime } from '../../lib/dateUtils';
@@ -17,6 +18,7 @@ interface IncidentDetailProps {
 }
 
 export function IncidentDetail({ incidentId, rigName }: IncidentDetailProps) {
+  const { t } = useTranslation();
   const { closeModal } = useModal();
   const { user } = useAuthStore();
   const appSettings = useAppSettingsStore((s) => s.settings);
@@ -34,7 +36,7 @@ export function IncidentDetail({ incidentId, rigName }: IncidentDetailProps) {
   if (error || !data) {
     return (
       <div className="text-center py-12">
-        <p className="text-red-500">{String(error) || 'No se pudo cargar la incidencia'}</p>
+        <p className="text-red-500">{String(error) || t('incidents.detail.loadError')}</p>
       </div>
     );
   }
@@ -66,14 +68,14 @@ export function IncidentDetail({ incidentId, rigName }: IncidentDetailProps) {
         <div className="flex items-start gap-3">
           <FileText size={18} className="text-gray-400 mt-0.5 shrink-0" />
           <div>
-            <p className="text-xs text-gray-500 dark:text-gray-400">Tipo</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">{t('incidents.common.type')}</p>
             <IncidentTypeBadge name={typeName} color={typeColor} size="md" />
           </div>
         </div>
         <div className="flex items-start gap-3">
           <User size={18} className="text-gray-400 mt-0.5 shrink-0" />
           <div>
-            <p className="text-xs text-gray-500 dark:text-gray-400">Creado por</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">{t('incidents.common.createdBy')}</p>
             <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
               {data.createdByName ?? '—'}
             </p>
@@ -82,7 +84,7 @@ export function IncidentDetail({ incidentId, rigName }: IncidentDetailProps) {
         <div className="flex items-start gap-3">
           <Calendar size={18} className="text-gray-400 mt-0.5 shrink-0" />
           <div>
-            <p className="text-xs text-gray-500 dark:text-gray-400">Fecha</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">{t('incidents.common.date')}</p>
             <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
               {formatDateTime(data.createdAt)}
             </p>
@@ -92,7 +94,7 @@ export function IncidentDetail({ incidentId, rigName }: IncidentDetailProps) {
 
       {/* Description */}
       <div>
-        <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Descripción</h4>
+        <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('incidents.detail.descriptionTitle')}</h4>
         <div className="bg-gray-100 dark:bg-gray-700/50 rounded-lg p-4 text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
           {data.description}
         </div>
@@ -101,7 +103,7 @@ export function IncidentDetail({ incidentId, rigName }: IncidentDetailProps) {
       {/* Involved Personnel */}
       <div>
         <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-          Personal Involucrado
+          {t('incidents.detail.personnelTitle')}
           {data.personnel.length > 0 && (
             <span className="ml-2 text-xs font-normal text-gray-400">
               ({data.personnel.length})
@@ -110,16 +112,16 @@ export function IncidentDetail({ incidentId, rigName }: IncidentDetailProps) {
         </h4>
         {data.personnel.length === 0 ? (
           <p className="text-sm text-gray-400 dark:text-gray-500 italic">
-            No se registró personal involucrado.
+            {t('incidents.detail.noPersonnel')}
           </p>
         ) : (
           <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-100 dark:bg-gray-700/50">
-                  <th className="text-left py-2 px-3 font-medium text-gray-500 dark:text-gray-400">Nombre</th>
-                  <th className="text-left py-2 px-3 font-medium text-gray-500 dark:text-gray-400">Cargo</th>
-                  <th className="text-left py-2 px-3 font-medium text-gray-500 dark:text-gray-400">CI</th>
+                  <th className="text-left py-2 px-3 font-medium text-gray-500 dark:text-gray-400">{t('incidents.detail.nameCol')}</th>
+                  <th className="text-left py-2 px-3 font-medium text-gray-500 dark:text-gray-400">{t('incidents.detail.positionCol')}</th>
+                  <th className="text-left py-2 px-3 font-medium text-gray-500 dark:text-gray-400">{t('incidents.detail.ciCol')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -139,7 +141,7 @@ export function IncidentDetail({ incidentId, rigName }: IncidentDetailProps) {
       {/* Actions */}
       <div className="flex gap-3 justify-end pt-2 border-t border-gray-200 dark:border-gray-700">
         <Button variant="outline" onClick={closeModal}>
-          Cerrar
+          {t('incidents.common.close')}
         </Button>
         <Button
           variant="primary"
@@ -147,7 +149,7 @@ export function IncidentDetail({ incidentId, rigName }: IncidentDetailProps) {
           icon={<FileDown size={16} />}
           onClick={handleExportPdf}
         >
-          Exportar PDF
+          {t('incidents.detail.exportPdf')}
         </Button>
       </div>
     </div>

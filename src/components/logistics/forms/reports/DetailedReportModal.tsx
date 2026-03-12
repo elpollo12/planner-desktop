@@ -1,5 +1,6 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   FileText, FileSpreadsheet, Files, TrendingUp,
@@ -37,8 +38,8 @@ type Section = 'botellones' | 'combustible' | 'vacuum' | 'materiales' | 'solicit
 
 const SECTION_CARDS: {
   value: Section;
-  label: string;
-  description: string;
+  labelKey: string;
+  descKey: string;
   icon: typeof Droplets;
   color: string;
   bg: string;
@@ -46,8 +47,8 @@ const SECTION_CARDS: {
 }[] = [
   {
     value: 'botellones',
-    label: 'Botellones de Agua',
-    description: 'Entradas y salidas de botellones',
+    labelKey: 'logistics.reports.labelBotellonesAgua',
+    descKey: 'logistics.reports.descBotellones',
     icon: Droplets,
     color: 'text-blue-600 dark:text-blue-400',
     bg: 'bg-blue-50 dark:bg-blue-900/15',
@@ -55,8 +56,8 @@ const SECTION_CARDS: {
   },
   {
     value: 'combustible',
-    label: 'Combustible',
-    description: 'Entradas y salidas de combustible',
+    labelKey: 'logistics.reports.sectionCombustible',
+    descKey: 'logistics.reports.descCombustible',
     icon: Fuel,
     color: 'text-amber-600 dark:text-amber-400',
     bg: 'bg-amber-50 dark:bg-amber-900/15',
@@ -64,8 +65,8 @@ const SECTION_CARDS: {
   },
   {
     value: 'vacuum',
-    label: 'Vacuum / Cisterna',
-    description: 'Registro de acciones realizadas',
+    labelKey: 'logistics.reports.sectionVacuum',
+    descKey: 'logistics.reports.descVacuum',
     icon: Container,
     color: 'text-purple-600 dark:text-purple-400',
     bg: 'bg-purple-50 dark:bg-purple-900/15',
@@ -73,8 +74,8 @@ const SECTION_CARDS: {
   },
   {
     value: 'materiales',
-    label: 'Materiales',
-    description: 'Movimientos por tipo de material',
+    labelKey: 'logistics.reports.sectionMateriales',
+    descKey: 'logistics.reports.descMateriales',
     icon: Package,
     color: 'text-teal-600 dark:text-teal-400',
     bg: 'bg-teal-50 dark:bg-teal-900/15',
@@ -82,8 +83,8 @@ const SECTION_CARDS: {
   },
   {
     value: 'solicitudes',
-    label: 'Solicitudes',
-    description: 'Detalle de solicitudes y estados',
+    labelKey: 'logistics.reports.sectionSolicitudes',
+    descKey: 'logistics.reports.descSolicitudes',
     icon: ClipboardSignature,
     color: 'text-orange-600 dark:text-orange-400',
     bg: 'bg-orange-50 dark:bg-orange-900/15',
@@ -99,16 +100,16 @@ const SECTION_API_MAP: Record<Section, string> = {
   solicitudes: 'requests',
 };
 
-const FORMAT_OPTIONS: { value: ReportFormat; label: string; icon: typeof FileSpreadsheet }[] = [
-  { value: 'excel', label: 'Excel (.xlsx)', icon: FileSpreadsheet },
-  { value: 'pdf', label: 'PDF', icon: FileText },
-  { value: 'both', label: 'Ambos', icon: Files },
+const FORMAT_OPTIONS: { value: ReportFormat; labelKey: string; icon: typeof FileSpreadsheet }[] = [
+  { value: 'excel', labelKey: 'logistics.reports.formatExcel', icon: FileSpreadsheet },
+  { value: 'pdf', labelKey: 'logistics.reports.formatPdf', icon: FileText },
+  { value: 'both', labelKey: 'logistics.reports.formatBoth', icon: Files },
 ];
 
-const MOVEMENT_FILTER_OPTIONS: { value: MovementFilter; label: string }[] = [
-  { value: 'both', label: 'Todas' },
-  { value: 'entries', label: 'Solo entradas' },
-  { value: 'exits', label: 'Solo salidas' },
+const MOVEMENT_FILTER_OPTIONS: { value: MovementFilter; labelKey: string }[] = [
+  { value: 'both', labelKey: 'logistics.reports.allMovements' },
+  { value: 'entries', labelKey: 'logistics.reports.onlyEntries' },
+  { value: 'exits', labelKey: 'logistics.reports.onlyExits' },
 ];
 
 // ============================================================================
@@ -131,6 +132,7 @@ export function DetailedReportModal({
   periodStart,
   periodEnd,
 }: DetailedReportModalProps) {
+  const { t } = useTranslation();
   const [step, setStep] = useState<1 | 2>(1);
   const [selectedSection, setSelectedSection] = useState<Section | null>(
     initialSection ?? null,
@@ -161,12 +163,12 @@ export function DetailedReportModal({
         </div>
         <div className="flex-1 min-w-0">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-            Reporte Detallado
+            {t('logistics.reports.detailedReport')}
           </h3>
           <p className="text-sm text-gray-500 dark:text-gray-400">
             {step === 1
-              ? 'Selecciona la sección que deseas exportar'
-              : `${sectionCfg?.label} — Configurar exportación`}
+              ? t('logistics.reports.selectSectionToExport')
+              : `${sectionCfg ? t(sectionCfg.labelKey) : ''} — ${t('logistics.reports.configureExport')}`}
           </p>
         </div>
 
@@ -221,6 +223,8 @@ function StepSectionPicker({
   onSelect: (s: Section) => void;
   onNext: () => void;
 }) {
+  const { t } = useTranslation();
+
   return (
     <div className="flex flex-col flex-1">
       <div className="grid grid-cols-1 gap-2.5 flex-1">
@@ -251,10 +255,10 @@ function StepSectionPicker({
                     isSelected ? cfg.color : 'text-gray-900 dark:text-gray-100'
                   }`}
                 >
-                  {cfg.label}
+                  {t(cfg.labelKey)}
                 </p>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                  {cfg.description}
+                  {t(cfg.descKey)}
                 </p>
               </div>
             </button>
@@ -268,7 +272,7 @@ function StepSectionPicker({
           onClick={() => useModalStore.getState().closeModal()}
           variant="outline"
         >
-          Cancelar
+          {t('logistics.common.cancel')}
         </Button>
         <Button
           onClick={onNext}
@@ -276,7 +280,7 @@ function StepSectionPicker({
           icon={<ChevronRight size={16} />}
           iconPosition="right"
         >
-          Siguiente
+          {t('logistics.reports.next')}
         </Button>
       </div>
     </div>
@@ -302,6 +306,7 @@ function StepConfigureExport({
   periodEnd: string;
   onBack: () => void;
 }) {
+  const { t } = useTranslation();
   const sessionToken = useAuthStore((s) => s.sessionToken);
   const user = useAuthStore((s) => s.user);
   const appSettings = useAppSettingsStore((s) => s.settings);
@@ -407,11 +412,11 @@ function StepConfigureExport({
       // If user cancelled the dialog, do nothing (keep modal open)
       if (!result.saved) return;
 
-      toast.success('Reporte detallado guardado exitosamente');
+      toast.success(t('logistics.reports.detailedSaved'));
       useModalStore.getState().closeModal();
     } catch (error: any) {
       console.error('Error generando reporte detallado:', error);
-      toast.error(error?.toString() || 'Error al generar el reporte');
+      toast.error(error?.toString() || t('logistics.reports.generateError'));
     }
   };
 
@@ -430,7 +435,7 @@ function StepConfigureExport({
         className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium mb-4 self-start ${sectionCfg.bg} ${sectionCfg.color}`}
       >
         <SectionIcon size={14} />
-        {sectionCfg.label}
+        {t(sectionCfg.labelKey)}
       </div>
 
       <div className="space-y-5 flex-1">
@@ -438,7 +443,7 @@ function StepConfigureExport({
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Desde <span className="text-red-500">*</span>
+              {t('logistics.common.from')} <span className="text-red-500">*</span>
             </label>
             <input
               type="date"
@@ -453,7 +458,7 @@ function StepConfigureExport({
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Hasta <span className="text-red-500">*</span>
+              {t('logistics.common.to')} <span className="text-red-500">*</span>
             </label>
             <input
               type="date"
@@ -471,7 +476,7 @@ function StepConfigureExport({
         {/* ── Formato ── */}
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Formato <span className="text-red-500">*</span>
+            {t('logistics.common.format')} <span className="text-red-500">*</span>
           </label>
           <Controller
             name="format"
@@ -493,7 +498,7 @@ function StepConfigureExport({
                       }`}
                     >
                       <Icon size={16} />
-                      {opt.label}
+                      {t(opt.labelKey)}
                     </button>
                   );
                 })}
@@ -506,7 +511,7 @@ function StepConfigureExport({
         {(section === 'botellones' || section === 'combustible' || section === 'materiales') && (
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Tipo de movimiento
+              {t('logistics.reports.movementType')}
             </label>
             <Controller
               name="movementFilter"
@@ -526,7 +531,7 @@ function StepConfigureExport({
                             : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-gray-400 dark:hover:border-gray-500'
                         }`}
                       >
-                        {opt.label}
+                        {t(opt.labelKey)}
                       </button>
                     );
                   })}
@@ -541,7 +546,7 @@ function StepConfigureExport({
           <div>
             <div className="flex items-center justify-between mb-2">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Materiales
+                {t('logistics.materials.title')}
               </label>
               <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 cursor-pointer">
                 <input
@@ -549,16 +554,16 @@ function StepConfigureExport({
                   {...register('allMaterials')}
                   className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500"
                 />
-                Todos
+                {t('logistics.common.all')}
               </label>
             </div>
 
             {!allMaterials && (
               <div className="max-h-40 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-lg p-2 space-y-1">
                 {loadingMaterials ? (
-                  <p className="text-sm text-gray-400 text-center py-2">Cargando materiales...</p>
+                  <p className="text-sm text-gray-400 text-center py-2">{t('logistics.materials.loadingMaterials')}</p>
                 ) : materialsList.length === 0 ? (
-                  <p className="text-sm text-gray-400 text-center py-2">No hay materiales registrados</p>
+                  <p className="text-sm text-gray-400 text-center py-2">{t('logistics.materials.noRegistered')}</p>
                 ) : (
                   <Controller
                     name="materialIds"
@@ -609,7 +614,7 @@ function StepConfigureExport({
           <div>
             <div className="flex items-center justify-between mb-2">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Estados a incluir
+                {t('logistics.reports.statusesToInclude')}
               </label>
               <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 cursor-pointer">
                 <input
@@ -617,7 +622,7 @@ function StepConfigureExport({
                   {...register('allStatuses')}
                   className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500"
                 />
-                Todos
+                {t('logistics.common.all')}
               </label>
             </div>
 
@@ -655,7 +660,7 @@ function StepConfigureExport({
           variant="ghost"
           icon={<ChevronLeft size={16} />}
         >
-          Atrás
+          {t('logistics.reports.back')}
         </Button>
         <div className="flex gap-3">
           <Button
@@ -663,12 +668,12 @@ function StepConfigureExport({
             onClick={() => useModalStore.getState().closeModal()}
             variant="outline"
           >
-            Cancelar
+            {t('logistics.common.cancel')}
           </Button>
           <Button type="submit" disabled={isSubmitting} icon={<TrendingUp size={16} />}>
             {isSubmitting
-              ? 'Generando...'
-              : `Generar ${selectedFormat === 'both' ? 'Reportes' : 'Reporte'}`}
+              ? t('logistics.common.generating')
+              : selectedFormat === 'both' ? t('logistics.common.generateReports') : t('logistics.common.generateReport')}
           </Button>
         </div>
       </div>

@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../../store/authStore';
 import { useModal } from '../../store/modalStore';
 import { useIncidentsList, useDeleteIncident, useIncidentTypes } from '../../hooks/useIncidents';
@@ -19,6 +20,7 @@ interface IncidentsListProps {
 }
 
 export function IncidentsList({ rigId, rigName }: IncidentsListProps) {
+  const { t } = useTranslation();
   const { user } = useAuthStore();
   const { openModal } = useModal();
 
@@ -44,24 +46,24 @@ export function IncidentsList({ rigId, rigName }: IncidentsListProps) {
       return a.name.localeCompare(b.name, 'es');
     });
     return [
-      { value: '', label: 'Todos los tipos' },
-      ...sorted.map((t) => ({ value: t.id, label: t.name })),
+      { value: '', label: t('incidents.list.allTypes') },
+      ...sorted.map((it) => ({ value: it.id, label: it.name })),
     ];
-  }, [incidentTypes]);
+  }, [incidentTypes, t]);
 
   // Map type ID → record for badge rendering
   const typeMap = new Map(incidentTypes.map((t) => [t.id, t]));
 
   const handleCreate = () => {
     openModal(<IncidentForm rigId={rigId} />, {
-      title: 'Nueva Incidencia',
+      title: t('incidents.list.newIncident'),
       size: 'lg',
     });
   };
 
   const handleView = (incidentId: string) => {
     openModal(<IncidentDetail incidentId={incidentId} rigId={rigId} rigName={rigName} />, {
-      title: 'Detalle de Incidencia',
+      title: t('incidents.list.incidentDetail'),
       size: 'xl',
     });
   };
@@ -69,24 +71,24 @@ export function IncidentsList({ rigId, rigName }: IncidentsListProps) {
   const handleDelete = (incidentId: string) => {
     openModal(
       <ConfirmDeleteModal
-        message="¿Estás seguro de que deseas eliminar esta incidencia?"
+        message={t('incidents.list.deleteConfirm')}
         onConfirm={async () => {
           try {
             await deleteMutation.mutateAsync(incidentId);
-            toast.success('Incidencia eliminada');
+            toast.success(t('incidents.list.deletedSuccess'));
           } catch (error) {
             toast.error(String(error));
             throw error;
           }
         }}
       />,
-      { title: 'Eliminar Incidencia', size: 'sm' }
+      { title: t('incidents.list.deleteTitle'), size: 'sm' }
     );
   };
 
   const handleOpenTypesCatalog = () => {
     openModal(<IncidentTypesCatalogModal />, {
-      title: 'Tipos de Incidencia',
+      title: t('incidents.list.typesTitle'),
       size: 'xl',
       showCloseButton: true,
     });
@@ -117,10 +119,10 @@ export function IncidentsList({ rigId, rigName }: IncidentsListProps) {
             icon={<Settings size={15} />}
             onClick={handleOpenTypesCatalog}
           >
-            Ver tipos
+            {t('incidents.list.viewTypes')}
           </Button>
           <span className="text-sm text-gray-500 dark:text-gray-400">
-            {total} incidencia{total !== 1 ? 's' : ''}
+            {total !== 1 ? t('incidents.list.incidentCountPlural', { count: total }) : t('incidents.list.incidentCount', { count: total })}
           </span>
         </div>
         <Button
@@ -129,7 +131,7 @@ export function IncidentsList({ rigId, rigName }: IncidentsListProps) {
           icon={<Plus size={16} />}
           onClick={handleCreate}
         >
-          Nueva Incidencia
+          {t('incidents.list.newIncident')}
         </Button>
       </div>
 
@@ -145,10 +147,10 @@ export function IncidentsList({ rigId, rigName }: IncidentsListProps) {
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <AlertTriangle size={40} className="text-gray-300 dark:text-gray-600 mb-3" />
           <p className="text-gray-500 dark:text-gray-400 font-medium">
-            No hay incidencias registradas
+            {t('incidents.list.emptyTitle')}
           </p>
           <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
-            Usa el botón "Nueva Incidencia" para crear una
+            {t('incidents.list.emptyHint')}
           </p>
         </div>
       )}
@@ -160,11 +162,11 @@ export function IncidentsList({ rigId, rigName }: IncidentsListProps) {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-200 dark:border-gray-700">
-                  <th className="text-left py-3 px-4 font-medium text-gray-500 dark:text-gray-400">Tipo</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-500 dark:text-gray-400">Descripción</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-500 dark:text-gray-400">Creado por</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-500 dark:text-gray-400">Fecha</th>
-                  <th className="text-right py-3 px-4 font-medium text-gray-500 dark:text-gray-400">Acciones</th>
+                  <th className="text-left py-3 px-4 font-medium text-gray-500 dark:text-gray-400">{t('incidents.common.type')}</th>
+                  <th className="text-left py-3 px-4 font-medium text-gray-500 dark:text-gray-400">{t('incidents.common.description')}</th>
+                  <th className="text-left py-3 px-4 font-medium text-gray-500 dark:text-gray-400">{t('incidents.common.createdBy')}</th>
+                  <th className="text-left py-3 px-4 font-medium text-gray-500 dark:text-gray-400">{t('incidents.common.date')}</th>
+                  <th className="text-right py-3 px-4 font-medium text-gray-500 dark:text-gray-400">{t('incidents.common.actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -192,7 +194,7 @@ export function IncidentsList({ rigId, rigName }: IncidentsListProps) {
                         <button
                           onClick={() => handleView(incident.id)}
                           className="p-1.5 rounded-md text-gray-500 hover:text-primary-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                          title="Ver detalle"
+                          title={t('incidents.list.viewDetail')}
                         >
                           <Eye size={16} />
                         </button>
@@ -200,7 +202,7 @@ export function IncidentsList({ rigId, rigName }: IncidentsListProps) {
                           <button
                             onClick={() => handleDelete(incident.id)}
                             className="p-1.5 rounded-md text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                            title="Eliminar"
+                            title={t('incidents.list.deleteTooltip')}
                           >
                             <Trash2 size={16} />
                           </button>
@@ -218,7 +220,7 @@ export function IncidentsList({ rigId, rigName }: IncidentsListProps) {
             totalPages={totalPages}
             totalItems={total}
             pageSize={pageSize}
-            itemLabel="incidencias"
+            itemLabel={t('incidents.list.itemLabel')}
             onPageChange={setPage}
             onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
           />

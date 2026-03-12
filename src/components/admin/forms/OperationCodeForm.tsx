@@ -1,4 +1,5 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import type { OperationCode } from '@/types/report';
@@ -15,6 +16,7 @@ interface OperationCodeFormProps {
 }
 
 export default function OperationCodeForm({ onSubmit, code }: OperationCodeFormProps) {
+  const { t } = useTranslation();
   const [formData, setFormData] = useState({
     code: '',
     name: '',
@@ -46,25 +48,25 @@ export default function OperationCodeForm({ onSubmit, code }: OperationCodeFormP
     const newErrors: typeof errors = {};
 
     if (!formData.code.trim()) {
-      newErrors.code = 'El código es requerido';
+      newErrors.code = t('admin.forms.nameRequired');
     } else if (formData.code.length > 10) {
-      newErrors.code = 'El código no puede exceder 10 caracteres';
+      newErrors.code = t('admin.forms.maxChars', { count: 10 });
     } else if (!/^[A-Z0-9]+$/.test(formData.code)) {
-      newErrors.code = 'Solo letras mayúsculas y números permitidos';
+      newErrors.code = t('admin.operationCodes.onlyUppercaseNumbers');
     }
 
     if (!formData.name.trim()) {
-      newErrors.name = 'El nombre es requerido';
+      newErrors.name = t('admin.forms.nameRequired');
     } else if (formData.name.length > 100) {
-      newErrors.name = 'El nombre no puede exceder 100 caracteres';
+      newErrors.name = t('admin.forms.maxChars', { count: 100 });
     }
 
     if (formData.category && formData.category.length > 50) {
-      newErrors.sortOrder = 'La categoría no puede exceder 50 caracteres';
+      newErrors.sortOrder = t('admin.forms.maxChars', { count: 50 });
     }
 
     if (formData.sortOrder < 0) {
-      newErrors.sortOrder = 'El orden debe ser 0 o mayor';
+      newErrors.sortOrder = t('admin.operationCodes.orderMinZero');
     }
 
     setErrors(newErrors);
@@ -73,7 +75,7 @@ export default function OperationCodeForm({ onSubmit, code }: OperationCodeFormP
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
@@ -93,7 +95,7 @@ export default function OperationCodeForm({ onSubmit, code }: OperationCodeFormP
       ...prev,
       [field]: value
     }));
-    
+
     // Limpiar error del campo cuando se modifica
     if (errors[field as keyof typeof errors]) {
       setErrors(prev => ({
@@ -110,64 +112,64 @@ export default function OperationCodeForm({ onSubmit, code }: OperationCodeFormP
           {/* Código */}
           <div>
             <label htmlFor="code" className="block text-sm font-medium text-gray-700 mb-1">
-              Código <span className="text-red-500">*</span>
+              {t('admin.forms.codeFieldLabel')} <span className="text-red-500">*</span>
             </label>
             <Input
               id="code"
               value={formData.code}
               onChange={(e) => handleChange('code', e.target.value)}
-              placeholder="Ej: DR, WO, WS"
+              placeholder={t('admin.forms.codeFieldPlaceholder')}
               error={errors.code}
               disabled={isSubmitting}
               maxLength={10}
             />
             <p className="mt-1 text-xs text-gray-500">
-              Código abreviado (máx. 10 caracteres, solo mayúsculas y números)
+              {t('admin.forms.codeFieldHint')}
             </p>
           </div>
 
           {/* Nombre */}
           <div>
             <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-              Nombre <span className="text-red-500">*</span>
+              {t('admin.forms.nameFieldLabel')} <span className="text-red-500">*</span>
             </label>
             <Input
               id="name"
               value={formData.name}
               onChange={(e) => handleChange('name', e.target.value)}
-              placeholder="Ej: Perforando, Esperando orden"
+              placeholder={t('admin.forms.nameFieldPlaceholder')}
               error={errors.name}
               disabled={isSubmitting}
               maxLength={100}
             />
             <p className="mt-1 text-xs text-gray-500">
-              Nombre descriptivo del código
+              {t('admin.forms.nameFieldHint')}
             </p>
           </div>
 
           {/* Categoría */}
           <div>
             <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-1">
-              Categoría
+              {t('admin.forms.categoryFieldLabel')}
             </label>
             <Input
               id="category"
               value={formData.category}
               onChange={(e) => handleChange('category', e.target.value)}
-              placeholder="Ej: Operación, Mantenimiento"
+              placeholder={t('admin.forms.categoryFieldPlaceholder')}
               error={errors.sortOrder}
               disabled={isSubmitting}
               maxLength={50}
             />
             <p className="mt-1 text-xs text-gray-500">
-              Grupo al que pertenece el código
+              {t('admin.forms.categoryFieldHint')}
             </p>
           </div>
 
           {/* Orden */}
           <div>
             <label htmlFor="sortOrder" className="block text-sm font-medium text-gray-700 mb-1">
-              Orden
+              {t('admin.forms.orderFieldLabel')}
             </label>
             <Input
               id="sortOrder"
@@ -180,7 +182,7 @@ export default function OperationCodeForm({ onSubmit, code }: OperationCodeFormP
               min={0}
             />
             <p className="mt-1 text-xs text-gray-500">
-              Orden de visualización (menor = primero)
+              {t('admin.forms.orderFieldHint')}
             </p>
           </div>
         </div>
@@ -189,15 +191,15 @@ export default function OperationCodeForm({ onSubmit, code }: OperationCodeFormP
         <div className="flex items-center justify-between bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
           <div>
             <label htmlFor="active" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Estado del Código
+              {t('admin.forms.codeStatus')}
             </label>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              {formData.active 
-                ? 'El código está activo y disponible para uso'
-                : 'El código está inactivo y no aparecerá en las listas'}
+              {formData.active
+                ? t('admin.forms.codeActiveDesc')
+                : t('admin.forms.codeInactiveDesc')}
             </p>
           </div>
-          
+
           <div className="flex items-center">
             <label className="relative inline-flex items-center cursor-pointer">
               <input
@@ -220,7 +222,7 @@ export default function OperationCodeForm({ onSubmit, code }: OperationCodeFormP
           variant="primary"
           disabled={isSubmitting}
         >
-          {isSubmitting ? 'Guardando...' : code ? 'Actualizar' : 'Crear'}
+          {isSubmitting ? t('admin.forms.saving') : code ? t('admin.forms.update') : t('admin.forms.create')}
         </Button>
       </div>
     </form>

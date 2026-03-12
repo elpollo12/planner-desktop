@@ -1,4 +1,5 @@
-﻿import { Fuel } from 'lucide-react';
+import { Fuel } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { fuelApi } from '@/lib/api';
 import { fuelMovementSchema, type FuelMovementForm } from '@/schemas';
 import { MovementFormTab } from '../MovementFormTab';
@@ -11,6 +12,7 @@ interface CombustibleConsumoTabProps {
 }
 
 export function CombustibleConsumoTab({ rigId, onSuccess }: CombustibleConsumoTabProps) {
+  const { t } = useTranslation();
   const qc = useQueryClient();
 
   return (
@@ -18,11 +20,11 @@ export function CombustibleConsumoTab({ rigId, onSuccess }: CombustibleConsumoTa
       direction="exit"
       schema={fuelMovementSchema}
       defaultValues={{ amount: undefined as unknown as number, notes: '' }}
-      bannerText="Registrar consumo o gasto de combustible"
+      bannerText={t('logistics.fuel.consumptionBanner')}
       icon={Fuel}
-      successMessage="Gasto de combustible registrado"
-      errorMessage="Error al registrar el gasto"
-      submitLabel="Registrar Consumo"
+      successMessage={t('logistics.fuel.consumptionSuccess')}
+      errorMessage={t('logistics.fuel.consumptionError')}
+      submitLabel={t('logistics.common.registerConsumption')}
       onSubmit={async (sessionToken, data) => {
         await fuelApi.createMovement(sessionToken, rigId, {
           movementType: 'exit',
@@ -37,7 +39,7 @@ export function CombustibleConsumoTab({ rigId, onSuccess }: CombustibleConsumoTa
         <>
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Cantidad (Litros) <span className="text-red-500">*</span>
+              {t('logistics.fuel.quantityLabel')} <span className="text-red-500">*</span>
             </label>
             <div className="relative">
               <Fuel className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
@@ -55,12 +57,12 @@ export function CombustibleConsumoTab({ rigId, onSuccess }: CombustibleConsumoTa
             {errors.amount && <p className="mt-1 text-sm text-red-500">{errors.amount.message}</p>}
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Observaciones</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('logistics.common.notes')}</label>
             <textarea
               {...register('notes')}
               rows={3}
               className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500"
-              placeholder="Observaciones adicionales..."
+              placeholder={t('logistics.common.notesPlaceholder')}
             />
           </div>
         </>

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useModalStore } from '../../../../store';
 import { Fuel, Plus, Minus } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { CombustibleIngresoTab } from './CombustibleIngresoTab';
 import { CombustibleConsumoTab } from './CombustibleConsumoTab';
 import { Button } from '@/components/ui/Button';
@@ -13,6 +14,7 @@ interface CombustibleFormProps {
 }
 
 export function CombustibleForm({ rigId, initialTab = 'ingreso' }: CombustibleFormProps) {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<TabType>(initialTab);
   const { closeModal } = useModalStore();
 
@@ -21,8 +23,8 @@ export function CombustibleForm({ rigId, initialTab = 'ingreso' }: CombustibleFo
   };
 
   const tabs = [
-    { id: 'ingreso' as TabType, label: 'Ingreso', icon: Plus, className: `${activeTab === 'ingreso' ? 'bg-green-500! text-white!' : 'hover:bg-green-300!'}` },
-    { id: 'consumo' as TabType, label: 'Consumo', icon: Minus, className: `${activeTab === 'consumo' ? 'bg-red-500! text-white!' : 'hover:bg-red-300!'}` },
+    { id: 'ingreso' as TabType, label: t('logistics.common.entry'), icon: Plus, className: `${activeTab === 'ingreso' ? 'bg-green-500! text-white!' : 'hover:bg-green-300!'}` },
+    { id: 'consumo' as TabType, label: t('logistics.common.consumption'), icon: Minus, className: `${activeTab === 'consumo' ? 'bg-red-500! text-white!' : 'hover:bg-red-300!'}` },
   ];
 
   return (
@@ -34,10 +36,10 @@ export function CombustibleForm({ rigId, initialTab = 'ingreso' }: CombustibleFo
         </div>
         <div>
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-            Combustible
+            {t('logistics.fuel.title')}
           </h3>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Registrar movimiento de combustible
+            {t('logistics.fuel.registerMovementDesc')}
           </p>
         </div>
       </div>
@@ -46,7 +48,7 @@ export function CombustibleForm({ rigId, initialTab = 'ingreso' }: CombustibleFo
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
-          
+
           return (
             <Button
               key={tab.id}

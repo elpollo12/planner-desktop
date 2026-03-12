@@ -1,4 +1,5 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '../ui';
 import { ArrowUpDown, FileText, Trash2, Plus, Minus, Eye } from 'lucide-react';
 import { useModalStore } from '../../store';
@@ -21,6 +22,7 @@ interface BotellonesInventoryProps {
 }
 
 export function BotellonesInventory({ rigId }: BotellonesInventoryProps) {
+  const { t } = useTranslation();
   const { openModal } = useModalStore();
   const { sessionToken, user } = useAuthStore();
 
@@ -39,36 +41,36 @@ export function BotellonesInventory({ rigId }: BotellonesInventoryProps) {
   const handleRegistrar = () => {
     openModal(
       <BotellonesForm rigId={rigId} />,
-      { title: 'Registrar Movimiento de Botellones', size: 'xl', showCloseButton: true, closeOnOutsideClick: false }
+      { title: t('logistics.waterBottles.registerMovement'), size: 'xl', showCloseButton: true, closeOnOutsideClick: false }
     );
   };
 
   const handleSolicitar = () => {
     openModal(
       <RequestForm rigId={rigId} defaultType="water_bottles" />,
-      { title: 'Solicitar Botellones', size: 'md', showCloseButton: true, closeOnOutsideClick: false }
+      { title: t('logistics.waterBottles.requestTitle'), size: 'md', showCloseButton: true, closeOnOutsideClick: false }
     );
   };
 
   const handleDelete = (movement: WaterBottlesMovement) => {
-    const label = `${MOVEMENT_LABELS[movement.movementType as keyof typeof MOVEMENT_LABELS]} — ${movement.quantity} botellones (${formatDateDMY(movement.createdAt?.split('T')[0])})`;
+    const label = `${MOVEMENT_LABELS[movement.movementType as keyof typeof MOVEMENT_LABELS]} — ${movement.quantity} ${t('logistics.waterBottles.unit')} (${formatDateDMY(movement.createdAt?.split('T')[0])})`;
 
     openModal(
       <ConfirmDeleteModal
-        message="¿Estás seguro de que deseas eliminar este registro?"
+        message={t('logistics.common.confirmDeleteRecord')}
         itemName={label}
         onConfirm={async () => {
           try {
             await deleteMutation.mutateAsync(movement.id);
-            toast.success('Registro eliminado');
+            toast.success(t('logistics.common.recordDeleted'));
             if (movements.length === 1 && currentPage > 1) setCurrentPage(currentPage - 1);
           } catch (error: any) {
-            toast.error(error?.toString() || 'Error al eliminar');
+            toast.error(error?.toString() || t('logistics.common.deleteError'));
             throw error;
           }
         }}
       />,
-      { title: '¿Eliminar movimiento?', size: 'sm', showCloseButton: true }
+      { title: t('logistics.common.deleteMovement'), size: 'sm', showCloseButton: true }
     );
   };
 
@@ -82,7 +84,7 @@ export function BotellonesInventory({ rigId }: BotellonesInventoryProps) {
     }
     openModal(
       <MovementDetailModal fields={buildWaterBottlesFields(movement, createdByName)} />,
-      { title: 'Detalle del Movimiento', size: 'md', showCloseButton: true, closeOnOutsideClick: true }
+      { title: t('logistics.common.movementDetail'), size: 'md', showCloseButton: true, closeOnOutsideClick: true }
     );
   };
 
@@ -91,31 +93,31 @@ export function BotellonesInventory({ rigId }: BotellonesInventoryProps) {
 
   return (
     <InventoryShell
-      title="Botellones de Agua"
-      stockBadge={<StockBadge stock={stock ?? null} unit="botellones" />}
+      title={t('logistics.waterBottles.title')}
+      stockBadge={<StockBadge stock={stock ?? null} unit={t('logistics.waterBottles.unit')} />}
       loading={isLoading}
       isEmpty={movements.length === 0}
-      emptyMessage="No hay movimientos registrados"
+      emptyMessage={t('logistics.common.noMovements')}
       actions={
         <>
           <Button variant="secondary" size="sm" icon={<ArrowUpDown size={18} />} iconPosition="right" onClick={handleRegistrar}>
-            Registrar
+            {t('logistics.common.register')}
           </Button>
           <Button variant="outline" size="sm" icon={<FileText size={18} />} iconPosition="right" onClick={handleSolicitar}>
-            Solicitar
+            {t('logistics.common.request')}
           </Button>
         </>
       }
-      pagination={{ currentPage, totalPages, totalItems, pageSize, itemLabel: 'movimientos', onPageChange: handlePageChange, onPageSizeChange: handlePageSizeChange }}
+      pagination={{ currentPage, totalPages, totalItems, pageSize, itemLabel: t('logistics.common.movements'), onPageChange: handlePageChange, onPageSizeChange: handlePageSizeChange }}
     >
       <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
         <thead className="bg-gray-50 dark:bg-gray-800">
           <tr>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tipo</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Cantidad</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Fecha</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Observaciones</th>
-            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Acciones</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('logistics.common.type')}</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('logistics.common.quantity')}</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('logistics.common.date')}</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('logistics.common.notes')}</th>
+            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('logistics.common.actions')}</th>
           </tr>
         </thead>
         <tbody className="bg-gray-50 dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -132,7 +134,7 @@ export function BotellonesInventory({ rigId }: BotellonesInventoryProps) {
                 </span>
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
-                {m.quantity} botellones
+                {m.quantity} {t('logistics.waterBottles.unit')}
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
                 <div className="text-sm text-gray-900 dark:text-gray-100">{formatDateDMY(m.createdAt?.split('T')[0])}</div>
@@ -143,11 +145,11 @@ export function BotellonesInventory({ rigId }: BotellonesInventoryProps) {
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-center">
                 <div className="flex items-center justify-center gap-1">
-                  <button onClick={() => handleViewDetail(m)} className="p-1 text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300" title="Ver detalle">
+                  <button onClick={() => handleViewDetail(m)} className="p-1 text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300" title={t('logistics.common.viewDetail')}>
                     <Eye size={18} />
                   </button>
                   {canDelete && (
-                    <button onClick={() => handleDelete(m)} className="p-1 text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300" title="Eliminar">
+                    <button onClick={() => handleDelete(m)} className="p-1 text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300" title={t('logistics.common.delete')}>
                       <Trash2 size={18} />
                     </button>
                   )}

@@ -1,4 +1,5 @@
-﻿import { useForm, Controller } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { FolderArchive, FileSpreadsheet, FileText, Files } from 'lucide-react';
 import { useModalStore } from '@/store';
@@ -12,21 +13,21 @@ import { DEFAULT_APP_SETTINGS } from '@/types/appSettings';
 import { Button } from '@/components/ui';
 
 // ============================================================================
-// Section config
+// Section config (keys only — labels resolved via t() inside component)
 // ============================================================================
 
-const SECTION_OPTIONS: { key: keyof GeneralReportForm['sections']; label: string; color: string }[] = [
-  { key: 'botellones', label: 'Botellones de Agua', color: 'accent-blue-600' },
-  { key: 'combustible', label: 'Combustible', color: 'accent-amber-600' },
-  { key: 'vacuum', label: 'Vacuum / Cisterna', color: 'accent-purple-600' },
-  { key: 'materiales', label: 'Materiales', color: 'accent-teal-600' },
-  { key: 'solicitudes', label: 'Solicitudes', color: 'accent-orange-600' },
+const SECTION_OPTIONS: { key: keyof GeneralReportForm['sections']; labelKey: string; color: string }[] = [
+  { key: 'botellones', labelKey: 'logistics.reports.labelBotellonesAgua', color: 'accent-blue-600' },
+  { key: 'combustible', labelKey: 'logistics.reports.sectionCombustible', color: 'accent-amber-600' },
+  { key: 'vacuum', labelKey: 'logistics.reports.sectionVacuum', color: 'accent-purple-600' },
+  { key: 'materiales', labelKey: 'logistics.reports.sectionMateriales', color: 'accent-teal-600' },
+  { key: 'solicitudes', labelKey: 'logistics.reports.sectionSolicitudes', color: 'accent-orange-600' },
 ];
 
-const FORMAT_OPTIONS: { value: ReportFormat; label: string; icon: typeof FileSpreadsheet }[] = [
-  { value: 'excel', label: 'Excel (.xlsx)', icon: FileSpreadsheet },
-  { value: 'pdf', label: 'PDF', icon: FileText },
-  { value: 'both', label: 'Ambos', icon: Files },
+const FORMAT_OPTIONS: { value: ReportFormat; labelKey: string; icon: typeof FileSpreadsheet }[] = [
+  { value: 'excel', labelKey: 'logistics.reports.formatExcel', icon: FileSpreadsheet },
+  { value: 'pdf', labelKey: 'logistics.reports.formatPdf', icon: FileText },
+  { value: 'both', labelKey: 'logistics.reports.formatBoth', icon: Files },
 ];
 
 // ============================================================================
@@ -41,6 +42,7 @@ interface GeneralReportModalProps {
 }
 
 export function GeneralReportModal({ rigId, rigName, periodStart, periodEnd }: GeneralReportModalProps) {
+  const { t } = useTranslation();
   const sessionToken = useAuthStore((s) => s.sessionToken);
   const user = useAuthStore((s) => s.user);
   const appSettings = useAppSettingsStore((s) => s.settings);
@@ -100,11 +102,11 @@ export function GeneralReportModal({ rigId, rigName, periodStart, periodEnd }: G
       if (!result.saved) return;
 
       // 4. Close & notify
-      toast.success('Reporte general guardado exitosamente');
+      toast.success(t('logistics.reports.generalSaved'));
       useModalStore.getState().closeModal();
     } catch (error: any) {
       console.error('Error generando reporte general:', error);
-      toast.error(error?.toString() || 'Error al generar el reporte');
+      toast.error(error?.toString() || t('logistics.reports.generateError'));
     }
   };
 
@@ -119,9 +121,9 @@ export function GeneralReportModal({ rigId, rigName, periodStart, periodEnd }: G
           <FolderArchive className="text-indigo-600 dark:text-indigo-400" size={24} />
         </div>
         <div>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Reporte General</h3>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{t('logistics.reports.generalReport')}</h3>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Resumen de todas las secciones de logística
+            {t('logistics.reports.summaryDesc')}
           </p>
         </div>
       </div>
@@ -131,7 +133,7 @@ export function GeneralReportModal({ rigId, rigName, periodStart, periodEnd }: G
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Desde <span className="text-red-500">*</span>
+              {t('logistics.common.from')} <span className="text-red-500">*</span>
             </label>
             <input
               type="date"
@@ -144,7 +146,7 @@ export function GeneralReportModal({ rigId, rigName, periodStart, periodEnd }: G
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Hasta <span className="text-red-500">*</span>
+              {t('logistics.common.to')} <span className="text-red-500">*</span>
             </label>
             <input
               type="date"
@@ -160,7 +162,7 @@ export function GeneralReportModal({ rigId, rigName, periodStart, periodEnd }: G
         {/* Formato */}
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Formato <span className="text-red-500">*</span>
+            {t('logistics.common.format')} <span className="text-red-500">*</span>
           </label>
           <Controller
             name="format"
@@ -182,7 +184,7 @@ export function GeneralReportModal({ rigId, rigName, periodStart, periodEnd }: G
                       }`}
                     >
                       <Icon size={16} />
-                      {opt.label}
+                      {t(opt.labelKey)}
                     </button>
                   );
                 })}
@@ -195,7 +197,7 @@ export function GeneralReportModal({ rigId, rigName, periodStart, periodEnd }: G
         {/* Secciones */}
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Secciones a incluir
+            {t('logistics.reports.sectionsToInclude')}
           </label>
           <div className="space-y-2">
             {SECTION_OPTIONS.map((sec) => (
@@ -208,7 +210,7 @@ export function GeneralReportModal({ rigId, rigName, periodStart, periodEnd }: G
                   {...register(`sections.${sec.key}`)}
                   className={`h-4 w-4 rounded border-gray-300 dark:border-gray-600 focus:ring-primary-500 ${sec.color}`}
                 />
-                <span className="text-sm text-gray-700 dark:text-gray-300">{sec.label}</span>
+                <span className="text-sm text-gray-700 dark:text-gray-300">{t(sec.labelKey)}</span>
               </label>
             ))}
           </div>
@@ -218,10 +220,10 @@ export function GeneralReportModal({ rigId, rigName, periodStart, periodEnd }: G
         {/* Footer */}
         <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
           <Button onClick={() => useModalStore.getState().closeModal()} variant="outline">
-            Cancelar
+            {t('logistics.common.cancel')}
           </Button>
           <Button type="submit" disabled={isSubmitting} icon={<FolderArchive size={16} />}>
-            {isSubmitting ? 'Generando...' : `Generar ${selectedFormat === 'both' ? 'Reportes' : 'Reporte'}`}
+            {isSubmitting ? t('logistics.common.generating') : selectedFormat === 'both' ? t('logistics.common.generateReports') : t('logistics.common.generateReport')}
           </Button>
         </div>
       </form>

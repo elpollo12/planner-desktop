@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Upload, Trash2, HardHat } from 'lucide-react';
@@ -40,6 +41,7 @@ export default function ContractorForm({
   onUploadLogo,
   onRemoveLogo,
 }: ContractorFormProps) {
+  const { t } = useTranslation();
   const isEditing = !!contractor;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
@@ -87,17 +89,17 @@ export default function ContractorForm({
       {/* Nombre */}
       <div>
         <label htmlFor="ct-name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-          Nombre <span className="text-red-500">*</span>
+          {t('admin.forms.nameLabel')} <span className="text-red-500">*</span>
         </label>
         <Input
           id="ct-name"
-          placeholder="Ej: Schlumberger, Halliburton, Baker Hughes"
+          placeholder={t('admin.forms.contractorNamePlaceholder')}
           error={errors.name?.message}
           disabled={isSubmitting}
           {...register('name')}
         />
         <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-          Razón social o nombre comercial del contratista
+          {t('admin.forms.contractorNameHint')}
         </p>
       </div>
 
@@ -105,7 +107,7 @@ export default function ContractorForm({
       {isEditing && (
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Logo
+            {t('admin.forms.logo')}
           </label>
           <div className="flex items-center gap-4">
             <div className="w-20 h-20 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center bg-gray-50 dark:bg-gray-700 overflow-hidden shrink-0">
@@ -131,7 +133,7 @@ export default function ContractorForm({
                 disabled={uploadingLogo || isSubmitting}
                 icon={<Upload className="w-4 h-4" />}
               >
-                {uploadingLogo ? 'Subiendo...' : 'Subir Logo'}
+                {uploadingLogo ? t('admin.forms.uploading') : t('admin.forms.uploadLogo')}
               </Button>
               {logoDataUrl && onRemoveLogo && (
                 <Button
@@ -142,13 +144,13 @@ export default function ContractorForm({
                   disabled={isSubmitting}
                   icon={<Trash2 className="w-4 h-4" />}
                 >
-                  Eliminar
+                  {t('admin.forms.delete')}
                 </Button>
               )}
             </div>
           </div>
           <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-            PNG, JPG, SVG o WEBP · Máx. 2 MB
+            {t('admin.forms.logoHint')}
           </p>
         </div>
       )}
@@ -158,12 +160,12 @@ export default function ContractorForm({
         <div className="flex items-center justify-between rounded-lg bg-gray-50 dark:bg-gray-700/50 px-4 py-3">
           <div>
             <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              Estado del contratista
+              {t('admin.forms.contractorStatus')}
             </p>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
               {active
-                ? 'Activo: aparece disponible en los reportes'
-                : 'Inactivo: no aparece en las listas de selección'}
+                ? t('admin.forms.activeAvailableMasc')
+                : t('admin.forms.inactiveHiddenMasc')}
             </p>
           </div>
           <label className="relative inline-flex items-center cursor-pointer">
@@ -182,7 +184,7 @@ export default function ContractorForm({
       {/* Submit */}
       <div className="flex justify-end pt-2 border-t border-gray-200 dark:border-gray-700">
         <Button type="submit" variant="primary" loading={isSubmitting}>
-          {isEditing ? 'Guardar Cambios' : 'Crear Contratista'}
+          {isEditing ? t('admin.forms.saveChanges') : t('admin.forms.createContractor')}
         </Button>
       </div>
     </form>
