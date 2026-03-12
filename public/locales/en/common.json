@@ -94,8 +94,34 @@
     "es": "Español",
     "en": "English"
   },
+  "common": {
+    "noData": "No data to display",
+    "noResults": "No results",
+    "search": "Search..."
+  },
+  "incidentTypes": {
+    "safety": "Safety",
+    "mechanical": "Mechanical",
+    "operational": "Operational",
+    "environmental": "Environmental",
+    "hse": "HSE",
+    "other": "Other"
+  },
+  "crewPositions": {
+    "driller": "Driller",
+    "derrickman": "Derrickman",
+    "floorman": "Floorman",
+    "roustabout": "Roustabout",
+    "mechanic": "Mechanic",
+    "welder": "Welder",
+    "forkliftOperator": "Forklift Operator",
+    "laborer": "Laborer",
+    "supervisor": "Supervisor",
+    "other": "Other"
+  },
   "pagination": {
-    "showing": "Showing",
+    "showing": "Showing {{from}} to {{to}} of {{total}}",
+    "show": "Show:",
     "of": "of",
     "results": "results",
     "page": "Page",
@@ -352,7 +378,26 @@
       "ph": "pH",
       "solids": "Solids",
       "approveModalTitle": "Approve Report",
-      "rejectModalTitle": "Reject Report"
+      "rejectModalTitle": "Reject Report",
+      "reportTitle": "DDR Report #{{number}}"
+    },
+    "shiftLabels": {
+      "morning": "Morning",
+      "afternoon": "Afternoon",
+      "night": "Night"
+    },
+    "reviewActionLabels": {
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "revision_requested": "Revision requested",
+      "comment": "Comment",
+      "resubmitted": "Resubmitted"
+    },
+    "review": {
+      "unknownUser": "Unknown user",
+      "noHistory": "No review history for this report.",
+      "by": "by",
+      "loading": "Loading..."
     },
     "approvals": {
       "title": "Approvals",
@@ -473,6 +518,149 @@
       "snapshotDetail": "Would you like to preload the last report data? This includes crew, time distribution, bits, mud and other sections.",
       "snapshotReject": "No, start empty",
       "snapshotConfirm": "Yes, preload data"
+    },
+    "forms": {
+      "common": {
+        "shift": "Shift",
+        "select": "Select...",
+        "delete": "Delete",
+        "actions": "Actions",
+        "total": "Total",
+        "totals": "TOTALS"
+      },
+      "crew": {
+        "title": "Crew by Shift",
+        "members": "Crew Members",
+        "addMember": "Add Member",
+        "noPersonnelWarning": "No personnel registered for this rig. Register personnel from rig administration before assigning crews.",
+        "noMembersHint": "No members in this shift. Click \"Add Member\" to begin.",
+        "selectPersonnel": "Select personnel...",
+        "personnel": "Personnel",
+        "position": "Position",
+        "hours": "Hours",
+        "shiftStart": "Start Time",
+        "shiftEnd": "End Time",
+        "loadingPersonnel": "Loading rig personnel...",
+        "selectRigWarning": "Select a rig in the report header to assign crews.",
+        "noteLabel": "Note:",
+        "noteText": "Select crew members registered in the rig for each shift. Working hours are optional but recommended.",
+        "positions": {
+          "driller": "Driller",
+          "derrickman": "Derrickman",
+          "floorman": "Floorman",
+          "roustabout": "Roustabout",
+          "mechanic": "Mechanic",
+          "welder": "Welder",
+          "forkliftOperator": "Forklift Operator",
+          "laborer": "Laborer",
+          "supervisor": "Supervisor",
+          "other": "Other"
+        }
+      },
+      "bitRecord": {
+        "title": "Bit Records",
+        "addBit": "Add Bit",
+        "noBits": "No bits registered",
+        "addFirstBit": "Add First Bit",
+        "bitNumber": "Bit #{{number}}",
+        "size": "Size",
+        "manufacturerCode": "Manufacturer Code",
+        "brand": "Brand",
+        "bitType": "Bit Type",
+        "serialNumber": "Serial Number",
+        "jets": "Jets",
+        "tfa": "TFA",
+        "depthOut": "Depth Out (ft)",
+        "depthIn": "Depth In (ft)",
+        "footage": "Total Footage (ft)",
+        "hoursTotal": "Total Hours",
+        "dpTubos": "DP Pipes",
+        "kelly": "Kelly"
+      },
+      "mud": {
+        "title": "Mud Properties",
+        "addMeasurement": "Add Measurement",
+        "noMeasurements": "No measurements registered",
+        "addFirstMeasurement": "Add First Measurement",
+        "measurementNumber": "Measurement #{{number}}",
+        "hour": "Hour",
+        "weight": "Weight (ppg)",
+        "viscosity": "Viscosity (sec)",
+        "pvp": "PVP (cps)",
+        "gels": "Gels (10'/10\")",
+        "filtrate": "Filtrate (ml)",
+        "ph": "pH",
+        "solids": "Solids (%)",
+        "additivesTitle": "Additives & Chemicals",
+        "addAdditive": "Add Additive",
+        "noAdditives": "No additives registered",
+        "addFirstAdditive": "Add First Additive",
+        "additiveType": "Additive Type",
+        "quantity": "Quantity"
+      },
+      "timeDistribution": {
+        "title": "Time Distribution by Operation",
+        "subtitle": "Each shift must total exactly 24 hours",
+        "loadingCodes": "Loading operation codes...",
+        "addOperation": "Add Operation",
+        "noOperations": "No operations registered",
+        "addFirstOperation": "Add First Operation",
+        "operationCode": "Operation Code",
+        "selectOperation": "Select operation...",
+        "morningHrs": "Morning (hrs)",
+        "afternoonHrs": "Afternoon (hrs)",
+        "nightHrs": "Night (hrs)",
+        "shiftMorning": "Morning Shift",
+        "shiftAfternoon": "Afternoon Shift",
+        "shiftNight": "Night Shift",
+        "warningTitle": "Warning: Incomplete hours",
+        "warningText": "Each shift must total exactly 24 hours. Currently:"
+      },
+      "lithology": {
+        "title": "Drilling Parameters",
+        "addParameter": "Add Parameter",
+        "noParameters": "No parameters registered",
+        "addFirstParameter": "Add First Parameter",
+        "recordNumber": "Record #{{number}}",
+        "depthFrom": "Depth From (ft)",
+        "depthTo": "Depth To (ft)",
+        "coreNumber": "Core #",
+        "rotaryRpm": "Rotary RPM",
+        "bitWeight": "Bit Weight (klb)",
+        "pumpPressure": "Pump Pressure (psi)",
+        "pumpNumber": "Pump #",
+        "pumpLiner": "Pump Liner",
+        "spm": "SPM",
+        "totalGpm": "Total GPM",
+        "methodUsed": "Method Used",
+        "lithologyNotes": "Lithology Notes",
+        "lithologyNotesPlaceholder": "Formation description, observed lithology, etc.",
+        "deviationTitle": "Deviation History",
+        "addDeviation": "Add Measurement",
+        "noDeviations": "No deviation measurements",
+        "addFirstDeviation": "Add First Measurement",
+        "depthFt": "Depth (ft)",
+        "deviationDeg": "Deviation (°)",
+        "directionDeg": "Direction (°)",
+        "tvoFt": "TVO (ft)",
+        "horizontalDisplacement": "Horiz. Displacement (ft)"
+      },
+      "observations": {
+        "title": "Operations Log & Observations",
+        "subtitle": "Chronological record of all activities performed",
+        "addOperation": "Add Operation",
+        "noOperations": "No operations registered",
+        "addFirstOperation": "Add First Operation",
+        "operationNumber": "Operation #{{number}}",
+        "timeFrom": "Start Time",
+        "timeTo": "End Time",
+        "duration": "Duration",
+        "operationCode": "Op. Code",
+        "details": "Operation Details",
+        "detailsPlaceholder": "Detailed description of the operation, observations, incidents, etc.",
+        "codesLabel": "Common codes:",
+        "codesText": "DR (Drilling), CI (Circulate), RIH (Run In Hole), POOH (Pull Out of Hole), TD (Testing), WOC (Wait On Cement), RM (Repair/Maintenance), etc."
+      }
     }
   },
   "admin": {
@@ -1166,6 +1354,20 @@
     }
   },
   "logistics": {
+    "page": {
+      "title": "Logistics",
+      "subtitle": "Inventory and request management",
+      "selectRig": "Select a rig to manage logistics",
+      "selectRigHint": "Choose a rig from the selector above to view its inventory and requests"
+    },
+    "tabs": {
+      "waterBottles": "Water Bottles",
+      "fuel": "Fuel",
+      "materials": "Materials",
+      "vacuum": "Vacuum",
+      "requests": "Requests",
+      "reports": "Reports"
+    },
     "common": {
       "loading": "Loading...",
       "noRecords": "No records",
@@ -1200,6 +1402,38 @@
       "generateReport": "Generate Report",
       "generateReports": "Generate Reports",
       "unknown": "Unknown"
+    },
+    "movementLabels": {
+      "entry": "Entry",
+      "exit": "Exit"
+    },
+    "requestTypeLabels": {
+      "water_bottles": "Water Bottles",
+      "fuel": "Fuel",
+      "material": "Material",
+      "vacuum": "Vacuum/Cistern"
+    },
+    "requestStatusLabels": {
+      "requested": "Requested",
+      "pending": "Pending",
+      "approved": "Approved",
+      "rejected": "Rejected"
+    },
+    "modals": {
+      "close": "Close",
+      "registeredBy": "Registered by",
+      "material": "Material",
+      "action": "Action",
+      "requestDate": "Request date",
+      "detail": "Detail",
+      "status": "Status",
+      "requestedBy": "Requested by",
+      "statusChangedBy": "Status changed by",
+      "stockShownFor": "Stock shown for:",
+      "noMaterialsInCatalog": "No materials registered in the catalog.",
+      "unit": "Unit",
+      "createdBy": "Created by",
+      "catalogLoadError": "Error loading materials catalog"
     },
     "rigSelector": {
       "loadingRigs": "Loading rigs...",
@@ -1384,6 +1618,12 @@
     }
   },
   "incidents": {
+    "page": {
+      "title": "Incidents",
+      "subtitle": "Incident log by rig",
+      "selectRig": "Select a rig to manage incidents",
+      "selectRigHint": "Choose a rig from the selector above to view and create incidents"
+    },
     "common": {
       "close": "Close",
       "cancel": "Cancel",
@@ -1470,6 +1710,15 @@
     }
   },
   "cloudLogs": {
+    "page": {
+      "title": "Daily Logs",
+      "subtitle": "Daily report log and messages by rig",
+      "from": "From",
+      "to": "To",
+      "clearDates": "Clear dates",
+      "selectRig": "Select a rig to view daily logs",
+      "selectRigHint": "Data is obtained directly from the cloud"
+    },
     "messageDetail": {
       "from": "From",
       "group": "Group",
@@ -1556,7 +1805,8 @@
       "period": "Period",
       "generated": "Generated",
       "page": "Page {{current}} of {{total}}",
-      "total": "TOTAL"
+      "total": "TOTAL",
+      "detailed": "Detailed"
     },
     "ddr": {
       "title": "DDR Report #{{num}}",
@@ -1711,6 +1961,41 @@
       "ciCol": "ID",
       "pdfExportSuccess": "PDF exported successfully",
       "pdfExportError": "Error exporting PDF"
+    }
+  },
+  "breadcrumbs": {
+    "reports": "Reports",
+    "new": "New",
+    "edit": "Edit",
+    "view": "View",
+    "logistics": "Logistics",
+    "approvals": "Approvals",
+    "reportNumber": "Report #{{number}}",
+    "report": "Report",
+    "loading": "Loading..."
+  },
+  "sidebar": {
+    "companyLogo": "Company logo",
+    "subtitle": "Oil Reports"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "unread": "{{count}} unread",
+    "markAll": "Mark all",
+    "retentionSettings": "Retention settings",
+    "deleteReadAfter": "Delete read after:",
+    "empty": "No notifications",
+    "previous": "Previous",
+    "next": "Next",
+    "categories": {
+      "all": "All",
+      "logistics": "Logistics",
+      "incidents": "Incidents",
+      "reports": "Reports"
+    },
+    "retention": {
+      "days": "{{count}} days",
+      "indefinite": "Indefinite"
     }
   }
 }

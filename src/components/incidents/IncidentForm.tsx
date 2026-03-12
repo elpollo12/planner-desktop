@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button, SearchableSelect } from '../ui';
+import { translateIncidentTypeName, translateCrewPositionName } from '../../lib/translateCatalogs';
 import { useModal } from '../../store/modalStore';
 import { useCreateIncident, useRigPersonnel, useIncidentTypes } from '../../hooks/useIncidents';
 import { toast } from 'react-toastify';
@@ -21,17 +22,21 @@ export function IncidentForm({ rigId }: IncidentFormProps) {
   const [description, setDescription] = useState('');
   const [selectedPersonnelIds, setSelectedPersonnelIds] = useState<string[]>([]);
 
-  // Sort alphabetically, but "Otro" always last
+  // Sort alphabetically, but "Other" always last
   const typeOptions = useMemo(() => {
-    const sorted = [...incidentTypes].sort((a, b) => {
-      const aIsOtro = a.name.toLowerCase() === 'otro';
-      const bIsOtro = b.name.toLowerCase() === 'otro';
-      if (aIsOtro && !bIsOtro) return 1;
-      if (!aIsOtro && bIsOtro) return -1;
-      return a.name.localeCompare(b.name, 'es');
+    const withLabels = incidentTypes.map((tp) => ({
+      ...tp,
+      label: translateIncidentTypeName(tp.id, tp.name, t),
+    }));
+    const sorted = withLabels.sort((a, b) => {
+      const aIsOther = a.id === 'type_other';
+      const bIsOther = b.id === 'type_other';
+      if (aIsOther && !bIsOther) return 1;
+      if (!aIsOther && bIsOther) return -1;
+      return a.label.localeCompare(b.label);
     });
-    return sorted.map((t) => ({ value: t.id, label: t.name }));
-  }, [incidentTypes]);
+    return sorted.map((tp) => ({ value: tp.id, label: tp.label }));
+  }, [incidentTypes, t]);
 
   const togglePersonnel = (id: string) => {
     setSelectedPersonnelIds((prev) =>
@@ -126,7 +131,7 @@ export function IncidentForm({ rigId }: IncidentFormProps) {
                       {person.name}
                     </span>
                     <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">
-                      {person.defaultPosition}
+                      {translateCrewPositionName(person.defaultPosition, t)}
                     </span>
                   </div>
                   {person.ci && (

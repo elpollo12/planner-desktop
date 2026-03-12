@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { useIncidentDetail, useIncidentTypes } from '../../hooks/useIncidents';
 import { IncidentTypeBadge } from './IncidentTypeBadge';
+import { translateIncidentTypeName } from '../../lib/translateCatalogs';
 import { formatDateTime } from '../../lib/dateUtils';
 import { Button } from '../ui';
 import { useModal } from '../../store/modalStore';
@@ -41,8 +42,10 @@ export function IncidentDetail({ incidentId, rigName }: IncidentDetailProps) {
     );
   }
 
-  const typeRecord = incidentTypes.find((t) => t.id === data.incidentType);
-  const typeName = typeRecord?.name ?? data.incidentType;
+  const typeRecord = incidentTypes.find((tp) => tp.id === data.incidentType);
+  const typeName = typeRecord
+    ? translateIncidentTypeName(typeRecord.id, typeRecord.name, t)
+    : data.incidentType;
   const typeColor = typeRecord?.color ?? 'gray';
 
   const handleExportPdf = () => {
@@ -69,7 +72,7 @@ export function IncidentDetail({ incidentId, rigName }: IncidentDetailProps) {
           <FileText size={18} className="text-gray-400 mt-0.5 shrink-0" />
           <div>
             <p className="text-xs text-gray-500 dark:text-gray-400">{t('incidents.common.type')}</p>
-            <IncidentTypeBadge name={typeName} color={typeColor} size="md" />
+            <IncidentTypeBadge name={typeName} color={typeColor} id={typeRecord?.id} size="md" />
           </div>
         </div>
         <div className="flex items-start gap-3">

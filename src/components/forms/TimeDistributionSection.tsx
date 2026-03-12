@@ -1,5 +1,6 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useFormContext, useFieldArray } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
 import { Button, Input } from '../ui';
 import { Plus, Trash2, AlertCircle } from 'lucide-react';
 import type { CompleteReportData } from '../../schemas';
@@ -8,10 +9,11 @@ import { operationCodesApi } from '../../lib/api';
 import type { OperationCode } from '../../types/report';
 
 export function TimeDistributionSection() {
+  const { t } = useTranslation();
   const { sessionToken } = useAuthStore();
   const [operationCodes, setOperationCodes] = useState<OperationCode[]>([]);
   const [loading, setLoading] = useState(true);
-  
+
   const {
     register,
     control,
@@ -67,7 +69,7 @@ export function TimeDistributionSection() {
   if (loading) {
     return (
       <div className="p-6">
-        <p className="text-gray-500">Cargando códigos de operación...</p>
+        <p className="text-gray-500">{t('reports.forms.timeDistribution.loadingCodes')}</p>
       </div>
     );
   }
@@ -77,10 +79,10 @@ export function TimeDistributionSection() {
       <div className="flex justify-between items-start mb-6">
         <div>
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-            Distribución de Tiempo por Operación
+            {t('reports.forms.timeDistribution.title')}
           </h3>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-            Cada turno debe sumar exactamente 24 horas
+            {t('reports.forms.timeDistribution.subtitle')}
           </p>
         </div>
         <Button
@@ -90,26 +92,26 @@ export function TimeDistributionSection() {
           onClick={addDistribution}
           icon={<Plus size={16} />}
         >
-          Agregar Operación
+          {t('reports.forms.timeDistribution.addOperation')}
         </Button>
       </div>
 
       {/* Totals Summary */}
       <div className="grid grid-cols-3 gap-4 mb-6">
         <div className={`p-4 rounded-lg border-2 ${shift1Valid ? 'border-green-200 bg-green-50' : 'border-yellow-200 bg-yellow-50'}`}>
-          <p className="text-sm font-medium text-gray-700">Turno Mañana</p>
+          <p className="text-sm font-medium text-gray-700">{t('reports.forms.timeDistribution.shiftMorning')}</p>
           <p className={`text-2xl font-bold ${shift1Valid ? 'text-green-700' : 'text-yellow-700'}`}>
             {shift1Total.toFixed(1)} / 24h
           </p>
         </div>
         <div className={`p-4 rounded-lg border-2 ${shift2Valid ? 'border-green-200 bg-green-50' : 'border-yellow-200 bg-yellow-50'}`}>
-          <p className="text-sm font-medium text-gray-700">Turno Tarde</p>
+          <p className="text-sm font-medium text-gray-700">{t('reports.forms.timeDistribution.shiftAfternoon')}</p>
           <p className={`text-2xl font-bold ${shift2Valid ? 'text-green-700' : 'text-yellow-700'}`}>
             {shift2Total.toFixed(1)} / 24h
           </p>
         </div>
         <div className={`p-4 rounded-lg border-2 ${shift3Valid ? 'border-green-200 bg-green-50' : 'border-yellow-200 bg-yellow-50'}`}>
-          <p className="text-sm font-medium text-gray-700">Turno Noche</p>
+          <p className="text-sm font-medium text-gray-700">{t('reports.forms.timeDistribution.shiftNight')}</p>
           <p className={`text-2xl font-bold ${shift3Valid ? 'text-green-700' : 'text-yellow-700'}`}>
             {shift3Total.toFixed(1)} / 24h
           </p>
@@ -120,7 +122,7 @@ export function TimeDistributionSection() {
       {fields.length === 0 ? (
         <div className="text-center py-8 bg-gray-50 dark:bg-gray-800 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600">
           <AlertCircle className="mx-auto mb-3 text-gray-400" size={48} />
-          <p className="text-gray-500 mb-3">No hay operaciones registradas</p>
+          <p className="text-gray-500 mb-3">{t('reports.forms.timeDistribution.noOperations')}</p>
           <Button
             type="button"
             variant="primary"
@@ -128,7 +130,7 @@ export function TimeDistributionSection() {
             onClick={addDistribution}
             icon={<Plus size={16} />}
           >
-            Agregar Primera Operación
+            {t('reports.forms.timeDistribution.addFirstOperation')}
           </Button>
         </div>
       ) : (
@@ -137,22 +139,22 @@ export function TimeDistributionSection() {
             <thead className="bg-gray-50 dark:bg-gray-800">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Código de Operación
+                  {t('reports.forms.timeDistribution.operationCode')}
                 </th>
                 <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Mañana (hrs)
+                  {t('reports.forms.timeDistribution.morningHrs')}
                 </th>
                 <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Tarde (hrs)
+                  {t('reports.forms.timeDistribution.afternoonHrs')}
                 </th>
                 <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Noche (hrs)
+                  {t('reports.forms.timeDistribution.nightHrs')}
                 </th>
                 <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Total
+                  {t('reports.forms.common.total')}
                 </th>
                 <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Acciones
+                  {t('reports.forms.common.actions')}
                 </th>
               </tr>
             </thead>
@@ -160,7 +162,7 @@ export function TimeDistributionSection() {
               {fields.map((field, index) => {
                 const row = distributions[index] || {};
                 const rowTotal = (row.hoursShift1 || 0) + (row.hoursShift2 || 0) + (row.hoursShift3 || 0);
-                
+
                 return (
                   <tr key={field.id} className="hover:bg-gray-100 dark:hover:bg-gray-700">
                     <td className="px-4 py-3">
@@ -168,7 +170,7 @@ export function TimeDistributionSection() {
                         {...register(`timeDistribution.distributions.${index}.operationCodeId`)}
                         className="w-full min-w-62.5 px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-sm"
                       >
-                        <option value="">Seleccionar operación...</option>
+                        <option value="">{t('reports.forms.timeDistribution.selectOperation')}</option>
                         {operationCodes.map((code) => (
                           <option key={code.id} value={code.id}>
                             {code.code} - {code.name}
@@ -239,7 +241,7 @@ export function TimeDistributionSection() {
             </tbody>
             <tfoot className="bg-gray-50 dark:bg-gray-800 font-bold">
               <tr>
-                <td className="px-4 py-3 text-right">TOTALES:</td>
+                <td className="px-4 py-3 text-right">{t('reports.forms.common.totals')}:</td>
                 <td className="px-4 py-3 text-center">
                   <span className={shift1Valid ? 'text-green-700' : 'text-red-600'}>
                     {shift1Total.toFixed(1)}h
@@ -267,12 +269,12 @@ export function TimeDistributionSection() {
         <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg flex items-start gap-3">
           <AlertCircle className="text-yellow-600 shrink-0 mt-0.5" size={20} />
           <div>
-            <p className="text-sm font-medium text-yellow-800">Advertencia: Horas incompletas</p>
+            <p className="text-sm font-medium text-yellow-800">{t('reports.forms.timeDistribution.warningTitle')}</p>
             <p className="text-sm text-yellow-700 mt-1">
-              Cada turno debe sumar exactamente 24 horas. Actualmente:
-              {!shift1Valid && ` Mañana: ${shift1Total}h`}
-              {!shift2Valid && ` Tarde: ${shift2Total}h`}
-              {!shift3Valid && ` Noche: ${shift3Total}h`}
+              {t('reports.forms.timeDistribution.warningText')}
+              {!shift1Valid && ` ${t('reports.shiftLabels.morning')}: ${shift1Total}h`}
+              {!shift2Valid && ` ${t('reports.shiftLabels.afternoon')}: ${shift2Total}h`}
+              {!shift3Valid && ` ${t('reports.shiftLabels.night')}: ${shift3Total}h`}
             </p>
           </div>
         </div>

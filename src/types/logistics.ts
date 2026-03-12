@@ -8,24 +8,11 @@ export type MovementType = 'entry' | 'exit';
 export type RequestType = 'water_bottles' | 'fuel' | 'material' | 'vacuum';
 export type RequestStatus = 'requested' | 'pending' | 'approved' | 'rejected';
 
-export const MOVEMENT_LABELS: Record<MovementType, string> = {
-  entry: 'Entrada',
-  exit: 'Salida',
-};
+/** Iterable list of request types (for dropdowns / filters) */
+export const REQUEST_TYPES: readonly RequestType[] = ['water_bottles', 'fuel', 'material', 'vacuum'] as const;
 
-export const REQUEST_TYPE_LABELS: Record<RequestType, string> = {
-  water_bottles: 'Botellones de Agua',
-  fuel: 'Combustible',
-  material: 'Material',
-  vacuum: 'Vacuum/Cisterna',
-};
-
-export const REQUEST_STATUS_LABELS: Record<RequestStatus, string> = {
-  requested: 'Solicitado',
-  pending: 'En Espera',
-  approved: 'Aprobado',
-  rejected: 'Rechazado',
-};
+/** Iterable list of request statuses (for dropdowns / filters) */
+export const REQUEST_STATUSES: readonly RequestStatus[] = ['requested', 'pending', 'approved', 'rejected'] as const;
 
 export const REQUEST_STATUS_COLORS: Record<RequestStatus, string> = {
   requested: 'blue',

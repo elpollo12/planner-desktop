@@ -1,25 +1,25 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useFormContext, useFieldArray } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
 import { Select, Button } from '../ui';
 import { Plus, Trash2 } from 'lucide-react';
 import type { CompleteReportData } from '../../schemas';
-import { SHIFT_LABELS } from '../../types/report';
 import type { RigPersonnel } from '../../types/rig';
 import { rigPersonnelApi, rigsApi } from '../../lib/api';
 import { useAuthStore } from '../../store/authStore';
 
-const CREW_POSITIONS = [
-  'Perforador',
-  'Encuellador',
-  'Cuñero',
-  'Arenillero',
-  'Mecánico',
-  'Soldador',
-  'Operador Montacargas',
-  'Obrero',
-  'Supervisor',
-  'Otro',
-];
+const CREW_POSITION_KEYS = [
+  'driller',
+  'derrickman',
+  'floorman',
+  'roustabout',
+  'mechanic',
+  'welder',
+  'forkliftOperator',
+  'laborer',
+  'supervisor',
+  'other',
+] as const;
 
 type ShiftType = 'morning' | 'afternoon' | 'night';
 
@@ -31,6 +31,7 @@ function ShiftMembers({
   shiftIndex: number;
   personnel: RigPersonnel[];
 }) {
+  const { t } = useTranslation();
   const { register, control, setValue, watch } = useFormContext<CompleteReportData>();
 
   const { fields, append, remove } = useFieldArray({
@@ -71,7 +72,7 @@ function ShiftMembers({
     <div className="mb-4">
       <div className="flex items-center justify-between mb-3">
         <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-          Miembros de la Cuadrilla
+          {t('reports.forms.crew.members')}
         </h4>
         <Button
           type="button"
@@ -81,15 +82,14 @@ function ShiftMembers({
           disabled={personnel.length === 0}
           icon={<Plus size={16} />}
         >
-          Agregar Miembro
+          {t('reports.forms.crew.addMember')}
         </Button>
       </div>
 
       {personnel.length === 0 ? (
         <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
           <p className="text-sm text-yellow-800 dark:text-yellow-300">
-            No hay personal registrado para este taladro. Registra personal desde la
-            administraci&oacute;n de taladros antes de asignar cuadrillas.
+            {t('reports.forms.crew.noPersonnelWarning')}
           </p>
         </div>
       ) : (
@@ -98,16 +98,16 @@ function ShiftMembers({
             <thead className="bg-gray-50 dark:bg-gray-800">
               <tr>
                 <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                  Personal
+                  {t('reports.forms.crew.personnel')}
                 </th>
                 <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                  Posici&oacute;n
+                  {t('reports.forms.crew.position')}
                 </th>
                 <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase w-24">
-                  Horas
+                  {t('reports.forms.crew.hours')}
                 </th>
                 <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase w-20">
-                  Acciones
+                  {t('reports.forms.common.actions')}
                 </th>
               </tr>
             </thead>
@@ -115,7 +115,7 @@ function ShiftMembers({
               {fields.length === 0 ? (
                 <tr>
                   <td colSpan={4} className="px-3 py-8 text-center text-gray-500 text-sm">
-                    No hay miembros en este turno. Haz clic en "Agregar Miembro" para comenzar.
+                    {t('reports.forms.crew.noMembersHint')}
                   </td>
                 </tr>
               ) : (
@@ -126,7 +126,7 @@ function ShiftMembers({
                   // Build options: current selection + available
                   const selectedPerson = personnel.find((p) => p.id === currentPersonnelId);
                   const personnelOptions = [
-                    { value: '', label: 'Seleccionar personal...' },
+                    { value: '', label: t('reports.forms.crew.selectPersonnel') },
                     // Include current selection even if not in available list
                     ...(selectedPerson && !available.find((p) => p.id === selectedPerson.id)
                       ? [{ value: selectedPerson.id, label: `${selectedPerson.name}${selectedPerson.ci ? ` (${selectedPerson.ci})` : ''}` }]
@@ -151,8 +151,8 @@ function ShiftMembers({
                           {...register(
                             `crew.shifts.${shiftIndex}.members.${index}.position` as any
                           )}
-                          options={CREW_POSITIONS.map((pos) => ({ value: pos, label: pos }))}
-                          placeholder="Seleccionar..."
+                          options={CREW_POSITION_KEYS.map((key) => ({ value: t(`reports.forms.crew.positions.${key}`), label: t(`reports.forms.crew.positions.${key}`) }))}
+                          placeholder={t('reports.forms.common.select')}
                         />
                       </td>
                       <td className="px-3 py-2">
@@ -191,6 +191,7 @@ function ShiftMembers({
 }
 
 export function CrewSection() {
+  const { t } = useTranslation();
   const [activeShift, setActiveShift] = useState<ShiftType>('morning');
   const { register, watch } = useFormContext<CompleteReportData>();
   const { sessionToken } = useAuthStore();
@@ -227,13 +228,13 @@ export function CrewSection() {
   return (
     <div className="p-6">
       <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-6">
-        Cuadrilla por Turno
+        {t('reports.forms.crew.title')}
       </h3>
 
       {!rigName && (
         <div className="mb-6 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
           <p className="text-sm text-yellow-800 dark:text-yellow-300">
-            Selecciona un taladro en el encabezado del reporte para poder asignar cuadrillas.
+            {t('reports.forms.crew.selectRigWarning')}
           </p>
         </div>
       )}
@@ -263,7 +264,7 @@ export function CrewSection() {
                   : undefined
               }
             >
-              {SHIFT_LABELS[shift]}
+              {t(`reports.shiftLabels.${shift}`)}
             </button>
           ))}
         </nav>
@@ -273,7 +274,7 @@ export function CrewSection() {
       <div key={`shift-times-${shiftIndex}`} className="grid grid-cols-2 gap-4 mb-6">
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Hora Inicio
+            {t('reports.forms.crew.shiftStart')}
           </label>
           <input
             type="time"
@@ -283,7 +284,7 @@ export function CrewSection() {
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Hora Fin
+            {t('reports.forms.crew.shiftEnd')}
           </label>
           <input
             type="time"
@@ -295,7 +296,7 @@ export function CrewSection() {
 
       {/* Members Table */}
       {loading ? (
-        <div className="text-center py-8 text-gray-500">Cargando personal del taladro...</div>
+        <div className="text-center py-8 text-gray-500">{t('reports.forms.crew.loadingPersonnel')}</div>
       ) : (
         <ShiftMembers
           key={`shift-${shiftIndex}`}
@@ -307,8 +308,7 @@ export function CrewSection() {
       {/* Info Box */}
       <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg">
         <p className="text-sm text-blue-800 dark:text-blue-300">
-          <strong>Nota:</strong> Selecciona los miembros de la cuadrilla registrados en el taladro
-          para cada turno. Las horas trabajadas son opcionales pero recomendadas.
+          <strong>{t('reports.forms.crew.noteLabel')}</strong> {t('reports.forms.crew.noteText')}
         </p>
       </div>
     </div>

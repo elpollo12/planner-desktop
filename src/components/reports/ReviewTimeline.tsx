@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { CheckCircle, XCircle, MessageSquare, RotateCcw, AlertTriangle } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { reportReviewsApi, usersApi } from '../../lib/api';
 import { formatDateTime } from '../../lib/dateUtils';
 import type { ReportReview, ReviewAction } from '../../types/report';
-import { REVIEW_ACTION_LABELS } from '../../types/report';
 
 interface ReviewTimelineProps {
   reportId: string;
@@ -40,6 +40,7 @@ const ACTION_CONFIG: Record<ReviewAction, {
 };
 
 export default function ReviewTimeline({ reportId, refreshKey }: ReviewTimelineProps) {
+  const { t } = useTranslation();
   const { sessionToken } = useAuthStore();
   const [reviews, setReviews] = useState<ReportReview[]>([]);
   const [reviewerNames, setReviewerNames] = useState<Record<string, string>>({});
@@ -65,7 +66,7 @@ export default function ReviewTimeline({ reportId, refreshKey }: ReviewTimelineP
             const u = await usersApi.get(sessionToken, uid);
             names[uid] = u.fullName || u.username;
           } catch {
-            names[uid] = 'Usuario desconocido';
+            names[uid] = t('reports.review.unknownUser');
           }
         }),
       );
@@ -88,7 +89,7 @@ export default function ReviewTimeline({ reportId, refreshKey }: ReviewTimelineP
   if (reviews.length === 0) {
     return (
       <p className="text-sm text-gray-500 dark:text-gray-400 py-4 text-center">
-        No hay historial de revisiones para este reporte.
+        {t('reports.review.noHistory')}
       </p>
     );
   }
@@ -117,10 +118,10 @@ export default function ReviewTimeline({ reportId, refreshKey }: ReviewTimelineP
             <div className={`pb-6 ${isLast ? 'pb-0' : ''} flex-1 min-w-0`}>
               <div className="flex items-baseline gap-2 flex-wrap">
                 <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                  {REVIEW_ACTION_LABELS[review.action] || review.action}
+                  {t(`reports.reviewActionLabels.${review.action}`)}
                 </span>
                 <span className="text-xs text-gray-500 dark:text-gray-400">
-                  por {reviewerNames[review.reviewerId] || 'Cargando...'}
+                  {t('reports.review.by')} {reviewerNames[review.reviewerId] || t('reports.review.loading')}
                 </span>
                 <span className="text-xs text-gray-400 dark:text-gray-500">
                   {formatDateTime(review.createdAt)}

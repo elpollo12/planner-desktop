@@ -5,6 +5,7 @@ import {
   ChevronDown, ChevronUp, Plus, Pencil, Trash2, AlertTriangle,
 } from 'lucide-react';
 import { areasApi, operationCodesApi, materialsApi, crewPositionsApi } from '@/lib/api';
+import { translateCrewPositionName } from '@/lib/translateCatalogs';
 import { useAuthStore } from '@/store/authStore';
 import { backgroundPush } from '@/lib/syncHelper';
 import { useModal } from '@/store/modalStore';
@@ -460,7 +461,7 @@ function PositionsSection() {
 
   const columns = [
     { key: 'name', header: t('admin.forms.nameLabel'), render: (p: CrewPosition) => (
-      <span className="font-medium text-gray-900 dark:text-gray-100">{p.name}</span>
+      <span className="font-medium text-gray-900 dark:text-gray-100">{translateCrewPositionName(p.name, t)}</span>
     )},
     { key: 'sortOrder', header: t('admin.forms.orderLabel'), render: (p: CrewPosition) => (
       <span className="text-gray-500 dark:text-gray-400">{p.sortOrder}</span>

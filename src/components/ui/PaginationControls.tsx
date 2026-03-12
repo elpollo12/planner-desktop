@@ -59,9 +59,8 @@ export function PaginationControls({
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-4">
           <span className="text-sm text-gray-700 dark:text-gray-300">
-            {t('pagination.showing')} <span className="font-medium">{startItem}</span> -{' '}
-            <span className="font-medium">{endItem}</span> {t('pagination.of')}{' '}
-            <span className="font-medium">{totalItems}</span> {resolvedItemLabel}
+            {t('pagination.showing', { from: startItem, to: endItem, total: totalItems })}{' '}
+            {resolvedItemLabel}
           </span>
           {showPageSizeSelector && (
             <select

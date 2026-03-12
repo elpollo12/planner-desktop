@@ -1,10 +1,12 @@
-﻿import { useFormContext, useFieldArray } from 'react-hook-form';
+import { useFormContext, useFieldArray } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
 import { Button, Input } from '../ui';
 import { Plus, Trash2 } from 'lucide-react';
 import type { CompleteReportData } from '../../schemas';
-import { SHIFT_LABELS } from '../../types/report';
 
 export function LithologySection() {
+  const { t } = useTranslation();
+
   const {
     register,
     control,
@@ -54,7 +56,7 @@ export function LithologySection() {
       {/* Parámetros de Perforación */}
       <div>
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Parámetros de Perforación</h3>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{t('reports.forms.lithology.title')}</h3>
           <Button
             type="button"
             variant="secondary"
@@ -62,13 +64,13 @@ export function LithologySection() {
             onClick={addParameter}
             icon={<Plus size={16} />}
           >
-            Agregar Parámetro
+            {t('reports.forms.lithology.addParameter')}
           </Button>
         </div>
 
         {paramFields.length === 0 ? (
           <div className="text-center py-8 bg-gray-50 dark:bg-gray-800 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600">
-            <p className="text-gray-500 mb-3">No hay parámetros registrados</p>
+            <p className="text-gray-500 mb-3">{t('reports.forms.lithology.noParameters')}</p>
             <Button
               type="button"
               variant="primary"
@@ -76,7 +78,7 @@ export function LithologySection() {
               onClick={addParameter}
               icon={<Plus size={16} />}
             >
-              Agregar Primer Parámetro
+              {t('reports.forms.lithology.addFirstParameter')}
             </Button>
           </div>
         ) : (
@@ -84,7 +86,7 @@ export function LithologySection() {
             {paramFields.map((field, index) => (
               <div key={field.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-800">
                 <div className="flex justify-between items-center mb-4">
-                  <h4 className="font-medium text-gray-900 dark:text-gray-100">Registro #{index + 1}</h4>
+                  <h4 className="font-medium text-gray-900 dark:text-gray-100">{t('reports.forms.lithology.recordNumber', { number: index + 1 })}</h4>
                   <Button
                     type="button"
                     variant="secondary"
@@ -93,89 +95,89 @@ export function LithologySection() {
                     icon={<Trash2 size={16} />}
                     className="text-red-600"
                   >
-                    Eliminar
+                    {t('reports.forms.common.delete')}
                   </Button>
                 </div>
 
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Turno
+                      {t('reports.forms.common.shift')}
                     </label>
                     <select
                       {...register(`lithology.drillingParameters.${index}.shift`)}
                       className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-sm"
                     >
-                      <option value="">Seleccionar...</option>
-                      <option value="morning">{SHIFT_LABELS.morning}</option>
-                      <option value="afternoon">{SHIFT_LABELS.afternoon}</option>
-                      <option value="night">{SHIFT_LABELS.night}</option>
+                      <option value="">{t('reports.forms.common.select')}</option>
+                      <option value="morning">{t('reports.shiftLabels.morning')}</option>
+                      <option value="afternoon">{t('reports.shiftLabels.afternoon')}</option>
+                      <option value="night">{t('reports.shiftLabels.night')}</option>
                     </select>
                   </div>
 
                   <Input
-                    label="Prof. Desde (ft)"
+                    label={t('reports.forms.lithology.depthFrom')}
                     {...register(`lithology.drillingParameters.${index}.depthFrom`)}
                     placeholder="1000"
                   />
 
                   <Input
-                    label="Prof. Hasta (ft)"
+                    label={t('reports.forms.lithology.depthTo')}
                     {...register(`lithology.drillingParameters.${index}.depthTo`)}
                     error={errors.lithology?.drillingParameters?.[index]?.depthTo?.message}
                     placeholder="1050"
                   />
 
                   <Input
-                    label="Core #"
+                    label={t('reports.forms.lithology.coreNumber')}
                     {...register(`lithology.drillingParameters.${index}.coreNumber`)}
                     placeholder="C-01"
                   />
 
                   <Input
-                    label="RPM Rotaria"
+                    label={t('reports.forms.lithology.rotaryRpm')}
                     {...register(`lithology.drillingParameters.${index}.rotaryRpm`)}
                     placeholder="120"
                   />
 
                   <Input
-                    label="Peso Mecha (klb)"
+                    label={t('reports.forms.lithology.bitWeight')}
                     {...register(`lithology.drillingParameters.${index}.bitWeight`)}
                     placeholder="25"
                   />
 
                   <Input
-                    label="Presión Bomba (psi)"
+                    label={t('reports.forms.lithology.pumpPressure')}
                     {...register(`lithology.drillingParameters.${index}.pumpPressure`)}
                     placeholder="2500"
                   />
 
                   <Input
-                    label="Bomba #"
+                    label={t('reports.forms.lithology.pumpNumber')}
                     {...register(`lithology.drillingParameters.${index}.pumpNumber`)}
                     placeholder="1"
                   />
 
                   <Input
-                    label="Liner Bomba"
+                    label={t('reports.forms.lithology.pumpLiner')}
                     {...register(`lithology.drillingParameters.${index}.pumpLiner`)}
                     placeholder='6"'
                   />
 
                   <Input
-                    label="SPM"
+                    label={t('reports.forms.lithology.spm')}
                     {...register(`lithology.drillingParameters.${index}.pumpSpm`)}
                     placeholder="80"
                   />
 
                   <Input
-                    label="Total GPM"
+                    label={t('reports.forms.lithology.totalGpm')}
                     {...register(`lithology.drillingParameters.${index}.totalGpm`)}
                     placeholder="450"
                   />
 
                   <Input
-                    label="Método Usado"
+                    label={t('reports.forms.lithology.methodUsed')}
                     {...register(`lithology.drillingParameters.${index}.methodUsed`)}
                     placeholder="Rotario, PDM, etc"
                     className="col-span-2"
@@ -183,13 +185,13 @@ export function LithologySection() {
 
                   <div className="col-span-full">
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Notas Litológicas
+                      {t('reports.forms.lithology.lithologyNotes')}
                     </label>
                     <textarea
                       {...register(`lithology.drillingParameters.${index}.lithologyNotes`)}
                       rows={3}
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-primary-500 focus:border-primary-500"
-                      placeholder="Descripción de la formación, litología observada, etc."
+                      placeholder={t('reports.forms.lithology.lithologyNotesPlaceholder')}
                     />
                   </div>
                 </div>
@@ -202,7 +204,7 @@ export function LithologySection() {
       {/* Historial de Desviación */}
       <div>
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Historial de Desviación</h3>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{t('reports.forms.lithology.deviationTitle')}</h3>
           <Button
             type="button"
             variant="secondary"
@@ -210,13 +212,13 @@ export function LithologySection() {
             onClick={addDeviation}
             icon={<Plus size={16} />}
           >
-            Agregar Medición
+            {t('reports.forms.lithology.addDeviation')}
           </Button>
         </div>
 
         {deviationFields.length === 0 ? (
           <div className="text-center py-8 bg-gray-50 dark:bg-gray-800 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600">
-            <p className="text-gray-500 mb-3">No hay mediciones de desviación</p>
+            <p className="text-gray-500 mb-3">{t('reports.forms.lithology.noDeviations')}</p>
             <Button
               type="button"
               variant="primary"
@@ -224,7 +226,7 @@ export function LithologySection() {
               onClick={addDeviation}
               icon={<Plus size={16} />}
             >
-              Agregar Primera Medición
+              {t('reports.forms.lithology.addFirstDeviation')}
             </Button>
           </div>
         ) : (
@@ -233,22 +235,22 @@ export function LithologySection() {
               <thead className="bg-gray-50 dark:bg-gray-800">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                    Profundidad (ft)
+                    {t('reports.forms.lithology.depthFt')}
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                    Desviación (°)
+                    {t('reports.forms.lithology.deviationDeg')}
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                    Dirección (°)
+                    {t('reports.forms.lithology.directionDeg')}
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                    TVO (ft)
+                    {t('reports.forms.lithology.tvoFt')}
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                    Desp. Horizontal (ft)
+                    {t('reports.forms.lithology.horizontalDisplacement')}
                   </th>
                   <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                    Acciones
+                    {t('reports.forms.common.actions')}
                   </th>
                 </tr>
               </thead>

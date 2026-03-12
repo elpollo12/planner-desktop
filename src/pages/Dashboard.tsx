@@ -163,7 +163,7 @@ export default function Dashboard() {
 
       {/* Quick Actions */}
       {quickActions.length === 0 ? (
-        <Card>
+        <Card className=''>
           <div className="flex flex-col items-center justify-center py-12 text-center gap-4">
             <ShieldOff size={48} className="text-gray-300 dark:text-gray-600" />
             <div>
@@ -182,7 +182,7 @@ export default function Dashboard() {
               <button
                 key={action.href}
                 onClick={() => navigate(action.href)}
-                className="p-6 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg hover:bg-primary-50 dark:hover:bg-gray-700 transition text-left"
+                className="hover:cursor-pointer p-6 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg hover:bg-primary-50 dark:hover:bg-gray-700 transition text-left"
                 onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--color-primary-500)'}
                 onMouseLeave={(e) => e.currentTarget.style.borderColor = ''}
               >

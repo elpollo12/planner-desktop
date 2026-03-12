@@ -78,13 +78,13 @@ export function Sidebar({ className = '' }: SidebarProps) {
           {logoPath ? (
             <img
               src={logoPath}
-              alt="Logo de la empresa"
+              alt={t('sidebar.companyLogo')}
               className="max-h-full max-w-full object-contain"
             />
           ) : (
             <div className="w-full">
               <h1 className="text-xl font-bold text-primary-500">DDR System</h1>
-              <p className="text-xs text-gray-500 mt-1">Reportes Petroleros</p>
+              <p className="text-xs text-gray-500 mt-1">{t('sidebar.subtitle')}</p>
             </div>
           )}
         </div>

@@ -24,9 +24,11 @@ import type {
 } from '@/types/rig';
 import type { Company } from '@/types/company';
 
+import { translateCrewPositionName } from '@/lib/translateCatalogs';
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const CREW_POSITIONS = [
+const CREW_POSITION_KEYS = [
   'Perforador', 'Encuellador', 'Cuñero', 'Arenillero',
   'Mecánico', 'Soldador', 'Operador Montacargas',
   'Obrero', 'Supervisor', 'Otro',
@@ -492,7 +494,7 @@ export default function RigUpdateForm({ rig, onSubmit, onContractorsChanged }: R
 
     const positionOptions = [
       { value: '', label: t('admin.forms.select') },
-      ...CREW_POSITIONS.map((p) => ({ value: p, label: p })),
+      ...CREW_POSITION_KEYS.map((p) => ({ value: p, label: translateCrewPositionName(p, t) })),
     ];
 
     return (
@@ -583,7 +585,7 @@ export default function RigUpdateForm({ rig, onSubmit, onContractorsChanged }: R
                     <tr key={p.id} className={!p.active ? 'opacity-50' : ''}>
                       <td className="px-2 py-2 text-gray-900 dark:text-gray-100">{p.name}</td>
                       <td className="px-2 py-2 text-gray-500">{p.ci ?? '—'}</td>
-                      <td className="px-2 py-2 text-gray-600 dark:text-gray-300">{p.defaultPosition}</td>
+                      <td className="px-2 py-2 text-gray-600 dark:text-gray-300">{translateCrewPositionName(p.defaultPosition, t)}</td>
                       <td className="px-2 py-2">
                         <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${p.active ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-600'}`}>
                           {p.active ? t('admin.forms.active') : t('admin.forms.inactive')}

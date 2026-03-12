@@ -94,8 +94,34 @@
     "es": "Español",
     "en": "English"
   },
+  "common": {
+    "noData": "No hay datos para mostrar",
+    "noResults": "Sin resultados",
+    "search": "Buscar..."
+  },
+  "incidentTypes": {
+    "safety": "Seguridad",
+    "mechanical": "Mecánica",
+    "operational": "Operacional",
+    "environmental": "Ambiental",
+    "hse": "HSE",
+    "other": "Otro"
+  },
+  "crewPositions": {
+    "driller": "Perforador",
+    "derrickman": "Encuellador",
+    "floorman": "Cuñero",
+    "roustabout": "Arenillero",
+    "mechanic": "Mecánico",
+    "welder": "Soldador",
+    "forkliftOperator": "Operador Montacargas",
+    "laborer": "Obrero",
+    "supervisor": "Supervisor",
+    "other": "Otro"
+  },
   "pagination": {
-    "showing": "Mostrando",
+    "showing": "Mostrando {{from}} a {{to}} de {{total}}",
+    "show": "Mostrar:",
     "of": "de",
     "results": "resultados",
     "page": "Página",
@@ -352,7 +378,26 @@
       "ph": "pH",
       "solids": "Sólidos",
       "approveModalTitle": "Aprobar Reporte",
-      "rejectModalTitle": "Rechazar Reporte"
+      "rejectModalTitle": "Rechazar Reporte",
+      "reportTitle": "Reporte DDR #{{number}}"
+    },
+    "shiftLabels": {
+      "morning": "Mañana",
+      "afternoon": "Tarde",
+      "night": "Noche"
+    },
+    "reviewActionLabels": {
+      "approved": "Aprobado",
+      "rejected": "Rechazado",
+      "revision_requested": "Revisión solicitada",
+      "comment": "Comentario",
+      "resubmitted": "Reenviado"
+    },
+    "review": {
+      "unknownUser": "Usuario desconocido",
+      "noHistory": "No hay historial de revisiones para este reporte.",
+      "by": "por",
+      "loading": "Cargando..."
     },
     "approvals": {
       "title": "Aprobaciones",
@@ -473,6 +518,149 @@
       "snapshotDetail": "¿Deseas precargar los datos del último reporte? Esto incluye cuadrilla, distribución de tiempo, mechas, lodo y demás secciones.",
       "snapshotReject": "No, comenzar vacío",
       "snapshotConfirm": "Sí, precargar datos"
+    },
+    "forms": {
+      "common": {
+        "shift": "Turno",
+        "select": "Seleccionar...",
+        "delete": "Eliminar",
+        "actions": "Acciones",
+        "total": "Total",
+        "totals": "TOTALES"
+      },
+      "crew": {
+        "title": "Cuadrilla por Turno",
+        "members": "Miembros de la Cuadrilla",
+        "addMember": "Agregar Miembro",
+        "noPersonnelWarning": "No hay personal registrado para este taladro. Registra personal desde la administración de taladros antes de asignar cuadrillas.",
+        "noMembersHint": "No hay miembros en este turno. Haz clic en \"Agregar Miembro\" para comenzar.",
+        "selectPersonnel": "Seleccionar personal...",
+        "personnel": "Personal",
+        "position": "Posición",
+        "hours": "Horas",
+        "shiftStart": "Hora Inicio",
+        "shiftEnd": "Hora Fin",
+        "loadingPersonnel": "Cargando personal del taladro...",
+        "selectRigWarning": "Selecciona un taladro en el encabezado del reporte para poder asignar cuadrillas.",
+        "noteLabel": "Nota:",
+        "noteText": "Selecciona los miembros de la cuadrilla registrados en el taladro para cada turno. Las horas trabajadas son opcionales pero recomendadas.",
+        "positions": {
+          "driller": "Perforador",
+          "derrickman": "Encuellador",
+          "floorman": "Cuñero",
+          "roustabout": "Arenillero",
+          "mechanic": "Mecánico",
+          "welder": "Soldador",
+          "forkliftOperator": "Operador Montacargas",
+          "laborer": "Obrero",
+          "supervisor": "Supervisor",
+          "other": "Otro"
+        }
+      },
+      "bitRecord": {
+        "title": "Record de Mechas",
+        "addBit": "Agregar Mecha",
+        "noBits": "No hay mechas registradas",
+        "addFirstBit": "Agregar Primera Mecha",
+        "bitNumber": "Mecha #{{number}}",
+        "size": "Tamaño",
+        "manufacturerCode": "Código Fabricante",
+        "brand": "Marca",
+        "bitType": "Tipo de Mecha",
+        "serialNumber": "Número de Serie",
+        "jets": "Chorros",
+        "tfa": "TFA",
+        "depthOut": "Prof. Sacada (ft)",
+        "depthIn": "Prof. Metida (ft)",
+        "footage": "Perf. Total (ft)",
+        "hoursTotal": "Horas Totales",
+        "dpTubos": "DP Tubos",
+        "kelly": "Kelly"
+      },
+      "mud": {
+        "title": "Propiedades del Lodo",
+        "addMeasurement": "Agregar Medición",
+        "noMeasurements": "No hay mediciones registradas",
+        "addFirstMeasurement": "Agregar Primera Medición",
+        "measurementNumber": "Medición #{{number}}",
+        "hour": "Hora",
+        "weight": "Peso (ppg)",
+        "viscosity": "Viscosidad (seg)",
+        "pvp": "PVP (cps)",
+        "gels": "Gels (10'/10\")",
+        "filtrate": "Filtrado (ml)",
+        "ph": "pH",
+        "solids": "Sólidos (%)",
+        "additivesTitle": "Aditivos y Químicos",
+        "addAdditive": "Agregar Aditivo",
+        "noAdditives": "No hay aditivos registrados",
+        "addFirstAdditive": "Agregar Primer Aditivo",
+        "additiveType": "Tipo de Aditivo",
+        "quantity": "Cantidad"
+      },
+      "timeDistribution": {
+        "title": "Distribución de Tiempo por Operación",
+        "subtitle": "Cada turno debe sumar exactamente 24 horas",
+        "loadingCodes": "Cargando códigos de operación...",
+        "addOperation": "Agregar Operación",
+        "noOperations": "No hay operaciones registradas",
+        "addFirstOperation": "Agregar Primera Operación",
+        "operationCode": "Código de Operación",
+        "selectOperation": "Seleccionar operación...",
+        "morningHrs": "Mañana (hrs)",
+        "afternoonHrs": "Tarde (hrs)",
+        "nightHrs": "Noche (hrs)",
+        "shiftMorning": "Turno Mañana",
+        "shiftAfternoon": "Turno Tarde",
+        "shiftNight": "Turno Noche",
+        "warningTitle": "Advertencia: Horas incompletas",
+        "warningText": "Cada turno debe sumar exactamente 24 horas. Actualmente:"
+      },
+      "lithology": {
+        "title": "Parámetros de Perforación",
+        "addParameter": "Agregar Parámetro",
+        "noParameters": "No hay parámetros registrados",
+        "addFirstParameter": "Agregar Primer Parámetro",
+        "recordNumber": "Registro #{{number}}",
+        "depthFrom": "Prof. Desde (ft)",
+        "depthTo": "Prof. Hasta (ft)",
+        "coreNumber": "Core #",
+        "rotaryRpm": "RPM Rotaria",
+        "bitWeight": "Peso Mecha (klb)",
+        "pumpPressure": "Presión Bomba (psi)",
+        "pumpNumber": "Bomba #",
+        "pumpLiner": "Liner Bomba",
+        "spm": "SPM",
+        "totalGpm": "Total GPM",
+        "methodUsed": "Método Usado",
+        "lithologyNotes": "Notas Litológicas",
+        "lithologyNotesPlaceholder": "Descripción de la formación, litología observada, etc.",
+        "deviationTitle": "Historial de Desviación",
+        "addDeviation": "Agregar Medición",
+        "noDeviations": "No hay mediciones de desviación",
+        "addFirstDeviation": "Agregar Primera Medición",
+        "depthFt": "Profundidad (ft)",
+        "deviationDeg": "Desviación (°)",
+        "directionDeg": "Dirección (°)",
+        "tvoFt": "TVO (ft)",
+        "horizontalDisplacement": "Desp. Horizontal (ft)"
+      },
+      "observations": {
+        "title": "Log de Operaciones y Observaciones",
+        "subtitle": "Registro cronológico de todas las actividades realizadas",
+        "addOperation": "Agregar Operación",
+        "noOperations": "No hay operaciones registradas",
+        "addFirstOperation": "Agregar Primera Operación",
+        "operationNumber": "Operación #{{number}}",
+        "timeFrom": "Hora Inicio",
+        "timeTo": "Hora Fin",
+        "duration": "Duración",
+        "operationCode": "Código Op.",
+        "details": "Detalles de la Operación",
+        "detailsPlaceholder": "Descripción detallada de la operación, observaciones, incidentes, etc.",
+        "codesLabel": "Códigos comunes:",
+        "codesText": "DR (Drilling/Perforando), CI (Circulate/Circulando), RIH (Run In Hole), POOH (Pull Out of Hole), TD (Testing), WOC (Wait On Cement), RM (Repair/Maintenance), etc."
+      }
     }
   },
   "admin": {
@@ -1166,6 +1354,20 @@
     }
   },
   "logistics": {
+    "page": {
+      "title": "Logística",
+      "subtitle": "Gestión de inventario y solicitudes",
+      "selectRig": "Selecciona un taladro para gestionar la logística",
+      "selectRigHint": "Elige un taladro en el selector de arriba para ver su inventario y solicitudes"
+    },
+    "tabs": {
+      "waterBottles": "Botellones",
+      "fuel": "Combustible",
+      "materials": "Materiales",
+      "vacuum": "Vacuum",
+      "requests": "Solicitudes",
+      "reports": "Reportes"
+    },
     "common": {
       "loading": "Cargando...",
       "noRecords": "No hay registros",
@@ -1200,6 +1402,38 @@
       "generateReport": "Generar Reporte",
       "generateReports": "Generar Reportes",
       "unknown": "Desconocido"
+    },
+    "movementLabels": {
+      "entry": "Entrada",
+      "exit": "Salida"
+    },
+    "requestTypeLabels": {
+      "water_bottles": "Botellones de Agua",
+      "fuel": "Combustible",
+      "material": "Material",
+      "vacuum": "Vacuum/Cisterna"
+    },
+    "requestStatusLabels": {
+      "requested": "Solicitado",
+      "pending": "En Espera",
+      "approved": "Aprobado",
+      "rejected": "Rechazado"
+    },
+    "modals": {
+      "close": "Cerrar",
+      "registeredBy": "Registrado por",
+      "material": "Material",
+      "action": "Acción",
+      "requestDate": "Fecha de solicitud",
+      "detail": "Detalle",
+      "status": "Estado",
+      "requestedBy": "Solicitado por",
+      "statusChangedBy": "Estado cambiado por",
+      "stockShownFor": "Stock mostrado para:",
+      "noMaterialsInCatalog": "No hay materiales registrados en el catálogo.",
+      "unit": "Unidad",
+      "createdBy": "Creado por",
+      "catalogLoadError": "Error al cargar catálogo de materiales"
     },
     "rigSelector": {
       "loadingRigs": "Cargando taladros...",
@@ -1384,6 +1618,12 @@
     }
   },
   "incidents": {
+    "page": {
+      "title": "Incidencias",
+      "subtitle": "Registro de incidencias por taladro",
+      "selectRig": "Selecciona un taladro para gestionar incidencias",
+      "selectRigHint": "Elige un taladro en el selector de arriba para ver y crear incidencias"
+    },
     "common": {
       "close": "Cerrar",
       "cancel": "Cancelar",
@@ -1470,6 +1710,15 @@
     }
   },
   "cloudLogs": {
+    "page": {
+      "title": "Registros Diarios",
+      "subtitle": "Log de reportes diarios y mensajes por taladro",
+      "from": "Desde",
+      "to": "Hasta",
+      "clearDates": "Limpiar fechas",
+      "selectRig": "Selecciona un taladro para ver los registros diarios",
+      "selectRigHint": "Los datos se obtienen directamente desde la nube"
+    },
     "messageDetail": {
       "from": "De",
       "group": "Grupo",
@@ -1556,7 +1805,8 @@
       "period": "Período",
       "generated": "Generado",
       "page": "Página {{current}} de {{total}}",
-      "total": "TOTAL"
+      "total": "TOTAL",
+      "detailed": "Detallado"
     },
     "ddr": {
       "title": "Reporte DDR #{{num}}",
@@ -1711,6 +1961,41 @@
       "ciCol": "CI",
       "pdfExportSuccess": "PDF exportado exitosamente",
       "pdfExportError": "Error al exportar PDF"
+    }
+  },
+  "breadcrumbs": {
+    "reports": "Reportes",
+    "new": "Nuevo",
+    "edit": "Editar",
+    "view": "Ver",
+    "logistics": "Logística",
+    "approvals": "Aprobaciones",
+    "reportNumber": "Reporte #{{number}}",
+    "report": "Reporte",
+    "loading": "Cargando..."
+  },
+  "sidebar": {
+    "companyLogo": "Logo de la empresa",
+    "subtitle": "Reportes Petroleros"
+  },
+  "notifications": {
+    "title": "Notificaciones",
+    "unread": "{{count}} sin leer",
+    "markAll": "Marcar todas",
+    "retentionSettings": "Configuración de retención",
+    "deleteReadAfter": "Borrar leídas tras:",
+    "empty": "No hay notificaciones",
+    "previous": "Anterior",
+    "next": "Siguiente",
+    "categories": {
+      "all": "Todas",
+      "logistics": "Logística",
+      "incidents": "Incidencias",
+      "reports": "Reportes"
+    },
+    "retention": {
+      "days": "{{count}} días",
+      "indefinite": "Indefinido"
     }
   }
 }

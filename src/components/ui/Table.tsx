@@ -1,4 +1,5 @@
 ﻿import { ReactNode, useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface Column<T> {
@@ -29,7 +30,7 @@ export function Table<T>({
   columns,
   data,
   onRowClick,
-  emptyMessage = 'No hay datos para mostrar',
+  emptyMessage,
   className = '',
   striped = true,
   hoverable = true,
@@ -37,6 +38,7 @@ export function Table<T>({
   pageSize: initialPageSize = 10,
   pageSizeOptions = [5, 10, 20, 50, 100],
 }: TableProps<T>) {
+  const { t } = useTranslation();
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(initialPageSize);
 
@@ -113,7 +115,7 @@ export function Table<T>({
                   colSpan={columns.length}
                   className="text-center text-sm text-gray-500"
                 >
-                  {emptyMessage}
+                  {emptyMessage || t('common.noData')}
                 </td>
               </tr>
             ) : (
@@ -212,20 +214,17 @@ export function Table<T>({
 
           <div className="flex items-center justify-between mt-2 -mx-4">
             <div className="text-sm text-gray-700 dark:text-gray-300">
-              Mostrando{' '}
-              <span className="font-medium">
-                {Math.min((currentPage - 1) * pageSize + 1, data.length)}
-              </span>{' '}
-              a{' '}
-              <span className="font-medium">
-                {Math.min(currentPage * pageSize, data.length)}
-              </span>{' '}
-              de <span className="font-medium">{data.length}</span> resultados
+              {t('pagination.showing', {
+                from: Math.min((currentPage - 1) * pageSize + 1, data.length),
+                to: Math.min(currentPage * pageSize, data.length),
+                total: data.length,
+              })}{' '}
+              {t('pagination.results')}
             </div>
 
             <div className="flex items-center gap-2">
               <label htmlFor="pageSize" className="text-sm text-gray-700 dark:text-gray-300">
-                Mostrar:
+                {t('pagination.show')}
               </label>
               <select
                 id="pageSize"

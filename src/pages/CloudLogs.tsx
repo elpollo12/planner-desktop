@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { MainLayout } from '../components/layout';
 import { Card } from '../components/ui';
 import { CloudLogsList } from '../components/cloudLogs/CloudLogsList';
@@ -9,6 +10,7 @@ import { ClipboardList } from 'lucide-react';
 import type { RigWithArea } from '../types/rig';
 
 export default function CloudLogsPage() {
+  const { t } = useTranslation();
   const { sessionToken } = useAuthStore();
 
   const [accessibleRigs, setAccessibleRigs] = useState<RigWithArea[]>([]);
@@ -45,8 +47,8 @@ export default function CloudLogsPage() {
 
   return (
     <MainLayout
-      title="Registros Diarios"
-      subtitle="Log de reportes diarios y mensajes por taladro"
+      title={t('cloudLogs.page.title')}
+      subtitle={t('cloudLogs.page.subtitle')}
     >
       {/* Rig Selector */}
       <div className="mb-4">
@@ -64,7 +66,7 @@ export default function CloudLogsPage() {
         <div className="mb-4 flex items-center gap-3 flex-wrap">
           <div className="flex items-center gap-2">
             <label className="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
-              Desde
+              {t('cloudLogs.page.from')}
             </label>
             <input
               type="date"
@@ -75,7 +77,7 @@ export default function CloudLogsPage() {
           </div>
           <div className="flex items-center gap-2">
             <label className="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
-              Hasta
+              {t('cloudLogs.page.to')}
             </label>
             <input
               type="date"
@@ -89,7 +91,7 @@ export default function CloudLogsPage() {
               onClick={() => { setDateFrom(''); setDateTo(''); }}
               className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 underline"
             >
-              Limpiar fechas
+              {t('cloudLogs.page.clearDates')}
             </button>
           )}
         </div>
@@ -101,10 +103,10 @@ export default function CloudLogsPage() {
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <ClipboardList size={48} className="text-gray-300 dark:text-gray-600 mb-4" />
             <p className="text-gray-500 dark:text-gray-400 text-lg font-medium">
-              Selecciona un taladro para ver los registros diarios
+              {t('cloudLogs.page.selectRig')}
             </p>
             <p className="text-gray-400 dark:text-gray-500 text-sm mt-1">
-              Los datos se obtienen directamente desde la nube
+              {t('cloudLogs.page.selectRigHint')}
             </p>
           </div>
         </Card>

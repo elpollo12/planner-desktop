@@ -27,7 +27,6 @@ import type {
   TimeDistribution, MudRecord, MudAdditive,
   DrillingParameters, DeviationHistory, OperationsLog,
 } from '../types/report';
-import { SHIFT_LABELS } from '../types/report';
 import i18n from '../lib/i18n';
 
 const SHIFT_ORDER: Record<string, number> = { morning: 0, afternoon: 1, night: 2 };
@@ -258,7 +257,7 @@ export default function ReportView() {
 
   return (
     <MainLayout
-      title={`Reporte DDR #${report.reportNumber}`}
+      title={t('reports.view.reportTitle', { number: report.reportNumber })}
       subtitle={`${report.wellNumber || t('reports.view.noWell')} · ${report.rigNumber || t('reports.view.noRig')}`}
       headerActions={
         <div className="flex gap-2 flex-wrap">
@@ -339,7 +338,7 @@ export default function ReportView() {
           {crewShifts.length > 0 && <Card><div className="p-6">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">{t('reports.view.crewByShift')}</h3>
             <SectionCarousel slides={crewShifts.map((shift) => ({
-              label: `${SHIFT_LABELS[shift.shift]} (${shift.shiftStart || '?'} - ${shift.shiftEnd || '?'})`,
+              label: `${t(`reports.shiftLabels.${shift.shift}`)} (${shift.shiftStart || '?'} - ${shift.shiftEnd || '?'})`,
               content: <CrewShiftTable shift={shift} />,
             }))} />
           </div></Card>}
@@ -392,7 +391,7 @@ export default function ReportView() {
                 </tr></thead>
                 <tbody className="bg-gray-50 dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                   {mudAdditives.map((a, idx) => <tr key={idx}>
-                    <TD align="left">{a.shift ? SHIFT_LABELS[a.shift] : '-'}</TD>
+                    <TD align="left">{a.shift ? t(`reports.shiftLabels.${a.shift}`) : '-'}</TD>
                     <TD align="left">{a.additiveType || '-'}</TD>
                     <TD align="left">{a.quantity || '-'}</TD>
                   </tr>)}
@@ -404,7 +403,7 @@ export default function ReportView() {
           {drillingParams.length > 0 && <Card><div className="p-6">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">{t('reports.view.drillingParams')}</h3>
             <SectionCarousel slides={drillingParams.map((param, idx) => ({
-              label: `${param.shift ? SHIFT_LABELS[param.shift] : `#${idx + 1}`}${param.depthFrom && param.depthTo ? ` (${param.depthFrom}–${param.depthTo} ft)` : ''}`,
+              label: `${param.shift ? t(`reports.shiftLabels.${param.shift}`) : `#${idx + 1}`}${param.depthFrom && param.depthTo ? ` (${param.depthFrom}–${param.depthTo} ft)` : ''}`,
               content: <div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-3">
                   <DataField label={t('reports.view.rpm')} value={param.rotaryRpm} /><DataField label={t('reports.view.bitWeight')} value={param.bitWeight} />
@@ -442,7 +441,7 @@ export default function ReportView() {
           {operationsLog.length > 0 && <Card><div className="p-6">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">{t('reports.view.operationsLog')}</h3>
             <SectionCarousel slides={operationsLog.map((op, idx) => ({
-              label: `${op.shift ? SHIFT_LABELS[op.shift] : ''} #${idx + 1}`,
+              label: `${op.shift ? t(`reports.shiftLabels.${op.shift}`) : ''} #${idx + 1}`,
               content: <div className="space-y-2">
                 <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
                   {op.operationCode && <span className="font-medium text-gray-900 dark:text-gray-100">{op.operationCode}</span>}
@@ -564,7 +563,7 @@ function groupMudRecordsByShift(records: MudRecord[]) {
   for (const shift of ORDER) {
     const items = grouped.get(shift!);
     if (!items?.length) continue;
-    slides.push({ label: SHIFT_LABELS[shift!], content: <MudRecordsTable records={items} /> });
+    slides.push({ label: i18n.t(`reports.shiftLabels.${shift}`) as string, content: <MudRecordsTable records={items} /> });
     grouped.delete(shift!);
   }
   for (const [key, items] of grouped) {

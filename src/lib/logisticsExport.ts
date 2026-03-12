@@ -471,11 +471,11 @@ export function buildDetailedReportExcel(opts: DetailedExportOptions): { workboo
     if (statusFilters && statusFilters.length > 0) {
       reqs = reqs.filter((r) => statusFilters.includes(r.status));
     }
-    const header = ['Tipo', 'Detalle', 'Estado', 'Notas', 'Solicitado por', 'Fecha Solicitud'];
+    const header = [t('exports.logistics.movementType'), t('exports.logistics.detail'), t('exports.logistics.statusCol'), t('exports.logistics.notes'), t('exports.logistics.requestedBy'), t('exports.logistics.requestDate')];
     const rows = reqs.map((r) => [
-      REQUEST_TYPE_LABELS[r.requestType as keyof typeof REQUEST_TYPE_LABELS] || ensureText(r.requestType),
+      t(`exports.common.requestTypes.${r.requestType}`, { defaultValue: r.requestType }),
       ensureText(r.quantity ?? r.actionRequested),
-      REQUEST_STATUS_LABELS[r.status as keyof typeof REQUEST_STATUS_LABELS] || ensureText(r.status),
+      t(`exports.common.requestStatuses.${r.status}`, { defaultValue: r.status }),
       ensureText(r.notes),
       ensureText(r.requestedByName),
       formatDateDMY(r.requestedAt?.split('T')[0]),
@@ -489,25 +489,25 @@ export function buildDetailedReportExcel(opts: DetailedExportOptions): { workboo
     const isVacuum = data.section === 'vacuum';
 
     const header = isVacuum
-      ? ['Acción', 'Notas', 'Registrado por', 'Fecha']
+      ? [t('exports.logistics.action'), t('exports.logistics.notes'), t('exports.logistics.registeredBy'), t('exports.logistics.date')]
       : isMaterial
-        ? ['Tipo', 'Material', 'Cantidad', 'Unidad', 'Notas', 'Registrado por', 'Fecha']
-        : ['Tipo', 'Cantidad', 'Notas', 'Registrado por', 'Fecha'];
+        ? [t('exports.logistics.movementType'), t('exports.logistics.material'), t('exports.ddr.quantity'), t('exports.logistics.unit'), t('exports.logistics.notes'), t('exports.logistics.registeredBy'), t('exports.logistics.date')]
+        : [t('exports.logistics.movementType'), t('exports.ddr.quantity'), t('exports.logistics.notes'), t('exports.logistics.registeredBy'), t('exports.logistics.date')];
 
     const rows = movements.map((m) => {
-      const type = MOVEMENT_TYPE_LABELS[m.movementType || ''] || m.movementType || '';
+      const type = movementTypeLabel(m.movementType || '');
       const date = formatDateDMY(m.createdAt?.split('T')[0]);
       if (isVacuum) return [ensureText(m.actionName), ensureText(m.notes), ensureText(m.createdByName), date];
       if (isMaterial) return [type, capitalize(ensureText(m.materialName)), ensureText(m.quantity), ensureText(m.materialUnit), ensureText(m.notes), ensureText(m.createdByName), date];
       return [type, ensureText(m.quantity), ensureText(m.notes), ensureText(m.createdByName), date];
     });
 
-    const ws = XLSX.utils.aoa_to_sheet([[`${sectionLabel} — Detalle`], [], header, ...rows]);
+    const ws = XLSX.utils.aoa_to_sheet([[`${sectionLabel} — ${t('exports.logistics.detail')}`], [], header, ...rows]);
     ws['!cols'] = header.map(() => ({ wch: 18 }));
     XLSX.utils.book_append_sheet(wb, ws, sectionLabel);
   }
 
-  const filename = buildFilename(branding?.rigName, `Detallado ${sectionLabel}`);
+  const filename = buildFilename(branding?.rigName, `${t('exports.common.detailed')} ${sectionLabel}`);
   return { workbook: wb, filename };
 }
 
@@ -523,7 +523,7 @@ export function buildDetailedReportPdf(opts: DetailedExportOptions): { doc: jsPD
     ? hexToRgb(branding.primaryColor)
     : [59, 130, 246];
 
-  let y = drawPdfHeader(doc, branding, `Detallado — ${sectionLabel}`, periodStart, periodEnd);
+  let y = drawPdfHeader(doc, branding, `${t('exports.common.detailed')} — ${sectionLabel}`, periodStart, periodEnd);
 
   if (data.section === 'requests') {
     let reqs = data.requests;
@@ -532,11 +532,11 @@ export function buildDetailedReportPdf(opts: DetailedExportOptions): { doc: jsPD
     }
     autoTable(doc, {
       startY: y,
-      head: [['Tipo', 'Detalle', 'Estado', 'Notas', 'Solicitado por', 'Fecha']],
+      head: [[t('exports.logistics.movementType'), t('exports.logistics.detail'), t('exports.logistics.statusCol'), t('exports.logistics.notes'), t('exports.logistics.requestedBy'), t('exports.logistics.date')]],
       body: reqs.map((r) => [
-        REQUEST_TYPE_LABELS[r.requestType as keyof typeof REQUEST_TYPE_LABELS] || ensureText(r.requestType),
+        t(`exports.common.requestTypes.${r.requestType}`, { defaultValue: r.requestType }),
         ensureText(r.quantity ?? r.actionRequested),
-        REQUEST_STATUS_LABELS[r.status as keyof typeof REQUEST_STATUS_LABELS] || ensureText(r.status),
+        t(`exports.common.requestStatuses.${r.status}`, { defaultValue: r.status }),
         ensureText(r.notes),
         ensureText(r.requestedByName),
         formatDateDMY(r.requestedAt?.split('T')[0]),
@@ -552,13 +552,13 @@ export function buildDetailedReportPdf(opts: DetailedExportOptions): { doc: jsPD
     const isVacuum = data.section === 'vacuum';
 
     const head = isVacuum
-      ? [['Acción', 'Notas', 'Registrado por', 'Fecha']]
+      ? [[t('exports.logistics.action'), t('exports.logistics.notes'), t('exports.logistics.registeredBy'), t('exports.logistics.date')]]
       : isMaterial
-        ? [['Tipo', 'Material', 'Cantidad', 'Unidad', 'Notas', 'Registrado por', 'Fecha']]
-        : [['Tipo', 'Cantidad', 'Notas', 'Registrado por', 'Fecha']];
+        ? [[t('exports.logistics.movementType'), t('exports.logistics.material'), t('exports.ddr.quantity'), t('exports.logistics.unit'), t('exports.logistics.notes'), t('exports.logistics.registeredBy'), t('exports.logistics.date')]]
+        : [[t('exports.logistics.movementType'), t('exports.ddr.quantity'), t('exports.logistics.notes'), t('exports.logistics.registeredBy'), t('exports.logistics.date')]];
 
     const body = movements.map((m) => {
-      const type = MOVEMENT_TYPE_LABELS[m.movementType || ''] || '';
+      const type = movementTypeLabel(m.movementType || '');
       const date = formatDateDMY(m.createdAt?.split('T')[0]);
       if (isVacuum) return [ensureText(m.actionName), ensureText(m.notes), ensureText(m.createdByName), date];
       if (isMaterial) return [type, capitalize(ensureText(m.materialName)), ensureText(m.quantity), ensureText(m.materialUnit), ensureText(m.notes), ensureText(m.createdByName), date];

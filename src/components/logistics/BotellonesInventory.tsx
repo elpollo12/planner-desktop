@@ -14,7 +14,6 @@ import { InventoryShell } from './InventoryShell';
 import { StockBadge } from './StockBadge';
 import ConfirmDeleteModal from '../modals/ConfirmDelete';
 import MovementDetailModal, { buildWaterBottlesFields } from '../modals/MovementDetail';
-import { MOVEMENT_LABELS } from '../../types/logistics';
 import type { WaterBottlesMovement } from '../../types/logistics';
 
 interface BotellonesInventoryProps {
@@ -53,7 +52,7 @@ export function BotellonesInventory({ rigId }: BotellonesInventoryProps) {
   };
 
   const handleDelete = (movement: WaterBottlesMovement) => {
-    const label = `${MOVEMENT_LABELS[movement.movementType as keyof typeof MOVEMENT_LABELS]} — ${movement.quantity} ${t('logistics.waterBottles.unit')} (${formatDateDMY(movement.createdAt?.split('T')[0])})`;
+    const label = `${t(`logistics.movementLabels.${movement.movementType}`)} — ${movement.quantity} ${t('logistics.waterBottles.unit')} (${formatDateDMY(movement.createdAt?.split('T')[0])})`;
 
     openModal(
       <ConfirmDeleteModal
@@ -130,7 +129,7 @@ export function BotellonesInventory({ rigId }: BotellonesInventoryProps) {
                     : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
                 }`}>
                   {m.movementType === 'entry' ? <Plus size={12} /> : <Minus size={12} />}
-                  {MOVEMENT_LABELS[m.movementType as keyof typeof MOVEMENT_LABELS]}
+                  {t(`logistics.movementLabels.${m.movementType}`)}
                 </span>
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">

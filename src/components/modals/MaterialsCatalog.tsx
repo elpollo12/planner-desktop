@@ -1,4 +1,5 @@
-﻿import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Package } from 'lucide-react';
 import { useModal } from '../../store/modalStore';
 import { Button, PaginationControls } from '../ui';
@@ -16,6 +17,7 @@ interface MaterialRow extends Material {
 }
 
 export default function MaterialsCatalogModal() {
+  const { t } = useTranslation();
   const { closeModal } = useModal();
   const { sessionToken } = useAuthStore();
   const { selectedRigId, selectedRigName } = useLogisticsStore();
@@ -62,8 +64,8 @@ export default function MaterialsCatalogModal() {
 
       setRows(enriched);
     } catch (error) {
-      console.error('Error cargando catálogo:', error);
-      toast.error('Error al cargar catálogo de materiales');
+      console.error('Error loading catalog:', error);
+      toast.error(t('logistics.modals.catalogLoadError'));
     } finally {
       setLoading(false);
     }
@@ -92,7 +94,7 @@ export default function MaterialsCatalogModal() {
       {/* Rig context indicator */}
       {selectedRigName && (
         <p className="text-center text-xs text-gray-500 dark:text-gray-400">
-          Stock mostrado para: <span className="font-medium text-gray-700 dark:text-gray-300">{selectedRigName}</span>
+          {t('logistics.modals.stockShownFor')} <span className="font-medium text-gray-700 dark:text-gray-300">{selectedRigName}</span>
         </p>
       )}
 
@@ -103,7 +105,7 @@ export default function MaterialsCatalogModal() {
         </div>
       ) : rows.length === 0 ? (
         <p className="text-center text-sm text-gray-500 dark:text-gray-400 py-6">
-          No hay materiales registrados en el catálogo.
+          {t('logistics.modals.noMaterialsInCatalog')}
         </p>
       ) : (
         <>
@@ -111,13 +113,13 @@ export default function MaterialsCatalogModal() {
             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
               <thead className="bg-gray-50 dark:bg-gray-800">
                 <tr>
-                  <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Material</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Unidad</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('logistics.modals.material')}</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('logistics.modals.unit')}</th>
                   <th className="px-4 py-2.5 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     {selectedRigName ? `Stock (${selectedRigName})` : 'Stock'}
                   </th>
-                  <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Creado por</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Fecha</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('logistics.modals.createdBy')}</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('logistics.common.date')}</th>
                 </tr>
               </thead>
               <tbody className="bg-gray-50 dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -154,7 +156,7 @@ export default function MaterialsCatalogModal() {
             totalPages={totalPages}
             totalItems={totalItems}
             pageSize={pageSize}
-            itemLabel="materiales"
+            itemLabel={t('logistics.common.movements')}
             onPageChange={handlePageChange}
             onPageSizeChange={handlePageSizeChange}
           />
@@ -164,7 +166,7 @@ export default function MaterialsCatalogModal() {
       {/* Footer */}
       <div className="flex justify-end pt-2 border-t border-gray-200 dark:border-gray-700">
         <Button variant="outline" onClick={closeModal}>
-          Cerrar
+          {t('logistics.modals.close')}
         </Button>
       </div>
     </div>

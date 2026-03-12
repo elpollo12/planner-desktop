@@ -9,7 +9,7 @@ import { toast } from 'react-toastify';
 import { useQueryClient } from '@tanstack/react-query';
 import { logisticsKeys } from '@/hooks/useLogistics';
 import { logisticsRequestSchema, type LogisticsRequestForm } from '@/schemas';
-import { REQUEST_TYPE_LABELS } from '@/types/logistics';
+import { REQUEST_TYPES } from '@/types/logistics';
 import { Button } from '@/components/ui';
 import { capitalize } from '@/lib/stringUtils';
 import type { Material, RequestType } from '@/types/logistics';
@@ -100,8 +100,8 @@ export function RequestForm({ rigId, onSuccess, defaultType, materials = [] }: R
               }`}
             >
               <option value="">{t('logistics.requests.selectType')}</option>
-              {Object.entries(REQUEST_TYPE_LABELS).map(([key, label]) => (
-                <option key={key} value={key}>{label}</option>
+              {REQUEST_TYPES.map((key) => (
+                <option key={key} value={key}>{t(`logistics.requestTypeLabels.${key}`)}</option>
               ))}
             </select>
             {errors.requestType && <p className="mt-1 text-sm text-red-500">{errors.requestType.message}</p>}

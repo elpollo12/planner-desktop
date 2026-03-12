@@ -459,7 +459,7 @@ export function buildDDRReportPdf(opts: DDRExportOptions): { doc: jsPDF; filenam
       startY: y,
       head: [['Turno', 'Desde', 'Hasta', 'Duración', 'Código', 'Detalles']],
       body: sortByShift(data.operationsLog).map((op) => [
-        op.shift ? SHIFT_LABELS[op.shift] || op.shift : '-',
+        op.shift ? shiftLabel(op.shift) || op.shift : '-',
         ensure(op.timeFrom), ensure(op.timeTo), ensure(op.duration),
         ensure(op.operationCode), ensure(op.details),
       ]),
@@ -506,7 +506,7 @@ export function buildDDRReportExcel(opts: DDRExportOptions): { workbook: XLSX.Wo
     [],
     ['Reporte #', report.reportNumber],
     ['Fecha', formatDateDMY(report.reportDate)],
-    ['Estado', STATUS_LABELS[report.status] || report.status],
+    ['Estado', statusLabel(report.status)],
     ['Generado', getNowDatetime()],
     [],
     ['INFORMACIÓN GENERAL'],
@@ -528,7 +528,7 @@ export function buildDDRReportExcel(opts: DDRExportOptions): { workbook: XLSX.Wo
   if (data.crewShifts && data.crewShifts.length > 0) {
     const rows: any[][] = [['Turno', 'Horario', 'Posición', 'CI', 'Nombre', 'Horas']];
     for (const shift of sortByShift(data.crewShifts)) {
-      const label = SHIFT_LABELS[shift.shift] || shift.shift;
+      const label = shiftLabel(shift.shift) || shift.shift;
       const horario = `${shift.shiftStart || '-'} - ${shift.shiftEnd || '-'}`;
       if (shift.members?.length) {
         for (const m of shift.members) {
@@ -570,7 +570,7 @@ export function buildDDRReportExcel(opts: DDRExportOptions): { workbook: XLSX.Wo
   if (data.mudRecords && data.mudRecords.length > 0) {
     const rows: any[][] = [['Turno', 'Hora', 'Peso (ppg)', 'Viscosidad', 'PVP', 'Geles', 'Filtrado', 'pH', 'Sólidos']];
     for (const m of sortByShift(data.mudRecords)) {
-      rows.push([m.shift ? SHIFT_LABELS[m.shift] || m.shift : '-', m.hour || '-', m.weight || '-', m.viscosity || '-', m.pvp || '-', m.gels || '-', m.filtrate || '-', m.ph || '-', m.solids || '-']);
+      rows.push([m.shift ? shiftLabel(m.shift) || m.shift : '-', m.hour || '-', m.weight || '-', m.viscosity || '-', m.pvp || '-', m.gels || '-', m.filtrate || '-', m.ph || '-', m.solids || '-']);
     }
     const ws = XLSX.utils.aoa_to_sheet(rows);
     ws['!cols'] = rows[0].map(() => ({ wch: 12 }));
@@ -581,7 +581,7 @@ export function buildDDRReportExcel(opts: DDRExportOptions): { workbook: XLSX.Wo
   if (data.mudAdditives && data.mudAdditives.length > 0) {
     const rows: any[][] = [['Turno', 'Tipo', 'Cantidad']];
     for (const a of sortByShift(data.mudAdditives)) {
-      rows.push([a.shift ? SHIFT_LABELS[a.shift] || a.shift : '-', a.additiveType || '-', a.quantity || '-']);
+      rows.push([a.shift ? shiftLabel(a.shift) || a.shift : '-', a.additiveType || '-', a.quantity || '-']);
     }
     const ws = XLSX.utils.aoa_to_sheet(rows);
     ws['!cols'] = [{ wch: 12 }, { wch: 22 }, { wch: 14 }];
@@ -592,7 +592,7 @@ export function buildDDRReportExcel(opts: DDRExportOptions): { workbook: XLSX.Wo
   if (data.drillingParams && data.drillingParams.length > 0) {
     const rows: any[][] = [['Turno', 'Prof. Desde', 'Prof. Hasta', 'RPM', 'Peso Mecha', 'Presión', 'GPM', 'SPM', 'Método', 'Notas Litología']];
     for (const p of sortByShift(data.drillingParams)) {
-      rows.push([p.shift ? SHIFT_LABELS[p.shift] || p.shift : '-', p.depthFrom || '-', p.depthTo || '-', p.rotaryRpm || '-', p.bitWeight || '-', p.pumpPressure || '-', p.totalGpm || '-', p.pumpSpm || '-', p.methodUsed || '-', p.lithologyNotes || '-']);
+      rows.push([p.shift ? shiftLabel(p.shift) || p.shift : '-', p.depthFrom || '-', p.depthTo || '-', p.rotaryRpm || '-', p.bitWeight || '-', p.pumpPressure || '-', p.totalGpm || '-', p.pumpSpm || '-', p.methodUsed || '-', p.lithologyNotes || '-']);
     }
     const ws = XLSX.utils.aoa_to_sheet(rows);
     ws['!cols'] = rows[0].map(() => ({ wch: 14 }));
@@ -627,7 +627,7 @@ export function buildDDRReportExcel(opts: DDRExportOptions): { workbook: XLSX.Wo
   if (data.operationsLog && data.operationsLog.length > 0) {
     const rows: any[][] = [['Turno', 'Desde', 'Hasta', 'Duración', 'Código', 'Detalles']];
     for (const op of sortByShift(data.operationsLog)) {
-      rows.push([op.shift ? SHIFT_LABELS[op.shift] || op.shift : '-', op.timeFrom || '-', op.timeTo || '-', op.duration || '-', op.operationCode || '-', op.details || '-']);
+      rows.push([op.shift ? shiftLabel(op.shift) || op.shift : '-', op.timeFrom || '-', op.timeTo || '-', op.duration || '-', op.operationCode || '-', op.details || '-']);
     }
     const ws = XLSX.utils.aoa_to_sheet(rows);
     ws['!cols'] = [{ wch: 12 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 14 }, { wch: 40 }];

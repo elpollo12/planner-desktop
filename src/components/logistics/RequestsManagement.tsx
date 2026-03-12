@@ -9,7 +9,7 @@ import { toast } from 'react-toastify';
 import { formatDateDMY, formatTimeHM } from '../../lib/dateUtils';
 import { useLogisticsRequests, useMaterialsCatalog, useUpdateRequestStatus, useDeleteLogisticsRequest } from '../../hooks/useLogistics';
 import { PaginationControls } from '../ui';
-import { REQUEST_TYPE_LABELS, REQUEST_STATUS_LABELS } from '../../types/logistics';
+import { REQUEST_TYPES, REQUEST_STATUSES } from '../../types/logistics';
 import { capitalize } from '../../lib/stringUtils';
 import MovementDetailModal, { buildRequestFields } from '../modals/MovementDetail';
 import ConfirmDeleteModal from '../modals/ConfirmDelete';
@@ -42,7 +42,7 @@ export function RequestsManagement({ rigId }: RequestsManagementProps) {
   const handleUpdateStatus = async (requestId: string, newStatus: RequestStatus) => {
     try {
       await updateStatusMutation.mutateAsync({ requestId, status: newStatus });
-      toast.success(t('logistics.requests.statusUpdated', { status: REQUEST_STATUS_LABELS[newStatus].toLowerCase() }));
+      toast.success(t('logistics.requests.statusUpdated', { status: t(`logistics.requestStatusLabels.${newStatus}`).toLowerCase() }));
     } catch (error: any) {
       toast.error(error?.toString() || t('logistics.requests.updateError'));
     }
@@ -77,8 +77,8 @@ export function RequestsManagement({ rigId }: RequestsManagementProps) {
       } catch { /* ignore */ }
     }
 
-    const typeLabel = REQUEST_TYPE_LABELS[r.requestType] || r.requestType;
-    const statusLabel = REQUEST_STATUS_LABELS[r.status] || r.status;
+    const typeLabel = t(`logistics.requestTypeLabels.${r.requestType}`);
+    const statusLabel = t(`logistics.requestStatusLabels.${r.status}`);
     const materialName = getMaterialName(r.materialId ?? undefined);
 
     openModal(
@@ -88,7 +88,7 @@ export function RequestsManagement({ rigId }: RequestsManagementProps) {
   };
 
   const handleDelete = (r: LogisticsRequest) => {
-    const typeLabel = REQUEST_TYPE_LABELS[r.requestType] || r.requestType;
+    const typeLabel = t(`logistics.requestTypeLabels.${r.requestType}`);
     const detail = r.requestType === 'vacuum'
       ? r.actionRequested || ''
       : `${r.quantity ?? ''}`;
@@ -126,7 +126,7 @@ export function RequestsManagement({ rigId }: RequestsManagementProps) {
     const { icon: Icon, color } = config[status];
     return (
       <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${color}`}>
-        <Icon size={14} />{REQUEST_STATUS_LABELS[status]}
+        <Icon size={14} />{t(`logistics.requestStatusLabels.${status}`)}
       </span>
     );
   };
@@ -150,7 +150,7 @@ export function RequestsManagement({ rigId }: RequestsManagementProps) {
           <select value={filterType} onChange={(e) => { setFilterType(e.target.value); setCurrentPage(1); }}
             className="text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100">
             <option value="">{t('logistics.common.all')}</option>
-            {Object.entries(REQUEST_TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            {REQUEST_TYPES.map((k) => <option key={k} value={k}>{t(`logistics.requestTypeLabels.${k}`)}</option>)}
           </select>
         </div>
         <div className="flex items-center gap-2">
@@ -158,7 +158,7 @@ export function RequestsManagement({ rigId }: RequestsManagementProps) {
           <select value={filterStatus} onChange={(e) => { setFilterStatus(e.target.value); setCurrentPage(1); }}
             className="text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100">
             <option value="">{t('logistics.common.all')}</option>
-            {Object.entries(REQUEST_STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            {REQUEST_STATUSES.map((k) => <option key={k} value={k}>{t(`logistics.requestStatusLabels.${k}`)}</option>)}
           </select>
         </div>
       </div>
@@ -194,7 +194,7 @@ export function RequestsManagement({ rigId }: RequestsManagementProps) {
                     return (
                       <tr key={r.id} className="hover:bg-gray-100 dark:hover:bg-gray-700">
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                          {REQUEST_TYPE_LABELS[r.requestType]}
+                          {t(`logistics.requestTypeLabels.${r.requestType}`)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                           {r.requestType === 'vacuum' ? r.actionRequested : `${r.quantity ?? '-'}`}

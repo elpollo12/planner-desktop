@@ -12,6 +12,7 @@ import {
   useDeleteIncidentType,
 } from '../../hooks/useIncidents';
 import { IncidentTypeBadge } from './IncidentTypeBadge';
+import { translateIncidentTypeName } from '../../lib/translateCatalogs';
 import {
   INCIDENT_TYPE_BADGE_COLORS,
 } from '../../types/incident';
@@ -140,12 +141,12 @@ export default function IncidentTypesCatalogModal() {
                       const isConfirming = confirmDeleteId === typeItem.id;
                       return (
                         <tr key={typeItem.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
-                          <td className="py-2.5 px-4 font-medium text-gray-900 dark:text-gray-100">{typeItem.name}</td>
+                          <td className="py-2.5 px-4 font-medium text-gray-900 dark:text-gray-100">{translateIncidentTypeName(typeItem.id, typeItem.name, t)}</td>
                           <td className="py-2.5 px-4 text-gray-500 dark:text-gray-400">
                             {t(`incidents.typesCatalog.colors.${typeItem.color}`, { defaultValue: typeItem.color })}
                           </td>
                           <td className="py-2.5 px-4">
-                            <IncidentTypeBadge name={typeItem.name} color={typeItem.color} />
+                            <IncidentTypeBadge name={typeItem.name} color={typeItem.color} id={typeItem.id} />
                           </td>
                           {canDelete && (
                             <td className="py-2.5 px-4 text-center">

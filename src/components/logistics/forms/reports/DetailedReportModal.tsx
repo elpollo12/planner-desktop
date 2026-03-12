@@ -27,8 +27,7 @@ import { useAppSettingsStore } from '@/store/appSettingsStore';
 import { DEFAULT_APP_SETTINGS } from '@/types/appSettings';
 import { capitalize } from '@/lib/stringUtils';
 import { Button } from '@/components/ui';
-import { REQUEST_STATUS_LABELS } from '@/types/logistics';
-import type { RequestStatus } from '@/types/logistics';
+import { REQUEST_STATUSES } from '@/types/logistics';
 
 // ============================================================================
 // Types & Constants
@@ -628,8 +627,7 @@ function StepConfigureExport({
 
             {!allStatuses && (
               <div className="space-y-1">
-                {(Object.entries(REQUEST_STATUS_LABELS) as [RequestStatus, string][]).map(
-                  ([key, label]) => (
+                {REQUEST_STATUSES.map((key) => (
                     <label
                       key={key}
                       className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700/50 cursor-pointer transition-colors"
@@ -639,10 +637,9 @@ function StepConfigureExport({
                         {...register(`statuses.${key}`)}
                         className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-orange-600 focus:ring-orange-500 accent-orange-600"
                       />
-                      <span className="text-sm text-gray-700 dark:text-gray-300">{label}</span>
+                      <span className="text-sm text-gray-700 dark:text-gray-300">{t(`logistics.requestStatusLabels.${key}`)}</span>
                     </label>
-                  ),
-                )}
+                  ))}
               </div>
             )}
             {statusesError && (

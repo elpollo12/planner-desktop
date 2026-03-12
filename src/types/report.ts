@@ -4,12 +4,8 @@ export type ReportStatus = 'draft' | 'submitted' | 'approved' | 'rejected';
 // Turnos
 export type ShiftType = 'morning' | 'afternoon' | 'night';
 
-// Helper para labels de turnos en UI
-export const SHIFT_LABELS: Record<ShiftType, string> = {
-  morning: 'Mañana',
-  afternoon: 'Tarde',
-  night: 'Noche',
-};
+/** Iterable list of shifts (for dropdowns / iteration) */
+export const SHIFTS: readonly ShiftType[] = ['morning', 'afternoon', 'night'] as const;
 
 // Reporte principal (Encabezado DDR)
 export interface Report {
@@ -71,20 +67,6 @@ export interface CrewMember {
   personnelName?: string;
   personnelCi?: string;
 }
-
-// Posiciones estándar de cuadrilla
-export const CREW_POSITIONS = [
-  'Perforador',
-  'Encuellador',
-  'Cuñero',
-  'Cuñero',
-  'Arenillero',
-  'Arenillero',
-  'Mecánico',
-  'Soldador',
-  'Operador Montacargas',
-  'Obrero',
-] as const;
 
 // Código de operación (configurable)
 export interface OperationCode {
@@ -239,14 +221,8 @@ export interface ReportFilters {
 // Acciones posibles en una revisión
 export type ReviewAction = 'approved' | 'rejected' | 'revision_requested' | 'comment' | 'resubmitted';
 
-// Labels para UI
-export const REVIEW_ACTION_LABELS: Record<ReviewAction, string> = {
-  approved: 'Aprobado',
-  rejected: 'Rechazado',
-  revision_requested: 'Revisión solicitada',
-  comment: 'Comentario',
-  resubmitted: 'Reenviado',
-};
+/** Iterable list of review actions (for iteration) */
+export const REVIEW_ACTIONS: readonly ReviewAction[] = ['approved', 'rejected', 'revision_requested', 'comment', 'resubmitted'] as const;
 
 // Colores para UI (matching ReportStatusBadge style)
 export const REVIEW_ACTION_COLORS: Record<ReviewAction, string> = {

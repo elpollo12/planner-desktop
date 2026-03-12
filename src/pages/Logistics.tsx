@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { MainLayout } from '../components/layout';
 import { Card } from '../components/ui';
 import { 
@@ -25,6 +26,7 @@ import { RequestsManagement } from '../components/logistics/RequestsManagement';
 type LogisticsTab = 'botellones' | 'combustible' | 'materiales' | 'vacuum' | 'solicitudes' | 'reportes';
 
 export default function LogisticsPage() {
+  const { t } = useTranslation();
   const { user } = useAuthStore();
   const { accessibleRigs, selectedRigId, selectedRigName, loading: rigsLoading, setSelectedRig } = useLogisticsRigs();
   const [activeTab, setActiveTab] = useState<LogisticsTab>('botellones');
@@ -34,16 +36,16 @@ export default function LogisticsPage() {
   const isOperator = user?.role === 'operator';
 
   const tabs = [
-    { id: 'botellones' as LogisticsTab, label: 'Botellones', icon: Droplets },
-    { id: 'combustible' as LogisticsTab, label: 'Combustible', icon: Fuel },
-    { id: 'materiales' as LogisticsTab, label: 'Materiales', icon: Package },
-    { id: 'vacuum' as LogisticsTab, label: 'Vacuum', icon: Container },
-    { id: 'solicitudes' as LogisticsTab, label: 'Solicitudes', icon: ClipboardSignature, badge: pendingCount },
-    ...(!isOperator ? [{ id: 'reportes' as LogisticsTab, label: 'Reportes', icon: TrendingUp }] : []),
+    { id: 'botellones' as LogisticsTab, label: t('logistics.tabs.waterBottles'), icon: Droplets },
+    { id: 'combustible' as LogisticsTab, label: t('logistics.tabs.fuel'), icon: Fuel },
+    { id: 'materiales' as LogisticsTab, label: t('logistics.tabs.materials'), icon: Package },
+    { id: 'vacuum' as LogisticsTab, label: t('logistics.tabs.vacuum'), icon: Container },
+    { id: 'solicitudes' as LogisticsTab, label: t('logistics.tabs.requests'), icon: ClipboardSignature, badge: pendingCount },
+    ...(!isOperator ? [{ id: 'reportes' as LogisticsTab, label: t('logistics.tabs.reports'), icon: TrendingUp }] : []),
   ];
 
   return (
-    <MainLayout title="Logística" subtitle="Gestión de inventario y solicitudes">
+    <MainLayout title={t('logistics.page.title')} subtitle={t('logistics.page.subtitle')}>
       {/* Rig Selector — always visible at the top */}
       <div className="mb-4">
         <RigSelector
@@ -61,10 +63,10 @@ export default function LogisticsPage() {
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <PackageOpen size={48} className="text-gray-300 dark:text-gray-600 mb-4" />
             <p className="text-gray-500 dark:text-gray-400 text-lg font-medium">
-              Selecciona un taladro para gestionar la logística
+              {t('logistics.page.selectRig')}
             </p>
             <p className="text-gray-400 dark:text-gray-500 text-sm mt-1">
-              Elige un taladro en el selector de arriba para ver su inventario y solicitudes
+              {t('logistics.page.selectRigHint')}
             </p>
           </div>
         </Card>

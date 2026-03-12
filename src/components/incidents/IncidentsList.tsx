@@ -97,7 +97,7 @@ export function IncidentsList({ rigId, rigName }: IncidentsListProps) {
   const renderTypeBadge = (typeId: string) => {
     const typeRecord = typeMap.get(typeId);
     if (typeRecord) {
-      return <IncidentTypeBadge name={typeRecord.name} color={typeRecord.color} />;
+      return <IncidentTypeBadge name={typeRecord.name} color={typeRecord.color} id={typeRecord.id} />;
     }
     return <IncidentTypeBadge name={typeId} color="gray" />;
   };

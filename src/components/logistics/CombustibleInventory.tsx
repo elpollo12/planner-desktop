@@ -14,7 +14,6 @@ import { InventoryShell } from './InventoryShell';
 import { StockBadge } from './StockBadge';
 import ConfirmDeleteModal from '../modals/ConfirmDelete';
 import MovementDetailModal, { buildFuelFields } from '../modals/MovementDetail';
-import { MOVEMENT_LABELS } from '../../types/logistics';
 import type { FuelMovement } from '../../types/logistics';
 
 interface CombustibleInventoryProps {
@@ -53,7 +52,7 @@ export function CombustibleInventory({ rigId }: CombustibleInventoryProps) {
   };
 
   const handleDelete = (movement: FuelMovement) => {
-    const label = `${MOVEMENT_LABELS[movement.movementType as keyof typeof MOVEMENT_LABELS]} — ${movement.amount.toFixed(2)} ${t('logistics.fuel.unit')} (${formatDateDMY(movement.createdAt?.split('T')[0])})`;
+    const label = `${t(`logistics.movementLabels.${movement.movementType}`)} — ${movement.amount.toFixed(2)} ${t('logistics.fuel.unit')} (${formatDateDMY(movement.createdAt?.split('T')[0])})`;
 
     openModal(
       <ConfirmDeleteModal
@@ -124,7 +123,7 @@ export function CombustibleInventory({ rigId }: CombustibleInventoryProps) {
                   m.movementType === 'entry' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
                 }`}>
                   {m.movementType === 'entry' ? <Plus size={12} /> : <Minus size={12} />}
-                  {MOVEMENT_LABELS[m.movementType as keyof typeof MOVEMENT_LABELS]}
+                  {t(`logistics.movementLabels.${m.movementType}`)}
                 </span>
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">{m.amount.toFixed(2)} {t('logistics.fuel.unit')}</td>
