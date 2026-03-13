@@ -1,4 +1,8 @@
 use crate::auth::{check_permission, get_session, hash_password, verify_password};
+use crate::models::audit_log::{
+    AuditEntry, NewAuditEntry,
+    AUDIT_CREATE_USER, AUDIT_UPDATE_USER, AUDIT_DELETE_USER, AUDIT_CHANGE_PASSWORD,
+};
 use crate::models::user::{CreateUserRequest, UpdateUserRequest, User, UserRole, UserWithRigs};
 use crate::state::AppState;
 use tauri::State;
@@ -25,6 +29,17 @@ pub async fn create_user(
     // Create user
     let user = User::create(&conn, &user_data, password_hash, Some(current_user.user_id.clone()))
         .map_err(|e| e.to_string())?;
+
+    // Audit
+    AuditEntry::record(&conn, NewAuditEntry {
+        actor_id:    &current_user.user_id,
+        actor_name:  &current_user.username,
+        action:      AUDIT_CREATE_USER,
+        target_type: Some("user"),
+        target_id:   Some(&user.id),
+        target_name: Some(&user.username),
+        detail:      Some(format!("{{\"role\":\"{}\"}}", user_data.role)),
+    });
 
     // Get user with rigs
     let user_with_rigs = User::get_with_rigs(&conn, &user.id).map_err(|e| e.to_string())?;
@@ -86,11 +101,22 @@ pub async fn update_user(
         .lock()
         .map_err(|e| format!("Failed to lock database: {}", e))?;
 
-    let _user = User::update(&conn, &user_id, &user_data, Some(current_user.user_id))
+    let _user = User::update(&conn, &user_id, &user_data, Some(current_user.user_id.clone()))
         .map_err(|e| e.to_string())?;
 
-    // Get user with rigs
+    // Get user with rigs (necesario antes del audit para tener username)
     let user_with_rigs = User::get_with_rigs(&conn, &user_id).map_err(|e| e.to_string())?;
+
+    // Audit
+    AuditEntry::record(&conn, NewAuditEntry {
+        actor_id:    &current_user.user_id,
+        actor_name:  &current_user.username,
+        action:      AUDIT_UPDATE_USER,
+        target_type: Some("user"),
+        target_id:   Some(&user_id),
+        target_name: Some(&user_with_rigs.user.username),
+        detail:      None,
+    });
 
     Ok(user_with_rigs)
 }
@@ -102,14 +128,33 @@ pub async fn delete_user(
     state: State<'_, AppState>,
 ) -> Result<(), String> {
     // Only admin can delete users
-    check_permission(&session_token, UserRole::Admin, &state).map_err(|e| e.to_string())?;
+    let current_user = check_permission(&session_token, UserRole::Admin, &state)
+        .map_err(|e| e.to_string())?;
 
     let conn = state
         .db
         .lock()
         .map_err(|e| format!("Failed to lock database: {}", e))?;
 
+    // Obtener nombre antes de borrar (para el audit)
+    let username = conn.query_row(
+        "SELECT username FROM users WHERE id = ?1",
+        rusqlite::params![&user_id],
+        |row| row.get::<_, String>(0),
+    ).unwrap_or_else(|_| user_id.clone());
+
     User::delete(&conn, &user_id).map_err(|e| e.to_string())?;
+
+    // Audit
+    AuditEntry::record(&conn, NewAuditEntry {
+        actor_id:    &current_user.user_id,
+        actor_name:  &current_user.username,
+        action:      AUDIT_DELETE_USER,
+        target_type: Some("user"),
+        target_id:   Some(&user_id),
+        target_name: Some(&username),
+        detail:      None,
+    });
 
     Ok(())
 }
@@ -122,7 +167,7 @@ pub async fn admin_change_password(
     new_password: String,
     state: State<'_, AppState>,
 ) -> Result<(), String> {
-    check_permission(&session_token, UserRole::Admin, &state)
+    let current_user = check_permission(&session_token, UserRole::Admin, &state)
         .map_err(|e| e.to_string())?;
 
     if new_password.len() < 8 {
@@ -141,6 +186,17 @@ pub async fn admin_change_password(
         rusqlite::params![&password_hash, chrono::Utc::now().to_rfc3339(), &user_id],
     )
     .map_err(|_| "Error actualizando contraseña".to_string())?;
+
+    // Audit
+    AuditEntry::record(&conn, NewAuditEntry {
+        actor_id:    &current_user.user_id,
+        actor_name:  &current_user.username,
+        action:      AUDIT_CHANGE_PASSWORD,
+        target_type: Some("user"),
+        target_id:   Some(&user_id),
+        target_name: None,
+        detail:      Some(r#"{"by":"admin"}"#.to_string()),
+    });
 
     Ok(())
 }

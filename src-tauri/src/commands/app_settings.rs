@@ -1,5 +1,9 @@
 use crate::auth::get_session;
 use crate::error::{AppError, Result};
+use crate::models::audit_log::{
+    AuditEntry, NewAuditEntry,
+    AUDIT_UPDATE_APP_SETTINGS, AUDIT_UPLOAD_LOGO, AUDIT_REMOVE_LOGO,
+};
 use crate::models::app_settings::{AppSettings, SaveAppSettingsInput};
 use crate::models::user::UserRole;
 use crate::state::AppState;
@@ -33,6 +37,18 @@ pub async fn save_app_settings(
 
     let conn = state.db.lock().unwrap();
     let settings = AppSettings::update(&conn, &input)?;
+
+    // Audit
+    AuditEntry::record(&conn, NewAuditEntry {
+        actor_id:    &session.user_id,
+        actor_name:  &session.username,
+        action:      AUDIT_UPDATE_APP_SETTINGS,
+        target_type: Some("app_settings"),
+        target_id:   None,
+        target_name: None,
+        detail:      None,
+    });
+
     Ok(settings)
 }
 
@@ -106,6 +122,17 @@ pub async fn upload_company_logo(
     let conn = state.db.lock().unwrap();
     AppSettings::update_logo(&conn, Some(&data_url))?;
 
+    // Audit
+    AuditEntry::record(&conn, NewAuditEntry {
+        actor_id:    &session.user_id,
+        actor_name:  &session.username,
+        action:      AUDIT_UPLOAD_LOGO,
+        target_type: Some("app_settings"),
+        target_id:   None,
+        target_name: Some(&file_name),
+        detail:      None,
+    });
+
     Ok(data_url)
 }
 
@@ -127,6 +154,18 @@ pub async fn remove_company_logo(
 
     let conn = state.db.lock().unwrap();
     AppSettings::update_logo(&conn, None)?;
+
+    // Audit
+    AuditEntry::record(&conn, NewAuditEntry {
+        actor_id:    &session.user_id,
+        actor_name:  &session.username,
+        action:      AUDIT_REMOVE_LOGO,
+        target_type: Some("app_settings"),
+        target_id:   None,
+        target_name: None,
+        detail:      None,
+    });
+
     Ok(())
 }
 

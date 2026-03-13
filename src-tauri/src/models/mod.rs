@@ -26,6 +26,7 @@ pub mod notification;
 pub mod admin_stats;
 pub mod module_permission;
 pub mod update_preferences;
+pub mod audit_log;
 
 // Re-export commonly used types
 // Allow unused imports as these are exposed for library consumers

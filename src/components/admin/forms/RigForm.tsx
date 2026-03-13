@@ -769,6 +769,7 @@ interface StepPersonnelProps {
 }
 
 function StepPersonnel({ rigId, rigName }: StepPersonnelProps) {
+  const { t } = useTranslation();
   const [personnel, setPersonnel] = useState<RigPersonnel[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);

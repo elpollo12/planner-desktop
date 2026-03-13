@@ -1,4 +1,5 @@
 use crate::auth::{get_session, verify_password};
+use crate::models::audit_log::{AuditEntry, NewAuditEntry, AUDIT_LOGIN_SUCCESS, AUDIT_LOGOUT};
 use crate::models::user::User;
 use crate::notification_helper;
 use crate::state::{self, AppState, SessionInfo};
@@ -98,6 +99,17 @@ pub async fn login(
     // Cleanup old read notifications (> 30 days) — silent, non-blocking
     notification_helper::cleanup_old_notifications(&conn);
 
+    // Audit: login exitoso
+    AuditEntry::record(&conn, NewAuditEntry {
+        actor_id:    &user.id,
+        actor_name:  &user.username,
+        action:      AUDIT_LOGIN_SUCCESS,
+        target_type: None,
+        target_id:   None,
+        target_name: None,
+        detail:      None,
+    });
+
     drop(conn);
 
     // Renovar sync_token en planner-sync con las mismas credenciales del login.
@@ -144,6 +156,12 @@ pub async fn login(
 
 #[tauri::command]
 pub async fn logout(session_token: String, state: State<'_, AppState>) -> Result<(), String> {
+    // Capturar info de sesión antes de eliminarla (para el audit)
+    let session_info = {
+        let sessions = state.sessions.lock().map_err(|e| format!("Failed to lock sessions: {}", e))?;
+        sessions.get(&session_token).cloned()
+    };
+
     // Remove from memory
     let mut sessions = state
         .sessions
@@ -158,6 +176,19 @@ pub async fn logout(session_token: String, state: State<'_, AppState>) -> Result
         .lock()
         .map_err(|e| format!("Failed to lock database: {}", e))?;
     state::remove_session_from_db(&conn, &session_token);
+
+    // Audit: logout
+    if let Some(s) = session_info {
+        AuditEntry::record(&conn, NewAuditEntry {
+            actor_id:    &s.user_id,
+            actor_name:  &s.username,
+            action:      AUDIT_LOGOUT,
+            target_type: None,
+            target_id:   None,
+            target_name: None,
+            detail:      None,
+        });
+    }
 
     Ok(())
 }

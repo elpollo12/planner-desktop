@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MainLayout } from '../components/layout';
 import { Card } from '../components/ui';
-import { Users, BarChart3, Activity, MapPin, Palette, Cloud, Building2, Download, LayoutGrid } from 'lucide-react';
+import { Users, BarChart3, Activity, MapPin, Palette, Cloud, Building2, Download, LayoutGrid, ShieldCheck } from 'lucide-react';
 import { OilRigIcon } from '../components/ui/icons/OilRigIcon';
 import { useAuthStore } from '../store/authStore';
 import { UsersManagement } from '../components/admin/UsersManagement';
@@ -13,9 +13,10 @@ import SyncSettings from '../components/admin/SyncSettings';
 import CompaniesManagement from '../components/admin/CompaniesManagement';
 import UpdatesSettings from '../components/admin/UpdatesSettings';
 import MiscelaneosManagement from '../components/admin/MiscelaneosManagement';
+import AuditLog from '../components/admin/AuditLog';
 import { usersApi, areasApi, rigsApi, reportsApi } from '../lib/api';
 
-type AdminTab = 'users' | 'stats' | 'rigs' | 'companies' | 'misc' | 'appearance' | 'sync' | 'updates';
+type AdminTab = 'users' | 'stats' | 'rigs' | 'companies' | 'misc' | 'appearance' | 'sync' | 'updates' | 'audit';
 
 interface AdminStats {
   totalUsers: number;
@@ -27,7 +28,7 @@ interface AdminStats {
 export default function AdminPanel() {
   const { t } = useTranslation();
   const { sessionToken } = useAuthStore();
-  const [activeTab, setActiveTab] = useState<AdminTab>('stats');
+  const [activeTab, setActiveTab] = useState<AdminTab>('users');
   const [stats, setStats] = useState<AdminStats>({
     totalUsers: 0,
     activeAreas: 0,
@@ -72,14 +73,15 @@ export default function AdminPanel() {
   };
 
   const tabs = [
-    { id: 'stats' as AdminTab, label: t('admin.panel.tabs.stats'), icon: BarChart3 },
-    { id: 'rigs' as AdminTab, label: t('admin.panel.tabs.rigs'), icon: OilRigIcon },
     { id: 'users' as AdminTab, label: t('admin.panel.tabs.users'), icon: Users },
+    { id: 'rigs' as AdminTab, label: t('admin.panel.tabs.rigs'), icon: OilRigIcon },
     { id: 'companies' as AdminTab, label: t('admin.panel.tabs.companies'), icon: Building2 },
     { id: 'misc' as AdminTab, label: t('admin.panel.tabs.misc'), icon: LayoutGrid },
+    { id: 'stats' as AdminTab, label: t('admin.panel.tabs.stats'), icon: BarChart3 },
     { id: 'sync' as AdminTab, label: t('admin.panel.tabs.sync'), icon: Cloud },
     { id: 'updates' as AdminTab, label: t('admin.panel.tabs.updates'), icon: Download },
     { id: 'appearance' as AdminTab, label: t('admin.panel.tabs.appearance'), icon: Palette },
+    { id: 'audit' as AdminTab, label: 'Auditoría', icon: ShieldCheck },
   ];
 
   return (
@@ -179,6 +181,7 @@ export default function AdminPanel() {
             {activeTab === 'appearance' && <AppearanceSettings />}
             {activeTab === 'sync' && <SyncSettings />}
             {activeTab === 'updates' && <UpdatesSettings />}
+            {activeTab === 'audit' && <AuditLog />}
           </div>
         </Card>
       </div>

@@ -1,4 +1,4 @@
-// Module declarations
+﻿// Module declarations
 mod error;
 mod state;
 mod auth;
@@ -225,8 +225,10 @@ pub fn run() {
             commands::updates::get_update_status,
             commands::updates::check_for_update_from_api,
             commands::updates::record_download_to_api,
-            // Backup (pre-update safety net — accessible to all authenticated users)
+            // Backup (pre-update safety net â€” accessible to all authenticated users)
             commands::backup::backup_database,
+            // Audit log (admin only)
+            commands::audit_log::list_audit_log,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -14,7 +14,7 @@ import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useActivityStats } from '../../../hooks/useAdminStats';
 import { PeriodSelector } from './PeriodSelector';
-import { useAxisTickColor, useGridStroke, useChartReady } from './chartHelpers';
+import { useAxisTickColor, useGridStroke } from './chartHelpers';
 
 export function ActivityChart() {
   const { t } = useTranslation();
@@ -22,7 +22,6 @@ export function ActivityChart() {
   const { data, isLoading } = useActivityStats(days);
   const tickColor = useAxisTickColor();
   const gridStroke = useGridStroke();
-  const { ref: chartRef, ready: chartReady } = useChartReady();
 
   if (isLoading) {
     return (
@@ -49,19 +48,17 @@ export function ActivityChart() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            {t('admin.activityChart.totalInPeriod')}{' '}
-            <span className="font-semibold text-gray-900 dark:text-gray-100">
-              {t('admin.activityChart.reports', { count: data.totalPeriod })}
-            </span>
-          </p>
-        </div>
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          {t('admin.activityChart.totalInPeriod')}{' '}
+          <span className="font-semibold text-gray-900 dark:text-gray-100">
+            {t('admin.activityChart.reports', { count: data.totalPeriod })}
+          </span>
+        </p>
         <PeriodSelector value={days} onChange={setDays} />
       </div>
 
-      <div ref={chartRef} className="h-72" style={{ minWidth: 0, overflow: 'hidden' }}>
-        {chartReady && <ResponsiveContainer width="100%" height="100%">
+      <div style={{ width: '100%', height: 288 }}>
+        <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={chartData} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
             <defs>
               <linearGradient id="colorReports" x1="0" y1="0" x2="0" y2="1">
@@ -70,18 +67,8 @@ export function ActivityChart() {
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
-            <XAxis
-              dataKey="label"
-              tick={{ fontSize: 12, fill: tickColor }}
-              tickLine={false}
-              axisLine={false}
-            />
-            <YAxis
-              allowDecimals={false}
-              tick={{ fontSize: 12, fill: tickColor }}
-              tickLine={false}
-              axisLine={false}
-            />
+            <XAxis dataKey="label" tick={{ fontSize: 12, fill: tickColor }} tickLine={false} axisLine={false} />
+            <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: tickColor }} tickLine={false} axisLine={false} />
             <Tooltip
               content={({ active, payload }) => {
                 if (!active || !payload?.length) return null;
@@ -98,15 +85,9 @@ export function ActivityChart() {
                 );
               }}
             />
-            <Area
-              type="monotone"
-              dataKey="count"
-              stroke="#3b82f6"
-              strokeWidth={2}
-              fill="url(#colorReports)"
-            />
+            <Area type="monotone" dataKey="count" stroke="#3b82f6" strokeWidth={2} fill="url(#colorReports)" />
           </AreaChart>
-        </ResponsiveContainer>}
+        </ResponsiveContainer>
       </div>
     </div>
   );
