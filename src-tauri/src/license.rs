@@ -215,15 +215,41 @@ fn delete_license_from_disk() -> Result<(), String> {
     Ok(())
 }
 
-/// Validate that the api_endpoint is a safe HTTPS URL
+/// Devuelve true si el host de la URL es una dirección IPv4 literal (ej. 187.77.221.60:3005)
+fn host_is_ip(url: &str) -> bool {
+    let without_scheme = url
+        .trim_start_matches("https://")
+        .trim_start_matches("http://");
+    let host_and_port = without_scheme.split('/').next().unwrap_or("");
+    // Elimina el puerto si existe
+    let host = if let Some(pos) = host_and_port.rfind(':') {
+        &host_and_port[..pos]
+    } else {
+        host_and_port
+    };
+    // IPv4: cuatro octetos numéricos separados por '.'
+    let parts: Vec<&str> = host.split('.').collect();
+    parts.len() == 4 && parts.iter().all(|p| p.parse::<u8>().is_ok())
+}
+
+/// Validate that the api_endpoint is a safe URL.
+/// - Dominios de texto: solo HTTPS.
+/// - IPs literales (ej. 187.77.221.60:3005): se permiten HTTP y HTTPS.
 fn validate_api_endpoint(url: &str) -> Result<(), String> {
     if url.is_empty() {
         return Err("La licencia no contiene un endpoint de API".to_string());
     }
-    // Debe comenzar con https://
-    if !url.starts_with("https://") {
+    // Debe comenzar con http:// o https://
+    if !url.starts_with("https://") && !url.starts_with("http://") {
         return Err(format!(
-            "El endpoint de API de la licencia debe usar HTTPS (recibido: '{}')",
+            "El endpoint de API debe usar HTTP o HTTPS (recibido: '{}')",
+            url
+        ));
+    }
+    // Si el host es un dominio (no IP), exigir HTTPS
+    if !host_is_ip(url) && !url.starts_with("https://") {
+        return Err(format!(
+            "El endpoint de API con dominio debe usar HTTPS (recibido: '{}')",
             url
         ));
     }
