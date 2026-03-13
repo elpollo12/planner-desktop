@@ -1,7 +1,12 @@
-//! HTTP client for planner-sync REST API.
+//! HTTP client para planner-sync REST API.
 //! Replaces turso_client.rs — communicates via JSON instead of Turso Pipeline API.
 
 use serde::{Deserialize, Serialize};
+
+/// Error de autenticación detectado en la respuesta HTTP del servidor.
+/// Se distingue de errores de red para que el frontend pueda mostrar
+/// un mensaje específico pidiendo reconectar sync, no un genérico "sin conexión".
+pub const SYNC_AUTH_ERROR_PREFIX: &str = "SYNC_TOKEN_EXPIRED:";
 
 #[derive(Debug, Clone)]
 pub struct SyncClient {
@@ -198,6 +203,9 @@ impl SyncClient {
         if !resp.status().is_success() {
             let status = resp.status();
             let body = resp.text().await.unwrap_or_default();
+            if status == reqwest::StatusCode::UNAUTHORIZED {
+                return Err(format!("{}Token de sincronización expirado. Reconecte sync desde el Panel de Administración.", SYNC_AUTH_ERROR_PREFIX));
+            }
             return Err(format!("Push fallido ({}): {}", status, body));
         }
 
@@ -224,6 +232,9 @@ impl SyncClient {
         if !resp.status().is_success() {
             let status = resp.status();
             let body = resp.text().await.unwrap_or_default();
+            if status == reqwest::StatusCode::UNAUTHORIZED {
+                return Err(format!("{}Token de sincronización expirado. Reconecte sync desde el Panel de Administración.", SYNC_AUTH_ERROR_PREFIX));
+            }
             return Err(format!("Pull fallido ({}): {}", status, body));
         }
 

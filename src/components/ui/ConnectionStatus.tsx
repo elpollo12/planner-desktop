@@ -6,9 +6,14 @@ import { useConnectionStore } from '../../store/connectionStore';
  * Connection status indicator for the header.
  * Shows online/offline/syncing/checking/error states.
  */
+const SYNC_TOKEN_EXPIRED_PREFIX = 'SYNC_TOKEN_EXPIRED:';
+
 export function ConnectionStatus() {
   const { t } = useTranslation();
   const { status, syncConfigured, syncEnabled, errorMessage, lastOnlineAt } = useConnectionStore();
+
+  // Token expirado: estado error con mensaje específico → mostrar como advertencia ámbar
+  const isTokenExpired = status === 'error' && (errorMessage?.startsWith(SYNC_TOKEN_EXPIRED_PREFIX) || errorMessage?.toLowerCase().includes('token de sincronización expirado'));
 
   // Don't show anything if status is unknown (not yet checked)
   if (status === 'unknown') {
@@ -81,10 +86,12 @@ export function ConnectionStatus() {
     },
     error: {
       icon: <AlertCircle size={16} />,
-      label: t('connection.errorLabel'),
-      bgClass: 'bg-red-100 dark:bg-red-900/30',
-      textClass: 'text-red-600 dark:text-red-400',
-      title: errorMessage || t('connection.error'),
+      label: isTokenExpired ? t('connection.tokenExpiredLabel', 'Token expirado') : t('connection.errorLabel'),
+      bgClass: isTokenExpired ? 'bg-amber-100 dark:bg-amber-900/30' : 'bg-red-100 dark:bg-red-900/30',
+      textClass: isTokenExpired ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400',
+      title: isTokenExpired
+        ? 'Token de sincronización expirado — reconecte sync desde el Panel de Administración'
+        : (errorMessage || t('connection.error')),
     },
   };
 

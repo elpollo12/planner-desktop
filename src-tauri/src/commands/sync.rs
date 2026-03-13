@@ -2,11 +2,26 @@ use crate::auth::{check_permission, get_session};
 use crate::models::user::UserRole;
 use crate::state::AppState;
 use crate::sync::config::{self, SyncCredentials};
-use crate::sync::sync_client::SyncClient;
+use crate::sync::sync_client::{SyncClient, SYNC_AUTH_ERROR_PREFIX};
 use crate::sync::engine::{self, SyncResult};
 use crate::sync::turso_client::TursoValue;
 use serde::{Deserialize, Serialize};
 use tauri::State;
+
+/// Si el error es un 401 de planner-sync, borra el token guardado en disco
+/// para que el estado sea consistente (token nulo = desconectado).
+/// Retorna el error original sin modificar para que suba al frontend.
+fn handle_sync_error(error: String) -> String {
+    if error.starts_with(SYNC_AUTH_ERROR_PREFIX) {
+        // Limpiar token del disco — ya no es válido
+        if let Ok(mut cfg) = config::load_config() {
+            cfg.sync_token = None;
+            let _ = config::save_config(&cfg);
+        }
+        println!("[Sync] Token expirado detectado — limpiando sync_token del disco");
+    }
+    error
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -159,7 +174,8 @@ pub async fn sync_push(
         engine::read_all_local_data(&conn, cfg.last_push_at.as_deref(), &[])?
     };
 
-    let result = engine::push_data_to_server(&client, table_data).await?;
+    let result = engine::push_data_to_server(&client, table_data).await
+        .map_err(handle_sync_error)?;
 
     if result.success {
         let conn = state.db.lock().map_err(|e| format!("Failed to lock database: {}", e))?;
@@ -186,7 +202,8 @@ pub async fn sync_pull(
     let client = build_sync_client().await?;
 
     let (pulled_data, mut result) =
-        engine::pull_data_from_server(&client, cfg.last_pull_at.as_deref()).await?;
+        engine::pull_data_from_server(&client, cfg.last_pull_at.as_deref()).await
+        .map_err(handle_sync_error)?;
 
     let mut write_succeeded = true;
     if !pulled_data.is_empty() {
@@ -233,7 +250,8 @@ pub async fn sync_full(
         let conn = state.db.lock().map_err(|e| format!("Failed to lock database: {}", e))?;
         engine::read_all_local_data(&conn, None, &["app_settings"])?
     };
-    let push_result = engine::push_data_to_server(&client, table_data).await?;
+    let push_result = engine::push_data_to_server(&client, table_data).await
+        .map_err(handle_sync_error)?;
 
     if push_result.success {
         let conn = state.db.lock().map_err(|e| format!("Failed to lock database: {}", e))?;
@@ -241,7 +259,8 @@ pub async fn sync_full(
     }
 
     // PULL all
-    let (pulled_data, pull_result) = engine::pull_data_from_server(&client, None).await?;
+    let (pulled_data, pull_result) = engine::pull_data_from_server(&client, None).await
+        .map_err(handle_sync_error)?;
 
     let mut pull_errors: Vec<String> = Vec::new();
     if !pulled_data.is_empty() {
@@ -344,7 +363,8 @@ pub async fn sync_incremental(
 
     // ── PULL primero ──────────────────────────────────────────────────────────
     let (pulled_data, pull_result) =
-        engine::pull_data_from_server(&client, cfg.last_pull_at.as_deref()).await?;
+        engine::pull_data_from_server(&client, cfg.last_pull_at.as_deref()).await
+        .map_err(handle_sync_error)?;
 
     let mut pull_errors: Vec<String> = Vec::new();
     let mut pull_write_succeeded = true;
@@ -375,7 +395,8 @@ pub async fn sync_incremental(
             let conn = state.db.lock().map_err(|e| format!("Failed to lock database: {}", e))?;
             engine::read_all_local_data(&conn, cfg.last_push_at.as_deref(), &[])?
         };
-        engine::push_data_to_server(&client, table_data).await?
+        engine::push_data_to_server(&client, table_data).await
+            .map_err(handle_sync_error)?
     };
 
     let push_succeeded = push_result.success;

@@ -105,9 +105,18 @@ export function useAutoSync() {
         syncEvents.emit();
       }
     } catch (error: any) {
-      console.error('[AutoSync] Error:', error);
+      const errorMsg: string = error?.message || error?.toString() || 'Error de conexión';
       cachedStatusRef.current = null; // Limpiar cache en error para reintentar getStatus
-      setOffline(error?.message || 'Error de conexión');
+
+      if (errorMsg.startsWith('SYNC_TOKEN_EXPIRED:')) {
+        // Token expirado — el backend ya limpió sync_token del disco.
+        // Mostrar estado de error específico para que el UI indique reconexión.
+        console.warn('[AutoSync] Token expirado detectado');
+        setError('Token de sincronización expirado. Reconecte sync desde el Panel de Administración.');
+      } else {
+        console.error('[AutoSync] Error:', errorMsg);
+        setOffline(errorMsg);
+      }
     } finally {
       isSyncingRef.current = false;
     }

@@ -100,6 +100,41 @@ pub async fn login(
 
     drop(conn);
 
+    // Renovar sync_token en planner-sync con las mismas credenciales del login.
+    // Fire-and-forget: si sync no está configurado o el servidor no responde, no bloquea el login.
+    // Esto garantiza que el sync_token siempre sea fresco mientras el usuario use la app,
+    // sin necesidad de que el admin haga sync_login manualmente.
+    {
+        let username_clone = username.clone();
+        let password_clone = password.clone();
+        tokio::spawn(async move {
+            use crate::sync::config::{self, SyncCredentials};
+            use crate::sync::sync_client::SyncClient;
+
+            // Si sync no está configurado, no hay nada que hacer
+            let server_url = match SyncCredentials::get_configured_url() {
+                Some(url) => url,
+                None => return,
+            };
+
+            let mut client = SyncClient::new(&server_url);
+            match client.login(&username_clone, &password_clone).await {
+                Ok(login_resp) => {
+                    if let Ok(mut cfg) = config::load_config() {
+                        cfg.sync_token = Some(login_resp.token);
+                        let _ = config::save_config(&cfg);
+                        println!("[Auth] sync_token renovado para '{}'", username_clone);
+                    }
+                }
+                Err(e) => {
+                    // No es un error fatal — sync seguirá funcionando con el token anterior
+                    // si todavía es válido, o mostrará el badge ámbar si ya expiró.
+                    println!("[Auth] Advertencia: no se pudo renovar sync_token: {}", e);
+                }
+            }
+        });
+    }
+
     // Return response
     Ok(LoginResponse {
         session_token,
