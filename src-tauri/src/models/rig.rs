@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 // Core structs
 // ============================================================================
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Rig {

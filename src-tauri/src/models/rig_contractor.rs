@@ -111,6 +111,7 @@ impl RigContractor {
     }
 
     /// Remove a contractor from a rig by company_id (convenience)
+    #[allow(dead_code)]
     pub fn remove_by_company(
         conn: &Connection,
         rig_id: &str,

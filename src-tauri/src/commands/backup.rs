@@ -37,7 +37,7 @@ fn get_backup_dir() -> Result<PathBuf> {
 
 /// Elimina backups antiguos, conservando solo los N más recientes.
 fn prune_old_backups(backup_dir: &PathBuf, keep: usize) {
-    let Ok(mut entries) = std::fs::read_dir(backup_dir) else { return };
+    let Ok(entries) = std::fs::read_dir(backup_dir) else { return };
 
     let mut files: Vec<PathBuf> = entries
         .flatten()

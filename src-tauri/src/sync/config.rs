@@ -54,6 +54,7 @@ impl Default for SyncConfig {
 #[derive(Debug, Clone)]
 pub struct SyncCredentials {
     pub server_url: String,
+    #[allow(dead_code)]
     pub is_fallback: bool,
 }
 

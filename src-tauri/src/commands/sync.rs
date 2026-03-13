@@ -1,4 +1,5 @@
 use crate::auth::{check_permission, get_session};
+use crate::models::audit_log::{AuditEntry, NewAuditEntry, AUDIT_CONNECT_SYNC, AUDIT_DISCONNECT_SYNC};
 use crate::models::user::UserRole;
 use crate::state::AppState;
 use crate::sync::config::{self, SyncCredentials};
@@ -491,6 +492,21 @@ pub async fn connect_sync_server(
         );
     }
 
+    // Audit: conexión a sync establecida
+    {
+        let session = get_session(&session_token, &state).map_err(|e| e.to_string())?;
+        let conn = state.db.lock().map_err(|e| format!("Failed to lock database: {}", e))?;
+        AuditEntry::record(&conn, NewAuditEntry {
+            actor_id:    &session.user_id,
+            actor_name:  &session.username,
+            action:      AUDIT_CONNECT_SYNC,
+            target_type: Some("sync_server"),
+            target_id:   None,
+            target_name: Some(&trimmed_url),
+            detail:      None,
+        });
+    }
+
     println!("[Sync] Conectado como {} ({})", login.user.full_name, login.user.role);
     Ok(build_status(&cfg))
 }
@@ -539,13 +555,23 @@ pub async fn disable_sync(
     cfg.server_url = None;
     config::save_config(&cfg)?;
 
-    // Limpiar URL de app_settings
+    // Limpiar URL de app_settings + audit desconexión
     {
+        let session = get_session(&session_token, &state).map_err(|e| e.to_string())?;
         let conn = state.db.lock().map_err(|e| format!("Failed to lock database: {}", e))?;
         let _ = conn.execute(
             "UPDATE app_settings SET sync_server_url = NULL WHERE id = 1",
             [],
         );
+        AuditEntry::record(&conn, NewAuditEntry {
+            actor_id:    &session.user_id,
+            actor_name:  &session.username,
+            action:      AUDIT_DISCONNECT_SYNC,
+            target_type: None,
+            target_id:   None,
+            target_name: None,
+            detail:      None,
+        });
     }
 
     Ok(())
