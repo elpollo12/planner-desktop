@@ -33,3 +33,8 @@ nul
 
 # Keys folder (NEVER commit)
 keys/
+
+# Llaves privadas en src-tauri (NEVER commit — solo license_pub.key es seguro)
+src-tauri/license_sign.key
+src-tauri/license_verify.key
+src-tauri/new-key.key

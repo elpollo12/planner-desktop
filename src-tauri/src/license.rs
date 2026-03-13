@@ -215,9 +215,36 @@ fn delete_license_from_disk() -> Result<(), String> {
     Ok(())
 }
 
+/// Validate that the api_endpoint is a safe HTTPS URL
+fn validate_api_endpoint(url: &str) -> Result<(), String> {
+    if url.is_empty() {
+        return Err("La licencia no contiene un endpoint de API".to_string());
+    }
+    // Debe comenzar con https://
+    if !url.starts_with("https://") {
+        return Err(format!(
+            "El endpoint de API de la licencia debe usar HTTPS (recibido: '{}')",
+            url
+        ));
+    }
+    // No debe contener caracteres de control ni saltos de linea
+    if url.contains('\n') || url.contains('\r') || url.contains('\0') {
+        return Err("El endpoint de API contiene caracteres inválidos".to_string());
+    }
+    // Longitud razonable
+    if url.len() > 512 {
+        return Err("El endpoint de API es demasiado largo".to_string());
+    }
+    Ok(())
+}
+
 /// Activate a license: verify + save + persist api_endpoint + return info
 pub fn activate_license(license_key: &str, resource_dir: &Path) -> Result<LicenseInfo, String> {
     let license = verify_license_key(license_key, resource_dir)?;
+
+    // Validar api_endpoint antes de guardar o usar
+    validate_api_endpoint(&license.payload.api_endpoint)?;
+
     save_license_to_disk(&license)?;
 
     // Guardar apiEndpoint en sync_config.json como server_url (nivel 1 de SyncCredentials).

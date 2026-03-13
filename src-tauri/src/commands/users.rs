@@ -125,8 +125,8 @@ pub async fn admin_change_password(
     check_permission(&session_token, UserRole::Admin, &state)
         .map_err(|e| e.to_string())?;
 
-    if new_password.len() < 4 {
-        return Err("La contraseña debe tener al menos 4 caracteres".to_string());
+    if new_password.len() < 8 {
+        return Err("La contraseña debe tener al menos 8 caracteres".to_string());
     }
 
     let password_hash = hash_password(&new_password).map_err(|e| e.to_string())?;
@@ -140,7 +140,7 @@ pub async fn admin_change_password(
         "UPDATE users SET password_hash = ?1, updated_at = ?2 WHERE id = ?3",
         rusqlite::params![&password_hash, chrono::Utc::now().to_rfc3339(), &user_id],
     )
-    .map_err(|e| format!("Database error: {}", e))?;
+    .map_err(|_| "Error actualizando contraseña".to_string())?;
 
     Ok(())
 }
@@ -165,10 +165,10 @@ pub async fn verify_own_password(
             rusqlite::params![&session.user_id],
             |row| row.get(0),
         )
-        .map_err(|e| format!("Database error: {}", e))?;
+        .map_err(|_| "Error de autenticación".to_string())?;
 
     let valid = verify_password(&current_password, &current_hash)
-        .map_err(|e| e.to_string())?;
+        .map_err(|_| "Error de autenticación".to_string())?;
 
     Ok(valid)
 }
@@ -183,8 +183,8 @@ pub async fn change_own_password(
 ) -> Result<(), String> {
     let session = get_session(&session_token, &state).map_err(|e| e.to_string())?;
 
-    if new_password.len() < 4 {
-        return Err("La contraseña debe tener al menos 4 caracteres".to_string());
+    if new_password.len() < 8 {
+        return Err("La contraseña debe tener al menos 8 caracteres".to_string());
     }
 
     let conn = state
@@ -199,11 +199,11 @@ pub async fn change_own_password(
             rusqlite::params![&session.user_id],
             |row| row.get(0),
         )
-        .map_err(|e| format!("Database error: {}", e))?;
+        .map_err(|_| "Error de autenticación".to_string())?;
 
     // Verify current password
     let valid = verify_password(&current_password, &current_hash)
-        .map_err(|e| e.to_string())?;
+        .map_err(|_| "Error de autenticación".to_string())?;
     if !valid {
         return Err("Contraseña actual incorrecta".to_string());
     }
@@ -214,7 +214,7 @@ pub async fn change_own_password(
         "UPDATE users SET password_hash = ?1, updated_at = ?2 WHERE id = ?3",
         rusqlite::params![&new_hash, chrono::Utc::now().to_rfc3339(), &session.user_id],
     )
-    .map_err(|e| format!("Database error: {}", e))?;
+    .map_err(|_| "Error actualizando contraseña".to_string())?;
 
     Ok(())
 }

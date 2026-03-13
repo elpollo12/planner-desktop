@@ -114,14 +114,7 @@ export default function Login() {
           </Button>
         </form>
 
-        <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-          <p className="text-xs text-gray-600 text-center mb-2">
-            Credenciales de prueba:
-          </p>
-          <p className="text-xs text-gray-700 font-mono text-center">
-            Usuario: <strong>admin</strong> | Contraseña: <strong>admin123</strong>
-          </p>
-        </div>
+
       </Card>
     </div>
   );

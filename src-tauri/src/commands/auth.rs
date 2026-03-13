@@ -49,25 +49,26 @@ pub async fn login(
         .lock()
         .map_err(|e| format!("Failed to lock database: {}", e))?;
 
-    // Get user by username
+    // Get user by username — error genérico para no revelar si el usuario existe
     let user = User::get_by_username(&conn, &username)
-        .map_err(|e| format!("Authentication failed: {}", e))?;
+        .map_err(|_| "Authentication failed: credenciales inválidas".to_string())?;
 
     // Check if user is active
     if !user.active {
         return Err("Authentication failed: User account is disabled".to_string());
     }
 
-    // Verify password
+    // Verify password — mismo mensaje genérico que usuario no encontrado
     let password_valid = verify_password(&password, &user.password_hash)
-        .map_err(|e| format!("Authentication failed: {}", e))?;
+        .map_err(|_| "Authentication failed: credenciales inválidas".to_string())?;
 
     if !password_valid {
-        return Err("Authentication failed: Invalid password".to_string());
+        return Err("Authentication failed: credenciales inválidas".to_string());
     }
 
     // Update last login timestamp
-    User::update_last_login(&conn, &user.id).map_err(|e| format!("Failed to update last login: {}", e))?;
+    User::update_last_login(&conn, &user.id)
+        .map_err(|_| "Error interno al iniciar sesión".to_string())?;
 
     // Generate session token
     let session_token = uuid::Uuid::new_v4().to_string();

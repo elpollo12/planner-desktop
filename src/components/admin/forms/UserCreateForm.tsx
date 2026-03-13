@@ -20,7 +20,7 @@ import type { Rig } from '@/types/rig';
 
 const userDataSchema = z.object({
   username:     z.string().min(3, i18next.t('admin.forms.minChars', { count: 3 })).max(50, i18next.t('admin.forms.maxChars', { count: 50 })),
-  password:     z.string().min(6, i18next.t('admin.forms.minChars', { count: 6 })),
+  password:     z.string().min(8, i18next.t('admin.forms.minChars', { count: 8 })),
   fullName:     z.string().max(100, i18next.t('admin.forms.maxChars', { count: 100 })).optional().or(z.literal('')),
   ci:           z.string().max(20,  i18next.t('admin.forms.maxChars', { count: 20 })).optional().or(z.literal('')),
   role:         z.enum(['admin', 'supervisor', 'operator']),

@@ -68,9 +68,8 @@ export const useAuthStore = create<AuthState>()(
             errorMessage = i18n.t('auth.errors.rateLimited');
           } else if (rawError.includes('User account is disabled')) {
             errorMessage = i18n.t('auth.errors.disabled');
-          } else if (rawError.includes('Invalid password')) {
-            errorMessage = i18n.t('auth.errors.invalidPassword');
           } else if (rawError.includes('Authentication failed')) {
+            // Mensaje genérico: no diferenciamos usuario/password para no revelar qué falló
             errorMessage = i18n.t('auth.errors.invalidCredentials');
           }
           set({
@@ -182,8 +181,10 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'auth-storage',
+      // Solo persistimos sessionToken e isAuthenticated.
+      // El objeto 'user' (con datos personales) NO se guarda en disco — se recarga
+      // desde el backend en cada arranque via getCurrentUser().
       partialize: (state) => ({
-        user: state.user,
         sessionToken: state.sessionToken,
         isAuthenticated: state.isAuthenticated,
       }),

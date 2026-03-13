@@ -59,13 +59,42 @@ pub async fn upload_company_logo(
         return Err(AppError::ValidationError("El logo no puede exceder 2MB".to_string()));
     }
 
-    // Determine MIME type from file extension
-    let mime_type = match file_name.split('.').last() {
-        Some("png") => "image/png",
-        Some("jpg") | Some("jpeg") => "image/jpeg",
-        Some("svg") => "image/svg+xml",
-        Some("webp") => "image/webp",
-        _ => return Err(AppError::ValidationError(
+    // Validate MIME type por magic bytes (no confiar solo en la extensión del archivo)
+    // Referencias: https://en.wikipedia.org/wiki/List_of_file_signatures
+    let mime_type_by_magic = if file_data.starts_with(&[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]) {
+        Some("image/png")
+    } else if file_data.starts_with(&[0xFF, 0xD8, 0xFF]) {
+        Some("image/jpeg")
+    } else if file_data.starts_with(b"RIFF") && file_data.get(8..12) == Some(b"WEBP") {
+        Some("image/webp")
+    } else if file_data.starts_with(b"<svg") || file_data.starts_with(b"<?xml") {
+        // SVG es texto — no tiene magic bytes binarios, pero debe empezar con etiqueta XML/SVG
+        // Validación mínima: rechazar si la extensión no coincide
+        Some("image/svg+xml")
+    } else {
+        None
+    };
+
+    // Validar extensión del archivo
+    let mime_type_by_ext = match file_name.split('.').last().map(|s| s.to_lowercase()).as_deref() {
+        Some("png")  => Some("image/png"),
+        Some("jpg") | Some("jpeg") => Some("image/jpeg"),
+        Some("svg")  => Some("image/svg+xml"),
+        Some("webp") => Some("image/webp"),
+        _            => None,
+    };
+
+    // Ambos deben coincidir (excepto SVG que se valída solo por extensión)
+    let mime_type = match (mime_type_by_magic, mime_type_by_ext) {
+        (Some(magic), Some(ext)) if magic == ext => magic,
+        (None, Some("image/svg+xml"))             => "image/svg+xml", // SVG validado por extensión
+        (Some(_), None) | (None, None)            => return Err(AppError::ValidationError(
+            "Formato de imagen no soportado. Use PNG, JPG, SVG o WEBP".to_string()
+        )),
+        (Some(_), Some(_))                        => return Err(AppError::ValidationError(
+            "El tipo de archivo no coincide con su extensión".to_string()
+        )),
+        _                                         => return Err(AppError::ValidationError(
             "Formato de imagen no soportado. Use PNG, JPG, SVG o WEBP".to_string()
         )),
     };
