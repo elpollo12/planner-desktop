@@ -41,7 +41,9 @@
     "downloadSuccess": "Datos del servidor descargados correctamente.",
     "downloadErrorTitle": "Licencia activada, pero no se pudo conectar al servidor.",
     "downloadErrorHint": "Puede sincronizar manualmente desde el Panel de Administración.",
-    "contactAdmin": "Contacte a su administrador si no posee una clave de licencia."
+    "contactAdmin": "Contacte a su administrador si no posee una clave de licencia.",
+    "enterOrUpdate": "Ingresar o actualizar licencia",
+    "backToLogin": "Volver al inicio de sesión"
   },
   "forbidden": {
     "title": "Acceso Denegado",

@@ -41,7 +41,9 @@
     "downloadSuccess": "Server data downloaded successfully.",
     "downloadErrorTitle": "License activated, but could not connect to the server.",
     "downloadErrorHint": "You can sync manually from the Administration Panel.",
-    "contactAdmin": "Contact your administrator if you don't have a license key."
+    "contactAdmin": "Contact your administrator if you don't have a license key.",
+    "enterOrUpdate": "Enter or update license",
+    "backToLogin": "Back to login"
   },
   "forbidden": {
     "title": "Access Denied",

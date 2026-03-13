@@ -158,18 +158,60 @@ fn get_config_path() -> Result<PathBuf, String> {
     Ok(config_dir)
 }
 
+/// Lee sync_server_url de app_settings como fallback.
+/// Solo se usa cuando el sync_config.json no tiene URL (fue borrado o es nuevo).
+fn read_url_from_db() -> Option<String> {
+    let app_data_dir = dirs::data_dir()?;
+    let db_path = app_data_dir.join("d-planner-temp").join("planner.db");
+    if !db_path.exists() {
+        return None;
+    }
+    let conn = rusqlite::Connection::open(&db_path).ok()?;
+    conn.query_row(
+        "SELECT sync_server_url FROM app_settings WHERE id = 1",
+        [],
+        |row| row.get::<_, Option<String>>(0),
+    ).ok().flatten().filter(|u| !u.is_empty())
+}
+
 pub fn load_config() -> Result<SyncConfig, String> {
     let path = get_config_path()?;
 
     if !path.exists() {
-        return Ok(SyncConfig::default());
+        // Archivo borrado — intentar recuperar URL desde app_settings
+        let mut cfg = SyncConfig::default();
+        if let Some(url) = read_url_from_db() {
+            println!("[SyncConfig] sync_config.json ausente — URL recuperada de app_settings: {}", url);
+            cfg.server_url = Some(url);
+        }
+        return Ok(cfg);
     }
 
     let content = std::fs::read_to_string(&path)
         .map_err(|e| format!("Failed to read sync config: {}", e))?;
 
-    serde_json::from_str(&content)
-        .map_err(|e| format!("Failed to parse sync config: {}", e))
+    let mut cfg: SyncConfig = match serde_json::from_str(&content) {
+        Ok(c) => c,
+        Err(e) => {
+            // JSON corrupto (escritura interrumpida, disco lleno, etc.)
+            // Tratar igual que archivo ausente: defaults + recuperar URL del DB.
+            eprintln!("[SyncConfig] JSON corrupto, usando defaults ({}) ", e);
+            SyncConfig::default()
+        }
+    };
+
+    // Si el JSON existe pero no tiene URL (migración desde versión antigua),
+    // intentar recuperarla de app_settings.
+    if cfg.server_url.is_none() {
+        if let Some(url) = read_url_from_db() {
+            println!("[SyncConfig] server_url ausente en JSON — recuperada de app_settings: {}", url);
+            cfg.server_url = Some(url);
+            // Persistir para no depender del fallback en el próximo arranque
+            let _ = save_config(&cfg);
+        }
+    }
+
+    Ok(cfg)
 }
 
 pub fn save_config(config: &SyncConfig) -> Result<(), String> {

@@ -473,7 +473,7 @@ pub async fn connect_sync_server(
 
     // Step 3: Save everything and enable
     let mut cfg = config::load_config()?;
-    cfg.server_url = Some(trimmed_url);
+    cfg.server_url = Some(trimmed_url.clone());
     cfg.sync_token = Some(login.token);
     cfg.enabled = true;
     // Reset timestamps for fresh sync
@@ -481,6 +481,15 @@ pub async fn connect_sync_server(
     cfg.last_push_at = None;
     cfg.last_pull_at = None;
     config::save_config(&cfg)?;
+
+    // Persistir URL en app_settings como respaldo ante pérdida de sync_config.json
+    {
+        let conn = state.db.lock().map_err(|e| format!("Failed to lock database: {}", e))?;
+        let _ = conn.execute(
+            "UPDATE app_settings SET sync_server_url = ?1 WHERE id = 1",
+            rusqlite::params![&trimmed_url],
+        );
+    }
 
     println!("[Sync] Conectado como {} ({})", login.user.full_name, login.user.role);
     Ok(build_status(&cfg))
@@ -527,7 +536,18 @@ pub async fn disable_sync(
     cfg.last_push_at = None;
     cfg.last_pull_at = None;
     cfg.sync_token = None;
+    cfg.server_url = None;
     config::save_config(&cfg)?;
+
+    // Limpiar URL de app_settings
+    {
+        let conn = state.db.lock().map_err(|e| format!("Failed to lock database: {}", e))?;
+        let _ = conn.execute(
+            "UPDATE app_settings SET sync_server_url = NULL WHERE id = 1",
+            [],
+        );
+    }
+
     Ok(())
 }
 
