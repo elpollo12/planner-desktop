@@ -1,6 +1,5 @@
 ﻿import { useEffect, useState } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { invoke } from '@tauri-apps/api/core';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { useAuthStore } from './store/authStore';
@@ -40,35 +39,15 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 function App() {
   const { sessionToken, getCurrentUser, isAuthenticated } = useAuthStore();
-  const { isLicensed, isLoading: licenseLoading, checkLicense, handshakeInProgress } = useLicenseStore();
+  const { isLicensed, isLoading: licenseLoading, checkLicense } = useLicenseStore();
   const { loadPreferences, clearPreferences } = usePreferencesStore();
   const { loadSettings } = useAppSettingsStore();
   const [validating, setValidating] = useState(true);
-  // Check license on startup
+
+  // Check license on startup — LicenseActivation maneja su propio ciclo completo
   useEffect(() => {
     checkLicense();
   }, []);
-
-  // Si la licencia está activa pero el handshake inicial nunca se completó,
-  // ejecutarlo en background. Respeta el flag handshakeInProgress para evitar
-  // doble disparo cuando LicenseActivation ya lo está ejecutando.
-  useEffect(() => {
-    if (!isLicensed || licenseLoading || handshakeInProgress) return;
-    invoke<boolean>('get_handshake_done')
-      .then((done) => {
-        if (!done) {
-          invoke<{ success: boolean }>('sync_handshake')
-            .then((result) => {
-              if (result.success) {
-                syncEvents.emit();
-                queryClient.invalidateQueries();
-              }
-            })
-            .catch(() => {/* best-effort */});
-        }
-      })
-      .catch(() => {});
-  }, [isLicensed, licenseLoading, handshakeInProgress]);
 
   // Apply theme reactively whenever preferences change
   useThemeApplicator();

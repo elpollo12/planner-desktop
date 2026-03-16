@@ -52,7 +52,8 @@ export default function Login() {
         const result = await invoke<HandshakeResult>('sync_handshake');
         if (result.success) {
           setHandshakeStatus('success');
-          // Actualizar isLicensed en el store para que App re-renderice al Login
+          // Mostrar estado verde brevemente antes de navegar
+          await new Promise(resolve => setTimeout(resolve, 1800));
           await checkLicense();
         } else {
           setHandshakeStatus('error');

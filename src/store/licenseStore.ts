@@ -54,6 +54,9 @@ export const useLicenseStore = create<LicenseState>()((set) => ({
     set({ isLoading: true, error: null });
     try {
       const info = await invoke<LicenseInfo>('activate_license', { licenseKey: key });
+      // NO setear isLicensed aquí — lo hace checkLicense() tras el handshake exitoso.
+      // Si se setea aquí, App.tsx desmonta <LicenseActivation/> antes de que el
+      // handshake corra, y también dispara el useEffect de handshake background.
       set({ license: info, isLicensed: info.isValid, isLoading: false, error: null });
     } catch (error) {
       set({ isLoading: false, error: error as string });
