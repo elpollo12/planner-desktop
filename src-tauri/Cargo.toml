@@ -6,15 +6,6 @@ authors = ["you"]
 edition = "2021"
 default-run = "d-planner-temp"
 
-[[bin]]
-name = "d-planner-temp"
-path = "src/main.rs"
-
-[[bin]]
-name = "license_gen"
-path = "src/bin/license_gen.rs"
-bundle = false
-
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [lib]
