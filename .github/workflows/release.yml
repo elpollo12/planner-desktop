@@ -117,9 +117,6 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
-      - name: Remove license_gen from build (dev-only tool, not needed in macOS bundle)
-        run: rm -f src-tauri/src/bin/license_gen.rs
-
       - name: Build Tauri app (universal macOS)
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
