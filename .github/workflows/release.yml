@@ -123,23 +123,34 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: npm run tauri build -- --target universal-apple-darwin
 
+      - name: Sign DMG manually
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          DMG=$(find src-tauri/target/universal-apple-darwin/release/bundle/dmg -name "*.dmg" | head -1)
+          echo "Signing: $DMG"
+          npx tauri signer sign "$DMG" \
+            --private-key "$TAURI_SIGNING_PRIVATE_KEY" \
+            --password "$TAURI_SIGNING_PRIVATE_KEY_PASSWORD"
+          echo "Signature written to: ${DMG}.sig"
+
       - name: Find macOS artifacts
         id: mac_artifacts
         run: |
-          BUNDLE_ROOT="src-tauri/target/universal-apple-darwin/release/bundle"
-          echo "=== Bundle tree ==="
-          find "$BUNDLE_ROOT" -maxdepth 3 | sort
+          BUNDLE_DIR="src-tauri/target/universal-apple-darwin/release/bundle/dmg"
+          echo "=== Bundle contents ==="
+          ls -la "$BUNDLE_DIR"
 
-          DMG_FILE=$(find "$BUNDLE_ROOT" -name "*.dmg" ! -name "*.sig" | head -1)
-          # .sig can be next to .dmg or next to .app.tar.gz in macos/
-          SIG_FILE=$(find "$BUNDLE_ROOT" -name "*.dmg.sig" -o -name "*.app.tar.gz.sig" | head -1)
+          DMG_FILE=$(find "$BUNDLE_DIR" -name "*.dmg" ! -name "*.sig" | head -1)
+          SIG_FILE="${DMG_FILE}.sig"
 
-          if [ -z "$DMG_FILE" ]; then
+          if [ -z "$DMG_FILE" ] || [ ! -f "$DMG_FILE" ]; then
             echo "ERROR: DMG not found!"
             exit 1
           fi
-          if [ -z "$SIG_FILE" ]; then
-            echo "ERROR: Signature file not found!"
+          if [ ! -f "$SIG_FILE" ]; then
+            echo "ERROR: Signature not found at $SIG_FILE"
             exit 1
           fi
 
