@@ -126,15 +126,20 @@ jobs:
       - name: Find macOS artifacts
         id: mac_artifacts
         run: |
-          BUNDLE_DIR="src-tauri/target/universal-apple-darwin/release/bundle/dmg"
-          echo "=== Bundle contents ==="
-          ls -la "$BUNDLE_DIR"
+          BUNDLE_ROOT="src-tauri/target/universal-apple-darwin/release/bundle"
+          echo "=== Bundle tree ==="
+          find "$BUNDLE_ROOT" -maxdepth 3 | sort
 
-          DMG_FILE=$(find "$BUNDLE_DIR" -maxdepth 1 -name "*.dmg" ! -name "*.sig" | head -1)
-          SIG_FILE=$(find "$BUNDLE_DIR" -maxdepth 1 -name "*.dmg.sig" | head -1)
+          DMG_FILE=$(find "$BUNDLE_ROOT" -name "*.dmg" ! -name "*.sig" | head -1)
+          # .sig can be next to .dmg or next to .app.tar.gz in macos/
+          SIG_FILE=$(find "$BUNDLE_ROOT" -name "*.dmg.sig" -o -name "*.app.tar.gz.sig" | head -1)
 
-          if [ -z "$DMG_FILE" ] || [ -z "$SIG_FILE" ]; then
-            echo "ERROR: Missing macOS artifacts!"
+          if [ -z "$DMG_FILE" ]; then
+            echo "ERROR: DMG not found!"
+            exit 1
+          fi
+          if [ -z "$SIG_FILE" ]; then
+            echo "ERROR: Signature file not found!"
             exit 1
           fi
 
@@ -195,7 +200,7 @@ jobs:
         id: sigs
         run: |
           WIN_SIG=$(cat windows/*.exe.sig | tr -d '\n\r')
-          MAC_SIG=$(cat macos/*.dmg.sig | tr -d '\n\r')
+          MAC_SIG=$(cat macos/*.sig | tr -d '\n\r')
           WIN_NAME=$(ls windows/*.exe | head -1 | xargs basename)
           MAC_NAME=$(ls macos/*.dmg | head -1 | xargs basename)
           echo "win_sig=$WIN_SIG" >> $GITHUB_OUTPUT
@@ -257,7 +262,7 @@ jobs:
             windows/*.exe \
             windows/*.exe.sig \
             macos/*.dmg \
-            macos/*.dmg.sig \
+            macos/*.sig \
             latest.json
 
       - name: Notify planner-sync of new release
