@@ -18,10 +18,12 @@ interface LicenseState {
   isLicensed: boolean;
   isLoading: boolean;
   error: string | null;
+  handshakeInProgress: boolean; // evita doble disparo concurrente del handshake
 
   checkLicense: () => Promise<void>;
   activateLicense: (key: string) => Promise<void>;
   deactivateLicense: () => Promise<void>;
+  setHandshakeInProgress: (value: boolean) => void;
 }
 
 export const useLicenseStore = create<LicenseState>()((set) => ({
@@ -29,6 +31,9 @@ export const useLicenseStore = create<LicenseState>()((set) => ({
   isLicensed: false,
   isLoading: true,
   error: null,
+  handshakeInProgress: false,
+
+  setHandshakeInProgress: (value: boolean) => set({ handshakeInProgress: value }),
 
   checkLicense: async () => {
     set({ isLoading: true, error: null });

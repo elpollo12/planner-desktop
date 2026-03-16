@@ -21,7 +21,7 @@ export default function Login() {
   const { t, i18n } = useTranslation();
   const { login, isLoading, error, isAuthenticated, setError } = useAuthStore();
   const { settings } = useAppSettingsStore();
-  const { activateLicense, isLoading: licenseLoading, error: licenseError, license } = useLicenseStore();
+  const { activateLicense, checkLicense, isLoading: licenseLoading, error: licenseError, license, setHandshakeInProgress } = useLicenseStore();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -46,17 +46,27 @@ export default function Login() {
     setHandshakeError(null);
     try {
       await activateLicense(licenseKey.trim());
+      setHandshakeInProgress(true);
       setHandshakeStatus('loading');
       try {
         const result = await invoke<HandshakeResult>('sync_handshake');
-        setHandshakeStatus(result.success ? 'success' : 'error');
-        if (!result.success) setHandshakeError(result.error ?? 'Error desconocido');
+        if (result.success) {
+          setHandshakeStatus('success');
+          // Actualizar isLicensed en el store para que App re-renderice al Login
+          await checkLicense();
+        } else {
+          setHandshakeStatus('error');
+          setHandshakeError(result.error ?? 'Error desconocido');
+        }
       } catch (err) {
         setHandshakeStatus('error');
         setHandshakeError(String(err));
+      } finally {
+        setHandshakeInProgress(false);
       }
     } catch {
       // Error ya en el store
+      setHandshakeInProgress(false);
     }
   };
 

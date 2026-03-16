@@ -3,7 +3,7 @@ use crate::models::audit_log::{AuditEntry, NewAuditEntry, AUDIT_CONNECT_SYNC, AU
 use crate::models::user::UserRole;
 use crate::state::AppState;
 use crate::sync::config::{self, SyncCredentials};
-use crate::sync::sync_client::{SyncClient, SYNC_AUTH_ERROR_PREFIX};
+use crate::sync::sync_client::{SyncClient, SYNC_AUTH_ERROR_PREFIX, build_http_client};
 use crate::sync::engine::{self, SyncResult};
 use crate::sync::turso_client::TursoValue;
 use serde::{Deserialize, Serialize};
@@ -129,10 +129,14 @@ pub async fn ping_sync_server(
     if !SyncCredentials::is_configured() {
         return Ok(false);
     }
-    
-    let creds = SyncCredentials::from_env()?;
+
+    // Usar resolve_with_fallback para coincidir con la lógica real del sync
+    let creds = match SyncCredentials::resolve_with_fallback().await {
+        Ok(c) => c,
+        Err(_) => return Ok(false),
+    };
     let client = SyncClient::new(&creds.server_url);
-    
+
     match client.test_connection().await {
         Ok(_) => Ok(true),
         Err(_) => Ok(false),
@@ -647,11 +651,8 @@ pub async fn sync_handshake(
     let tenant = &license.payload.tenant;
     let url = format!("{}/api/v1/sync/handshake", api_endpoint);
 
-    // POST sin JWT — usa tenant como credencial
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(30))
-        .build()
-        .map_err(|e| format!("Error creando cliente HTTP: {}", e))?;
+    // Cliente HTTP — acepta certs inválidos si el host es una IP
+    let client = build_http_client(&api_endpoint);
 
     let resp = match client
         .post(&url)
@@ -751,16 +752,31 @@ pub async fn sync_handshake(
         });
     }
 
-    // Escribir en DB local
-    let conn = state.db.lock().map_err(|e| format!("Failed to lock database: {}", e))?;
-    match engine::write_pulled_data(&conn, &table_results) {
+    // Escribir en DB local — soltar el lock antes de cualquier .await
+    let write_result = {
+        let conn = state.db.lock().map_err(|e| format!("Failed to lock database: {}", e))?;
+        engine::write_pulled_data(&conn, &table_results)
+    };
+
+    match write_result {
         Ok(count) => {
             println!("[Handshake] {} registros escritos exitosamente", count);
-            // Marcar handshake como completado para no repetirlo en arranques futuros
-            if let Ok(mut cfg) = config::load_config() {
-                cfg.handshake_done = true;
-                let _ = config::save_config(&cfg);
-            }
+
+            // Registrar endpoint y habilitar sync. NO hacer auto-login:
+            // el sync_token lo genera el primer login del usuario con sus propias
+            // credenciales (commands/auth.rs — fire-and-forget post-login).
+            // Marcar handshake_done=true SOLO aquí, donde las tablas se escribieron OK.
+            let mut cfg = config::load_config().unwrap_or_default();
+            cfg.server_url = Some(api_endpoint.clone());
+            cfg.sync_token = None;      // El login del usuario lo llenará
+            cfg.enabled = true;         // Sync habilitado — token llegará con el primer login
+            cfg.handshake_done = true;
+            cfg.last_sync_at = None;
+            cfg.last_push_at = None;
+            cfg.last_pull_at = None;
+            let _ = config::save_config(&cfg);
+            println!("[Handshake] Endpoint registrado — sync habilitado, token pendiente de login");
+
             Ok(HandshakeResult {
                 success: true,
                 tables_written: count,
@@ -773,4 +789,13 @@ pub async fn sync_handshake(
             error: Some(format!("Error escribiendo datos: {}", e)),
         }),
     }
+}
+
+/// Devuelve true si el handshake inicial ya fue completado para la licencia activa.
+/// El frontend lo usa al arrancar para disparar el handshake en background si es false.
+#[tauri::command]
+pub fn get_handshake_done() -> bool {
+    config::load_config()
+        .map(|c| c.handshake_done)
+        .unwrap_or(false)
 }

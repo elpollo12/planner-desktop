@@ -113,16 +113,40 @@ impl From<&CellValue> for TursoValue {
     }
 }
 
+// ─── HTTP client helper ──────────────────────────────────────────────────────
+
+/// Construye un reqwest::Client configurado para la URL dada.
+/// Si el host es una IPv4 literal, desactiva la verificación TLS
+/// (el servidor puede estar en HTTP o HTTPS sin certificado válido).
+/// Para dominios de texto siempre se exige TLS válido.
+pub fn build_http_client(url: &str) -> reqwest::Client {
+    let host_is_ip = {
+        let without_scheme = url
+            .trim_start_matches("https://")
+            .trim_start_matches("http://");
+        let host_and_port = without_scheme.split('/').next().unwrap_or("");
+        let host = if let Some(pos) = host_and_port.rfind(':') {
+            &host_and_port[..pos]
+        } else {
+            host_and_port
+        };
+        let parts: Vec<&str> = host.split('.').collect();
+        parts.len() == 4 && parts.iter().all(|p| p.parse::<u8>().is_ok())
+    };
+
+    reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(120))
+        .danger_accept_invalid_certs(host_is_ip)
+        .build()
+        .unwrap_or_default()
+}
+
 // ─── Client implementation ───────────────────────────────────────────────────
 
 impl SyncClient {
     pub fn new(base_url: &str) -> Self {
         let base_url = base_url.trim().trim_end_matches('/').to_string();
-        // Aumentar timeout a 120s y límite de respuesta a 50MB para soportar logos en base64
-        let client = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(120))
-            .build()
-            .unwrap_or_default();
+        let client = build_http_client(&base_url);
         Self {
             base_url,
             token: None,

@@ -3,6 +3,8 @@ import { invoke } from '@tauri-apps/api/core';
 import { useTranslation } from 'react-i18next';
 import { useLicenseStore } from '../store/licenseStore';
 import { useAppSettingsStore } from '../store/appSettingsStore';
+import { syncEvents } from '../lib/syncEvents';
+import { queryClient } from '../lib/queryClient';
 import { Button, Card } from '../components/ui';
 import { KeyRound, CheckCircle, AlertCircle, Loader2, CloudDownload } from 'lucide-react';
 
@@ -19,7 +21,7 @@ export default function LicenseActivation() {
   const [handshakeStatus, setHandshakeStatus] = useState<HandshakeStatus>('idle');
   const [handshakeError, setHandshakeError] = useState<string | null>(null);
   const { t } = useTranslation();
-  const { activateLicense, isLoading, error, license } = useLicenseStore();
+  const { activateLicense, checkLicense, isLoading, error, license, setHandshakeInProgress } = useLicenseStore();
   const { settings } = useAppSettingsStore();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -31,19 +33,37 @@ export default function LicenseActivation() {
       // Paso 1: activar licencia (guarda license.json + sync_config.json)
       await activateLicense(licenseKey.trim());
 
-      // Paso 2: handshake best-effort (descarga datos del servidor)
+      // Paso 2: handshake — marcar en progreso para evitar doble disparo desde App.tsx
+      setHandshakeInProgress(true);
       setHandshakeStatus('loading');
       try {
         const result = await invoke<HandshakeResult>('sync_handshake');
-        setHandshakeStatus(result.success ? 'success' : 'error');
-        if (!result.success) setHandshakeError(result.error ?? 'Error desconocido');
+        if (result.success) {
+          setHandshakeStatus('success');
+          syncEvents.emit();
+          queryClient.invalidateQueries();
+          // Paso 3: solo navegar si el handshake fue exitoso
+          await checkLicense();
+        } else {
+          // Handshake fallido — mostrar error y esperar acción del usuario
+          setHandshakeStatus('error');
+          setHandshakeError(result.error ?? 'Error desconocido');
+        }
       } catch (err) {
         setHandshakeStatus('error');
         setHandshakeError(String(err));
+      } finally {
+        setHandshakeInProgress(false);
       }
     } catch {
       // Error de activación ya está en el store
+      setHandshakeInProgress(false);
     }
+  };
+
+  // Permite continuar aunque el handshake haya fallado (modo degradado)
+  const handleContinueDegraded = async () => {
+    await checkLicense();
   };
 
   return (
@@ -139,14 +159,23 @@ export default function LicenseActivation() {
           )}
 
           {handshakeStatus === 'error' && (
-            <div className="flex items-center gap-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 px-4 py-3 rounded-lg">
-              <AlertCircle size={16} className="shrink-0" />
-              <div>
-                <p className="text-sm font-medium">{t('license.downloadErrorTitle')}</p>
-                <p className="text-xs mt-0.5 opacity-80">
-                  {handshakeError ?? t('license.downloadErrorHint')}
-                </p>
+            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 px-4 py-3 rounded-lg space-y-2">
+              <div className="flex items-center gap-2">
+                <AlertCircle size={16} className="shrink-0" />
+                <div>
+                  <p className="text-sm font-medium">{t('license.downloadErrorTitle')}</p>
+                  <p className="text-xs mt-0.5 opacity-80">
+                    {handshakeError ?? t('license.downloadErrorHint')}
+                  </p>
+                </div>
               </div>
+              <button
+                type="button"
+                onClick={handleContinueDegraded}
+                className="w-full text-xs text-amber-700 dark:text-amber-300 underline underline-offset-2 hover:opacity-80 transition-opacity text-center"
+              >
+                {t('license.continueAnyway')}
+              </button>
             </div>
           )}
 

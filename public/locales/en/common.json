@@ -43,7 +43,8 @@
     "downloadErrorHint": "You can sync manually from the Administration Panel.",
     "contactAdmin": "Contact your administrator if you don't have a license key.",
     "enterOrUpdate": "Enter or update license",
-    "backToLogin": "Back to login"
+    "backToLogin": "Back to login",
+    "continueAnyway": "Continue anyway (offline mode)"
   },
   "forbidden": {
     "title": "Access Denied",

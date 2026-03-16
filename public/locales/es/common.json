@@ -43,7 +43,8 @@
     "downloadErrorHint": "Puede sincronizar manualmente desde el Panel de Administración.",
     "contactAdmin": "Contacte a su administrador si no posee una clave de licencia.",
     "enterOrUpdate": "Ingresar o actualizar licencia",
-    "backToLogin": "Volver al inicio de sesión"
+    "backToLogin": "Volver al inicio de sesión",
+    "continueAnyway": "Continuar de todos modos (modo sin conexión)"
   },
   "forbidden": {
     "title": "Acceso Denegado",

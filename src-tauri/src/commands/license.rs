@@ -14,9 +14,16 @@ pub fn activate_license(
         .map_err(|e| format!("Error obteniendo resource_dir: {}", e))?;
     let result = license::activate_license(&license_key, &resource_dir)?;
 
-    // Resetear handshake_done para que la nueva licencia dispare el handshake inicial
+    // Resetear handshake_done y asegurar server_url en una sola escritura atómica.
+    // activate_license ya escribió la server_url del api_endpoint en sync_config;
+    // aquí solo tocar handshake_done sin reemplazar lo que ya está correcto.
     if let Ok(mut cfg) = sync_config::load_config() {
         cfg.handshake_done = false;
+        // Garantizar que la server_url de la licencia prevalece sobre cualquier
+        // URL anterior que pudiera venir del fallback de app_settings.
+        if cfg.server_url.as_deref() != Some(result.api_endpoint.as_str()) {
+            cfg.server_url = Some(result.api_endpoint.clone());
+        }
         let _ = sync_config::save_config(&cfg);
     }
 

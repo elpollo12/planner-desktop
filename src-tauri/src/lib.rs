@@ -148,6 +148,7 @@ pub fn run() {
             commands::sync::get_sync_server_url,
             commands::sync::connect_sync_server,
             commands::sync::sync_handshake,
+            commands::sync::get_handshake_done,
             commands::companies::list_companies,
             commands::companies::get_company,
             commands::companies::create_company,
