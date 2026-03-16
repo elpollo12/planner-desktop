@@ -33,7 +33,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": "nsis",
+    "targets": ["nsis", "dmg"],
     "createUpdaterArtifacts": true,
     "windows": {
       "nsis": {
