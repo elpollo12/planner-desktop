@@ -24,7 +24,7 @@ export default function LicenseActivation() {
   const [tablesWritten, setTablesWritten] = useState(0);
 
   const { t } = useTranslation();
-  const { activateLicense, checkLicense } = useLicenseStore();
+  const { activateLicense, completeActivation } = useLicenseStore();
   const { settings } = useAppSettingsStore();
 
   const handleActivate = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -58,8 +58,8 @@ export default function LicenseActivation() {
     }
   };
 
-  const handleGoToLogin = async () => {
-    await checkLicense();
+  const handleGoToLogin = () => {
+    completeActivation();
   };
 
   const handleRetry = () => {

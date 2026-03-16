@@ -39,7 +39,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 function App() {
   const { sessionToken, getCurrentUser, isAuthenticated } = useAuthStore();
-  const { isLicensed, isLoading: licenseLoading, checkLicense } = useLicenseStore();
+  const { isLicensed, isLoading: licenseLoading, checkLicense, activationInProgress } = useLicenseStore();
   const { loadPreferences, clearPreferences } = usePreferencesStore();
   const { loadSettings } = useAppSettingsStore();
   const [validating, setValidating] = useState(true);
@@ -106,7 +106,7 @@ function App() {
     }
   }, [isAuthenticated, sessionToken]);
 
-  if (licenseLoading || validating) {
+  if ((licenseLoading && !activationInProgress) || validating) {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500" />
@@ -114,7 +114,7 @@ function App() {
     );
   }
 
-  if (!isLicensed) {
+  if (!isLicensed || activationInProgress) {
     return <LicenseActivation />;
   }
 
