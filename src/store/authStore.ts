@@ -59,9 +59,6 @@ export const useAuthStore = create<AuthState>()(
             error: null,
           });
 
-          // Notificar que hay datos nuevos disponibles
-          useConnectionStore.getState().markPullDone();
-
           // Check connection status (fire and forget)
           useConnectionStore.getState().checkConnection(response.sessionToken);
         } catch (error) {

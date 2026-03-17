@@ -17,6 +17,9 @@
     "enterUsername": "Ingresa tu usuario",
     "enterPassword": "Ingresa tu contraseña",
     "loggingIn": "Iniciando sesión...",
+    "syncing": "Sincronizando...",
+    "syncingData": "Descargando datos del servidor...",
+    "offlineMode": "Sin conexión al servidor. Trabajando con datos locales.",
     "role": "Rol:",
     "errors": {
       "rateLimited": "Demasiados intentos de inicio de sesión. Espera un minuto e intenta de nuevo.",

@@ -3,6 +3,7 @@ import { rigsApi } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 import { useIncidentsStore } from '@/store/incidentsStore';
 import { useConnectionStore } from '@/store/connectionStore';
+import { syncEvents } from '@/lib/syncEvents';
 import type { RigWithArea } from '@/types/rig';
 
 interface UseIncidentsRigsReturn {
@@ -51,6 +52,11 @@ export function useIncidentsRigs(): UseIncidentsRigsReturn {
   useEffect(() => {
     fetchRigs();
   }, [fetchRigs, lastPullAt]);
+
+  // Re-fetch cuando cualquier sync completa (auto-sync, manual, pull)
+  useEffect(() => {
+    return syncEvents.subscribe(() => { fetchRigs(); });
+  }, [fetchRigs]);
 
   const validatedRigId = loading ? null : selectedRigId;
   const validatedRigName = loading ? null : selectedRigName;

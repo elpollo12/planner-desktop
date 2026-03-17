@@ -84,6 +84,9 @@ function App() {
           console.error('Error reloading settings after sync:', error);
         });
       queryClient.invalidateQueries({ queryKey: notificationKeys.all() });
+      queryClient.invalidateQueries({ queryKey: ['logistics'] });
+      queryClient.invalidateQueries({ queryKey: ['incidents'] });
+      queryClient.invalidateQueries({ queryKey: ['incident-types'] });
     });
     return unsubscribe;
   }, []);

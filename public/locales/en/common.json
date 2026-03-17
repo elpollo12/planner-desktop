@@ -17,6 +17,9 @@
     "enterUsername": "Enter your username",
     "enterPassword": "Enter your password",
     "loggingIn": "Logging in...",
+    "syncing": "Syncing...",
+    "syncingData": "Downloading data from server...",
+    "offlineMode": "No server connection. Working with local data.",
     "role": "Role:",
     "errors": {
       "rateLimited": "Too many login attempts. Wait a minute and try again.",

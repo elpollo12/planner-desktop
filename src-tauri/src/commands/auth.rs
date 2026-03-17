@@ -96,11 +96,10 @@ pub async fn login(
         (session_token, user)
     };
 
-    // ── Sync: renovar token + pull (awaits, conn ya liberada) ─────────────────
+    // ── Sync: solo renovar sync_token (el pull lo hace el frontend después) ───
     {
         use crate::sync::config::{self, SyncCredentials};
         use crate::sync::sync_client::SyncClient;
-        use crate::sync::engine;
 
         if let Some(server_url) = SyncCredentials::get_configured_url() {
             let mut client = SyncClient::new(&server_url);
@@ -111,34 +110,6 @@ pub async fn login(
                         cfg.sync_token = Some(login_resp.token.clone());
                         let _ = config::save_config(&cfg);
                         println!("[Auth] sync_token renovado para '{}'", username);
-
-                        client.set_token(login_resp.token);
-                        let last_pull_at = cfg.last_pull_at.clone();
-
-                        match engine::pull_data_from_server(&client, last_pull_at.as_deref()).await {
-                            Ok((pulled_data, result)) => {
-                                if !pulled_data.is_empty() {
-                                    let conn = state.db.lock()
-                                        .map_err(|e| format!("Failed to lock database: {}", e))?;
-                                    match engine::write_pulled_data(&conn, &pulled_data) {
-                                        Ok(count) => {
-                                            let _ = engine::recalculate_logistics_stock(&conn);
-                                            drop(conn);
-                                            if let Ok(mut cfg2) = config::load_config() {
-                                                cfg2.last_pull_at = Some(result.timestamp.clone());
-                                                cfg2.last_sync_at = Some(result.timestamp);
-                                                let _ = config::save_config(&cfg2);
-                                            }
-                                            println!("[Auth] Pull post-login: {} registros escritos", count);
-                                        }
-                                        Err(e) => println!("[Auth] Pull write error: {}", e),
-                                    }
-                                } else {
-                                    println!("[Auth] Pull post-login: sin datos nuevos");
-                                }
-                            }
-                            Err(e) => println!("[Auth] Pull fetch error: {}", e),
-                        }
                     }
                 }
                 Err(e) => println!("[Auth] sync_token no renovado: {}", e),

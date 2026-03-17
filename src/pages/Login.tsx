@@ -7,9 +7,12 @@ import { useAuthStore } from '../store/authStore';
 import { useAppSettingsStore } from '../store/appSettingsStore';
 import { useLicenseStore } from '../store/licenseStore';
 import { useConnectionStore } from '../store/connectionStore';
+import { syncEvents } from '../lib/syncEvents';
+import { toast } from 'react-toastify';
 import { Button, Input, Card } from '../components/ui';
 
 type HandshakeStatus = 'idle' | 'loading' | 'success' | 'error';
+type SyncPhase = 'idle' | 'syncing' | 'done';
 interface HandshakeResult { success: boolean; tablesWritten: number; error: string | null; }
 interface SyncResult { success: boolean; tablesSynced: number; recordsPushed: number; recordsPulled: number; errors: string[]; timestamp: string; }
 
@@ -21,6 +24,7 @@ export default function Login() {
   const [licenseKey, setLicenseKey] = useState('');
   const [handshakeStatus, setHandshakeStatus] = useState<HandshakeStatus>('idle');
   const [handshakeError, setHandshakeError] = useState<string | null>(null);
+  const [syncPhase, setSyncPhase] = useState<SyncPhase>('idle');
   const { t, i18n } = useTranslation();
   const { login, isLoading, error, isAuthenticated, setError } = useAuthStore();
   const { settings } = useAppSettingsStore();
@@ -28,33 +32,49 @@ export default function Login() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (isAuthenticated) {
+    // No navegar mientras el sync post-login está en progreso;
+    // handleSubmit navega al terminar el pull.
+    if (isAuthenticated && syncPhase !== 'syncing') {
       navigate('/dashboard');
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, navigate, syncPhase]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
+    // Marcar syncing ANTES del login para que el useEffect de navegación
+    // vea el guard activo cuando isAuthenticated cambie a true.
+    setSyncPhase('syncing');
     try {
-      // login en Rust ya renueva sync_token + hace pull inicial
+      // login en Rust solo autentica + renueva sync_token (sin pull)
       await login(username, password);
 
-      // sync_full con el sessionToken actual para traer TODOS los datos
-      // (logistics, incidents, etc.) — fire & forget, markPullDone al terminar
+      // Pull completo AWAITED — el usuario ve spinner mientras bajan los datos
       const { sessionToken } = useAuthStore.getState();
       if (sessionToken) {
-        invoke<SyncResult>('sync_full', { sessionToken })
-          .then(() => {
-            useConnectionStore.getState().markPullDone();
-          })
-          .catch((err) => {
-            console.warn('[Login] sync_full error:', err);
-            // Igual marcamos para que los hooks intenten cargar lo que haya
-            useConnectionStore.getState().markPullDone();
-          });
+        try {
+          const result = await invoke<SyncResult>('sync_pull', { sessionToken });
+          if (result.recordsPulled > 0) {
+            console.log(`[Login] Pull post-login: ${result.recordsPulled} registros recibidos`);
+          }
+        } catch (err) {
+          // Sync falló (sin conexión, etc.) — dejar pasar con datos locales
+          console.warn('[Login] sync_pull error:', err);
+          toast.info(t('auth.offlineMode'));
+        }
+        // Re-validar usuario tras sync: el pull puede haber reemplazado los
+        // registros de users con IDs del servidor distintos al ID local.
+        // getCurrentUser detecta el mismatch y corrige la sesión por username.
+        await useAuthStore.getState().getCurrentUser();
+
+        // Notificar al UI que hay datos disponibles
+        syncEvents.emit();
+        useConnectionStore.getState().markPullDone();
       }
+      // Desbloquear navegación → useEffect detecta done + isAuthenticated → navega
+      setSyncPhase('done');
     } catch (err) {
+      setSyncPhase('idle');
       console.error('Login failed:', err);
     }
   };
@@ -150,9 +170,16 @@ export default function Login() {
                 </div>
               )}
               <Button type="submit" variant="primary" size="lg" className="w-full"
-                loading={isLoading} disabled={isLoading || !username || !password}>
-                {t('auth.login')}
+                loading={isLoading || syncPhase === 'syncing'} disabled={isLoading || syncPhase === 'syncing' || !username || !password}>
+                {syncPhase === 'syncing' ? t('auth.syncing') : t('auth.login')}
               </Button>
+
+              {syncPhase === 'syncing' && (
+                <div className="flex items-center gap-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 px-4 py-3 rounded-lg">
+                  <Loader2 size={16} className="shrink-0 animate-spin" />
+                  <p className="text-sm">{t('auth.syncingData')}</p>
+                </div>
+              )}
             </form>
 
             <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 text-center">
