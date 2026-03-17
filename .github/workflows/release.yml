@@ -129,22 +129,32 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
           MACOS_DIR="src-tauri/target/universal-apple-darwin/release/bundle/macos"
-          APP_NAME=$(find "$MACOS_DIR" -maxdepth 1 -name "*.app" | head -1 | xargs basename)
-          TAR_NAME="${APP_NAME%.app}.app.tar.gz"
 
-          echo "Creating tarball: $TAR_NAME"
+          echo "=== macOS bundle contents ==="
+          ls -la "$MACOS_DIR"
+
+          APP_PATH=$(find "$MACOS_DIR" -maxdepth 1 -name "*.app" -type d | head -1)
+          if [ -z "$APP_PATH" ]; then
+            echo "ERROR: No .app found in $MACOS_DIR"
+            exit 1
+          fi
+
+          APP_NAME=$(basename "$APP_PATH")
+          TAR_NAME="${APP_NAME%.app}.app.tar.gz"
+          TAR_PATH="$MACOS_DIR/$TAR_NAME"
+
+          echo "Found app: $APP_NAME"
+          echo "Creating tarball: $TAR_PATH"
           cd "$MACOS_DIR"
           tar -czf "$TAR_NAME" "$APP_NAME"
           cd -
 
-          TAR_PATH="$MACOS_DIR/$TAR_NAME"
           echo "Signing: $TAR_PATH"
           npx tauri signer sign "$TAR_PATH" \
             --private-key "$TAURI_SIGNING_PRIVATE_KEY" \
             --password "$TAURI_SIGNING_PRIVATE_KEY_PASSWORD"
 
-          echo "tar_path=$TAR_PATH" >> $GITHUB_ENV
-          echo "tar_sig_path=${TAR_PATH}.sig" >> $GITHUB_ENV
+          echo "Signature written to: ${TAR_PATH}.sig"
 
       - name: Find macOS artifacts
         id: mac_artifacts
