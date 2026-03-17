@@ -130,14 +130,16 @@ jobs:
         run: |
           MACOS_DIR="src-tauri/target/universal-apple-darwin/release/bundle/macos"
 
-          echo "=== macOS bundle contents ==="
-          ls -la "$MACOS_DIR"
+          echo "=== Full bundle tree ==="
+          find src-tauri/target/universal-apple-darwin/release/bundle -maxdepth 4 | sort
 
-          APP_PATH=$(find "$MACOS_DIR" -maxdepth 1 -name "*.app" -type d | head -1)
+          APP_PATH=$(find src-tauri/target/universal-apple-darwin/release/bundle -name "*.app" -type d | head -1)
           if [ -z "$APP_PATH" ]; then
-            echo "ERROR: No .app found in $MACOS_DIR"
+            echo "ERROR: No .app found anywhere in bundle"
             exit 1
           fi
+
+          MACOS_DIR=$(dirname "$APP_PATH")
 
           APP_NAME=$(basename "$APP_PATH")
           TAR_NAME="${APP_NAME%.app}.app.tar.gz"
