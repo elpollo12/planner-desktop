@@ -23,7 +23,6 @@ import Logistics from './pages/Logistics';
 import Incidents from './pages/Incidents';
 import CloudLogs from './pages/CloudLogs';
 import ReportApprovals from './pages/ReportApprovals';
-import LicenseActivation from './pages/LicenseActivation';
 import Forbidden from './pages/Forbidden';
 import Profile from './pages/Profile';
 import { RoleGuard } from './components/guards';
@@ -39,7 +38,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 function App() {
   const { sessionToken, getCurrentUser, isAuthenticated } = useAuthStore();
-  const { isLicensed, isLoading: licenseLoading, checkLicense, activationInProgress } = useLicenseStore();
+  const { isLoading: licenseLoading, checkLicense, activationInProgress } = useLicenseStore();
   const { loadPreferences, clearPreferences } = usePreferencesStore();
   const { loadSettings } = useAppSettingsStore();
   const [validating, setValidating] = useState(true);
