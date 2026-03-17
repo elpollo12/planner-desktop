@@ -6,14 +6,17 @@ import { invoke } from '@tauri-apps/api/core';
 import { useAuthStore } from '../store/authStore';
 import { useAppSettingsStore } from '../store/appSettingsStore';
 import { useLicenseStore } from '../store/licenseStore';
+import { useConnectionStore } from '../store/connectionStore';
 import { Button, Input, Card } from '../components/ui';
 
 type HandshakeStatus = 'idle' | 'loading' | 'success' | 'error';
 interface HandshakeResult { success: boolean; tablesWritten: number; error: string | null; }
+interface SyncResult { success: boolean; tablesSynced: number; recordsPushed: number; recordsPulled: number; errors: string[]; timestamp: string; }
 
 export default function Login() {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  // TODO: Quitar credenciales hardcodeadas antes del release final
+  const [username, setUsername] = useState('admin');
+  const [password, setPassword] = useState('admin123');
   const [showLicense, setShowLicense] = useState(false);
   const [licenseKey, setLicenseKey] = useState('');
   const [handshakeStatus, setHandshakeStatus] = useState<HandshakeStatus>('idle');
@@ -34,7 +37,23 @@ export default function Login() {
     e.preventDefault();
     setError(null);
     try {
+      // login en Rust ya renueva sync_token + hace pull inicial
       await login(username, password);
+
+      // sync_full con el sessionToken actual para traer TODOS los datos
+      // (logistics, incidents, etc.) — fire & forget, markPullDone al terminar
+      const { sessionToken } = useAuthStore.getState();
+      if (sessionToken) {
+        invoke<SyncResult>('sync_full', { sessionToken })
+          .then(() => {
+            useConnectionStore.getState().markPullDone();
+          })
+          .catch((err) => {
+            console.warn('[Login] sync_full error:', err);
+            // Igual marcamos para que los hooks intenten cargar lo que haya
+            useConnectionStore.getState().markPullDone();
+          });
+      }
     } catch (err) {
       console.error('Login failed:', err);
     }
@@ -52,7 +71,6 @@ export default function Login() {
         const result = await invoke<HandshakeResult>('sync_handshake');
         if (result.success) {
           setHandshakeStatus('success');
-          // Mostrar estado verde brevemente antes de navegar
           await new Promise(resolve => setTimeout(resolve, 1800));
           await checkLicense();
         } else {
@@ -66,7 +84,6 @@ export default function Login() {
         setHandshakeInProgress(false);
       }
     } catch {
-      // Error ya en el store
       setHandshakeInProgress(false);
     }
   };
@@ -83,7 +100,6 @@ export default function Login() {
     >
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
 
-      {/* Language toggle */}
       <button
         onClick={() => i18n.changeLanguage(i18n.language === 'es' ? 'en' : 'es')}
         className="absolute top-4 right-4 z-20 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 backdrop-blur-sm text-white/80 hover:bg-white/20 transition-colors"
@@ -94,7 +110,6 @@ export default function Login() {
       </button>
 
       <Card className="sm:min-w-1/2 md:min-w-1/3 max-w-md relative z-10 shadow-2xl">
-        {/* Header — logo o título */}
         <div className="text-center mb-6">
           {settings?.logoPath ? (
             <div className="flex justify-center mb-4">
@@ -108,7 +123,6 @@ export default function Login() {
           )}
         </div>
 
-        {/* ── Vista Login ── */}
         {!showLicense && (
           <>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -141,7 +155,6 @@ export default function Login() {
               </Button>
             </form>
 
-            {/* Botón licencia */}
             <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 text-center">
               <button
                 type="button"
@@ -155,7 +168,6 @@ export default function Login() {
           </>
         )}
 
-        {/* ── Vista Licencia ── */}
         {showLicense && (
           <>
             <div className="flex items-center gap-2 mb-5 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">

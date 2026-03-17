@@ -3,7 +3,7 @@ import { persist } from 'zustand/middleware';
 import i18n from '../lib/i18n';
 import type { User, LoginResponse, ModulePermissions } from '../types';
 import { invoke } from '@tauri-apps/api/core';
-import { modulePermissionsApi, syncApi } from '../lib/api';
+import { modulePermissionsApi } from '../lib/api';
 import { useLogisticsStore } from './logisticsStore';
 import { useConnectionStore } from './connectionStore';
 import { queryClient } from '../lib/queryClient';
@@ -33,12 +33,13 @@ export const useAuthStore = create<AuthState>()(
       login: async (username: string, password: string) => {
         set({ isLoading: true, error: null });
         try {
+          // El comando login en Rust ya hace sync_login + pull secuencialmente
+          // antes de responder — cuando llegamos aquí los datos ya están en la DB local.
           const response = await invoke<LoginResponse>('login', {
             username,
             password,
           });
 
-          // Load granular module permissions for non-admin users
           let modulePermissions: ModulePermissions | undefined;
           if (response.user.role !== 'admin') {
             try {
@@ -58,31 +59,19 @@ export const useAuthStore = create<AuthState>()(
             error: null,
           });
 
-          // Check connection status after successful login, then pull if sync is active
-          useConnectionStore
-            .getState()
-            .checkConnection(response.sessionToken)
-            .then(() => {
-              const { syncConfigured, syncEnabled } =
-                useConnectionStore.getState();
-              if (syncConfigured && syncEnabled) {
-                syncApi
-                  .pull(response.sessionToken)
-                  .catch((err) =>
-                    console.warn('[post-login pull]', err),
-                  );
-              }
-            });
+          // Notificar que hay datos nuevos disponibles
+          useConnectionStore.getState().markPullDone();
+
+          // Check connection status (fire and forget)
+          useConnectionStore.getState().checkConnection(response.sessionToken);
         } catch (error) {
           const rawError = error as string;
-          // Map backend error messages to user-friendly translated messages
           let errorMessage = rawError;
           if (rawError.includes('Rate limit exceeded')) {
             errorMessage = i18n.t('auth.errors.rateLimited');
           } else if (rawError.includes('User account is disabled')) {
             errorMessage = i18n.t('auth.errors.disabled');
           } else if (rawError.includes('Authentication failed')) {
-            // Mensaje genérico: no diferenciamos usuario/password para no revelar qué falló
             errorMessage = i18n.t('auth.errors.invalidCredentials');
           }
           set({
@@ -113,13 +102,8 @@ export const useAuthStore = create<AuthState>()(
           error: null,
         });
 
-        // Clear logistics rig selection on logout
         useLogisticsStore.getState().clearSelectedRig();
-
-        // Reset connection status on logout
         useConnectionStore.getState().reset();
-
-        // Clear all React Query cache to prevent stale data leaking between users
         queryClient.clear();
       },
 
@@ -134,7 +118,6 @@ export const useAuthStore = create<AuthState>()(
         try {
           const user = await invoke<User>('get_current_user', { sessionToken });
 
-          // If the user account was deactivated, force logout
           if (!user.active) {
             set({
               user: null,
@@ -146,7 +129,6 @@ export const useAuthStore = create<AuthState>()(
             return;
           }
 
-          // Load granular module permissions for non-admin users
           let modulePermissions: ModulePermissions | undefined;
           if (user.role !== 'admin') {
             try {
@@ -170,12 +152,10 @@ export const useAuthStore = create<AuthState>()(
             error: null,
           });
 
-          // Extend session expiry on app startup (fire and forget)
           invoke('refresh_session', { sessionToken }).catch((err) => {
             console.error('Failed to refresh session:', err);
           });
 
-          // Check connection status on session restore (fire and forget)
           useConnectionStore.getState().checkConnection(sessionToken);
         } catch (error) {
           set({
@@ -194,9 +174,6 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'auth-storage',
-      // Solo persistimos sessionToken e isAuthenticated.
-      // El objeto 'user' (con datos personales) NO se guarda en disco — se recarga
-      // desde el backend en cada arranque via getCurrentUser().
       partialize: (state) => ({
         sessionToken: state.sessionToken,
         isAuthenticated: state.isAuthenticated,

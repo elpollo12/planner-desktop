@@ -114,9 +114,10 @@ function App() {
     );
   }
 
-  if (!isLicensed || activationInProgress) {
-    return <LicenseActivation />;
-  }
+  // TODO: REACTIVAR licencias antes del release final
+  // if (!isLicensed || activationInProgress) {
+  //   return <LicenseActivation />;
+  // }
 
   return (
     <>

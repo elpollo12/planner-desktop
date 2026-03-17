@@ -20,164 +20,150 @@ pub async fn login(
     password: String,
     state: State<'_, AppState>,
 ) -> Result<LoginResponse, String> {
-    // Rate limiting: 5 attempts per minute per username
+    // ── Rate limiting ─────────────────────────────────────────────────────────
     {
         const MAX_ATTEMPTS: usize = 5;
         const WINDOW: Duration = Duration::from_secs(60);
-
         let mut attempts = state
             .login_attempts
             .lock()
             .map_err(|e| format!("Internal error: {}", e))?;
-
         let now = Instant::now();
         let entry = attempts.entry(username.to_lowercase()).or_default();
-
-        // Remove attempts older than the window
         entry.retain(|t| now.duration_since(*t) < WINDOW);
-
         if entry.len() >= MAX_ATTEMPTS {
             return Err("Rate limit exceeded: Too many login attempts".to_string());
         }
-
-        // Record this attempt before password check
         entry.push(now);
     }
 
-    // Get database connection
-    let conn = state
-        .db
-        .lock()
-        .map_err(|e| format!("Failed to lock database: {}", e))?;
+    // ── Auth + session (todo síncrono, conn se suelta al salir del bloque) ────
+    let (session_token, user) = {
+        let conn = state
+            .db
+            .lock()
+            .map_err(|e| format!("Failed to lock database: {}", e))?;
 
-    // Get user by username — error genérico para no revelar si el usuario existe
-    let user = User::get_by_username(&conn, &username)
-        .map_err(|_| "Authentication failed: credenciales inválidas".to_string())?;
+        let user = User::get_by_username(&conn, &username)
+            .map_err(|_| "Authentication failed: credenciales inválidas".to_string())?;
 
-    // Check if user is active
-    if !user.active {
-        return Err("Authentication failed: User account is disabled".to_string());
-    }
+        if !user.active {
+            return Err("Authentication failed: User account is disabled".to_string());
+        }
 
-    // Verify password — mismo mensaje genérico que usuario no encontrado
-    let password_valid = verify_password(&password, &user.password_hash)
-        .map_err(|_| "Authentication failed: credenciales inválidas".to_string())?;
+        let password_valid = verify_password(&password, &user.password_hash)
+            .map_err(|_| "Authentication failed: credenciales inválidas".to_string())?;
+        if !password_valid {
+            return Err("Authentication failed: credenciales inválidas".to_string());
+        }
 
-    if !password_valid {
-        return Err("Authentication failed: credenciales inválidas".to_string());
-    }
+        User::update_last_login(&conn, &user.id)
+            .map_err(|_| "Error interno al iniciar sesión".to_string())?;
 
-    // Update last login timestamp
-    User::update_last_login(&conn, &user.id)
-        .map_err(|_| "Error interno al iniciar sesión".to_string())?;
+        let session_token = uuid::Uuid::new_v4().to_string();
+        let now_ts = chrono::Utc::now();
+        let expires_at = now_ts + chrono::Duration::days(30);
+        let session_info = SessionInfo {
+            user_id: user.id.clone(),
+            username: user.username.clone(),
+            role: user.role.clone(),
+            login_time: now_ts.to_rfc3339(),
+            expires_at: expires_at.to_rfc3339(),
+        };
 
-    // Generate session token
-    let session_token = uuid::Uuid::new_v4().to_string();
+        {
+            let mut sessions = state
+                .sessions
+                .lock()
+                .map_err(|e| format!("Failed to lock sessions: {}", e))?;
+            sessions.insert(session_token.clone(), session_info.clone());
+        }
 
-    // Create session info (expires in 30 days)
-    let now = chrono::Utc::now();
-    let expires_at = now + chrono::Duration::days(30);
-    let session_info = SessionInfo {
-        user_id: user.id.clone(),
-        username: user.username.clone(),
-        role: user.role.clone(),
-        login_time: now.to_rfc3339(),
-        expires_at: expires_at.to_rfc3339(),
+        state::save_session_to_db(&conn, &session_token, &session_info);
+        notification_helper::cleanup_old_notifications(&conn);
+
+        AuditEntry::record(&conn, NewAuditEntry {
+            actor_id:    &user.id,
+            actor_name:  &user.username,
+            action:      AUDIT_LOGIN_SUCCESS,
+            target_type: None,
+            target_id:   None,
+            target_name: None,
+            detail:      None,
+        });
+
+        // conn se suelta aquí al salir del bloque — seguro hacer .await después
+        (session_token, user)
     };
 
-    // Store session in memory
-    let mut sessions = state
-        .sessions
-        .lock()
-        .map_err(|e| format!("Failed to lock sessions: {}", e))?;
-    sessions.insert(session_token.clone(), session_info.clone());
-    drop(sessions);
-
-    // Persist session to SQLite
-    state::save_session_to_db(&conn, &session_token, &session_info);
-
-    // Cleanup old read notifications (> 30 days) — silent, non-blocking
-    notification_helper::cleanup_old_notifications(&conn);
-
-    // Audit: login exitoso
-    AuditEntry::record(&conn, NewAuditEntry {
-        actor_id:    &user.id,
-        actor_name:  &user.username,
-        action:      AUDIT_LOGIN_SUCCESS,
-        target_type: None,
-        target_id:   None,
-        target_name: None,
-        detail:      None,
-    });
-
-    drop(conn);
-
-    // Renovar sync_token en planner-sync con las mismas credenciales del login.
-    // Fire-and-forget: si sync no está configurado o el servidor no responde, no bloquea el login.
-    // Esto garantiza que el sync_token siempre sea fresco mientras el usuario use la app,
-    // sin necesidad de que el admin haga sync_login manualmente.
+    // ── Sync: renovar token + pull (awaits, conn ya liberada) ─────────────────
     {
-        let username_clone = username.clone();
-        let password_clone = password.clone();
-        tokio::spawn(async move {
-            use crate::sync::config::{self, SyncCredentials};
-            use crate::sync::sync_client::SyncClient;
+        use crate::sync::config::{self, SyncCredentials};
+        use crate::sync::sync_client::SyncClient;
+        use crate::sync::engine;
 
-            // Si sync no está configurado, no hay nada que hacer
-            let server_url = match SyncCredentials::get_configured_url() {
-                Some(url) => url,
-                None => return,
-            };
-
+        if let Some(server_url) = SyncCredentials::get_configured_url() {
             let mut client = SyncClient::new(&server_url);
-            match client.login(&username_clone, &password_clone).await {
+
+            match client.login(&username, &password).await {
                 Ok(login_resp) => {
                     if let Ok(mut cfg) = config::load_config() {
-                        cfg.sync_token = Some(login_resp.token);
+                        cfg.sync_token = Some(login_resp.token.clone());
                         let _ = config::save_config(&cfg);
-                        println!("[Auth] sync_token renovado para '{}'", username_clone);
+                        println!("[Auth] sync_token renovado para '{}'", username);
+
+                        client.set_token(login_resp.token);
+                        let last_pull_at = cfg.last_pull_at.clone();
+
+                        match engine::pull_data_from_server(&client, last_pull_at.as_deref()).await {
+                            Ok((pulled_data, result)) => {
+                                if !pulled_data.is_empty() {
+                                    let conn = state.db.lock()
+                                        .map_err(|e| format!("Failed to lock database: {}", e))?;
+                                    match engine::write_pulled_data(&conn, &pulled_data) {
+                                        Ok(count) => {
+                                            let _ = engine::recalculate_logistics_stock(&conn);
+                                            drop(conn);
+                                            if let Ok(mut cfg2) = config::load_config() {
+                                                cfg2.last_pull_at = Some(result.timestamp.clone());
+                                                cfg2.last_sync_at = Some(result.timestamp);
+                                                let _ = config::save_config(&cfg2);
+                                            }
+                                            println!("[Auth] Pull post-login: {} registros escritos", count);
+                                        }
+                                        Err(e) => println!("[Auth] Pull write error: {}", e),
+                                    }
+                                } else {
+                                    println!("[Auth] Pull post-login: sin datos nuevos");
+                                }
+                            }
+                            Err(e) => println!("[Auth] Pull fetch error: {}", e),
+                        }
                     }
                 }
-                Err(e) => {
-                    // No es un error fatal — sync seguirá funcionando con el token anterior
-                    // si todavía es válido, o mostrará el badge ámbar si ya expiró.
-                    println!("[Auth] Advertencia: no se pudo renovar sync_token: {}", e);
-                }
+                Err(e) => println!("[Auth] sync_token no renovado: {}", e),
             }
-        });
+        }
     }
 
-    // Return response
-    Ok(LoginResponse {
-        session_token,
-        user,
-    })
+    Ok(LoginResponse { session_token, user })
 }
 
 #[tauri::command]
 pub async fn logout(session_token: String, state: State<'_, AppState>) -> Result<(), String> {
-    // Capturar info de sesión antes de eliminarla (para el audit)
     let session_info = {
         let sessions = state.sessions.lock().map_err(|e| format!("Failed to lock sessions: {}", e))?;
         sessions.get(&session_token).cloned()
     };
 
-    // Remove from memory
-    let mut sessions = state
-        .sessions
-        .lock()
-        .map_err(|e| format!("Failed to lock sessions: {}", e))?;
-    sessions.remove(&session_token);
-    drop(sessions);
+    {
+        let mut sessions = state.sessions.lock().map_err(|e| format!("Failed to lock sessions: {}", e))?;
+        sessions.remove(&session_token);
+    }
 
-    // Remove from SQLite
-    let conn = state
-        .db
-        .lock()
-        .map_err(|e| format!("Failed to lock database: {}", e))?;
+    let conn = state.db.lock().map_err(|e| format!("Failed to lock database: {}", e))?;
     state::remove_session_from_db(&conn, &session_token);
 
-    // Audit: logout
     if let Some(s) = session_info {
         AuditEntry::record(&conn, NewAuditEntry {
             actor_id:    &s.user_id,
@@ -198,18 +184,39 @@ pub async fn get_current_user(
     session_token: String,
     state: State<'_, AppState>,
 ) -> Result<User, String> {
-    // Get session info
     let session = get_session(&session_token, &state).map_err(|e| e.to_string())?;
 
-    // Get user from database
-    let conn = state
-        .db
-        .lock()
-        .map_err(|e| format!("Failed to lock database: {}", e))?;
+    let conn = state.db.lock().map_err(|e| format!("Failed to lock database: {}", e))?;
 
-    let user = User::get_by_id(&conn, &session.user_id).map_err(|e| e.to_string())?;
+    match User::get_by_id(&conn, &session.user_id) {
+        Ok(user) => Ok(user),
+        Err(_) => {
+            println!(
+                "[Auth] user_id {} no encontrado, recuperando por username '{}'",
+                session.user_id, session.username
+            );
 
-    Ok(user)
+            let user = User::get_by_username(&conn, &session.username)
+                .map_err(|_| format!("Usuario '{}' no encontrado en la base de datos", session.username))?;
+
+            {
+                let mut sessions = state.sessions.lock()
+                    .map_err(|e| format!("Failed to lock sessions: {}", e))?;
+                if let Some(s) = sessions.get_mut(&session_token) {
+                    s.user_id = user.id.clone();
+                    s.role = user.role.clone();
+                }
+            }
+
+            let _ = conn.execute(
+                "UPDATE sessions SET user_id = ?1, role = ?2 WHERE token = ?3",
+                rusqlite::params![&user.id, &user.role, &session_token],
+            );
+
+            println!("[Auth] Sesión actualizada al nuevo user_id: {}", user.id);
+            Ok(user)
+        }
+    }
 }
 
 #[tauri::command]
@@ -217,35 +224,23 @@ pub async fn refresh_session(
     session_token: String,
     state: State<'_, AppState>,
 ) -> Result<(), String> {
-    // Verify the session is valid (includes expiry check)
     let _session = get_session(&session_token, &state).map_err(|e| e.to_string())?;
 
-    // Extend expiry by 30 days from now
     let new_expires_at = (chrono::Utc::now() + chrono::Duration::days(30)).to_rfc3339();
 
-    // Update in-memory session
     {
-        let mut sessions = state
-            .sessions
-            .lock()
+        let mut sessions = state.sessions.lock()
             .map_err(|e| format!("Failed to lock sessions: {}", e))?;
-
         if let Some(session_info) = sessions.get_mut(&session_token) {
             session_info.expires_at = new_expires_at.clone();
         }
     }
 
-    // Update in SQLite
-    let conn = state
-        .db
-        .lock()
-        .map_err(|e| format!("Failed to lock database: {}", e))?;
-
+    let conn = state.db.lock().map_err(|e| format!("Failed to lock database: {}", e))?;
     conn.execute(
         "UPDATE sessions SET expires_at = ?1 WHERE token = ?2",
         rusqlite::params![&new_expires_at, &session_token],
-    )
-    .map_err(|e| format!("Failed to update session expiry: {}", e))?;
+    ).map_err(|e| format!("Failed to update session expiry: {}", e))?;
 
     Ok(())
 }

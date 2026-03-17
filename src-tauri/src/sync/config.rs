@@ -5,8 +5,9 @@ use std::path::PathBuf;
 /// Environment variable for sync server URL (fallback only)
 pub const ENV_SYNC_SERVER_URL: &str = "SYNC_SERVER_URL";
 
-/// Fallback URL when primary server is unreachable
-pub const FALLBACK_SYNC_SERVER_URL: &str = "http://localhost:3001";
+// TODO: Reemplazar por dominio/URL definitiva antes del release final
+/// URL del servidor de sincronización por defecto (entregable de prueba)
+pub const DEFAULT_SYNC_SERVER_URL: &str = "http://187.77.221.60:3005";
 
 /// Sync configuration stored locally
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -59,7 +60,7 @@ pub struct SyncCredentials {
 }
 
 impl SyncCredentials {
-    /// Load from sync_config.json (user-configured), then env var, then error
+    /// Load from sync_config.json (user-configured), then env var, then DEFAULT_SYNC_SERVER_URL
     pub fn from_env() -> Result<Self, String> {
         // 1. Try user-configured URL from sync_config
         if let Ok(cfg) = load_config() {
@@ -75,55 +76,41 @@ impl SyncCredentials {
                 return Ok(Self { server_url: url, is_fallback: false });
             }
         }
-        Err("URL del servidor de sincronización no configurada".to_string())
+        // 3. Default hardcoded server
+        Ok(Self { server_url: DEFAULT_SYNC_SERVER_URL.to_string(), is_fallback: false })
     }
 
-    /// Try primary URL, fall back to localhost:3001 if unreachable.
+    /// Try primary URL, fall back to DEFAULT_SYNC_SERVER_URL if unreachable.
     /// Returns the credentials that actually worked, or error.
     pub async fn resolve_with_fallback() -> Result<Self, String> {
         use crate::sync::sync_client::SyncClient;
 
-        // Get primary URL
         let primary = Self::from_env();
 
         match primary {
             Ok(creds) => {
-                // Test primary
                 let client = SyncClient::new(&creds.server_url);
                 if client.test_connection().await.is_ok() {
                     return Ok(creds);
                 }
-                // Primary failed — try fallback
-                let fallback_url = FALLBACK_SYNC_SERVER_URL.to_string();
-                let fallback_client = SyncClient::new(&fallback_url);
-                if fallback_client.test_connection().await.is_ok() {
-                    tracing_or_println("[Sync] Servidor principal inaccesible, usando fallback localhost:3001");
-                    return Ok(Self { server_url: fallback_url, is_fallback: true });
+                // Primary failed — try default server if it's different
+                if creds.server_url != DEFAULT_SYNC_SERVER_URL {
+                    let fallback_client = SyncClient::new(DEFAULT_SYNC_SERVER_URL);
+                    if fallback_client.test_connection().await.is_ok() {
+                        println!("[Sync] Servidor principal inaccesible, usando servidor por defecto");
+                        return Ok(Self { server_url: DEFAULT_SYNC_SERVER_URL.to_string(), is_fallback: true });
+                    }
                 }
-                Err(format!("Servidor principal y fallback (localhost:3001) inaccesibles"))
+                Err(format!("Servidor de sincronización inaccesible: {}", creds.server_url))
             }
-            Err(_) => {
-                // No primary configured — try fallback directly
-                let fallback_url = FALLBACK_SYNC_SERVER_URL.to_string();
-                let fallback_client = SyncClient::new(&fallback_url);
-                if fallback_client.test_connection().await.is_ok() {
-                    return Ok(Self { server_url: fallback_url, is_fallback: true });
-                }
-                Err("URL del servidor no configurada y fallback localhost:3001 inaccesible".to_string())
-            }
+            Err(e) => Err(e),
         }
     }
 
     /// Check if any URL is configured
     pub fn is_configured() -> bool {
-        if let Ok(cfg) = load_config() {
-            if let Some(url) = &cfg.server_url {
-                if !url.is_empty() {
-                    return true;
-                }
-            }
-        }
-        env::var(ENV_SYNC_SERVER_URL).map(|v| !v.is_empty()).unwrap_or(false)
+        // Siempre hay una URL disponible (DEFAULT_SYNC_SERVER_URL)
+        true
     }
 
     /// Get the currently configured URL (for display)
@@ -135,7 +122,12 @@ impl SyncCredentials {
                 }
             }
         }
-        env::var(ENV_SYNC_SERVER_URL).ok().filter(|v| !v.is_empty())
+        if let Ok(url) = env::var(ENV_SYNC_SERVER_URL) {
+            if !url.is_empty() {
+                return Some(url);
+            }
+        }
+        Some(DEFAULT_SYNC_SERVER_URL.to_string())
     }
 }
 
@@ -179,11 +171,16 @@ pub fn load_config() -> Result<SyncConfig, String> {
     let path = get_config_path()?;
 
     if !path.exists() {
-        // Archivo borrado — intentar recuperar URL desde app_settings
+        // Archivo borrado o primera ejecución — intentar recuperar URL desde app_settings,
+        // si no hay nada usar DEFAULT_SYNC_SERVER_URL directamente.
         let mut cfg = SyncConfig::default();
         if let Some(url) = read_url_from_db() {
             println!("[SyncConfig] sync_config.json ausente — URL recuperada de app_settings: {}", url);
             cfg.server_url = Some(url);
+        } else {
+            println!("[SyncConfig] sync_config.json ausente — usando servidor por defecto: {}", DEFAULT_SYNC_SERVER_URL);
+            cfg.server_url = Some(DEFAULT_SYNC_SERVER_URL.to_string());
+            cfg.enabled = true;
         }
         return Ok(cfg);
     }
@@ -194,22 +191,22 @@ pub fn load_config() -> Result<SyncConfig, String> {
     let mut cfg: SyncConfig = match serde_json::from_str(&content) {
         Ok(c) => c,
         Err(e) => {
-            // JSON corrupto (escritura interrumpida, disco lleno, etc.)
-            // Tratar igual que archivo ausente: defaults + recuperar URL del DB.
             eprintln!("[SyncConfig] JSON corrupto, usando defaults ({}) ", e);
             SyncConfig::default()
         }
     };
 
-    // Si el JSON existe pero no tiene URL (migración desde versión antigua),
-    // intentar recuperarla de app_settings.
+    // Si el JSON existe pero no tiene URL, intentar app_settings y luego el default.
     if cfg.server_url.is_none() {
         if let Some(url) = read_url_from_db() {
             println!("[SyncConfig] server_url ausente en JSON — recuperada de app_settings: {}", url);
             cfg.server_url = Some(url);
-            // Persistir para no depender del fallback en el próximo arranque
-            let _ = save_config(&cfg);
+        } else {
+            println!("[SyncConfig] server_url ausente en JSON — usando servidor por defecto: {}", DEFAULT_SYNC_SERVER_URL);
+            cfg.server_url = Some(DEFAULT_SYNC_SERVER_URL.to_string());
+            cfg.enabled = true;
         }
+        let _ = save_config(&cfg);
     }
 
     Ok(cfg)
