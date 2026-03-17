@@ -261,22 +261,20 @@ export const useUpdatesStore = create<UpdatesState>()(
           return;
         }
         try {
-          // En macOS el binario puede no haberse descargado aún en _pendingUpdate.
-          // downloadAndInstall() maneja el flujo completo de forma segura en todas las plataformas.
-          await _pendingUpdate.downloadAndInstall();
+          const isMacOS = navigator.userAgent.toLowerCase().includes('mac');
+          if (isMacOS) {
+            // En macOS: downloadAndInstall() maneja todo el flujo
+            await _pendingUpdate.downloadAndInstall();
+          } else {
+            // En Windows: el binario ya fue descargado con download(), solo instalar
+            await _pendingUpdate.install();
+          }
           _pendingUpdate = null;
           await relaunch();
         } catch (error: any) {
-          // Si falla downloadAndInstall, intentar install() directo (Windows/NSIS ya descargado)
-          try {
-            await _pendingUpdate!.install();
-            _pendingUpdate = null;
-            await relaunch();
-          } catch (installError: any) {
-            console.error('[Updates] Install failed:', installError);
-            _pendingUpdate = null;
-            set({ updateState: { status: 'error', message: installError?.message || 'Error al instalar' } });
-          }
+          console.error('[Updates] Install failed:', error);
+          _pendingUpdate = null;
+          set({ updateState: { status: 'error', message: error?.message || 'Error al instalar' } });
         }
       },
 
