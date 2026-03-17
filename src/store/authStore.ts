@@ -3,7 +3,7 @@ import { persist } from 'zustand/middleware';
 import i18n from '../lib/i18n';
 import type { User, LoginResponse, ModulePermissions } from '../types';
 import { invoke } from '@tauri-apps/api/core';
-import { modulePermissionsApi } from '../lib/api';
+import { modulePermissionsApi, syncApi } from '../lib/api';
 import { useLogisticsStore } from './logisticsStore';
 import { useConnectionStore } from './connectionStore';
 import { queryClient } from '../lib/queryClient';
@@ -58,8 +58,21 @@ export const useAuthStore = create<AuthState>()(
             error: null,
           });
 
-          // Check connection status after successful login (fire and forget)
-          useConnectionStore.getState().checkConnection(response.sessionToken);
+          // Check connection status after successful login, then pull if sync is active
+          useConnectionStore
+            .getState()
+            .checkConnection(response.sessionToken)
+            .then(() => {
+              const { syncConfigured, syncEnabled } =
+                useConnectionStore.getState();
+              if (syncConfigured && syncEnabled) {
+                syncApi
+                  .pull(response.sessionToken)
+                  .catch((err) =>
+                    console.warn('[post-login pull]', err),
+                  );
+              }
+            });
         } catch (error) {
           const rawError = error as string;
           // Map backend error messages to user-friendly translated messages

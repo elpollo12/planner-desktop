@@ -523,6 +523,25 @@ pub fn write_pulled_data(
             } else if table_def.name == "last_report_snapshot" && params.len() >= 2 {
                 // UNIQUE(rig_id)
                 let _ = conn.execute("DELETE FROM last_report_snapshot WHERE rig_id = ?1 AND id != ?2", rusqlite::params![params.get(1), params.get(0)]);
+            } else if table_def.name == "crew_positions" {
+                // UNIQUE(LOWER(name)) WHERE is_deleted = 0 — índice partial.
+                // La migración V44 siembra posiciones con IDs aleatorios en cada máquina.
+                // Al hacer pull, el servidor trae los mismos nombres con IDs distintos,
+                // causando conflicto en el índice. Borramos el local con distinto ID primero.
+                if let Some(name_param) = params.get(1) {
+                    let _ = conn.execute(
+                        "DELETE FROM crew_positions WHERE LOWER(name) = LOWER(?1) AND id != ?2 AND is_deleted = 0",
+                        rusqlite::params![name_param, params.get(0)],
+                    );
+                }
+            } else if table_def.name == "incident_types" {
+                // Mismo patrón defensivo — incident_types también se siembra por migración
+                if let Some(name_param) = params.get(1) {
+                    let _ = conn.execute(
+                        "DELETE FROM incident_types WHERE LOWER(name) = LOWER(?1) AND id != ?2 AND is_deleted = 0",
+                        rusqlite::params![name_param, params.get(0)],
+                    );
+                }
             }
 
             if let Err(e) = conn.execute(&upsert_sql, params_refs.as_slice()) {
