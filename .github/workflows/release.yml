@@ -123,30 +123,50 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: npm run tauri build -- --target universal-apple-darwin
 
-      - name: Sign DMG manually
+      - name: Create and sign .app.tar.gz for updater
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
-          DMG=$(find src-tauri/target/universal-apple-darwin/release/bundle/dmg -name "*.dmg" | head -1)
-          echo "Signing: $DMG"
-          npx tauri signer sign "$DMG" \
+          MACOS_DIR="src-tauri/target/universal-apple-darwin/release/bundle/macos"
+          APP_NAME=$(find "$MACOS_DIR" -maxdepth 1 -name "*.app" | head -1 | xargs basename)
+          TAR_NAME="${APP_NAME%.app}.app.tar.gz"
+
+          echo "Creating tarball: $TAR_NAME"
+          cd "$MACOS_DIR"
+          tar -czf "$TAR_NAME" "$APP_NAME"
+          cd -
+
+          TAR_PATH="$MACOS_DIR/$TAR_NAME"
+          echo "Signing: $TAR_PATH"
+          npx tauri signer sign "$TAR_PATH" \
             --private-key "$TAURI_SIGNING_PRIVATE_KEY" \
             --password "$TAURI_SIGNING_PRIVATE_KEY_PASSWORD"
-          echo "Signature written to: ${DMG}.sig"
+
+          echo "tar_path=$TAR_PATH" >> $GITHUB_ENV
+          echo "tar_sig_path=${TAR_PATH}.sig" >> $GITHUB_ENV
 
       - name: Find macOS artifacts
         id: mac_artifacts
         run: |
-          BUNDLE_DIR="src-tauri/target/universal-apple-darwin/release/bundle/dmg"
-          echo "=== Bundle contents ==="
-          ls -la "$BUNDLE_DIR"
+          BUNDLE_DMG="src-tauri/target/universal-apple-darwin/release/bundle/dmg"
+          BUNDLE_MACOS="src-tauri/target/universal-apple-darwin/release/bundle/macos"
 
-          DMG_FILE=$(find "$BUNDLE_DIR" -name "*.dmg" ! -name "*.sig" | head -1)
-          SIG_FILE="${DMG_FILE}.sig"
+          DMG_FILE=$(find "$BUNDLE_DMG" -name "*.dmg" ! -name "*.sig" | head -1)
+          TAR_FILE=$(find "$BUNDLE_MACOS" -name "*.app.tar.gz" ! -name "*.sig" | head -1)
+          SIG_FILE="${TAR_FILE}.sig"
+
+          echo "=== DMG ==="
+          ls -la "$BUNDLE_DMG"
+          echo "=== macOS bundle ==="
+          ls -la "$BUNDLE_MACOS"
 
           if [ -z "$DMG_FILE" ] || [ ! -f "$DMG_FILE" ]; then
             echo "ERROR: DMG not found!"
+            exit 1
+          fi
+          if [ -z "$TAR_FILE" ] || [ ! -f "$TAR_FILE" ]; then
+            echo "ERROR: .app.tar.gz not found!"
             exit 1
           fi
           if [ ! -f "$SIG_FILE" ]; then
@@ -155,14 +175,17 @@ jobs:
           fi
 
           DMG_NAME=$(basename "$DMG_FILE")
+          TAR_NAME=$(basename "$TAR_FILE")
           echo "dmg=$DMG_FILE" >> $GITHUB_OUTPUT
-          echo "dmg_sig=$SIG_FILE" >> $GITHUB_OUTPUT
           echo "dmg_name=$DMG_NAME" >> $GITHUB_OUTPUT
+          echo "tar=$TAR_FILE" >> $GITHUB_OUTPUT
+          echo "tar_sig=$SIG_FILE" >> $GITHUB_OUTPUT
+          echo "tar_name=$TAR_NAME" >> $GITHUB_OUTPUT
 
       - name: Read macOS signature
         id: mac_meta
         run: |
-          SIGNATURE=$(cat "${{ steps.mac_artifacts.outputs.dmg_sig }}" | tr -d '\n\r')
+          SIGNATURE=$(cat "${{ steps.mac_artifacts.outputs.tar_sig }}" | tr -d '\n\r')
           echo "signature=$SIGNATURE" >> $GITHUB_OUTPUT
           VERSION="${{ github.ref_name }}"
           VERSION="${VERSION#v}"
@@ -176,7 +199,8 @@ jobs:
           name: macos-artifacts
           path: |
             ${{ steps.mac_artifacts.outputs.dmg }}
-            ${{ steps.mac_artifacts.outputs.dmg_sig }}
+            ${{ steps.mac_artifacts.outputs.tar }}
+            ${{ steps.mac_artifacts.outputs.tar_sig }}
           retention-days: 1
 
   publish:
@@ -211,13 +235,15 @@ jobs:
         id: sigs
         run: |
           WIN_SIG=$(cat windows/*.exe.sig | tr -d '\n\r')
-          MAC_SIG=$(cat macos/*.sig | tr -d '\n\r')
+          MAC_SIG=$(cat macos/*.app.tar.gz.sig | tr -d '\n\r')
           WIN_NAME=$(ls windows/*.exe | head -1 | xargs basename)
-          MAC_NAME=$(ls macos/*.dmg | head -1 | xargs basename)
+          MAC_DMG_NAME=$(ls macos/*.dmg | head -1 | xargs basename)
+          MAC_TAR_NAME=$(ls macos/*.app.tar.gz | head -1 | xargs basename)
           echo "win_sig=$WIN_SIG" >> $GITHUB_OUTPUT
           echo "mac_sig=$MAC_SIG" >> $GITHUB_OUTPUT
           echo "win_name=$WIN_NAME" >> $GITHUB_OUTPUT
-          echo "mac_name=$MAC_NAME" >> $GITHUB_OUTPUT
+          echo "mac_dmg_name=$MAC_DMG_NAME" >> $GITHUB_OUTPUT
+          echo "mac_tar_name=$MAC_TAR_NAME" >> $GITHUB_OUTPUT
 
       - name: Generate latest.json
         run: |
@@ -227,7 +253,7 @@ jobs:
           WIN_SIG="${{ steps.sigs.outputs.win_sig }}"
           MAC_SIG="${{ steps.sigs.outputs.mac_sig }}"
           WIN_NAME="${{ steps.sigs.outputs.win_name }}"
-          MAC_NAME="${{ steps.sigs.outputs.mac_name }}"
+          MAC_TAR_NAME="${{ steps.sigs.outputs.mac_tar_name }}"
 
           cat > latest.json << ENDJSON
           {
@@ -241,11 +267,11 @@ jobs:
               },
               "darwin-aarch64": {
                 "signature": "${MAC_SIG}",
-                "url": "https://github.com/${{ env.PUBLIC_REPO }}/releases/download/${TAG}/${MAC_NAME}"
+                "url": "https://github.com/${{ env.PUBLIC_REPO }}/releases/download/${TAG}/${MAC_TAR_NAME}"
               },
               "darwin-x86_64": {
                 "signature": "${MAC_SIG}",
-                "url": "https://github.com/${{ env.PUBLIC_REPO }}/releases/download/${TAG}/${MAC_NAME}"
+                "url": "https://github.com/${{ env.PUBLIC_REPO }}/releases/download/${TAG}/${MAC_TAR_NAME}"
               }
             }
           }
@@ -273,7 +299,8 @@ jobs:
             windows/*.exe \
             windows/*.exe.sig \
             macos/*.dmg \
-            macos/*.sig \
+            macos/*.app.tar.gz \
+            macos/*.app.tar.gz.sig \
             latest.json
 
       - name: Notify planner-sync of new release
