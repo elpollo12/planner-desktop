@@ -261,16 +261,22 @@ export const useUpdatesStore = create<UpdatesState>()(
           return;
         }
         try {
-          // Con NSIS: install() lanza el instalador y cierra el proceso.
-          // El instalador relanza la app automáticamente — relaunch() nunca llegaría a ejecutarse.
-          await _pendingUpdate.install();
+          // En macOS el binario puede no haberse descargado aún en _pendingUpdate.
+          // downloadAndInstall() maneja el flujo completo de forma segura en todas las plataformas.
+          await _pendingUpdate.downloadAndInstall();
           _pendingUpdate = null;
-          // Fallback por si el instalador no cierra el proceso (no debería ocurrir con NSIS)
           await relaunch();
         } catch (error: any) {
-          console.error('[Updates] Install failed:', error);
-          _pendingUpdate = null;
-          set({ updateState: { status: 'error', message: error?.message || 'Error al instalar' } });
+          // Si falla downloadAndInstall, intentar install() directo (Windows/NSIS ya descargado)
+          try {
+            await _pendingUpdate!.install();
+            _pendingUpdate = null;
+            await relaunch();
+          } catch (installError: any) {
+            console.error('[Updates] Install failed:', installError);
+            _pendingUpdate = null;
+            set({ updateState: { status: 'error', message: installError?.message || 'Error al instalar' } });
+          }
         }
       },
 
