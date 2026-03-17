@@ -248,16 +248,33 @@ jobs:
       - name: Read signatures
         id: sigs
         run: |
-          WIN_SIG=$(cat windows/*.exe.sig | tr -d '\n\r')
-          MAC_SIG=$(cat macos/*.app.tar.gz.sig | tr -d '\n\r')
-          WIN_NAME=$(ls windows/*.exe | head -1 | xargs basename)
-          MAC_DMG_NAME=$(ls macos/*.dmg | head -1 | xargs basename)
-          MAC_TAR_NAME=$(ls macos/*.app.tar.gz | head -1 | xargs basename)
+          echo "=== windows artifacts ==="
+          find windows -type f | sort
+          echo "=== macos artifacts ==="
+          find macos -type f | sort
+
+          WIN_SIG_FILE=$(find windows -name "*.exe.sig" | head -1)
+          MAC_SIG_FILE=$(find macos -name "*.app.tar.gz.sig" | head -1)
+          WIN_EXE_FILE=$(find windows -name "*.exe" ! -name "*.sig" | head -1)
+          MAC_DMG_FILE=$(find macos -name "*.dmg" | head -1)
+          MAC_TAR_FILE=$(find macos -name "*.app.tar.gz" ! -name "*.sig" | head -1)
+
+          WIN_SIG=$(cat "$WIN_SIG_FILE" | tr -d '\n\r')
+          MAC_SIG=$(cat "$MAC_SIG_FILE" | tr -d '\n\r')
+          WIN_NAME=$(basename "$WIN_EXE_FILE")
+          MAC_DMG_NAME=$(basename "$MAC_DMG_FILE")
+          MAC_TAR_NAME=$(basename "$MAC_TAR_FILE")
+
           echo "win_sig=$WIN_SIG" >> $GITHUB_OUTPUT
           echo "mac_sig=$MAC_SIG" >> $GITHUB_OUTPUT
           echo "win_name=$WIN_NAME" >> $GITHUB_OUTPUT
           echo "mac_dmg_name=$MAC_DMG_NAME" >> $GITHUB_OUTPUT
           echo "mac_tar_name=$MAC_TAR_NAME" >> $GITHUB_OUTPUT
+          echo "win_exe=$WIN_EXE_FILE" >> $GITHUB_OUTPUT
+          echo "win_sig_file=$WIN_SIG_FILE" >> $GITHUB_OUTPUT
+          echo "mac_dmg=$MAC_DMG_FILE" >> $GITHUB_OUTPUT
+          echo "mac_tar=$MAC_TAR_FILE" >> $GITHUB_OUTPUT
+          echo "mac_tar_sig=$MAC_SIG_FILE" >> $GITHUB_OUTPUT
 
       - name: Generate latest.json
         run: |
@@ -310,11 +327,11 @@ jobs:
             --repo "${{ env.PUBLIC_REPO }}" \
             --title "Planner $VERSION" \
             --notes "Actualización a versión $VERSION" \
-            windows/*.exe \
-            windows/*.exe.sig \
-            macos/*.dmg \
-            macos/*.app.tar.gz \
-            macos/*.app.tar.gz.sig \
+            "${{ steps.sigs.outputs.win_exe }}" \
+            "${{ steps.sigs.outputs.win_sig_file }}" \
+            "${{ steps.sigs.outputs.mac_dmg }}" \
+            "${{ steps.sigs.outputs.mac_tar }}" \
+            "${{ steps.sigs.outputs.mac_tar_sig }}" \
             latest.json
 
       - name: Notify planner-sync of new release
