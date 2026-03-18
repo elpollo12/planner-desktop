@@ -343,9 +343,13 @@ jobs:
         run: |
           VERSION="${{ steps.meta.outputs.version }}"
           WIN_NAME="${{ steps.sigs.outputs.win_name }}"
+          MAC_TAR_NAME="${{ steps.sigs.outputs.mac_tar_name }}"
           PUB_DATE="${{ steps.meta.outputs.pub_date }}"
           WIN_SIG="${{ steps.sigs.outputs.win_sig }}"
-          ASSET_URL="https://github.com/${{ env.PUBLIC_REPO }}/releases/download/${{ github.ref_name }}/${WIN_NAME}"
+          MAC_SIG="${{ steps.sigs.outputs.mac_sig }}"
+          TAG="${{ github.ref_name }}"
+          WIN_ASSET_URL="https://github.com/${{ env.PUBLIC_REPO }}/releases/download/${TAG}/${WIN_NAME}"
+          MAC_ASSET_URL="https://github.com/${{ env.PUBLIC_REPO }}/releases/download/${TAG}/${MAC_TAR_NAME}"
 
           LOGIN_RESPONSE=$(curl -s -X POST "${SYNC_SERVER_URL}/api/v1/auth/login" \
             -H "Content-Type: application/json" \
@@ -367,9 +371,23 @@ jobs:
               \"notes\": \"Actualizacion a version ${VERSION}\",
               \"channel\": \"stable\",
               \"pubDate\": \"${PUB_DATE}\",
-              \"assetUrl\": \"${ASSET_URL}\",
-              \"assetSignature\": \"${WIN_SIG}\",
-              \"assetSize\": 0
+              \"platforms\": {
+                \"windows-x86_64\": {
+                  \"assetUrl\": \"${WIN_ASSET_URL}\",
+                  \"assetSignature\": \"${WIN_SIG}\",
+                  \"assetSize\": 0
+                },
+                \"darwin-aarch64\": {
+                  \"assetUrl\": \"${MAC_ASSET_URL}\",
+                  \"assetSignature\": \"${MAC_SIG}\",
+                  \"assetSize\": 0
+                },
+                \"darwin-x86_64\": {
+                  \"assetUrl\": \"${MAC_ASSET_URL}\",
+                  \"assetSignature\": \"${MAC_SIG}\",
+                  \"assetSize\": 0
+                }
+              }
             }")
 
           echo "HTTP Status: ${HTTP_STATUS}"

@@ -12,12 +12,19 @@ import type {
 import type { PreInstallStep } from '../components/modals/InstallConfirmModal';
 
 /**
- * Updates Store — flujo completo para NSIS/Windows:
+ * Updates Store — flujo completo multi-plataforma:
  *
+ * Windows (NSIS):
  *  1. checkForUpdate()      → detecta update, cachea objeto Update de Tauri
- *  2. downloadUpdate()      → SOLO descarga el binario → status 'ready'
+ *  2. downloadUpdate()      → descarga el binario → status 'ready'
  *  3. prepareInstall()      → backup DB + sync push → status 'confirming'
- *  4. installAndRelaunch()  → install() + relaunch() — ÚNICO cierre de proceso
+ *  4. installAndRelaunch()  → install() + relaunch()
+ *
+ * macOS (DMG):
+ *  1. checkForUpdate()      → detecta update, cachea objeto Update de Tauri
+ *  2. downloadUpdate()      → NO-OP en Mac (downloadAndInstall() es atómico)
+ *  3. prepareInstall()      → backup DB + sync push → status 'confirming'
+ *  4. installAndRelaunch()  → downloadAndInstall() + relaunch()
  *
  * El objeto Update de Tauri (no serializable) se guarda en _pendingUpdate,
  * una ref de módulo fuera de Zustand. Nunca se persiste.
@@ -25,6 +32,9 @@ import type { PreInstallStep } from '../components/modals/InstallConfirmModal';
  */
 
 let _pendingUpdate: Update | null = null;
+
+const isMacOS = (): boolean =>
+  navigator.userAgent.toLowerCase().includes('mac');
 
 type ConfirmingState = {
   status: 'confirming';
@@ -95,6 +105,7 @@ export const useUpdatesStore = create<UpdatesState>()(
                 canPostpone = status.canPostpone;
                 invoke('record_update_check', { sessionToken }).catch(() => {});
               }
+              // Pre-fetch Tauri update object for later use (non-fatal if fails)
               try {
                 const tauriUpdate = await check();
                 if (tauriUpdate) {
@@ -113,6 +124,7 @@ export const useUpdatesStore = create<UpdatesState>()(
             console.warn('[Updates] API check failed, falling back to Tauri:', apiError);
           }
 
+          // Fallback: check directly via Tauri plugin (reads latest.json from GitHub)
           const update = await check();
           if (update) {
             _pendingUpdate = update;
@@ -141,6 +153,23 @@ export const useUpdatesStore = create<UpdatesState>()(
         const { updateState, currentVersion } = get();
         if (updateState.status !== 'available') return;
         const release = updateState.release;
+
+        // En macOS, downloadAndInstall() es atómico — no descargamos por separado.
+        // Pasamos directo a 'ready' para que el flujo continue a prepareInstall().
+        if (isMacOS()) {
+          // Asegurar que _pendingUpdate esté cacheado para installAndRelaunch
+          if (!_pendingUpdate) {
+            try {
+              _pendingUpdate = await check();
+            } catch (e) {
+              console.warn('[Updates] Mac pre-fetch failed:', e);
+            }
+          }
+          set({ updateState: { status: 'ready' } });
+          return;
+        }
+
+        // Windows: descarga el binario por separado
         try {
           set({ updateState: { status: 'downloading', progress: 0 } });
           if (!_pendingUpdate) {
@@ -256,17 +285,26 @@ export const useUpdatesStore = create<UpdatesState>()(
 
       installAndRelaunch: async () => {
         if (!_pendingUpdate) {
+          // Último intento de recuperar el objeto Update antes de fallar
+          try {
+            _pendingUpdate = await check();
+          } catch (e) {
+            console.error('[Updates] Could not recover _pendingUpdate:', e);
+          }
+        }
+
+        if (!_pendingUpdate) {
           console.warn('[Updates] _pendingUpdate lost — cannot install');
           set({ updateState: { status: 'error', message: 'Actualización no disponible, reinicia la app e intenta de nuevo' } });
           return;
         }
+
         try {
-          const isMacOS = navigator.userAgent.toLowerCase().includes('mac');
-          if (isMacOS) {
-            // En macOS: downloadAndInstall() maneja todo el flujo
+          if (isMacOS()) {
+            // macOS: downloadAndInstall() maneja descarga + instalación de forma atómica
             await _pendingUpdate.downloadAndInstall();
           } else {
-            // En Windows: el binario ya fue descargado con download(), solo instalar
+            // Windows: el binario ya fue descargado en downloadUpdate(), solo instalar
             await _pendingUpdate.install();
           }
           _pendingUpdate = null;

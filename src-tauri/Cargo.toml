@@ -1,6 +1,6 @@
 [package]
 name = "d-planner-temp"
-version = "0.6.3"
+version = "0.6.5"
 description = "A Tauri App"
 authors = ["you"]
 edition = "2021"
@@ -55,5 +55,3 @@ dirs = "5.0"
 dotenvy = "0.15"
 base64 = "0.22"
 urlencoding = "2"
-
-
