@@ -11,8 +11,8 @@ use tauri::State;
 /// Verify that a non-admin user has access to the rig associated with a report.
 /// Returns Ok(()) if access is allowed, Err if denied.
 /// Admin users always pass. Users with has_all_rigs always pass.
-/// Operators are handled separately (created_by check), so this mainly
-/// guards supervisors with specific rig assignments.
+/// All non-admin roles (supervisor AND operator) go through this check.
+/// Ownership (created_by) is NOT checked here — that belongs to write operations only.
 fn check_report_rig_access(
     conn: &Connection,
     user_id: &str,
@@ -37,6 +37,7 @@ fn check_report_rig_access(
 
     Ok(())
 }
+
 #[derive(Debug, Serialize)]
 pub struct PaginatedReportsResponse {
     pub reports: Vec<Report>,
@@ -82,7 +83,7 @@ pub async fn list_reports(
         .map_err(|e| format!("Failed to lock database: {}", e))?;
 
     // Admin: see all reports without rig filter
-    // Supervisor/Operator: filter by their assigned rigs
+    // Supervisor/Operator: filter by their assigned rigs (all reports of those rigs, not just own)
     let accessible_rig_names = if user_role == UserRole::Admin {
         None
     } else {
@@ -90,11 +91,12 @@ pub async fn list_reports(
             .map_err(|e| e.to_string())?
     };
 
-    // Call list with pagination
+    // Pass None as user_id — Report::list uses it only for operator created_by filtering,
+    // which we no longer apply. Rig access is the single source of truth for visibility.
     let (reports, total) = Report::list(
         &conn,
         &filters,
-        Some(&session.user_id),
+        None,
         &user_role,
         accessible_rig_names.as_deref(),
         page,
@@ -136,12 +138,8 @@ pub async fn get_report(
 
     let report = Report::get_by_id(&conn, &report_id).map_err(|e| e.to_string())?;
 
-    // Check permission: operators can only see their own reports
-    if user_role == UserRole::Operator && report.created_by.as_deref() != Some(&session.user_id) {
-        return Err("Permission denied: You can only view your own reports".to_string());
-    }
-
-    // Check rig access for non-admin users
+    // All roles can view any report in their assigned rigs — rig access is the gate.
+    // Ownership (created_by) is only enforced on write operations.
     check_report_rig_access(&conn, &session.user_id, &user_role, &report)?;
 
     Ok(report)
@@ -167,9 +165,9 @@ pub async fn update_report(
     // Check rig access
     check_report_rig_access(&conn, &session.user_id, &user_role, &report)?;
 
-    // Check if user can edit
+    // can_edit enforces ownership for operators — an operator can only edit their own reports
     if !Report::can_edit(&report, &session.user_id, &user_role) {
-        return Err("Permission denied: You cannot edit this report".to_string());
+        return Err("Permiso denegado: No puedes editar este reporte".to_string());
     }
 
     let updated_report = Report::update(&conn, &report_id, &report_data).map_err(|e| e.to_string())?;
@@ -196,7 +194,8 @@ pub async fn delete_report(
     // Check rig access
     check_report_rig_access(&conn, &session.user_id, &user_role, &report)?;
 
-    // Permission check: admin/supervisor can delete any, operator can delete own draft/submitted
+    // Admin/supervisor can delete any report in their rigs
+    // Operator can only delete their own draft reports
     let can_delete = match user_role {
         UserRole::Admin | UserRole::Supervisor => true,
         UserRole::Operator => {
@@ -206,7 +205,7 @@ pub async fn delete_report(
     };
 
     if !can_delete {
-        return Err("Permission denied: You cannot delete this report".to_string());
+        return Err("Permiso denegado: No puedes eliminar este reporte".to_string());
     }
 
     Report::delete(&conn, &report_id).map_err(|e| e.to_string())?;
@@ -227,15 +226,15 @@ pub async fn submit_report(
         .lock()
         .map_err(|e| format!("Failed to lock database: {}", e))?;
 
-    // Verify user owns the report or is supervisor+
     let report = Report::get_by_id(&conn, &report_id).map_err(|e| e.to_string())?;
     let user_role = UserRole::from_str(&session.role).map_err(|e| e.to_string())?;
 
     // Check rig access
     check_report_rig_access(&conn, &session.user_id, &user_role, &report)?;
 
+    // Operators can only submit their own reports
     if user_role == UserRole::Operator && report.created_by.as_deref() != Some(&session.user_id) {
-        return Err("Permission denied: You can only submit your own reports".to_string());
+        return Err("Permiso denegado: Solo puedes enviar tus propios reportes".to_string());
     }
 
     let updated_report = Report::submit(&conn, &report_id).map_err(|e| e.to_string())?;
@@ -269,17 +268,14 @@ pub async fn approve_report(
         .lock()
         .map_err(|e| format!("Failed to lock database: {}", e))?;
 
-    // Get current status before transition
     let current_report = Report::get_by_id(&conn, &report_id).map_err(|e| e.to_string())?;
     let previous_status = current_report.status.clone();
 
-    // Check rig access
     let user_role = UserRole::from_str(&session.role).map_err(|e| e.to_string())?;
     check_report_rig_access(&conn, &session.user_id, &user_role, &current_report)?;
 
     let updated_report = Report::approve(&conn, &report_id, session.user_id.clone()).map_err(|e| e.to_string())?;
 
-    // Create audit trail entry
     ReportReview::create(
         &conn,
         &report_id,
@@ -290,7 +286,6 @@ pub async fn approve_report(
         Some("approved"),
     ).map_err(|e| format!("Failed to create review audit: {}", e))?;
 
-    // --- Notification: notify the report creator ---
     if let Some(ref creator_id) = current_report.created_by {
         let rig_id = current_report.rig_number.as_deref()
             .and_then(|name| notification_helper::resolve_rig_id_by_name(&conn, name));
@@ -321,17 +316,14 @@ pub async fn reject_report(
         .lock()
         .map_err(|e| format!("Failed to lock database: {}", e))?;
 
-    // Get current status before transition (reject)
     let current_report = Report::get_by_id(&conn, &report_id).map_err(|e| e.to_string())?;
     let previous_status = current_report.status.clone();
 
-    // Check rig access
     let user_role = UserRole::from_str(&session.role).map_err(|e| e.to_string())?;
     check_report_rig_access(&conn, &session.user_id, &user_role, &current_report)?;
 
     let updated_report = Report::reject(&conn, &report_id, session.user_id.clone(), reason.clone()).map_err(|e| e.to_string())?;
 
-    // Create audit trail entry
     ReportReview::create(
         &conn,
         &report_id,
@@ -342,7 +334,6 @@ pub async fn reject_report(
         Some("rejected"),
     ).map_err(|e| format!("Failed to create review audit: {}", e))?;
 
-    // --- Notification: notify the report creator about rejection ---
     if let Some(ref creator_id) = current_report.created_by {
         let rig_id = current_report.rig_number.as_deref()
             .and_then(|name| notification_helper::resolve_rig_id_by_name(&conn, name));
@@ -376,26 +367,25 @@ pub async fn reopen_report(
     // Check rig access
     check_report_rig_access(&conn, &session.user_id, &user_role, &report)?;
 
-    // Only the creator or supervisor+ can reopen
+    // Operators can only reopen their own reports
     if user_role == UserRole::Operator && report.created_by.as_deref() != Some(&session.user_id) {
-        return Err("Permission denied: You can only reopen your own reports".to_string());
+        return Err("Permiso denegado: Solo puedes reabrir tus propios reportes".to_string());
     }
 
     // Supervisors cannot reopen approved reports — only admin can
     if user_role == UserRole::Supervisor && report.status == "approved" {
-        return Err("Permission denied: Only administrators can reopen approved reports".to_string());
+        return Err("Permiso denegado: Solo un administrador puede reabrir reportes aprobados".to_string());
     }
 
     // Operators cannot reopen approved or submitted reports
     if user_role == UserRole::Operator && (report.status == "approved" || report.status == "submitted") {
-        return Err("Permission denied: Contact a supervisor to reopen this report".to_string());
+        return Err("Permiso denegado: Contacta a un supervisor para reabrir este reporte".to_string());
     }
 
     let previous_status = report.status.clone();
 
     let updated_report = Report::reopen(&conn, &report_id).map_err(|e| e.to_string())?;
 
-    // Create audit trail entry
     let _ = ReportReview::create(
         &conn,
         &report_id,
@@ -406,7 +396,6 @@ pub async fn reopen_report(
         Some("draft"),
     );
 
-    // --- Notification: notify the report creator about reopening ---
     if let Some(ref creator_id) = report.created_by {
         let rig_id = report.rig_number.as_deref()
             .and_then(|name| notification_helper::resolve_rig_id_by_name(&conn, name));
