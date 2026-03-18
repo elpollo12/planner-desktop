@@ -2,12 +2,13 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
 import { Edit, Plus, Search } from 'lucide-react';
-import { usersApi, rigsApi, modulePermissionsApi } from '@/lib/api';
+import { usersApi, rigsApi, modulePermissionsApi, companiesApi } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 import { backgroundPush } from '@/lib/syncHelper';
 import { useModal } from '@/store/modalStore';
 import type { UserRole, UserWithRigs } from '@/types/user';
 import type { Rig } from '@/types/rig';
+import type { Company } from '@/types/company';
 import UserCreateForm from './forms/UserCreateForm';
 import UserEditForm   from './forms/UserEditForm';
 import { Button } from '@/components/ui/Button';
@@ -21,6 +22,7 @@ export function UsersManagement() {
   const { openModal, closeModal } = useModal();
   const [users, setUsers] = useState<UserWithRigs[]>([]);
   const [rigs, setRigs] = useState<Rig[]>([]);
+  const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [includeInactive, setIncludeInactive] = useState(false);
@@ -40,12 +42,14 @@ export function UsersManagement() {
 
     setLoading(true);
     try {
-      const [usersData, rigsData] = await Promise.all([
+      const [usersData, rigsData, companiesData] = await Promise.all([
         usersApi.list(sessionToken),
         rigsApi.list(false),
+        companiesApi.list(sessionToken),
       ]);
       setUsers(usersData as UserWithRigs[]);
       setRigs(rigsData);
+      setCompanies(companiesData);
     } catch (error) {
       toast.error(t('admin.users.loadError'));
     } finally {
@@ -55,6 +59,12 @@ export function UsersManagement() {
 
   // Filtrar supervisores activos para el select
   const activeSupervisors = users.filter(u => u.role === 'supervisor' && u.active !== false);
+
+  // Lookup map: company id → name
+  const companiesMap: Record<string, string> = {};
+  for (const c of companies) {
+    companiesMap[c.id] = c.name;
+  }
 
   // Abrir modal para crear
   const handleCreate = () => {
@@ -71,6 +81,7 @@ export function UsersManagement() {
               fullName:       data.fullName,
               ci:             data.ci || undefined,
               role:           data.role,
+              companyId:      data.companyId || undefined,
               hasAllRigs:     data.hasAllRigs,
               assignedRigIds: data.hasAllRigs ? [] : data.assignedRigIds,
               supervisorId:   data.supervisorId,
@@ -111,6 +122,7 @@ export function UsersManagement() {
               ci:             data.ci || undefined,
               role:           data.role,
               active:         data.active,
+              companyId:      data.companyId || null,
               hasAllRigs:     data.hasAllRigs,
               assignedRigIds: data.hasAllRigs ? [] : data.assignedRigIds,
               supervisorId:   data.role === 'operator' ? (data.supervisorId || null) : null,
@@ -223,6 +235,15 @@ export function UsersManagement() {
       key: 'role',
       header: t('admin.users.role'),
       render: (user: UserWithRigs) => getRoleBadge(user.role)
+    },
+    {
+      key: 'company',
+      header: t('admin.users.company'),
+      render: (user: UserWithRigs) => (
+        <span className="text-gray-700 dark:text-gray-300 text-sm">
+          {user.companyId ? (companiesMap[user.companyId] || '\u2014') : '\u2014'}
+        </span>
+      )
     },
     {
       key: 'supervisor',

@@ -2,7 +2,18 @@
 
 use crate::error::AppError;
 use rusqlite::{params, Connection, Row};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
+
+/// Deserializes a double-option field so that:
+/// - absent key   → `None`
+/// - `null`       → `Some(None)`
+/// - `"value"`    → `Some(Some("value"))`
+fn deserialize_double_option<'de, D>(deserializer: D) -> Result<Option<Option<String>>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    Ok(Some(Option::deserialize(deserializer)?))
+}
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum UserRole {
@@ -100,7 +111,9 @@ pub struct UpdateUserRequest {
     pub active: Option<bool>,
     pub has_all_rigs: Option<bool>,
     pub assigned_rig_ids: Option<Vec<String>>,
+    #[serde(default, deserialize_with = "deserialize_double_option")]
     pub supervisor_id: Option<Option<String>>,
+    #[serde(default, deserialize_with = "deserialize_double_option")]
     pub company_id: Option<Option<String>>,
 }
 

@@ -7,7 +7,7 @@ export type UserRole = 'operator' | 'supervisor' | 'admin';
 // MUST stay in sync with `VALID_MODULES` in src-tauri/src/models/module_permission.rs.
 export const APP_MODULES = [
   'dashboard', 'reports', 'approvals',
-  'logistics', 'incidents', 'admin', 'cloud-logs',
+  'logistics', 'incidents', 'admin', 'cloud-logs', 'fluids',
 ] as const;
 
 export type AppModule = typeof APP_MODULES[number];
@@ -20,6 +20,7 @@ export const MODULE_LABELS: Record<AppModule, string> = {
   incidents: 'Incidencias',
   admin: 'Administración',
   'cloud-logs': 'Registros Diarios',
+  fluids: 'Reporte API',
 };
 
 /**
@@ -48,6 +49,7 @@ export const MODULE_DEFAULTS: Record<UserRole, Record<AppModule, boolean>> = {
     incidents: true,
     admin: false,
     'cloud-logs': true,
+    fluids: true,
   },
   supervisor: {
     dashboard: true,
@@ -57,6 +59,7 @@ export const MODULE_DEFAULTS: Record<UserRole, Record<AppModule, boolean>> = {
     incidents: true,
     admin: false,
     'cloud-logs': true,
+    fluids: true,
   },
   admin: {
     dashboard: true,
@@ -66,6 +69,7 @@ export const MODULE_DEFAULTS: Record<UserRole, Record<AppModule, boolean>> = {
     incidents: true,
     admin: true,
     'cloud-logs': true,
+    fluids: true,
   },
 };
 
@@ -81,6 +85,7 @@ export interface User {
   active: boolean;
   hasAllRigs: boolean;
   supervisorId?: string;
+  companyId?: string;
   lastLogin?: string;
   createdAt: string;
   updatedAt: string;
@@ -118,6 +123,7 @@ export interface CreateUserInput {
   hasAllRigs?: boolean;
   assignedRigIds?: string[];
   supervisorId?: string;
+  companyId?: string;
 }
 
 export interface UpdateUserInput {
@@ -129,5 +135,6 @@ export interface UpdateUserInput {
   hasAllRigs?: boolean;
   assignedRigIds?: string[];
   supervisorId?: string | null;
+  companyId?: string | null;
 }
 

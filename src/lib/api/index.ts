@@ -20,3 +20,4 @@ export * from './license';
 export * from './cloudLogs';
 export * from './crewPositions';
 export * from './auditLog';
+export * from './fluids';

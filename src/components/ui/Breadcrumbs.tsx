@@ -2,7 +2,7 @@ import { Link, useLocation, useParams, useSearchParams } from "react-router-dom"
 import { useState, useEffect } from "react"
 import { useTranslation } from "react-i18next"
 import { useAuthStore } from "../../store/authStore"
-import { reportsApi } from "../../lib/api"
+import { reportsApi, fluidsApi } from "../../lib/api"
 
 export const Breadcrumbs = () => {
   const location = useLocation()
@@ -11,6 +11,7 @@ export const Breadcrumbs = () => {
   const { t } = useTranslation()
   const { sessionToken } = useAuthStore()
   const [reportName, setReportName] = useState<string | null>(null)
+  const [fluidName, setFluidName] = useState<string | null>(null)
 
   // Map de rutas especiales para mostrar nombres legibles
   const routeNames: Record<string, string> = {
@@ -23,6 +24,7 @@ export const Breadcrumbs = () => {
     'view': t('breadcrumbs.view'),
     'logistics': t('breadcrumbs.logistics'),
     'approvals': t('breadcrumbs.approvals'),
+    'fluids': t('nav.fluids'),
   }
 
   // Map of ?from values to their display info
@@ -36,6 +38,8 @@ export const Breadcrumbs = () => {
   // Detectar si estamos en una ruta de reporte con ID
   const isReportRoute = location.pathname.includes('/reports/view/') ||
                         location.pathname.includes('/reports/edit/')
+  const isFluidRoute = location.pathname.includes('/fluids/view/') ||
+                       location.pathname.includes('/fluids/edit/')
   const reportId = params.id
 
   // Cargar nombre del reporte si estamos en una ruta de reporte
@@ -55,6 +59,24 @@ export const Breadcrumbs = () => {
     loadReportName()
   }, [isReportRoute, reportId, sessionToken])
 
+  // Cargar nombre del reporte de fluidos si estamos en una ruta de fluidos
+  useEffect(() => {
+    const loadFluidName = async () => {
+      if (isFluidRoute && reportId && sessionToken) {
+        try {
+          const fluid = await fluidsApi.get(sessionToken, reportId)
+          const well = fluid.wellNumber || '-'
+          setFluidName(`${well} (#${fluid.reportNumber || '-'})`)
+        } catch (error) {
+          console.error('Error loading fluid report for breadcrumb:', error)
+          setFluidName(t('nav.fluids'))
+        }
+      }
+    }
+
+    loadFluidName()
+  }, [isFluidRoute, reportId, sessionToken])
+
   // Construir breadcrumbs
   const segments = location.pathname.split('/').filter((crumb) => crumb !== '')
 
@@ -70,12 +92,16 @@ export const Breadcrumbs = () => {
 
     // Si es un UUID y el segmento anterior es "view" o "edit"
     if (isUUID && i > 0 && (segments[i - 1] === 'view' || segments[i - 1] === 'edit')) {
-      // Agregar el nombre del reporte al breadcrumb anterior como ": Reporte #123"
+      // Determinar el nombre a mostrar según la ruta
+      const entityName = isFluidRoute
+        ? (fluidName || t('breadcrumbs.loading'))
+        : (reportName || t('breadcrumbs.loading'))
+      // Agregar el nombre al breadcrumb anterior
       const lastCrumb = crumbs[crumbs.length - 1]
       if (lastCrumb) {
         crumbs[crumbs.length - 1] = {
           ...lastCrumb,
-          displayName: `${lastCrumb.displayName}: ${reportName || t('breadcrumbs.loading')}`,
+          displayName: `${lastCrumb.displayName}: ${entityName}`,
         }
       }
       // No agregar el UUID como crumb separado

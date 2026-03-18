@@ -1,4 +1,4 @@
-pub mod user;
+﻿pub mod user;
 pub mod report;
 pub mod drill_string;
 pub mod crew;
@@ -27,9 +27,14 @@ pub mod admin_stats;
 pub mod module_permission;
 pub mod update_preferences;
 pub mod audit_log;
+pub mod fluid_product_catalog;
+pub mod fluid_report;
+pub mod fluid_props;
+pub mod fluid_inventory;
+pub mod fluid_tanks;
+pub mod fluid_activity;
 
 // Re-export commonly used types
-// Allow unused imports as these are exposed for library consumers
 #[allow(unused_imports)]
 pub use user::*;
 #[allow(unused_imports)]
@@ -86,3 +91,15 @@ pub use admin_stats::*;
 pub use module_permission::*;
 #[allow(unused_imports)]
 pub use update_preferences::*;
+#[allow(unused_imports)]
+pub use fluid_product_catalog::*;
+#[allow(unused_imports)]
+pub use fluid_report::*;
+#[allow(unused_imports)]
+pub use fluid_props::*;
+#[allow(unused_imports)]
+pub use fluid_inventory::*;
+#[allow(unused_imports)]
+pub use fluid_tanks::*;
+#[allow(unused_imports)]
+pub use fluid_activity::*;

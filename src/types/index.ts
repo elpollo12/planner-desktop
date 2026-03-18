@@ -31,6 +31,7 @@ export * from './logistics';
 export * from './incident';
 export * from './notification';
 export * from './updates';
+export * from './fluid';
 
 export interface LoginResponse {
   sessionToken: string;

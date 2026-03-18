@@ -22,6 +22,9 @@ import { UpdateNotification } from './components/ui/UpdateNotification';
 import Logistics from './pages/Logistics';
 import Incidents from './pages/Incidents';
 import CloudLogs from './pages/CloudLogs';
+import FluidList from './pages/FluidList';
+import FluidForm from './pages/FluidForm';
+import FluidView from './pages/FluidView';
 import ReportApprovals from './pages/ReportApprovals';
 import Forbidden from './pages/Forbidden';
 import Profile from './pages/Profile';
@@ -148,6 +151,10 @@ function App() {
         <Route path="/logistics" element={<RoleGuard module="logistics"><Logistics /></RoleGuard>} />
         <Route path="/incidents" element={<RoleGuard module="incidents"><Incidents /></RoleGuard>} />
         <Route path="/cloud-logs" element={<RoleGuard module="cloud-logs"><CloudLogs /></RoleGuard>} />
+        <Route path="/fluids" element={<RoleGuard module="fluids"><FluidList /></RoleGuard>} />
+        <Route path="/fluids/new" element={<RoleGuard module="fluids"><FluidForm /></RoleGuard>} />
+        <Route path="/fluids/edit/:id" element={<RoleGuard module="fluids"><FluidForm /></RoleGuard>} />
+        <Route path="/fluids/view/:id" element={<RoleGuard module="fluids"><FluidView /></RoleGuard>} />
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
         <Route path="/forbidden" element={<Forbidden />} />
         <Route path="/" element={<Navigate to="/dashboard" replace />} />

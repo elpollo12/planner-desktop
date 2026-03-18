@@ -7,6 +7,7 @@ import { useAppSettingsStore } from '../../store/appSettingsStore';
 import { Button } from '../ui';
 import {
   ClipboardCheck,
+  Droplets,
   Forklift,
   LayoutDashboard,
   List,
@@ -43,6 +44,7 @@ export function Sidebar({ className = '' }: SidebarProps) {
     { name: t('nav.dashboard'),  href: '/dashboard',  icon: LayoutDashboard, module: 'dashboard' },
     { name: t('nav.approvals'),  href: '/approvals',  icon: ClipboardCheck,  module: 'approvals' },
     { name: t('nav.reports'),    href: '/reports',     icon: List,            module: 'reports' },
+    { name: t('nav.fluids'),     href: '/fluids',      icon: Droplets,       module: 'fluids' },
     { name: t('nav.logistics'),  href: '/logistics',   icon: Forklift,        module: 'logistics' },
     { name: t('nav.incidents'),  href: '/incidents',   icon: AlertTriangle,  module: 'incidents' },
     { name: t('nav.cloudLogs'),  href: '/cloud-logs',  icon: CloudDownload,  module: 'cloud-logs' },

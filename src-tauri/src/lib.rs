@@ -230,6 +230,18 @@ pub fn run() {
             commands::backup::backup_database,
             // Audit log (admin only)
             commands::audit_log::list_audit_log,
+            // Fluid module
+            commands::fluid::list_fluid_reports,
+            commands::fluid::get_fluid_report,
+            commands::fluid::create_fluid_report,
+            commands::fluid::save_fluid_tab1,
+            commands::fluid::save_fluid_tab2,
+            commands::fluid::save_fluid_tab3,
+            commands::fluid::delete_fluid_report,
+            commands::fluid::list_fluid_products,
+            commands::fluid::list_fluid_products_active,
+            commands::fluid::create_fluid_product,
+            commands::fluid::update_fluid_product,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

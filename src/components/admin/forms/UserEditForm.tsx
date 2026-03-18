@@ -4,11 +4,12 @@ import { User, HardHat, Shield, KeyRound, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
-import { modulePermissionsApi, usersApi } from '@/lib/api';
+import { modulePermissionsApi, usersApi, companiesApi } from '@/lib/api';
 import { toast } from 'react-toastify';
 import type { UserRole, UserWithRigs, AppModule } from '@/types/user';
 import { APP_MODULES, MODULE_LABELS, MODULE_DEFAULTS, PERMISSION_MODULES } from '@/types/user';
 import type { Rig } from '@/types/rig';
+import type { Company } from '@/types/company';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -32,6 +33,7 @@ export interface UserEditFormProps {
     ci:             string;
     role:           UserRole;
     active:         boolean;
+    companyId?:     string | null;
     hasAllRigs:     boolean;
     assignedRigIds: string[];
     supervisorId?:  string | null;
@@ -50,6 +52,15 @@ export default function UserEditForm({
   const isSelf   = !!currentUserId && user.id === currentUserId;
   const isAdmin  = user.role === 'admin';
   const [activeTab, setActiveTab] = useState<EditTab>('user-data');
+  const [companies, setCompanies] = useState<Company[]>([]);
+
+  useEffect(() => {
+    if (sessionToken) {
+      companiesApi.list(sessionToken)
+        .then((data) => setCompanies(data.filter((c) => c.active)))
+        .catch(() => {});
+    }
+  }, [sessionToken]);
 
   // Local mirror so tabs reflect latest saved values
   const [localUser, setLocalUser] = useState({
@@ -60,6 +71,7 @@ export default function UserEditForm({
     hasAllRigs:     isAdmin ? true : (user.hasAllRigs ?? false),
     assignedRigIds: user.assignedRigIds ?? [],
     supervisorId:   user.supervisorId  ?? '',
+    companyId:      user.companyId     ?? '',
   });
 
   // ── Tab bar ────────────────────────────────────────────────────────────────
@@ -105,6 +117,7 @@ export default function UserEditForm({
       ci:             merged.ci,
       role:           merged.role as UserRole,
       active:         merged.active,
+      companyId:      merged.companyId || null,
       hasAllRigs:     merged.hasAllRigs,
       assignedRigIds: merged.hasAllRigs ? [] : merged.assignedRigIds,
       supervisorId:   merged.role === 'operator' ? merged.supervisorId || null : null,
@@ -122,6 +135,7 @@ export default function UserEditForm({
             localUser={localUser}
             isSelf={isSelf}
             supervisors={supervisors}
+            companies={companies}
             sessionToken={sessionToken}
             userId={user.id}
             onSave={savePartial}
@@ -145,6 +159,7 @@ export default function UserEditForm({
                 ci:             localUser.ci,
                 role:           localUser.role as UserRole,
                 active:         localUser.active,
+                companyId:      localUser.companyId || undefined,
                 hasAllRigs:     localUser.hasAllRigs,
                 assignedRigIds: localUser.hasAllRigs ? [] : localUser.assignedRigIds,
                 supervisorId:   localUser.role === 'operator' ? localUser.supervisorId || null : null,
@@ -166,6 +181,7 @@ interface TabUserDataProps {
   localUser:    ReturnType<typeof buildLocalUser>;
   isSelf:       boolean;
   supervisors:  UserWithRigs[];
+  companies:    Company[];
   sessionToken: string;
   userId:       string;
   onSave:       (partial: Partial<ReturnType<typeof buildLocalUser>>) => Promise<void>;
@@ -181,15 +197,18 @@ function buildLocalUser(user: UserWithRigs) {
     hasAllRigs:     user.role === 'admin' ? true : (user.hasAllRigs ?? false),
     assignedRigIds: user.assignedRigIds ?? [],
     supervisorId:   user.supervisorId  ?? '',
+    companyId:      user.companyId     ?? '',
   };
 }
 
-function TabUserData({ localUser, isSelf, supervisors, sessionToken, userId, onSave }: TabUserDataProps) {
+function TabUserData({ localUser, isSelf, supervisors, companies, sessionToken, userId, onSave }: TabUserDataProps) {
   const { t } = useTranslation();
   const [fullName,     setFullName]     = useState(localUser.fullName);
   const [ci,           setCi]           = useState(localUser.ci);
   const [role,         setRole]         = useState<UserRole>(localUser.role as UserRole);
   const [supervisorId, setSupervisorId] = useState(localUser.supervisorId);
+  const [companyId,    setCompanyId]    = useState(localUser.companyId);
+  const [hasCompany,   setHasCompany]   = useState(!!localUser.companyId);
   const [active,       setActive]       = useState(localUser.active);
   const [saving,       setSaving]       = useState(false);
 
@@ -202,12 +221,13 @@ function TabUserData({ localUser, isSelf, supervisors, sessionToken, userId, onS
     ci           !== localUser.ci           ||
     role         !== localUser.role         ||
     supervisorId !== localUser.supervisorId ||
+    companyId    !== localUser.companyId    ||
     active       !== localUser.active;
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      await onSave({ fullName, ci, role, supervisorId, active });
+      await onSave({ fullName, ci, role, supervisorId, companyId, active });
       toast.success(t('admin.forms.dataUpdated'));
     } finally {
       setSaving(false);
@@ -266,6 +286,42 @@ function TabUserData({ localUser, isSelf, supervisors, sessionToken, userId, onS
             />
           </div>
         )}
+      </div>
+
+      <div className={`rounded-lg p-3 border ${
+        hasCompany
+          ? 'bg-primary-50 dark:bg-primary-900/10 border-primary-200 dark:border-primary-800'
+          : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700'
+      }`}>
+        <div className="flex items-center gap-3">
+          <label className="flex items-center gap-2 shrink-0 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={hasCompany}
+              onChange={(e) => {
+                setHasCompany(e.target.checked);
+                if (!e.target.checked) setCompanyId('');
+              }}
+              className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+            />
+            <div>
+              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('admin.users.company')}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{t('admin.users.assignCompany')}</p>
+            </div>
+          </label>
+          {hasCompany && (
+            <div className="flex-1">
+              <Select
+                value={companyId}
+                onChange={(e) => setCompanyId(e.target.value)}
+                options={companies.map((c) => ({
+                  value: c.id,
+                  label: `${c.name} (${c.companyType === 'operator' ? t('admin.companies.operator') : t('admin.companies.contractor')})`,
+                }))}
+              />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Active toggle */}

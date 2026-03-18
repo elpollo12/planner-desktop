@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import i18next from 'i18next';
 import { useForm } from 'react-hook-form';
@@ -12,9 +12,11 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { useModalStore } from '@/store';
+import { companiesApi } from '@/lib/api';
 import type { UserRole, UserWithRigs, AppModule } from '@/types/user';
 import { APP_MODULES, MODULE_LABELS, MODULE_DEFAULTS, PERMISSION_MODULES } from '@/types/user';
 import type { Rig } from '@/types/rig';
+import type { Company } from '@/types/company';
 
 // ─── Schemas ──────────────────────────────────────────────────────────────────
 
@@ -40,6 +42,7 @@ interface WizardState {
   ci:                string;
   role:              UserRole;
   supervisorId:      string;
+  companyId:         string;
   hasAllRigs:        boolean;
   assignedRigIds:    string[];
   modulePermissions: Record<AppModule, boolean>;
@@ -55,6 +58,7 @@ export interface UserCreateFormProps {
     fullName:           string;
     ci:                 string;
     role:               UserRole;
+    companyId:          string;
     hasAllRigs:         boolean;
     assignedRigIds:     string[];
     supervisorId?:      string;
@@ -123,6 +127,7 @@ function StepFooter({ onBack, onContinue, continueLabel, loading, disabled }: St
 
 export default function UserCreateForm({ rigs, supervisors, sessionToken: _sessionToken, onSubmit }: UserCreateFormProps) {
   const [step, setStep] = useState<WizardStep>(1);
+  const [companies, setCompanies] = useState<Company[]>([]);
   const [wizard, setWizard] = useState<WizardState>({
     username:          '',
     password:          '',
@@ -130,10 +135,19 @@ export default function UserCreateForm({ rigs, supervisors, sessionToken: _sessi
     ci:                '',
     role:              'operator',
     supervisorId:      '',
+    companyId:         '',
     hasAllRigs:        false,
     assignedRigIds:    [],
     modulePermissions: { ...MODULE_DEFAULTS.operator },
   });
+
+  useEffect(() => {
+    if (_sessionToken) {
+      companiesApi.list(_sessionToken)
+        .then((data) => setCompanies(data.filter((c) => c.active)))
+        .catch(() => {});
+    }
+  }, [_sessionToken]);
 
   return (
     <div className="flex flex-col h-full min-h-0">
@@ -143,6 +157,7 @@ export default function UserCreateForm({ rigs, supervisors, sessionToken: _sessi
           <StepUserData
             wizard={wizard}
             supervisors={supervisors}
+            companies={companies}
             onContinue={(data) => {
               setWizard((w) => ({
                 ...w,
@@ -192,6 +207,7 @@ export default function UserCreateForm({ rigs, supervisors, sessionToken: _sessi
       fullName:          state.fullName,
       ci:                state.ci,
       role:              state.role,
+      companyId:         state.companyId,
       hasAllRigs:        state.hasAllRigs,
       assignedRigIds:    state.hasAllRigs ? [] : state.assignedRigIds,
       supervisorId:      state.role === 'operator' ? state.supervisorId || undefined : undefined,
@@ -207,13 +223,17 @@ export default function UserCreateForm({ rigs, supervisors, sessionToken: _sessi
 interface StepUserDataProps {
   wizard:      WizardState;
   supervisors: UserWithRigs[];
-  onContinue:  (data: Pick<WizardState, 'username' | 'password' | 'fullName' | 'ci' | 'role' | 'supervisorId'>) => void;
+  companies:   Company[];
+  onContinue:  (data: Pick<WizardState, 'username' | 'password' | 'fullName' | 'ci' | 'role' | 'supervisorId' | 'companyId'>) => void;
 }
 
-function StepUserData({ wizard, supervisors, onContinue }: StepUserDataProps) {
+function StepUserData({ wizard, supervisors, companies, onContinue }: StepUserDataProps) {
   const { t } = useTranslation();
   const [showPassword, setShowPassword] = useState(false);
   const [submitting,   setSubmitting]   = useState(false);
+  const [companyId,    setCompanyId]    = useState(wizard.companyId);
+  const [hasCompany,   setHasCompany]   = useState(!!wizard.companyId);
+  const [companyError, setCompanyError] = useState('');
 
   const { register, handleSubmit, watch, formState: { errors } } =
     useForm<UserDataFormValues>({
@@ -231,6 +251,7 @@ function StepUserData({ wizard, supervisors, onContinue }: StepUserDataProps) {
   const role = watch('role') as UserRole;
 
   const handleContinue = handleSubmit(async (data) => {
+    setCompanyError('');
     setSubmitting(true);
     try {
       onContinue({
@@ -240,6 +261,7 @@ function StepUserData({ wizard, supervisors, onContinue }: StepUserDataProps) {
         ci:           data.ci           || '',
         role:         data.role         as UserRole,
         supervisorId: data.supervisorId || '',
+        companyId,
       });
     } finally {
       setSubmitting(false);
@@ -328,6 +350,43 @@ function StepUserData({ wizard, supervisors, onContinue }: StepUserDataProps) {
               ? t('admin.forms.roleHintSupervisor')
               : t('admin.forms.roleHintOperator')}
           </p>
+        </div>
+
+        <div className={`rounded-lg p-3 border ${
+          hasCompany
+            ? 'bg-primary-50 dark:bg-primary-900/10 border-primary-200 dark:border-primary-800'
+            : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700'
+        }`}>
+          <div className="flex items-center gap-3">
+            <label className="flex items-center gap-2 shrink-0 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={hasCompany}
+                onChange={(e) => {
+                  setHasCompany(e.target.checked);
+                  if (!e.target.checked) setCompanyId('');
+                }}
+                className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+              />
+              <div>
+                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('admin.users.company')}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{t('admin.users.assignCompany')}</p>
+              </div>
+            </label>
+            {hasCompany && (
+              <div className="flex-1">
+                <Select
+                  value={companyId}
+                  onChange={(e) => { setCompanyId(e.target.value); setCompanyError(''); }}
+                  options={companies.map((c) => ({
+                    value: c.id,
+                    label: `${c.name} (${c.companyType === 'operator' ? t('admin.companies.operator') : t('admin.companies.contractor')})`,
+                  }))}
+                />
+              </div>
+            )}
+          </div>
+          {companyError && <p className="mt-1 text-xs text-red-600">{companyError}</p>}
         </div>
 
         {role === 'operator' && (

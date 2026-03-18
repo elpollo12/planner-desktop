@@ -23,6 +23,7 @@ const VALID_MODULES: &[&str] = &[
     "incidents",
     "admin",
     "cloud-logs",
+    "fluids",
 ];
 
 /// A single override row from `user_module_permissions`
@@ -71,6 +72,7 @@ impl ModulePermission {
                 ("incidents".into(), true),
                 ("admin".into(), false),
                 ("cloud-logs".into(), true),
+                ("fluids".into(), true),
             ]),
             "supervisor" => HashMap::from([
                 ("dashboard".into(), true),
@@ -80,6 +82,7 @@ impl ModulePermission {
                 ("incidents".into(), true),
                 ("admin".into(), false),
                 ("cloud-logs".into(), true),
+                ("fluids".into(), true),
             ]),
             "admin" => HashMap::from([
                 ("dashboard".into(), true),
@@ -89,6 +92,7 @@ impl ModulePermission {
                 ("incidents".into(), true),
                 ("admin".into(), true),
                 ("cloud-logs".into(), true),
+                ("fluids".into(), true),
             ]),
             _ => HashMap::new(),
         }

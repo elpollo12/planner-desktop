@@ -36,6 +36,7 @@ pub mod cloud_logs;
 pub mod updates;
 pub mod backup;
 pub mod audit_log;
+pub mod fluid;
 
 // Re-export all command handlers for Tauri
 // Allow unused imports as these are registered in main.rs
@@ -113,3 +114,5 @@ pub use updates::*;
 pub use backup::*;
 #[allow(unused_imports)]
 pub use audit_log::*;
+#[allow(unused_imports)]
+pub use fluid::*;
