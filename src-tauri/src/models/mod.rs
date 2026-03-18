@@ -33,6 +33,7 @@ pub mod fluid_props;
 pub mod fluid_inventory;
 pub mod fluid_tanks;
 pub mod fluid_activity;
+pub mod fluid_changelog;
 
 // Re-export commonly used types
 #[allow(unused_imports)]
@@ -103,3 +104,5 @@ pub use fluid_inventory::*;
 pub use fluid_tanks::*;
 #[allow(unused_imports)]
 pub use fluid_activity::*;
+#[allow(unused_imports)]
+pub use fluid_changelog::*;

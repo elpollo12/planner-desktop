@@ -1,5 +1,6 @@
 use crate::auth::get_session;
 use crate::models::fluid_activity::{FluidActivity, SaveFluidActivityRequest};
+use crate::models::fluid_changelog::{FluidChangelogEntry, compute_header_diff, compute_subtable_diff};
 use crate::models::fluid_inventory::{FluidInventoryItem, FluidService, SaveFluidInventoryItem, SaveFluidServiceItem};
 use crate::models::fluid_product_catalog::{CreateFluidProductRequest, FluidProduct, UpdateFluidProductRequest};
 use crate::models::fluid_props::{FluidProps, FluidSolidsControl, SaveFluidPropsItem, SaveFluidSolidsControlItem};
@@ -10,6 +11,7 @@ use crate::models::fluid_report::{
 use crate::models::fluid_tanks::{FluidTank, FluidVolStats, SaveFluidTankItem, SaveFluidVolStatsRequest};
 use crate::state::AppState;
 use serde::{Deserialize, Serialize};
+use serde_json::Value as JsonValue;
 use tauri::State;
 
 // ============================================================================
@@ -59,6 +61,7 @@ pub struct SaveFluidTab1Request {
     pub header: UpdateFluidHeaderRequest,
     pub props: Vec<SaveFluidPropsItem>,
     pub solids_control: Vec<SaveFluidSolidsControlItem>,
+    pub note: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -66,6 +69,7 @@ pub struct SaveFluidTab1Request {
 pub struct SaveFluidTab2Request {
     pub inventory: Vec<SaveFluidInventoryItem>,
     pub services: Vec<SaveFluidServiceItem>,
+    pub note: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -74,6 +78,7 @@ pub struct SaveFluidTab3Request {
     pub tanks: Vec<SaveFluidTankItem>,
     pub activity: Option<SaveFluidActivityRequest>,
     pub vol_stats: Option<SaveFluidVolStatsRequest>,
+    pub note: Option<String>,
 }
 
 // ============================================================================
@@ -179,6 +184,12 @@ pub async fn save_fluid_tab1(
         .lock()
         .map_err(|e| format!("Failed to lock database: {}", e))?;
 
+    // ── Snapshot old state for diff ──
+    let old_report = FluidReport::get_by_id(&conn, &fluid_report_id).ok();
+    let old_props = FluidProps::list_by_fluid_report(&conn, &fluid_report_id).unwrap_or_default();
+    let old_solids = FluidSolidsControl::list_by_fluid_report(&conn, &fluid_report_id).unwrap_or_default();
+
+    // ── Apply changes ──
     let report = FluidReport::update_header(&conn, &fluid_report_id, &data.header, &session.user_id)
         .map_err(|e| e.to_string())?;
 
@@ -187,6 +198,38 @@ pub async fn save_fluid_tab1(
 
     let solids_control = FluidSolidsControl::save_bulk(&conn, &fluid_report_id, &data.solids_control)
         .map_err(|e| e.to_string())?;
+
+    // ── Compute diff & insert changelog ──
+    let mut diff = serde_json::Map::new();
+
+    if let Some(ref old) = old_report {
+        let old_json = serde_json::to_value(old).unwrap_or(JsonValue::Null);
+        let new_json = serde_json::to_value(&report).unwrap_or(JsonValue::Null);
+        if let (Some(old_map), Some(new_map)) = (old_json.as_object(), new_json.as_object()) {
+            let header_diff = compute_header_diff(old_map, new_map);
+            if !header_diff.is_empty() {
+                diff.insert("header".to_string(), JsonValue::Object(header_diff));
+            }
+        }
+    }
+
+    let old_props_json: Vec<JsonValue> = old_props.iter().map(|p| serde_json::to_value(p).unwrap_or(JsonValue::Null)).collect();
+    let new_props_json: Vec<JsonValue> = data.props.iter().map(|p| serde_json::to_value(p).unwrap_or(JsonValue::Null)).collect();
+    if let Some(d) = compute_subtable_diff(&old_props_json, &new_props_json, "props", "sampleHour") {
+        diff.insert("props".to_string(), d);
+    }
+
+    let old_solids_json: Vec<JsonValue> = old_solids.iter().map(|s| serde_json::to_value(s).unwrap_or(JsonValue::Null)).collect();
+    let new_solids_json: Vec<JsonValue> = data.solids_control.iter().map(|s| serde_json::to_value(s).unwrap_or(JsonValue::Null)).collect();
+    if let Some(d) = compute_subtable_diff(&old_solids_json, &new_solids_json, "solidsControl", "equipment") {
+        diff.insert("solidsControl".to_string(), d);
+    }
+
+    let changes = JsonValue::Object(diff);
+    let _ = FluidChangelogEntry::insert(
+        &conn, &fluid_report_id, "tab1", &session.user_id,
+        data.note.as_deref(), &changes,
+    );
 
     Ok(SaveFluidTab1Response {
         report,
@@ -202,18 +245,44 @@ pub async fn save_fluid_tab2(
     data: SaveFluidTab2Request,
     state: State<'_, AppState>,
 ) -> Result<SaveFluidTab2Response, String> {
-    get_session(&session_token, &state).map_err(|e| e.to_string())?;
+    let session = get_session(&session_token, &state).map_err(|e| e.to_string())?;
 
     let conn = state
         .db
         .lock()
         .map_err(|e| format!("Failed to lock database: {}", e))?;
 
+    // ── Snapshot old state ──
+    let old_inv = FluidInventoryItem::list_by_fluid_report(&conn, &fluid_report_id).unwrap_or_default();
+    let old_svc = FluidService::list_by_fluid_report(&conn, &fluid_report_id).unwrap_or_default();
+
+    // ── Apply changes ──
     let inventory = FluidInventoryItem::save_bulk(&conn, &fluid_report_id, &data.inventory)
         .map_err(|e| e.to_string())?;
 
     let services = FluidService::save_bulk(&conn, &fluid_report_id, &data.services)
         .map_err(|e| e.to_string())?;
+
+    // ── Compute diff ──
+    let mut diff = serde_json::Map::new();
+
+    let old_inv_json: Vec<JsonValue> = old_inv.iter().map(|i| serde_json::to_value(i).unwrap_or(JsonValue::Null)).collect();
+    let new_inv_json: Vec<JsonValue> = data.inventory.iter().map(|i| serde_json::to_value(i).unwrap_or(JsonValue::Null)).collect();
+    if let Some(d) = compute_subtable_diff(&old_inv_json, &new_inv_json, "inventory", "productId") {
+        diff.insert("inventory".to_string(), d);
+    }
+
+    let old_svc_json: Vec<JsonValue> = old_svc.iter().map(|s| serde_json::to_value(s).unwrap_or(JsonValue::Null)).collect();
+    let new_svc_json: Vec<JsonValue> = data.services.iter().map(|s| serde_json::to_value(s).unwrap_or(JsonValue::Null)).collect();
+    if let Some(d) = compute_subtable_diff(&old_svc_json, &new_svc_json, "services", "serviceName") {
+        diff.insert("services".to_string(), d);
+    }
+
+    let changes = JsonValue::Object(diff);
+    let _ = FluidChangelogEntry::insert(
+        &conn, &fluid_report_id, "tab2", &session.user_id,
+        data.note.as_deref(), &changes,
+    );
 
     Ok(SaveFluidTab2Response {
         inventory,
@@ -228,13 +297,17 @@ pub async fn save_fluid_tab3(
     data: SaveFluidTab3Request,
     state: State<'_, AppState>,
 ) -> Result<SaveFluidTab3Response, String> {
-    get_session(&session_token, &state).map_err(|e| e.to_string())?;
+    let session = get_session(&session_token, &state).map_err(|e| e.to_string())?;
 
     let conn = state
         .db
         .lock()
         .map_err(|e| format!("Failed to lock database: {}", e))?;
 
+    // ── Snapshot old state ──
+    let old_tanks = FluidTank::list_by_fluid_report(&conn, &fluid_report_id).unwrap_or_default();
+
+    // ── Apply changes ──
     let tanks = FluidTank::save_bulk(&conn, &fluid_report_id, &data.tanks)
         .map_err(|e| e.to_string())?;
 
@@ -254,11 +327,46 @@ pub async fn save_fluid_tab3(
             .map_err(|e| e.to_string())?
     };
 
+    // ── Compute diff ──
+    let mut diff = serde_json::Map::new();
+
+    let old_tanks_json: Vec<JsonValue> = old_tanks.iter().map(|t| serde_json::to_value(t).unwrap_or(JsonValue::Null)).collect();
+    let new_tanks_json: Vec<JsonValue> = data.tanks.iter().map(|t| serde_json::to_value(t).unwrap_or(JsonValue::Null)).collect();
+    if let Some(d) = compute_subtable_diff(&old_tanks_json, &new_tanks_json, "tanks", "name") {
+        diff.insert("tanks".to_string(), d);
+    }
+
+    let changes = JsonValue::Object(diff);
+    let _ = FluidChangelogEntry::insert(
+        &conn, &fluid_report_id, "tab3", &session.user_id,
+        data.note.as_deref(), &changes,
+    );
+
     Ok(SaveFluidTab3Response {
         tanks,
         activity,
         vol_stats,
     })
+}
+
+// ============================================================================
+// Changelog commands
+// ============================================================================
+
+#[tauri::command]
+pub async fn list_fluid_changelog(
+    session_token: String,
+    fluid_report_id: String,
+    state: State<'_, AppState>,
+) -> Result<Vec<FluidChangelogEntry>, String> {
+    get_session(&session_token, &state).map_err(|e| e.to_string())?;
+
+    let conn = state
+        .db
+        .lock()
+        .map_err(|e| format!("Failed to lock database: {}", e))?;
+
+    FluidChangelogEntry::list_for_report(&conn, &fluid_report_id).map_err(|e| e.to_string())
 }
 
 #[tauri::command]

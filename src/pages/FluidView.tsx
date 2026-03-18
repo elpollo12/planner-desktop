@@ -8,6 +8,7 @@ import { useAuthStore } from '../store/authStore';
 import { fluidsApi } from '../lib/api';
 import { toast } from '../lib/toast';
 import { formatDateDMY } from '../lib/dateUtils';
+import { FluidChangelog } from '../components/fluids/FluidChangelog';
 import type { FluidReportFull } from '../types/fluid';
 
 // ============================================================================
@@ -21,7 +22,7 @@ const fmtNum = (v: number | string | null | undefined): string => {
 
 const fmtStr = (v: string | null | undefined): string => v || '-';
 
-type TabId = 'tab1' | 'tab2' | 'tab3';
+type TabId = 'tab1' | 'tab2' | 'tab3' | 'changelog';
 
 // ============================================================================
 // Read-only display components
@@ -62,6 +63,7 @@ export default function FluidView() {
     { id: 'tab1', label: t('fluids.form.tabs.tab1') },
     { id: 'tab2', label: t('fluids.form.tabs.tab2') },
     { id: 'tab3', label: t('fluids.form.tabs.tab3') },
+    { id: 'changelog', label: t('fluids.changelog.tabLabel') },
   ];
 
   useEffect(() => {
@@ -558,6 +560,11 @@ export default function FluidView() {
                   </section>
                 )}
               </div>
+            )}
+
+            {/* ── Tab 4: Changelog ────────────────────────────────── */}
+            {activeTab === 'changelog' && (
+              <FluidChangelog fluidReportId={report.id} />
             )}
           </div>
         </Card>

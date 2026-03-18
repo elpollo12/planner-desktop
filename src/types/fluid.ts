@@ -259,3 +259,19 @@ export interface CreateFluidReportInput {
   trainee?: string;
   opsSupervisor?: string;
 }
+
+// ============================================================================
+// Changelog
+// ============================================================================
+
+export interface FluidChangelogEntry {
+  id: string;
+  fluidReportId: string;
+  tab: string;
+  changedBy: string;
+  changedByName: string | null;
+  changedAt: string;
+  note: string | null;
+  changesJson: Record<string, unknown>;
+  createdAt: string;
+}

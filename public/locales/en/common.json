@@ -2222,7 +2222,10 @@
       "transfTotal": "Transf. Total",
       "consTotal": "Cons. Total",
       "dailyCost": "Daily Cost",
-      "notes": "Notes"
+      "notes": "Notes",
+      "selectProduct": "Select product...",
+      "searchProduct": "Search by code or name...",
+      "noResults": "No results"
     },
     "services": {
       "title": "Technical Services",
@@ -2329,6 +2332,23 @@
       "active": "Active",
       "inactive": "Inactive",
       "edit": "Edit"
+    },
+    "changelog": {
+      "title": "Change History",
+      "tabLabel": "History",
+      "saveTitle": "Save Changes",
+      "savePrompt": "You are about to save changes to {{tab}}. You can add a note describing the changes.",
+      "noteLabel": "Note (optional)",
+      "notePlaceholder": "Describe the changes made...",
+      "cancel": "Cancel",
+      "saveWithNote": "Save with note",
+      "saveWithoutNote": "Save without note",
+      "empty": "No changes recorded yet",
+      "changesCount": "{{count}} field(s) modified",
+      "added": "added",
+      "removed": "removed",
+      "modified": "modified",
+      "creation": "Creation"
     },
     "catalogForm": {
       "code": "Code",

@@ -2075,7 +2075,7 @@
       "saveTab3": "Guardar Tab 3",
       "back": "Volver",
       "tabs": {
-        "tab1": "API Report",
+        "tab1": "Reporte API",
         "tab1Desc": "Encabezado, propiedades, circulación, DIMS, hidráulica, sólidos, bitácora",
         "tab2": "Inventario",
         "tab2Desc": "Productos, servicios técnicos",
@@ -2223,7 +2223,10 @@
       "transfTotal": "Transf. Total",
       "consTotal": "Cons. Total",
       "dailyCost": "Costo Día",
-      "notes": "Notas"
+      "notes": "Notas",
+      "selectProduct": "Seleccionar producto...",
+      "searchProduct": "Buscar por código o nombre...",
+      "noResults": "Sin resultados"
     },
     "services": {
       "title": "Servicios Técnicos",
@@ -2330,6 +2333,23 @@
       "active": "Activo",
       "inactive": "Inactivo",
       "edit": "Editar"
+    },
+    "changelog": {
+      "title": "Historial de Cambios",
+      "tabLabel": "Historial",
+      "saveTitle": "Guardar Cambios",
+      "savePrompt": "Vas a guardar los cambios en {{tab}}. Puedes agregar una nota describiendo los cambios.",
+      "noteLabel": "Nota (opcional)",
+      "notePlaceholder": "Describe los cambios realizados...",
+      "cancel": "Cancelar",
+      "saveWithNote": "Guardar con nota",
+      "saveWithoutNote": "Guardar sin nota",
+      "empty": "Sin cambios registrados aún",
+      "changesCount": "{{count}} campo(s) modificado(s)",
+      "added": "agregado(s)",
+      "removed": "eliminado(s)",
+      "modified": "modificado(s)",
+      "creation": "Creación"
     },
     "catalogForm": {
       "code": "Código",

@@ -4,6 +4,7 @@ import { MainLayout } from '../components/layout';
 import { Button, Card, Input, Select } from '../components/ui';
 import { Save, ChevronLeft, Droplets } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
+import { useModal } from '../store/modalStore';
 import { fluidsApi, fluidProductsApi, rigsApi, rigPersonnelApi } from '../lib/api';
 import { toast } from '../lib/toast';
 import { backgroundPush } from '../lib/syncHelper';
@@ -14,6 +15,7 @@ import { FluidInventoryTable, type InventoryRow } from '../components/fluids/Flu
 import { FluidServicesTable, type ServiceRow } from '../components/fluids/FluidServicesTable';
 import { FluidTanksTable, type TankRow } from '../components/fluids/FluidTanksTable';
 import { FluidVolStatsSection, EMPTY_VOL_STATS, type VolStatsState } from '../components/fluids/FluidVolStatsSection';
+import { SaveWithNoteModal } from '../components/fluids/SaveWithNoteModal';
 import type { FluidReportFull, FluidProduct } from '../types/fluid';
 import type { RigWithArea, RigPersonnel, RigFull } from '../types/rig';
 import { useTranslation } from 'react-i18next';
@@ -116,6 +118,7 @@ export default function FluidForm() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { sessionToken } = useAuthStore();
+  const { openModal, closeModal } = useModal();
   const { t } = useTranslation();
 
   const TABS: Array<{ id: TabId; label: string; description: string }> = [
@@ -450,8 +453,23 @@ export default function FluidForm() {
     }
   };
 
+  // -- Modal save helpers (open note modal, then save) -------------------------
+  const openSaveModal = (tabLabel: string, saveFn: (note?: string) => Promise<void>) => {
+    openModal(
+      <SaveWithNoteModal
+        tabLabel={tabLabel}
+        onSave={async (note) => {
+          await saveFn(note);
+          closeModal();
+        }}
+        onCancel={closeModal}
+      />,
+      { title: t('fluids.changelog.saveTitle'), size: 'sm', showCloseButton: true },
+    );
+  };
+
   // -- Save Tab 1 (includes report header) ------------------------------------
-  const handleSaveTab1 = async () => {
+  const handleSaveTab1 = async (note?: string) => {
     if (!sessionToken || !fluidReportId) return;
     setSaving(true);
     try {
@@ -524,6 +542,7 @@ export default function FluidForm() {
           hoursToday: toNum(r.hoursToday),
           hoursAccumulated: toNum(r.hoursAccumulated),
         })),
+        note: note || undefined,
       };
       await fluidsApi.saveTab1(sessionToken, fluidReportId, data);
       toast.success(t('fluids.form.tab1Saved'));
@@ -537,7 +556,7 @@ export default function FluidForm() {
   };
 
   // -- Save Tab 2 -------------------------------------------------------------
-  const handleSaveTab2 = async () => {
+  const handleSaveTab2 = async (note?: string) => {
     if (!sessionToken || !fluidReportId) return;
     setSaving(true);
     try {
@@ -566,6 +585,7 @@ export default function FluidForm() {
           dailyCost: toNum(r.dailyCost),
           accumulatedCost: toNum(r.accumulatedCost),
         })),
+        note: note || undefined,
       };
       await fluidsApi.saveTab2(sessionToken, fluidReportId, data);
       toast.success(t('fluids.form.tab2Saved'));
@@ -579,7 +599,7 @@ export default function FluidForm() {
   };
 
   // -- Save Tab 3 -------------------------------------------------------------
-  const handleSaveTab3 = async () => {
+  const handleSaveTab3 = async (note?: string) => {
     if (!sessionToken || !fluidReportId) return;
     setSaving(true);
     try {
@@ -645,6 +665,7 @@ export default function FluidForm() {
           volInicialDiario: toNum(volStats.volInicialDiario),
           volFinalDiario: toNum(volStats.volFinalDiario),
         },
+        note: note || undefined,
       };
       await fluidsApi.saveTab3(sessionToken, fluidReportId, data);
       toast.success(t('fluids.form.tab3Saved'));
@@ -804,17 +825,17 @@ export default function FluidForm() {
             {t('fluids.form.back')}
           </Button>
           {activeTab === 'tab1' && (
-            <Button variant="primary" onClick={handleSaveTab1} loading={saving} icon={<Save size={16} />}>
+            <Button variant="primary" onClick={() => openSaveModal(t('fluids.form.tabs.tab1'), handleSaveTab1)} loading={saving} icon={<Save size={16} />}>
               {t('fluids.form.saveTab1')}
             </Button>
           )}
           {activeTab === 'tab2' && (
-            <Button variant="primary" onClick={handleSaveTab2} loading={saving} icon={<Save size={16} />}>
+            <Button variant="primary" onClick={() => openSaveModal(t('fluids.form.tabs.tab2'), handleSaveTab2)} loading={saving} icon={<Save size={16} />}>
               {t('fluids.form.saveTab2')}
             </Button>
           )}
           {activeTab === 'tab3' && (
-            <Button variant="primary" onClick={handleSaveTab3} loading={saving} icon={<Save size={16} />}>
+            <Button variant="primary" onClick={() => openSaveModal(t('fluids.form.tabs.tab3'), handleSaveTab3)} loading={saving} icon={<Save size={16} />}>
               {t('fluids.form.saveTab3')}
             </Button>
           )}
@@ -1052,7 +1073,7 @@ export default function FluidForm() {
 
                 {/* Save button bottom */}
                 <div className="flex justify-end pt-4 border-t border-gray-200 dark:border-gray-700">
-                  <Button variant="primary" onClick={handleSaveTab1} loading={saving} icon={<Save size={16} />}>
+                  <Button variant="primary" onClick={() => openSaveModal(t('fluids.form.tabs.tab1'), handleSaveTab1)} loading={saving} icon={<Save size={16} />}>
                     {t('fluids.form.saveTab1')}
                   </Button>
                 </div>
@@ -1095,7 +1116,7 @@ export default function FluidForm() {
 
                 {/* Save button bottom */}
                 <div className="flex justify-end pt-4 border-t border-gray-200 dark:border-gray-700">
-                  <Button variant="primary" onClick={handleSaveTab2} loading={saving} icon={<Save size={16} />}>
+                  <Button variant="primary" onClick={() => openSaveModal(t('fluids.form.tabs.tab2'), handleSaveTab2)} loading={saving} icon={<Save size={16} />}>
                     {t('fluids.form.saveTab2')}
                   </Button>
                 </div>
@@ -1137,7 +1158,7 @@ export default function FluidForm() {
 
                 {/* Save button bottom */}
                 <div className="flex justify-end pt-4 border-t border-gray-200 dark:border-gray-700">
-                  <Button variant="primary" onClick={handleSaveTab3} loading={saving} icon={<Save size={16} />}>
+                  <Button variant="primary" onClick={() => openSaveModal(t('fluids.form.tabs.tab3'), handleSaveTab3)} loading={saving} icon={<Save size={16} />}>
                     {t('fluids.form.saveTab3')}
                   </Button>
                 </div>

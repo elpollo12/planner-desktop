@@ -4,6 +4,7 @@ import type {
   FluidReportFull,
   FluidReportFilters,
   FluidProduct,
+  FluidChangelogEntry,
   PaginatedFluidReportsResponse,
   CreateFluidReportInput,
 } from '../../types/fluid';
@@ -33,6 +34,9 @@ export const fluidsApi = {
 
   delete: (sessionToken: string, fluidReportId: string) =>
     invoke<void>('delete_fluid_report', { sessionToken, fluidReportId }),
+
+  listChangelog: (sessionToken: string, fluidReportId: string) =>
+    invoke<FluidChangelogEntry[]>('list_fluid_changelog', { sessionToken, fluidReportId }),
 };
 
 // ============================================================================

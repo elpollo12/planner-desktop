@@ -242,6 +242,7 @@ pub fn run() {
             commands::fluid::list_fluid_products_active,
             commands::fluid::create_fluid_product,
             commands::fluid::update_fluid_product,
+            commands::fluid::list_fluid_changelog,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

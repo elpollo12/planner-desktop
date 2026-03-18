@@ -28,14 +28,14 @@ function useDebouncedValue<T>(value: T, delay: number): T {
 // ── Filter shape ─────────────────────────────────────────────────────────────
 interface Filters {
   wellNumber: string;
-  rigNumber: string;
+  rigId: string;
   dateFrom: string;
   dateTo: string;
 }
 
 const EMPTY_FILTERS: Filters = {
   wellNumber: '',
-  rigNumber: '',
+  rigId: '',
   dateFrom: '',
   dateTo: '',
 };
@@ -66,7 +66,7 @@ export default function FluidList() {
     setCurrentPage(1);
   }, [
     debouncedFilters.wellNumber,
-    debouncedFilters.rigNumber,
+    debouncedFilters.rigId,
     debouncedFilters.dateFrom,
     debouncedFilters.dateTo,
   ]);
@@ -95,7 +95,7 @@ export default function FluidList() {
         page: currentPage,
         pageSize,
         wellNumber: debouncedFilters.wellNumber || undefined,
-        rigNumber: debouncedFilters.rigNumber || undefined,
+        rigId: debouncedFilters.rigId || undefined,
         dateFrom: debouncedFilters.dateFrom || undefined,
         dateTo: debouncedFilters.dateTo || undefined,
       };
@@ -185,12 +185,12 @@ export default function FluidList() {
               />
               <Select
                 label={t('fluids.list.filterRig')}
-                value={filters.rigNumber}
-                onChange={(e) => setFilters((f) => ({ ...f, rigNumber: e.target.value }))}
+                value={filters.rigId}
+                onChange={(e) => setFilters((f) => ({ ...f, rigId: e.target.value }))}
               >
                 <option value="">{t('fluids.list.filterAll')}</option>
                 {rigs.map((rig) => (
-                  <option key={rig.id} value={rig.name}>{rig.name}</option>
+                  <option key={rig.id} value={rig.id}>{rig.name}</option>
                 ))}
               </Select>
               <Input
