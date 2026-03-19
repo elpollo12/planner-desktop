@@ -405,11 +405,11 @@ export function buildDDRReportPdf(opts: DDRExportOptions): { doc: jsPDF; filenam
 
   // ── Deviation History ────────────────────────────────────────────────
   if (data.deviationHistory && data.deviationHistory.length > 0) {
-    y = drawSectionTitle(doc, 'HISTORIAL DE DESVIACIÓN', y, headColor);
+    y = drawSectionTitle(doc, t('exports.ddr.deviationHistory'), y, headColor);
 
     autoTable(doc, {
       startY: y,
-      head: [['Profundidad', 'Desviación (°)', 'Dirección', 'TVO', 'Desp. Horizontal']],
+      head: [[t('exports.ddr.depth'), t('exports.ddr.deviation'), t('exports.ddr.direction'), t('exports.ddr.tvo'), t('exports.ddr.horizontalDisplacement')]],
       body: data.deviationHistory.map((d) => [
         ensure(d.depth), ensure(d.deviation), ensure(d.direction),
         ensure(d.tvo), ensure(d.horizontalDisplacement),
@@ -424,13 +424,13 @@ export function buildDDRReportPdf(opts: DDRExportOptions): { doc: jsPDF; filenam
 
   // ── Drill String Components ──────────────────────────────────────────
   if (data.drillStringComponents && data.drillStringComponents.length > 0) {
-    y = drawSectionTitle(doc, 'SARTA DE PERFORACIÓN', y, headColor);
+    y = drawSectionTitle(doc, t('exports.ddr.drillString'), y, headColor);
 
     const totalLength = data.drillStringComponents.reduce((s, c) => s + (c.length || 0), 0);
 
     autoTable(doc, {
       startY: y,
-      head: [['N°', 'Pieza', 'Longitud (ft)']],
+      head: [[t('exports.ddr.entryNum'), t('exports.ddr.piece'), t('exports.ddr.lengthFt')]],
       body: [
         ...data.drillStringComponents.map((c) => [
           String(c.entryNumber),
@@ -438,9 +438,9 @@ export function buildDDRReportPdf(opts: DDRExportOptions): { doc: jsPDF; filenam
           c.length != null ? c.length.toFixed(2) : '-',
         ]),
         [
-          { content: 'TOTAL', styles: { fontStyle: 'bold' as const } },
-          { content: `${data.drillStringComponents.length} piezas`, styles: { fontStyle: 'bold' as const } },
-          { content: `${totalLength.toFixed(2)} ft`, styles: { fontStyle: 'bold' as const } },
+          { content: t('exports.common.total'), styles: { fontStyle: 'bold' as const } },
+          { content: t('exports.ddr.piecesCount', { count: data.drillStringComponents.length }), styles: { fontStyle: 'bold' as const } },
+          { content: t('exports.ddr.ftValue', { value: totalLength.toFixed(2) }), styles: { fontStyle: 'bold' as const } },
         ],
       ],
       theme: 'grid',
@@ -453,11 +453,11 @@ export function buildDDRReportPdf(opts: DDRExportOptions): { doc: jsPDF; filenam
 
   // ── Operations Log ───────────────────────────────────────────────────
   if (data.operationsLog && data.operationsLog.length > 0) {
-    y = drawSectionTitle(doc, 'LOG DE OPERACIONES', y, headColor);
+    y = drawSectionTitle(doc, t('exports.ddr.operationsLog'), y, headColor);
 
     autoTable(doc, {
       startY: y,
-      head: [['Turno', 'Desde', 'Hasta', 'Duración', 'Código', 'Detalles']],
+      head: [[t('exports.ddr.shift'), t('exports.ddr.from'), t('exports.ddr.to'), t('exports.ddr.duration'), t('exports.ddr.code'), t('exports.ddr.details')]],
       body: sortByShift(data.operationsLog).map((op) => [
         op.shift ? shiftLabel(op.shift) || op.shift : '-',
         ensure(op.timeFrom), ensure(op.timeTo), ensure(op.duration),
@@ -480,7 +480,7 @@ export function buildDDRReportPdf(opts: DDRExportOptions): { doc: jsPDF; filenam
     doc.setFontSize(8);
     doc.setTextColor(100, 100, 100);
     doc.text(
-      `Página ${i} de ${pageCount}`,
+      t('exports.common.page', { current: i, total: pageCount }),
       pageWidth / 2,
       pageHeight - 8,
       { align: 'center' },
@@ -502,31 +502,31 @@ export function buildDDRReportExcel(opts: DDRExportOptions): { workbook: XLSX.Wo
 
   // ── Info sheet ───────────────────────────────────────────────────────
   const info = [
-    ['Reporte Diario de Operaciones (DDR)'],
+    [t('exports.ddr.excelTitle')],
     [],
-    ['Reporte #', report.reportNumber],
-    ['Fecha', formatDateDMY(report.reportDate)],
-    ['Estado', statusLabel(report.status)],
-    ['Generado', getNowDatetime()],
+    [t('exports.ddr.reportNum'), report.reportNumber],
+    [t('exports.ddr.date'), formatDateDMY(report.reportDate)],
+    [t('exports.ddr.status'), statusLabel(report.status)],
+    [t('exports.common.generated'), getNowDatetime()],
     [],
-    ['INFORMACIÓN GENERAL'],
-    ['Pozo', report.wellNumber || '-'],
-    ['Número API', report.apiNumber || '-'],
-    ['Contrato', report.contract || '-'],
-    ['Contratista', report.contractor || '-'],
-    ['Operador', report.operator || '-'],
-    ['Campo / Distrito', report.fieldDistrict || '-'],
-    ['Taladro', report.rigNumber || '-'],
-    ['Municipio', report.municipality || '-'],
-    ['Supervisor 24h', report.supervisor24h || '-'],
+    [t('exports.ddr.generalInfo')],
+    [t('exports.ddr.well'), report.wellNumber || '-'],
+    [t('exports.ddr.apiNumber'), report.apiNumber || '-'],
+    [t('exports.ddr.contract'), report.contract || '-'],
+    [t('exports.ddr.contractor'), report.contractor || '-'],
+    [t('exports.ddr.operator'), report.operator || '-'],
+    [t('exports.ddr.fieldDistrict'), report.fieldDistrict || '-'],
+    [t('exports.ddr.rig'), report.rigNumber || '-'],
+    [t('exports.ddr.municipality'), report.municipality || '-'],
+    [t('exports.ddr.supervisor24h'), report.supervisor24h || '-'],
   ];
   const wsInfo = XLSX.utils.aoa_to_sheet(info);
   wsInfo['!cols'] = [{ wch: 20 }, { wch: 35 }];
-  XLSX.utils.book_append_sheet(wb, wsInfo, 'General');
+  XLSX.utils.book_append_sheet(wb, wsInfo, t('exports.ddr.sheetGeneral'));
 
   // ── Crew ─────────────────────────────────────────────────────────────
   if (data.crewShifts && data.crewShifts.length > 0) {
-    const rows: any[][] = [['Turno', 'Horario', 'Posición', 'CI', 'Nombre', 'Horas']];
+    const rows: any[][] = [[t('exports.ddr.shift'), t('exports.ddr.schedule'), t('exports.ddr.position'), t('exports.ddr.ci'), t('exports.ddr.name'), t('exports.ddr.hours')]];
     for (const shift of sortByShift(data.crewShifts)) {
       const label = shiftLabel(shift.shift) || shift.shift;
       const horario = `${shift.shiftStart || '-'} - ${shift.shiftEnd || '-'}`;
@@ -535,103 +535,103 @@ export function buildDDRReportExcel(opts: DDRExportOptions): { workbook: XLSX.Wo
           rows.push([label, horario, m.position || '-', m.personnelCi || m.ci || '-', m.personnelName || m.name || '-', m.hours ?? '-']);
         }
       } else {
-        rows.push([label, horario, 'Sin miembros', '-', '-', '-']);
+        rows.push([label, horario, t('exports.ddr.noMembers'), '-', '-', '-']);
       }
     }
     const ws = XLSX.utils.aoa_to_sheet(rows);
     ws['!cols'] = [{ wch: 12 }, { wch: 16 }, { wch: 20 }, { wch: 14 }, { wch: 25 }, { wch: 8 }];
-    XLSX.utils.book_append_sheet(wb, ws, 'Cuadrilla');
+    XLSX.utils.book_append_sheet(wb, ws, t('exports.ddr.sheetCrew'));
   }
 
   // ── Time Distribution ────────────────────────────────────────────────
   if (data.timeDistributions && data.timeDistributions.length > 0) {
-    const rows: any[][] = [['Operación', 'Mañana (hrs)', 'Tarde (hrs)', 'Noche (hrs)', 'Total (hrs)']];
+    const rows: any[][] = [[t('exports.ddr.operation'), t('exports.ddr.morningHrs'), t('exports.ddr.afternoonHrs'), t('exports.ddr.nightHrs'), t('exports.ddr.totalHrs')]];
     for (const td of data.timeDistributions) {
-      const t = (td.hoursShift1 || 0) + (td.hoursShift2 || 0) + (td.hoursShift3 || 0);
-      rows.push([td.operationCode?.code || td.operationCodeId || '-', td.hoursShift1 || 0, td.hoursShift2 || 0, td.hoursShift3 || 0, t]);
+      const tot = (td.hoursShift1 || 0) + (td.hoursShift2 || 0) + (td.hoursShift3 || 0);
+      rows.push([td.operationCode?.code || td.operationCodeId || '-', td.hoursShift1 || 0, td.hoursShift2 || 0, td.hoursShift3 || 0, tot]);
     }
     const ws = XLSX.utils.aoa_to_sheet(rows);
     ws['!cols'] = [{ wch: 30 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 12 }];
-    XLSX.utils.book_append_sheet(wb, ws, 'Dist. Tiempo');
+    XLSX.utils.book_append_sheet(wb, ws, t('exports.ddr.sheetTimeDist'));
   }
 
   // ── Bit Records ──────────────────────────────────────────────────────
   if (data.bitRecords && data.bitRecords.length > 0) {
-    const rows: any[][] = [['#', 'Tamaño', 'Marca', 'Tipo', 'Serial', 'Jets', 'TFA', 'Prof. Entrada', 'Prof. Salida', 'Metraje', 'Horas']];
+    const rows: any[][] = [['#', t('exports.ddr.size'), t('exports.ddr.brand'), t('exports.ddr.type'), t('exports.ddr.serial'), t('exports.ddr.jets'), t('exports.ddr.tfa'), t('exports.ddr.depthIn'), t('exports.ddr.depthOut'), t('exports.ddr.footage'), t('exports.ddr.hoursTotal')]];
     for (const [i, b] of data.bitRecords.entries()) {
       rows.push([i + 1, b.size || '-', b.brand || '-', b.bitType || '-', b.serialNumber || '-', b.jets || '-', b.tfa || '-', b.depthIn || '-', b.depthOut || '-', b.footage || '-', b.hoursTotal ?? '-']);
     }
     const ws = XLSX.utils.aoa_to_sheet(rows);
     ws['!cols'] = rows[0].map(() => ({ wch: 12 }));
-    XLSX.utils.book_append_sheet(wb, ws, 'Mechas');
+    XLSX.utils.book_append_sheet(wb, ws, t('exports.ddr.sheetBits'));
   }
 
   // ── Mud Records ──────────────────────────────────────────────────────
   if (data.mudRecords && data.mudRecords.length > 0) {
-    const rows: any[][] = [['Turno', 'Hora', 'Peso (ppg)', 'Viscosidad', 'PVP', 'Geles', 'Filtrado', 'pH', 'Sólidos']];
+    const rows: any[][] = [[t('exports.ddr.shift'), t('exports.ddr.hour'), t('exports.ddr.weightPpg'), t('exports.ddr.viscosity'), t('exports.ddr.pvp'), t('exports.ddr.gels'), t('exports.ddr.filtrate'), t('exports.ddr.ph'), t('exports.ddr.solids')]];
     for (const m of sortByShift(data.mudRecords)) {
       rows.push([m.shift ? shiftLabel(m.shift) || m.shift : '-', m.hour || '-', m.weight || '-', m.viscosity || '-', m.pvp || '-', m.gels || '-', m.filtrate || '-', m.ph || '-', m.solids || '-']);
     }
     const ws = XLSX.utils.aoa_to_sheet(rows);
     ws['!cols'] = rows[0].map(() => ({ wch: 12 }));
-    XLSX.utils.book_append_sheet(wb, ws, 'Lodo');
+    XLSX.utils.book_append_sheet(wb, ws, t('exports.ddr.sheetMud'));
   }
 
   // ── Mud Additives ────────────────────────────────────────────────────
   if (data.mudAdditives && data.mudAdditives.length > 0) {
-    const rows: any[][] = [['Turno', 'Tipo', 'Cantidad']];
+    const rows: any[][] = [[t('exports.ddr.shift'), t('exports.ddr.type'), t('exports.ddr.quantity')]];
     for (const a of sortByShift(data.mudAdditives)) {
       rows.push([a.shift ? shiftLabel(a.shift) || a.shift : '-', a.additiveType || '-', a.quantity || '-']);
     }
     const ws = XLSX.utils.aoa_to_sheet(rows);
     ws['!cols'] = [{ wch: 12 }, { wch: 22 }, { wch: 14 }];
-    XLSX.utils.book_append_sheet(wb, ws, 'Aditivos');
+    XLSX.utils.book_append_sheet(wb, ws, t('exports.ddr.sheetAdditives'));
   }
 
   // ── Drilling Parameters ──────────────────────────────────────────────
   if (data.drillingParams && data.drillingParams.length > 0) {
-    const rows: any[][] = [['Turno', 'Prof. Desde', 'Prof. Hasta', 'RPM', 'Peso Mecha', 'Presión', 'GPM', 'SPM', 'Método', 'Notas Litología']];
+    const rows: any[][] = [[t('exports.ddr.shift'), t('exports.ddr.depthFrom'), t('exports.ddr.depthTo'), t('exports.ddr.rpm'), t('exports.ddr.bitWeight'), t('exports.ddr.pressure'), t('exports.ddr.gpm'), t('exports.ddr.spm'), t('exports.ddr.method'), t('exports.ddr.lithologyNotes')]];
     for (const p of sortByShift(data.drillingParams)) {
       rows.push([p.shift ? shiftLabel(p.shift) || p.shift : '-', p.depthFrom || '-', p.depthTo || '-', p.rotaryRpm || '-', p.bitWeight || '-', p.pumpPressure || '-', p.totalGpm || '-', p.pumpSpm || '-', p.methodUsed || '-', p.lithologyNotes || '-']);
     }
     const ws = XLSX.utils.aoa_to_sheet(rows);
     ws['!cols'] = rows[0].map(() => ({ wch: 14 }));
-    XLSX.utils.book_append_sheet(wb, ws, 'Parámetros');
+    XLSX.utils.book_append_sheet(wb, ws, t('exports.ddr.sheetParams'));
   }
 
   // ── Deviation History ────────────────────────────────────────────────
   if (data.deviationHistory && data.deviationHistory.length > 0) {
-    const rows: any[][] = [['Profundidad', 'Desviación (°)', 'Dirección', 'TVO', 'Desp. Horizontal']];
+    const rows: any[][] = [[t('exports.ddr.depth'), t('exports.ddr.deviation'), t('exports.ddr.direction'), t('exports.ddr.tvo'), t('exports.ddr.horizontalDisplacement')]];
     for (const d of data.deviationHistory) {
       rows.push([d.depth || '-', d.deviation || '-', d.direction || '-', d.tvo || '-', d.horizontalDisplacement || '-']);
     }
     const ws = XLSX.utils.aoa_to_sheet(rows);
     ws['!cols'] = rows[0].map(() => ({ wch: 16 }));
-    XLSX.utils.book_append_sheet(wb, ws, 'Desviación');
+    XLSX.utils.book_append_sheet(wb, ws, t('exports.ddr.sheetDeviation'));
   }
 
   // ── Drill String ─────────────────────────────────────────────────────
   if (data.drillStringComponents && data.drillStringComponents.length > 0) {
     const totalLength = data.drillStringComponents.reduce((s, c) => s + (c.length || 0), 0);
-    const rows: any[][] = [['N°', 'Pieza', 'Longitud (ft)']];
+    const rows: any[][] = [[t('exports.ddr.entryNum'), t('exports.ddr.piece'), t('exports.ddr.lengthFt')]];
     for (const c of data.drillStringComponents) {
       rows.push([c.entryNumber, c.pieceName, c.length ?? '-']);
     }
-    rows.push(['TOTAL', `${data.drillStringComponents.length} piezas`, totalLength.toFixed(2)]);
+    rows.push([t('exports.common.total'), t('exports.ddr.piecesCount', { count: data.drillStringComponents.length }), totalLength.toFixed(2)]);
     const ws = XLSX.utils.aoa_to_sheet(rows);
     ws['!cols'] = [{ wch: 8 }, { wch: 28 }, { wch: 14 }];
-    XLSX.utils.book_append_sheet(wb, ws, 'Sarta');
+    XLSX.utils.book_append_sheet(wb, ws, t('exports.ddr.sheetDrillString'));
   }
 
   // ── Operations Log ───────────────────────────────────────────────────
   if (data.operationsLog && data.operationsLog.length > 0) {
-    const rows: any[][] = [['Turno', 'Desde', 'Hasta', 'Duración', 'Código', 'Detalles']];
+    const rows: any[][] = [[t('exports.ddr.shift'), t('exports.ddr.from'), t('exports.ddr.to'), t('exports.ddr.duration'), t('exports.ddr.code'), t('exports.ddr.details')]];
     for (const op of sortByShift(data.operationsLog)) {
       rows.push([op.shift ? shiftLabel(op.shift) || op.shift : '-', op.timeFrom || '-', op.timeTo || '-', op.duration || '-', op.operationCode || '-', op.details || '-']);
     }
     const ws = XLSX.utils.aoa_to_sheet(rows);
     ws['!cols'] = [{ wch: 12 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 14 }, { wch: 40 }];
-    XLSX.utils.book_append_sheet(wb, ws, 'Operaciones');
+    XLSX.utils.book_append_sheet(wb, ws, t('exports.ddr.sheetOps'));
   }
 
   const filename = buildFilename(report, branding?.rigName);

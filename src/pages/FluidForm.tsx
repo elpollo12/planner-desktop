@@ -98,6 +98,12 @@ const toStr = (v: number | string | null | undefined): string => {
   return String(v);
 };
 
+/** Returns true if all values in a row are empty strings, null, or undefined */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const isRowEmpty = (row: any): boolean => {
+  return Object.values(row).every((v) => v === '' || v === null || v === undefined);
+};
+
 function computeHoursTotal(a: ActivityState): string {
   const values = [a.hoursMoving, a.hoursCirculating, a.hoursDrilling, a.hoursTripping, a.hoursCleaning, a.hoursBackreaming, a.hoursCementing, a.hoursRunningCsg, a.hoursOther];
   const sum = values.reduce((acc, v) => acc + (toNum(v) || 0), 0);
@@ -518,7 +524,7 @@ export default function FluidForm() {
           productComments: comments.productComments || null,
           volComments: comments.volComments || null,
         },
-        props: propsRows.map((r) => ({
+        props: propsRows.filter((r) => !isRowEmpty(r)).map((r) => ({
           sampleHour: r.sampleHour || null,
           sampleSource: r.sampleSource || null,
           temperatureF: toNum(r.temperatureF),
@@ -536,12 +542,23 @@ export default function FluidForm() {
           calciumPpm: toNum(r.calciumPpm), chloridesPpm: toNum(r.chloridesPpm),
           mbt: toNum(r.mbt), brookfieldVisc: toNum(r.brookfieldVisc), lubricityCoef: toNum(r.lubricityCoef),
         })),
-        solidsControl: solidsRows.map((r) => ({
+        solidsControl: solidsRows.filter((r) => !isRowEmpty(r)).map((r) => ({
           equipment: r.equipment || null,
           designMesh: r.designMesh || null,
           hoursToday: toNum(r.hoursToday),
           hoursAccumulated: toNum(r.hoursAccumulated),
         })),
+        activity: {
+          hoursMoving: toNum(activity.hoursMoving),
+          hoursCirculating: toNum(activity.hoursCirculating),
+          hoursDrilling: toNum(activity.hoursDrilling),
+          hoursTripping: toNum(activity.hoursTripping),
+          hoursCleaning: toNum(activity.hoursCleaning),
+          hoursBackreaming: toNum(activity.hoursBackreaming),
+          hoursCementing: toNum(activity.hoursCementing),
+          hoursRunningCsg: toNum(activity.hoursRunningCsg),
+          hoursOther: toNum(activity.hoursOther),
+        },
         note: note || undefined,
       };
       await fluidsApi.saveTab1(sessionToken, fluidReportId, data);
@@ -561,7 +578,7 @@ export default function FluidForm() {
     setSaving(true);
     try {
       const data = {
-        inventory: inventoryRows.map((r) => ({
+        inventory: inventoryRows.filter((r) => !isRowEmpty(r)).map((r) => ({
           productId: r.productId || null,
           invInicial: toNum(r.invInicial) ?? 0,
           receivedToday: toNum(r.receivedToday) ?? 0,
@@ -574,7 +591,7 @@ export default function FluidForm() {
           dailyCost: toNum(r.dailyCost),
           notes: r.notes || null,
         })),
-        services: serviceRows.map((r) => ({
+        services: serviceRows.filter((r) => !isRowEmpty(r)).map((r) => ({
           serviceName: r.serviceName || '',
           hoursPerDay: toNum(r.hoursPerDay),
           quantity: toNum(r.quantity),
@@ -604,7 +621,7 @@ export default function FluidForm() {
     setSaving(true);
     try {
       const data = {
-        tanks: tankRows.map((r, i) => ({
+        tanks: tankRows.filter((r) => !isRowEmpty(r)).map((r, i) => ({
           name: r.name || `TK-${i + 1}`,
           systemStatus: r.systemStatus || 'active',
           volumeBls: toNum(r.volumeBls),
@@ -612,17 +629,6 @@ export default function FluidForm() {
           fluidType: r.fluidType || null,
           sortOrder: i,
         })),
-        activity: {
-          hoursMoving: toNum(activity.hoursMoving) ?? 0,
-          hoursCirculating: toNum(activity.hoursCirculating) ?? 0,
-          hoursDrilling: toNum(activity.hoursDrilling) ?? 0,
-          hoursTripping: toNum(activity.hoursTripping) ?? 0,
-          hoursCleaning: toNum(activity.hoursCleaning) ?? 0,
-          hoursBackreaming: toNum(activity.hoursBackreaming) ?? 0,
-          hoursCementing: toNum(activity.hoursCementing) ?? 0,
-          hoursRunningCsg: toNum(activity.hoursRunningCsg) ?? 0,
-          hoursOther: toNum(activity.hoursOther) ?? 0,
-        },
         volStats: {
           volCapSarta: toNum(volStats.volCapSarta),
           volDespSarta: toNum(volStats.volDespSarta),

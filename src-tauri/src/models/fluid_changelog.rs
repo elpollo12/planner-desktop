@@ -84,6 +84,54 @@ pub fn compute_header_diff(
     diff
 }
 
+/// Strip metadata fields from a row for clean comparison.
+fn strip_metadata(row: &JsonValue) -> JsonValue {
+    match row.as_object() {
+        Some(obj) => {
+            let cleaned: serde_json::Map<String, JsonValue> = obj
+                .iter()
+                .filter(|(k, _)| !METADATA_FIELDS.contains(&k.as_str()))
+                .map(|(k, v)| (k.clone(), v.clone()))
+                .collect();
+            JsonValue::Object(cleaned)
+        }
+        None => row.clone(),
+    }
+}
+
+/// Normalize a value for comparison: treat null and empty string as equivalent.
+fn normalize_value(v: &JsonValue) -> JsonValue {
+    match v {
+        JsonValue::Null => JsonValue::Null,
+        JsonValue::String(s) if s.is_empty() => JsonValue::Null,
+        other => other.clone(),
+    }
+}
+
+/// Compare two rows ignoring metadata and treating null/empty/""/0 as equivalent.
+fn rows_differ(old: &JsonValue, new: &JsonValue) -> bool {
+    let old_clean = strip_metadata(old);
+    let new_clean = strip_metadata(new);
+
+    match (old_clean.as_object(), new_clean.as_object()) {
+        (Some(old_map), Some(new_map)) => {
+            // Collect all keys from both
+            let mut all_keys: std::collections::HashSet<&String> = old_map.keys().collect();
+            all_keys.extend(new_map.keys());
+
+            for key in all_keys {
+                let ov = old_map.get(key.as_str()).unwrap_or(&JsonValue::Null);
+                let nv = new_map.get(key.as_str()).unwrap_or(&JsonValue::Null);
+                if normalize_value(ov) != normalize_value(nv) {
+                    return true;
+                }
+            }
+            false
+        }
+        _ => old_clean != new_clean,
+    }
+}
+
 /// Extract a display name from a row using the key field, or fall back to index.
 fn row_display_name(row: &JsonValue, key_field: &str, index: usize) -> String {
     row.as_object()
@@ -94,12 +142,26 @@ fn row_display_name(row: &JsonValue, key_field: &str, index: usize) -> String {
         .unwrap_or_else(|| format!("#{}", index + 1))
 }
 
-/// Check if a row has any meaningful (non-null, non-empty) data.
+/// Fields to ignore when checking if a row has meaningful data.
+const METADATA_FIELDS: &[&str] = &[
+    "id", "fluidReportId", "fluid_report_id", "createdAt", "created_at",
+    "updatedAt", "updated_at", "sortOrder", "sort_order",
+];
+
+/// Check if a row has any meaningful (non-null, non-empty, non-zero) data,
+/// ignoring metadata fields like id, timestamps, etc.
 fn row_has_data(row: &JsonValue) -> bool {
     row.as_object()
         .map(|obj| {
-            obj.values().any(|v| {
-                !v.is_null() && v.as_str().map(|s| !s.is_empty()).unwrap_or(true)
+            obj.iter().any(|(k, v)| {
+                if METADATA_FIELDS.contains(&k.as_str()) {
+                    return false;
+                }
+                match v {
+                    JsonValue::Null => false,
+                    JsonValue::String(s) => !s.is_empty(),
+                    _ => true,
+                }
             })
         })
         .unwrap_or(false)
@@ -128,9 +190,28 @@ pub fn compute_subtable_diff(
     // Compare rows that exist in both (by position)
     let common = old_count.min(new_rows.len());
     for i in 0..common {
-        if old_rows[i] != new_rows[i] {
+        let old_has = row_has_data(&old_rows[i]);
+        let new_has = row_has_data(&new_rows[i]);
+
+        if old_has && !new_has {
+            // Had data, now empty → removed
             let name = if !key_field.is_empty() {
-                // Use new name if available, fallback to old
+                row_display_name(&old_rows[i], key_field, i)
+            } else {
+                format!("#{}", i + 1)
+            };
+            removed_items.push(JsonValue::String(name));
+        } else if !old_has && new_has {
+            // Was empty, now has data → added
+            let name = if !key_field.is_empty() {
+                row_display_name(&new_rows[i], key_field, i)
+            } else {
+                format!("#{}", i + 1)
+            };
+            added_items.push(JsonValue::String(name));
+        } else if old_has && new_has && rows_differ(&old_rows[i], &new_rows[i]) {
+            // Both have data but differ → modified
+            let name = if !key_field.is_empty() {
                 let new_name = row_display_name(&new_rows[i], key_field, i);
                 let old_name = row_display_name(&old_rows[i], key_field, i);
                 if new_name != old_name && old_name != format!("#{}", i + 1) {
@@ -159,12 +240,14 @@ pub fn compute_subtable_diff(
 
     // Rows removed (old had more)
     for i in common..old_count {
-        let name = if !key_field.is_empty() {
-            row_display_name(&old_rows[i], key_field, i)
-        } else {
-            format!("#{}", i + 1)
-        };
-        removed_items.push(JsonValue::String(name));
+        if row_has_data(&old_rows[i]) {
+            let name = if !key_field.is_empty() {
+                row_display_name(&old_rows[i], key_field, i)
+            } else {
+                format!("#{}", i + 1)
+            };
+            removed_items.push(JsonValue::String(name));
+        }
     }
 
     if added_items.is_empty() && removed_items.is_empty() && modified_items.is_empty() {

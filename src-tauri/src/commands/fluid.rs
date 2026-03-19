@@ -61,6 +61,7 @@ pub struct SaveFluidTab1Request {
     pub header: UpdateFluidHeaderRequest,
     pub props: Vec<SaveFluidPropsItem>,
     pub solids_control: Vec<SaveFluidSolidsControlItem>,
+    pub activity: Option<SaveFluidActivityRequest>,
     pub note: Option<String>,
 }
 
@@ -76,7 +77,6 @@ pub struct SaveFluidTab2Request {
 #[serde(rename_all = "camelCase")]
 pub struct SaveFluidTab3Request {
     pub tanks: Vec<SaveFluidTankItem>,
-    pub activity: Option<SaveFluidActivityRequest>,
     pub vol_stats: Option<SaveFluidVolStatsRequest>,
     pub note: Option<String>,
 }
@@ -188,6 +188,7 @@ pub async fn save_fluid_tab1(
     let old_report = FluidReport::get_by_id(&conn, &fluid_report_id).ok();
     let old_props = FluidProps::list_by_fluid_report(&conn, &fluid_report_id).unwrap_or_default();
     let old_solids = FluidSolidsControl::list_by_fluid_report(&conn, &fluid_report_id).unwrap_or_default();
+    let old_activity = FluidActivity::get_by_fluid_report(&conn, &fluid_report_id).unwrap_or(None);
 
     // ── Apply changes ──
     let report = FluidReport::update_header(&conn, &fluid_report_id, &data.header, &session.user_id)
@@ -198,6 +199,12 @@ pub async fn save_fluid_tab1(
 
     let solids_control = FluidSolidsControl::save_bulk(&conn, &fluid_report_id, &data.solids_control)
         .map_err(|e| e.to_string())?;
+
+    // Activity (upsert or delete if all empty)
+    if let Some(ref act_data) = data.activity {
+        FluidActivity::upsert(&conn, &fluid_report_id, act_data)
+            .map_err(|e| e.to_string())?;
+    }
 
     // ── Compute diff & insert changelog ──
     let mut diff = serde_json::Map::new();
@@ -311,13 +318,9 @@ pub async fn save_fluid_tab3(
     let tanks = FluidTank::save_bulk(&conn, &fluid_report_id, &data.tanks)
         .map_err(|e| e.to_string())?;
 
-    let activity = if let Some(ref activity_data) = data.activity {
-        FluidActivity::upsert(&conn, &fluid_report_id, activity_data)
-            .map_err(|e| e.to_string())?
-    } else {
-        FluidActivity::get_by_fluid_report(&conn, &fluid_report_id)
-            .map_err(|e| e.to_string())?
-    };
+    // Activity is now saved in tab1, just read it here
+    let activity = FluidActivity::get_by_fluid_report(&conn, &fluid_report_id)
+        .map_err(|e| e.to_string())?;
 
     let vol_stats = if let Some(ref vol_data) = data.vol_stats {
         FluidVolStats::upsert(&conn, &fluid_report_id, vol_data)

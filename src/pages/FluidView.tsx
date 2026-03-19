@@ -3,11 +3,15 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { MainLayout } from '../components/layout';
 import { Button, Card } from '../components/ui';
-import { ChevronLeft, Pencil } from 'lucide-react';
+import { ChevronLeft, Pencil, FileDown, FileSpreadsheet } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
+import { useAppSettingsStore } from '../store/appSettingsStore';
+import { DEFAULT_APP_SETTINGS } from '../types/appSettings';
 import { fluidsApi } from '../lib/api';
 import { toast } from '../lib/toast';
 import { formatDateDMY } from '../lib/dateUtils';
+import { saveFluidReport } from '../lib/fluidExport';
+import type { ReportBranding } from '../lib/logisticsExport';
 import { FluidChangelog } from '../components/fluids/FluidChangelog';
 import type { FluidReportFull } from '../types/fluid';
 
@@ -52,8 +56,9 @@ function SectionTitle({ title }: { title: string }) {
 export default function FluidView() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { sessionToken } = useAuthStore();
+  const { sessionToken, user } = useAuthStore();
   const { t } = useTranslation();
+  const appSettings = useAppSettingsStore((s) => s.settings);
 
   const [activeTab, setActiveTab] = useState<TabId>('tab1');
   const [report, setReport] = useState<FluidReportFull | null>(null);
@@ -99,6 +104,30 @@ export default function FluidView() {
 
   const SHIFT_LABELS = [t('fluids.props.shift1'), t('fluids.props.shift2'), t('fluids.props.shift3')];
 
+  const getBranding = (): ReportBranding => ({
+    logoBase64: appSettings?.logoPath ?? null,
+    primaryColor: appSettings?.primaryColor ?? DEFAULT_APP_SETTINGS.primaryColor,
+    rigName: report.rigNumber ?? '',
+    userName: user?.fullName ?? '',
+  });
+
+  const handleExport = async (format: 'pdf' | 'excel' | 'both') => {
+    if (!report) { toast.warning(t('fluids.view.noExportData')); return; }
+    try {
+      const result = await saveFluidReport({ data: report, branding: getBranding() }, format);
+      if (result.saved) {
+        toast.success(
+          format === 'both' ? t('fluids.view.bothSaved') :
+          format === 'pdf' ? t('fluids.view.pdfSaved') :
+          t('fluids.view.excelSaved')
+        );
+      }
+    } catch (error) {
+      console.error('Error exporting fluid report:', error);
+      toast.error(t('fluids.view.exportError', { error: error instanceof Error ? error.message : String(error) }));
+    }
+  };
+
   return (
     <MainLayout
       title={t('fluids.view.title', { number: report.reportNumber || '' })}
@@ -108,6 +137,10 @@ export default function FluidView() {
           <Button variant="outline" onClick={() => navigate('/fluids')} icon={<ChevronLeft size={16} />}>
             {t('fluids.view.back')}
           </Button>
+          <Button variant="primary" size="sm" onClick={() => handleExport('pdf')} icon={<FileDown size={16} />}
+            className="bg-red-600! hover:bg-red-400! border-2 hover:border-white!">PDF</Button>
+          <Button variant="primary" size="sm" onClick={() => handleExport('excel')} icon={<FileSpreadsheet size={16} />}
+            className="bg-green-600! hover:bg-green-400! border-2 hover:border-white!">Excel</Button>
           <Button variant="primary" onClick={() => navigate(`/fluids/edit/${id}`)} icon={<Pencil size={16} />}>
             {t('fluids.view.edit')}
           </Button>

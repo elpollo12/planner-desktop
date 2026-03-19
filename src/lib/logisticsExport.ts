@@ -61,7 +61,7 @@ function getTodayForFilename(): string {
  */
 function buildFilename(rigName: string | undefined, reportType: string): string {
   const date = getTodayForFilename();
-  const rig = rigName?.trim() || 'Reporte';
+  const rig = rigName?.trim() || t('exports.logistics.reportFallback');
   return `${rig} - ${reportType} - ${date}`;
 }
 
@@ -237,42 +237,42 @@ export function buildGeneralReportExcel(opts: GeneralExportOptions): { workbook:
 
   if (sections.vacuum) {
     const ws = XLSX.utils.aoa_to_sheet([
-      ['Vacuum / Cisterna — Resumen'],
+      [t('exports.logistics.vacuumTitle')],
       [],
-      ['Métrica', 'Valor'],
-      ['Total Acciones', report.vacuumSummary.totalActions],
+      [t('exports.logistics.metric'), t('exports.logistics.value')],
+      [t('exports.logistics.totalActions'), report.vacuumSummary.totalActions],
     ]);
     ws['!cols'] = [{ wch: 18 }, { wch: 12 }];
-    XLSX.utils.book_append_sheet(wb, ws, 'Vacuum');
+    XLSX.utils.book_append_sheet(wb, ws, t('exports.logistics.sectionVacuum'));
   }
 
   if (sections.materiales) {
-    const header = ['Material', 'Unidad', 'Entradas', 'Salidas', 'Neto'];
+    const header = [t('exports.logistics.material'), t('exports.logistics.unit'), t('exports.logistics.entries'), t('exports.logistics.exits'), t('exports.logistics.net')];
     const rows = report.materialsSummary.map((m) => [
       capitalize(m.materialName), m.unit, m.totalEntries, m.totalExits, m.net,
     ]);
-    const ws = XLSX.utils.aoa_to_sheet([['Materiales — Resumen'], [], header, ...rows]);
+    const ws = XLSX.utils.aoa_to_sheet([[t('exports.logistics.materialsTitle')], [], header, ...rows]);
     ws['!cols'] = [{ wch: 22 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }];
-    XLSX.utils.book_append_sheet(wb, ws, 'Materiales');
+    XLSX.utils.book_append_sheet(wb, ws, t('exports.logistics.sectionMaterials'));
   }
 
   if (sections.solicitudes) {
     const s = report.requestsSummary;
     const ws = XLSX.utils.aoa_to_sheet([
-      ['Solicitudes — Resumen'],
+      [t('exports.logistics.requestsTitle')],
       [],
-      ['Estado', 'Cantidad'],
-      ['Total', s.total],
-      ['Solicitadas', s.requested],
-      ['En Espera', s.pending],
-      ['Aprobadas', s.approved],
-      ['Rechazadas', s.rejected],
+      [t('exports.logistics.statusCol'), t('exports.logistics.amount')],
+      [t('exports.logistics.total'), s.total],
+      [t('exports.logistics.requested'), s.requested],
+      [t('exports.logistics.inWait'), s.pending],
+      [t('exports.logistics.approved'), s.approved],
+      [t('exports.logistics.rejected'), s.rejected],
     ]);
     ws['!cols'] = [{ wch: 16 }, { wch: 12 }];
-    XLSX.utils.book_append_sheet(wb, ws, 'Solicitudes');
+    XLSX.utils.book_append_sheet(wb, ws, t('exports.logistics.sectionRequests'));
   }
 
-  const filename = buildFilename(branding?.rigName, 'Reporte General');
+  const filename = buildFilename(branding?.rigName, t('exports.logistics.generalReport'));
   return { workbook: wb, filename };
 }
 
@@ -287,17 +287,17 @@ export function buildGeneralReportPdf(opts: GeneralExportOptions): { doc: jsPDF;
     ? hexToRgb(branding.primaryColor)
     : [59, 130, 246];
 
-  let y = drawPdfHeader(doc, branding, 'Reporte General', periodStart, periodEnd);
+  let y = drawPdfHeader(doc, branding, t('exports.logistics.generalReport'), periodStart, periodEnd);
 
   if (sections.botellones) {
     const s = report.waterBottlesSummary;
     doc.setFontSize(13);
-    doc.text('Botellones de Agua', 14, y);
+    doc.text(t('exports.logistics.waterBottlesPdfSection'), 14, y);
     y += 2;
     autoTable(doc, {
       startY: y,
-      head: [['Métrica', 'Valor']],
-      body: [['Entradas', `+${s.totalEntries}`], ['Salidas', `-${s.totalExits}`], ['Neto', String(s.net)]],
+      head: [[t('exports.logistics.metric'), t('exports.logistics.value')]],
+      body: [[t('exports.logistics.entries'), `+${s.totalEntries}`], [t('exports.logistics.exits'), `-${s.totalExits}`], [t('exports.logistics.net'), String(s.net)]],
       theme: 'grid',
       styles: { fontSize: 9 },
       headStyles: { fillColor: headColor },
@@ -309,15 +309,15 @@ export function buildGeneralReportPdf(opts: GeneralExportOptions): { doc: jsPDF;
   if (sections.combustible) {
     const s = report.fuelSummary;
     doc.setFontSize(13);
-    doc.text('Combustible', 14, y);
+    doc.text(t('exports.logistics.sectionFuel'), 14, y);
     y += 2;
     autoTable(doc, {
       startY: y,
-      head: [['Métrica', 'Valor']],
+      head: [[t('exports.logistics.metric'), t('exports.logistics.value')]],
       body: [
-        ['Entradas (L)', `+${s.totalEntries.toFixed(2)}`],
-        ['Salidas (L)', `-${s.totalExits.toFixed(2)}`],
-        ['Neto (L)', s.net.toFixed(2)],
+        [t('exports.logistics.totalEntriesL'), `+${s.totalEntries.toFixed(2)}`],
+        [t('exports.logistics.totalExitsL'), `-${s.totalExits.toFixed(2)}`],
+        [t('exports.logistics.netL'), s.net.toFixed(2)],
       ],
       theme: 'grid',
       styles: { fontSize: 9 },
@@ -329,12 +329,12 @@ export function buildGeneralReportPdf(opts: GeneralExportOptions): { doc: jsPDF;
 
   if (sections.vacuum) {
     doc.setFontSize(13);
-    doc.text('Vacuum / Cisterna', 14, y);
+    doc.text(t('exports.logistics.sectionVacuumPdf'), 14, y);
     y += 2;
     autoTable(doc, {
       startY: y,
-      head: [['Métrica', 'Valor']],
-      body: [['Total Acciones', String(report.vacuumSummary.totalActions)]],
+      head: [[t('exports.logistics.metric'), t('exports.logistics.value')]],
+      body: [[t('exports.logistics.totalActions'), String(report.vacuumSummary.totalActions)]],
       theme: 'grid',
       styles: { fontSize: 9 },
       headStyles: { fillColor: headColor },
@@ -345,11 +345,11 @@ export function buildGeneralReportPdf(opts: GeneralExportOptions): { doc: jsPDF;
 
   if (sections.materiales && report.materialsSummary.length > 0) {
     doc.setFontSize(13);
-    doc.text('Materiales', 14, y);
+    doc.text(t('exports.logistics.sectionMaterials'), 14, y);
     y += 2;
     autoTable(doc, {
       startY: y,
-      head: [['Material', 'Unidad', 'Entradas', 'Salidas', 'Neto']],
+      head: [[t('exports.logistics.material'), t('exports.logistics.unit'), t('exports.logistics.entries'), t('exports.logistics.exits'), t('exports.logistics.net')]],
       body: report.materialsSummary.map((m) => [
         capitalize(m.materialName), m.unit, `+${m.totalEntries}`, `-${m.totalExits}`, String(m.net),
       ]),
@@ -364,17 +364,17 @@ export function buildGeneralReportPdf(opts: GeneralExportOptions): { doc: jsPDF;
   if (sections.solicitudes) {
     const s = report.requestsSummary;
     doc.setFontSize(13);
-    doc.text('Solicitudes', 14, y);
+    doc.text(t('exports.logistics.sectionRequests'), 14, y);
     y += 2;
     autoTable(doc, {
       startY: y,
-      head: [['Estado', 'Cantidad']],
+      head: [[t('exports.logistics.statusCol'), t('exports.logistics.amount')]],
       body: [
-        ['Total', String(s.total)],
-        ['Solicitadas', String(s.requested)],
-        ['En Espera', String(s.pending)],
-        ['Aprobadas', String(s.approved)],
-        ['Rechazadas', String(s.rejected)],
+        [t('exports.logistics.total'), String(s.total)],
+        [t('exports.logistics.requested'), String(s.requested)],
+        [t('exports.logistics.inWait'), String(s.pending)],
+        [t('exports.logistics.approved'), String(s.approved)],
+        [t('exports.logistics.rejected'), String(s.rejected)],
       ],
       theme: 'grid',
       styles: { fontSize: 9 },
@@ -383,7 +383,7 @@ export function buildGeneralReportPdf(opts: GeneralExportOptions): { doc: jsPDF;
     });
   }
 
-  const filename = buildFilename(branding?.rigName, 'Reporte General');
+  const filename = buildFilename(branding?.rigName, t('exports.logistics.generalReport'));
   return { doc, filename };
 }
 
@@ -458,9 +458,9 @@ export function buildDetailedReportExcel(opts: DetailedExportOptions): { workboo
 
   // Info
   const info = [
-    [`Reporte Detallado — ${sectionLabel}`],
-    ['Período', `${formatDateDMY(periodStart)} — ${formatDateDMY(periodEnd)}`],
-    ['Generado', getTodayDMY()],
+    [t('exports.logistics.detailedTitle', { section: sectionLabel })],
+    [t('exports.common.period'), `${formatDateDMY(periodStart)} — ${formatDateDMY(periodEnd)}`],
+    [t('exports.common.generated'), getTodayDMY()],
   ];
   const wsInfo = XLSX.utils.aoa_to_sheet(info);
   wsInfo['!cols'] = [{ wch: 22 }, { wch: 35 }];
@@ -480,7 +480,7 @@ export function buildDetailedReportExcel(opts: DetailedExportOptions): { workboo
       ensureText(r.requestedByName),
       formatDateDMY(r.requestedAt?.split('T')[0]),
     ]);
-    const ws = XLSX.utils.aoa_to_sheet([[`${sectionLabel} — Detalle`], [], header, ...rows]);
+    const ws = XLSX.utils.aoa_to_sheet([[`${sectionLabel} — ${t('exports.logistics.detail')}`], [], header, ...rows]);
     ws['!cols'] = [{ wch: 18 }, { wch: 14 }, { wch: 14 }, { wch: 30 }, { wch: 20 }, { wch: 14 }];
     XLSX.utils.book_append_sheet(wb, ws, sectionLabel);
   } else {
@@ -576,7 +576,7 @@ export function buildDetailedReportPdf(opts: DetailedExportOptions): { doc: jsPD
     });
   }
 
-  const filename = buildFilename(branding?.rigName, `Detallado ${sectionLabel}`);
+  const filename = buildFilename(branding?.rigName, t('exports.logistics.detailedReport', { section: sectionLabel }));
   return { doc, filename };
 }
 

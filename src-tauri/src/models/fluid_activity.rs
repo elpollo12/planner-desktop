@@ -9,16 +9,16 @@ use serde::{Deserialize, Serialize};
 pub struct FluidActivity {
     pub id: String,
     pub fluid_report_id: String,
-    pub hours_moving: f64,
-    pub hours_circulating: f64,
-    pub hours_drilling: f64,
-    pub hours_tripping: f64,
-    pub hours_cleaning: f64,
-    pub hours_backreaming: f64,
-    pub hours_cementing: f64,
-    pub hours_running_csg: f64,
-    pub hours_other: f64,
-    pub hours_total: f64,
+    pub hours_moving: Option<f64>,
+    pub hours_circulating: Option<f64>,
+    pub hours_drilling: Option<f64>,
+    pub hours_tripping: Option<f64>,
+    pub hours_cleaning: Option<f64>,
+    pub hours_backreaming: Option<f64>,
+    pub hours_cementing: Option<f64>,
+    pub hours_running_csg: Option<f64>,
+    pub hours_other: Option<f64>,
+    pub hours_total: Option<f64>,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -26,15 +26,15 @@ pub struct FluidActivity {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SaveFluidActivityRequest {
-    pub hours_moving: f64,
-    pub hours_circulating: f64,
-    pub hours_drilling: f64,
-    pub hours_tripping: f64,
-    pub hours_cleaning: f64,
-    pub hours_backreaming: f64,
-    pub hours_cementing: f64,
-    pub hours_running_csg: f64,
-    pub hours_other: f64,
+    pub hours_moving: Option<f64>,
+    pub hours_circulating: Option<f64>,
+    pub hours_drilling: Option<f64>,
+    pub hours_tripping: Option<f64>,
+    pub hours_cleaning: Option<f64>,
+    pub hours_backreaming: Option<f64>,
+    pub hours_cementing: Option<f64>,
+    pub hours_running_csg: Option<f64>,
+    pub hours_other: Option<f64>,
 }
 
 impl FluidActivity {
@@ -82,9 +82,26 @@ impl FluidActivity {
         data: &SaveFluidActivityRequest,
     ) -> Result<Option<FluidActivity>, AppError> {
         let now = chrono::Utc::now().to_rfc3339();
-        let total = data.hours_moving + data.hours_circulating + data.hours_drilling
-            + data.hours_tripping + data.hours_cleaning + data.hours_backreaming
-            + data.hours_cementing + data.hours_running_csg + data.hours_other;
+        let total = data.hours_moving.unwrap_or(0.0) + data.hours_circulating.unwrap_or(0.0)
+            + data.hours_drilling.unwrap_or(0.0) + data.hours_tripping.unwrap_or(0.0)
+            + data.hours_cleaning.unwrap_or(0.0) + data.hours_backreaming.unwrap_or(0.0)
+            + data.hours_cementing.unwrap_or(0.0) + data.hours_running_csg.unwrap_or(0.0)
+            + data.hours_other.unwrap_or(0.0);
+
+        // If all fields are None/zero, delete the activity row entirely
+        let all_empty = data.hours_moving.is_none() && data.hours_circulating.is_none()
+            && data.hours_drilling.is_none() && data.hours_tripping.is_none()
+            && data.hours_cleaning.is_none() && data.hours_backreaming.is_none()
+            && data.hours_cementing.is_none() && data.hours_running_csg.is_none()
+            && data.hours_other.is_none();
+
+        if all_empty {
+            conn.execute(
+                "DELETE FROM fluid_activity WHERE fluid_report_id=?1",
+                params![fluid_report_id],
+            )?;
+            return Ok(None);
+        }
 
         let exists: i32 = conn.query_row(
             "SELECT COUNT(*) FROM fluid_activity WHERE fluid_report_id=?1",

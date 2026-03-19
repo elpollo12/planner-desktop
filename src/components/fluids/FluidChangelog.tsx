@@ -16,6 +16,62 @@ const TAB_LABEL_KEYS: Record<string, string> = {
   create: 'fluids.changelog.creation',
 };
 
+/** Map DB field names (camelCase) to i18n keys for display */
+const FIELD_LABEL_KEYS: Record<string, string> = {
+  // Report header
+  reportDate: 'fluids.form.reportDate',
+  wellNumber: 'fluids.form.well',
+  rigNumber: 'fluids.form.rig',
+  contract: 'fluids.form.contract',
+  contractor: 'fluids.form.contractor',
+  operator: 'fluids.form.operator',
+  fieldDistrict: 'fluids.form.fieldDistrict',
+  supervisor24h: 'fluids.form.supervisor24h',
+  // Fluid-specific
+  fluidType: 'fluids.form.fluidType',
+  wellPhase: 'fluids.form.wellPhase',
+  fluidCoordinator: 'fluids.form.fluidCoordinator',
+  techRep1: 'fluids.form.techRep1',
+  techRep2: 'fluids.form.techRep2',
+  trainee: 'fluids.form.trainee',
+  opsSupervisor: 'fluids.form.opsSupervisor',
+  // Circulation
+  bottomDownMin: 'fluids.form.circBottomDown',
+  bottomDownEmb: 'fluids.form.circBottomDown',
+  bottomUpMin: 'fluids.form.circBottomUp',
+  bottomUpEmb: 'fluids.form.circBottomUp',
+  wellCycleMin: 'fluids.form.circWellCycle',
+  wellCycleEmb: 'fluids.form.circWellCycle',
+  totalCycleMin: 'fluids.form.circTotalCycle',
+  totalCycleEmb: 'fluids.form.circTotalCycle',
+  // DIMS
+  volInicial: 'fluids.form.dimsInitial',
+  volPerdidoHoyo: 'fluids.form.dimsLostHole',
+  volDescartado: 'fluids.form.dimsDiscarded',
+  volPreparado: 'fluids.form.dimsPrepared',
+  volTransferido: 'fluids.form.dimsTransferred',
+  volRecibido: 'fluids.form.dimsReceived',
+  volPerdidoSup: 'fluids.form.dimsLostSurface',
+  volFinal: 'fluids.form.dimsFinal',
+  // Hydraulics
+  esd: 'fluids.form.hydraulics',
+  ecd: 'fluids.form.hydraulics',
+  embNTuberia: 'fluids.form.hydraulics',
+  embNAnular: 'fluids.form.hydraulics',
+  embKTuberia: 'fluids.form.hydraulics',
+  embKAnular: 'fluids.form.hydraulics',
+  // Comments
+  fluidComments: 'fluids.form.commentsFluid',
+  productComments: 'fluids.form.commentsProducts',
+  volComments: 'fluids.form.commentsVol',
+  // Sub-tables
+  props: 'fluids.form.fluidProps',
+  solidsControl: 'fluids.solids.title',
+  inventory: 'fluids.inventory.title',
+  services: 'fluids.services.title',
+  tanks: 'fluids.tanks.title',
+};
+
 function formatDateTime(iso: string): string {
   try {
     const d = new Date(iso);
@@ -27,6 +83,80 @@ function formatDateTime(iso: string): string {
   }
 }
 
+function FieldDiff({ fieldKey, value, t }: { fieldKey: string; value: Record<string, unknown>; t: (k: string, o?: Record<string, unknown>) => string }) {
+  const v = value;
+  const label = FIELD_LABEL_KEYS[fieldKey] ? t(FIELD_LABEL_KEYS[fieldKey]) : fieldKey;
+
+  // Sub-table diff (has added/removed/modified as arrays of names)
+  if ('added' in v || 'removed' in v || 'modified' in v) {
+    const added = v.added as string[] | undefined;
+    const removed = v.removed as string[] | undefined;
+    const modified = v.modified as string[] | undefined;
+    const hasChanges = (added && added.length > 0) || (removed && removed.length > 0) || (modified && modified.length > 0);
+    if (!hasChanges) return null;
+
+    return (
+      <div className="text-xs space-y-0.5">
+        <span className="font-medium text-gray-700 dark:text-gray-300">{label}:</span>
+        {added && added.length > 0 && (
+          <div className="ml-3 text-green-600 dark:text-green-400">
+            + {t('fluids.changelog.added')}: {added.join(', ')}
+          </div>
+        )}
+        {removed && removed.length > 0 && (
+          <div className="ml-3 text-red-500 dark:text-red-400">
+            − {t('fluids.changelog.removed')}: {removed.join(', ')}
+          </div>
+        )}
+        {modified && modified.length > 0 && (
+          <div className="ml-3 text-amber-600 dark:text-amber-400">
+            ✎ {t('fluids.changelog.modified')}: {modified.join(', ')}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Single field diff (has old/new)
+  if ('old' in v && 'new' in v) {
+    const oldIsEmpty = v.old === null || v.old === '' || v.old === undefined;
+    const newIsEmpty = v.new === null || v.new === '' || v.new === undefined;
+
+    if (oldIsEmpty && newIsEmpty) return null;
+
+    if (!oldIsEmpty && newIsEmpty) {
+      return (
+        <div className="text-xs flex items-center gap-1.5">
+          <span className="font-medium text-gray-700 dark:text-gray-300">{label}:</span>
+          <span className="line-through text-red-400">{String(v.old)}</span>
+          <span className="text-red-500">({t('fluids.changelog.cleared')})</span>
+        </div>
+      );
+    }
+
+    if (oldIsEmpty && !newIsEmpty) {
+      return (
+        <div className="text-xs flex items-center gap-1.5">
+          <span className="font-medium text-gray-700 dark:text-gray-300">{label}:</span>
+          <span className="text-green-600 dark:text-green-400">{String(v.new)}</span>
+          <span className="text-green-500">({t('fluids.changelog.set')})</span>
+        </div>
+      );
+    }
+
+    return (
+      <div className="text-xs text-gray-600 dark:text-gray-400 flex items-center gap-1.5">
+        <span className="font-medium text-gray-700 dark:text-gray-300">{label}:</span>
+        <span className="line-through text-red-400">{String(v.old)}</span>
+        <span>→</span>
+        <span className="text-green-600 dark:text-green-400">{String(v.new)}</span>
+      </div>
+    );
+  }
+
+  return null;
+}
+
 function DiffSummary({ changes }: { changes: Record<string, unknown> }) {
   const { t } = useTranslation();
   const entries = Object.entries(changes);
@@ -35,53 +165,26 @@ function DiffSummary({ changes }: { changes: Record<string, unknown> }) {
   return (
     <div className="mt-2 space-y-1">
       {entries.map(([key, value]) => {
+        if (typeof value !== 'object' || value === null) return null;
         const v = value as Record<string, unknown>;
 
-        // Sub-table diff (has added/removed/modified as arrays of names)
-        if ('added' in v || 'removed' in v || 'modified' in v) {
-          const added = v.added as string[] | undefined;
-          const removed = v.removed as string[] | undefined;
-          const modified = v.modified as string[] | undefined;
-          const hasChanges = (added && added.length > 0) || (removed && removed.length > 0) || (modified && modified.length > 0);
-          if (!hasChanges) return null;
-
-          return (
-            <div key={key} className="text-xs space-y-0.5">
-              <span className="font-medium text-gray-700 dark:text-gray-300">{(v.label as string) || key}:</span>
-              {added && added.length > 0 && (
-                <div className="ml-3 text-green-600 dark:text-green-400">
-                  + {t('fluids.changelog.added')}: {added.join(', ')}
-                </div>
-              )}
-              {removed && removed.length > 0 && (
-                <div className="ml-3 text-red-500 dark:text-red-400">
-                  − {t('fluids.changelog.removed')}: {removed.join(', ')}
-                </div>
-              )}
-              {modified && modified.length > 0 && (
-                <div className="ml-3 text-amber-600 dark:text-amber-400">
-                  ✎ {t('fluids.changelog.modified')}: {modified.join(', ')}
-                </div>
-              )}
-            </div>
-          );
+        // Check if this is a direct diff node (has old/new or added/removed/modified)
+        if ('old' in v || 'new' in v || 'added' in v || 'removed' in v || 'modified' in v) {
+          return <FieldDiff key={key} fieldKey={key} value={v} t={t} />;
         }
 
-        // Header field diff (has old/new)
-        if ('old' in v && 'new' in v) {
-          const oldVal = v.old === null ? '—' : String(v.old);
-          const newVal = v.new === null ? '—' : String(v.new);
-          return (
-            <div key={key} className="text-xs text-gray-600 dark:text-gray-400 flex items-center gap-1.5">
-              <span className="font-medium text-gray-700 dark:text-gray-300">{key}:</span>
-              <span className="line-through text-red-400">{oldVal}</span>
-              <span>→</span>
-              <span className="text-green-600 dark:text-green-400">{newVal}</span>
-            </div>
-          );
-        }
+        // Otherwise it's a group (like "header") containing field diffs
+        const subEntries = Object.entries(v);
+        if (subEntries.length === 0) return null;
 
-        return null;
+        return (
+          <div key={key} className="space-y-0.5">
+            {subEntries.map(([subKey, subValue]) => {
+              if (typeof subValue !== 'object' || subValue === null) return null;
+              return <FieldDiff key={`${key}.${subKey}`} fieldKey={subKey} value={subValue as Record<string, unknown>} t={t} />;
+            })}
+          </div>
+        );
       })}
     </div>
   );
