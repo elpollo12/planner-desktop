@@ -279,11 +279,13 @@ impl FluidReport {
         let id = uuid::Uuid::new_v4().to_string();
         let now = chrono::Utc::now().to_rfc3339();
 
-        // Auto-increment report_number
+        // Auto-increment report_number scoped to rig, excluding soft-deleted
+        let rig_id_for_query = data.rig_id.as_deref().unwrap_or("");
         let max_num: i32 = conn
             .query_row(
-                "SELECT COALESCE(MAX(report_number), 0) FROM fluid_reports",
-                [],
+                "SELECT COALESCE(MAX(report_number), 0) FROM fluid_reports
+                 WHERE rig_id = ?1 AND is_deleted = 0",
+                rusqlite::params![rig_id_for_query],
                 |r| r.get(0),
             )
             .unwrap_or(0);
@@ -473,13 +475,44 @@ impl FluidReport {
         Self::get_by_id(conn, id)
     }
 
-    /// Soft-delete del reporte de fluidos.
+    /// Soft-delete del reporte de fluidos + cleanup orphan sub-tables.
     pub fn soft_delete(conn: &Connection, id: &str, updated_by: &str) -> Result<(), AppError> {
         let now = chrono::Utc::now().to_rfc3339();
-        conn.execute(
-            "UPDATE fluid_reports SET is_deleted=1, updated_by=?1, updated_at=?2, synced=0 WHERE id=?3",
-            params![updated_by, &now, id],
-        )?;
-        Ok(())
+
+        conn.execute_batch("BEGIN IMMEDIATE")?;
+
+        let result = (|| -> Result<(), AppError> {
+            // Soft-delete the parent
+            conn.execute(
+                "UPDATE fluid_reports SET is_deleted=1, updated_by=?1, updated_at=?2, synced=0 WHERE id=?3",
+                params![updated_by, &now, id],
+            )?;
+
+            // Hard-delete orphan sub-tables (no FK cascade on soft-delete)
+            let sub_tables = [
+                "fluid_props", "fluid_solids_control", "fluid_inventory",
+                "fluid_services", "fluid_activity", "fluid_tanks",
+                "fluid_vol_stats", "fluid_report_changelog",
+            ];
+            for table in sub_tables {
+                conn.execute(
+                    &format!("DELETE FROM {} WHERE fluid_report_id = ?1", table),
+                    params![id],
+                )?;
+            }
+
+            Ok(())
+        })();
+
+        match result {
+            Ok(()) => {
+                conn.execute_batch("COMMIT")?;
+                Ok(())
+            }
+            Err(e) => {
+                let _ = conn.execute_batch("ROLLBACK");
+                Err(e)
+            }
+        }
     }
 }

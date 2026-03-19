@@ -5,6 +5,7 @@ import { Button, Card, Input, Select } from '../components/ui';
 import { Save, ChevronLeft, Droplets } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useModal } from '../store/modalStore';
+import { useConnectionStore } from '../store/connectionStore';
 import { fluidsApi, fluidProductsApi, rigsApi, rigPersonnelApi } from '../lib/api';
 import { toast } from '../lib/toast';
 import { backgroundPush } from '../lib/syncHelper';
@@ -134,6 +135,13 @@ export default function FluidForm() {
   ];
 
   const isEditMode = !!id;
+
+  // Pause auto-sync while editing to prevent stale data overwrites
+  const { pauseSync, resumeSync } = useConnectionStore();
+  useEffect(() => {
+    pauseSync();
+    return () => resumeSync();
+  }, []);
 
   // Step: 'rig' (new only) -> 'create' -> 'form'
   const [step, setStep] = useState<'rig' | 'create' | 'form'>(isEditMode ? 'form' : 'rig');

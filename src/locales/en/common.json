@@ -58,6 +58,16 @@
     "goBack": "Go Back",
     "helpText": "Access permissions are configured by the administrator from the users panel."
   },
+  "modules": {
+    "dashboard": "Dashboard",
+    "reports": "Reports",
+    "approvals": "Approvals",
+    "logistics": "Logistics",
+    "incidents": "Incidents",
+    "admin": "Administration",
+    "cloudLogs": "Daily Logs",
+    "fluids": "API Report"
+  },
   "actions": {
     "save": "Save",
     "cancel": "Cancel",
@@ -149,7 +159,8 @@
     "unauthorized": "You are not authorized to perform this action.",
     "network": "Connection error. Check your internet connection.",
     "noSession": "No active session.",
-    "loadFailed": "Failed to load data."
+    "loadFailed": "Failed to load data.",
+    "notAuthenticated": "User not authenticated"
   },
   "toast": {
     "savedSuccess": "Saved successfully.",
@@ -272,6 +283,8 @@
       "selectSection": "Select a Section",
       "selectSectionDesc": "Choose the type of report you want to complete",
       "loadError": "⚠ Error loading",
+      "reportLoadError": "Error loading report",
+      "sectionsFailedWarning": "{{count}} section(s) did not load correctly. Those sections will not be saved to protect your data.",
       "noData": "No data",
       "selectTabPrompt": "Select a tab to enter data",
       "selectTabDesc": "Choose one of the sections above to start filling in the report information.",
@@ -785,6 +798,8 @@
       "saved": "Company settings saved successfully",
       "saveError": "Error saving settings",
       "fileSizeExceeded": "File exceeds the 2MB limit",
+      "fileTooLarge": "File exceeds the 2 MB limit.",
+      "processingImage": "Processing image…",
       "logoUploaded": "Logo uploaded successfully",
       "logoUploadError": "Error uploading logo",
       "logoDeleted": "Logo deleted",
@@ -960,15 +975,20 @@
       "deleteWarning": "This action cannot be undone.",
       "confirmDeletion": "Confirm Deletion",
       "created": "Rig created successfully",
+      "createError": "Error creating rig",
       "updated": "Rig updated successfully",
+      "updateError": "Error updating rig",
       "deleted": "Rig deleted",
+      "deleteError": "Error deleting rig",
       "loadError": "Error loading rig",
       "loadRigsError": "Error loading rigs",
       "actions": "Actions",
       "loading": "Loading rigs...",
       "noResults": "No rigs found with the applied filters",
       "noRigs": "No rigs registered",
-      "createFirst": "Create First Rig"
+      "createFirst": "Create First Rig",
+      "delete": "Delete",
+      "cancel": "Cancel"
     },
     "companies": {
       "title": "Company Management",

@@ -13,6 +13,7 @@ import { PaginationControls } from '../ui/PaginationControls';
 import { formatDateTime } from '../../lib/dateUtils';
 import { toast } from 'react-toastify';
 import { Plus, Eye, Trash2, Loader2, AlertTriangle, Settings } from 'lucide-react';
+import { translateIncidentTypeName } from '../../lib/translateCatalogs';
 
 interface IncidentsListProps {
   rigId: string;
@@ -47,7 +48,7 @@ export function IncidentsList({ rigId, rigName }: IncidentsListProps) {
     });
     return [
       { value: '', label: t('incidents.list.allTypes') },
-      ...sorted.map((it) => ({ value: it.id, label: it.name })),
+      ...sorted.map((it) => ({ value: it.id, label: translateIncidentTypeName(it.id, it.name, t) })),
     ];
   }, [incidentTypes, t]);
 

@@ -12,6 +12,8 @@ interface ConnectionStoreState {
   isChecking: boolean;
   /** Timestamp del último pull exitoso — cambia cada vez que llegan datos nuevos */
   lastPullAt: string | null;
+  /** When true, auto-sync is temporarily paused (e.g. user editing a fluid report) */
+  syncPaused: boolean;
 
   setOnline: () => void;
   setOffline: (error?: string) => void;
@@ -20,6 +22,9 @@ interface ConnectionStoreState {
   setSyncEnabled: (configured: boolean, enabled: boolean) => void;
   /** Marcar que un pull terminó con éxito — dispara re-renders en hooks suscritos */
   markPullDone: () => void;
+  /** Pause/resume auto-sync (e.g. while editing forms) */
+  pauseSync: () => void;
+  resumeSync: () => void;
   checkConnection: (sessionToken: string) => Promise<void>;
   reset: () => void;
 }
@@ -32,6 +37,7 @@ export const useConnectionStore = create<ConnectionStoreState>((set, get) => ({
   syncEnabled: false,
   isChecking: false,
   lastPullAt: null,
+  syncPaused: false,
 
   setOnline: () =>
     set({
@@ -69,6 +75,9 @@ export const useConnectionStore = create<ConnectionStoreState>((set, get) => ({
 
   markPullDone: () =>
     set({ lastPullAt: new Date().toISOString() }),
+
+  pauseSync: () => set({ syncPaused: true }),
+  resumeSync: () => set({ syncPaused: false }),
 
   checkConnection: async (sessionToken: string) => {
     const { isChecking } = get();
@@ -112,5 +121,6 @@ export const useConnectionStore = create<ConnectionStoreState>((set, get) => ({
       syncEnabled: false,
       isChecking: false,
       lastPullAt: null,
+      syncPaused: false,
     }),
 }));

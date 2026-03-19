@@ -578,7 +578,7 @@ interface StepContractorsProps {
 }
 
 function StepContractors({ wizard, onBack, mode = 'create', onContinue }: StepContractorsProps) {
-  // const { t } = useTranslation();
+  const { t } = useTranslation();
   const { sessionToken } = useAuthStore();
   const [contractors, setContractors] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
@@ -633,9 +633,9 @@ function StepContractors({ wizard, onBack, mode = 'create', onContinue }: StepCo
       setShowInline(false);
       resetInline();
       setStepError('');
-      toast.success(`Contratista "${newC.name}" creado`);
+      toast.success(t('admin.forms.contractorCreated', { name: newC.name }));
     } catch {
-      toast.error('Error al crear el contratista');
+      toast.error(t('admin.forms.contractorCreateError'));
     } finally {
       setSaving(false);
     }
@@ -798,7 +798,7 @@ function StepPersonnel({ rigId, rigName }: StepPersonnelProps) {
       setNewRow(null);
       await load();
     } catch {
-      toast.error('Error al agregar personal');
+      toast.error(t('admin.forms.personnelAddError'));
     } finally {
       setSaving(false);
     }
@@ -817,7 +817,7 @@ function StepPersonnel({ rigId, rigName }: StepPersonnelProps) {
       setEditingId(null);
       await load();
     } catch {
-      toast.error('Error al actualizar personal');
+      toast.error(t('admin.forms.personnelUpdateError'));
     } finally {
       setSaving(false);
     }
@@ -829,7 +829,7 @@ function StepPersonnel({ rigId, rigName }: StepPersonnelProps) {
       await rigPersonnelApi.delete(id);
       await load();
     } catch {
-      toast.error('Error al eliminar personal');
+      toast.error(t('admin.forms.personnelDeleteError'));
     } finally {
       setSaving(false);
     }
@@ -981,6 +981,7 @@ interface EditRigFormProps {
 }
 
 function EditRigForm({ rig, onSubmit, onContractorsChanged }: EditRigFormProps) {
+  const { t } = useTranslation();
   const { sessionToken } = useAuthStore();
   const [activeTab, setActiveTab] = useState<EditTab>('personal');
 
@@ -1036,7 +1037,7 @@ function EditRigForm({ rig, onSubmit, onContractorsChanged }: EditRigFormProps) 
       try {
         await onSubmit({ name: out.name, power: out.power, active: out.active });
         setLocalRig((r) => ({ ...r, name: out.name, power: out.power, active: out.active }));
-        toast.success('Datos generales actualizados');
+        toast.success(t('admin.forms.basicsUpdated'));
       } finally {
         setSaving(false);
       }
@@ -1105,8 +1106,8 @@ function EditRigForm({ rig, onSubmit, onContractorsChanged }: EditRigFormProps) 
         setSelectedArea(a);
         setShowInline(false);
         resetInline();
-        toast.success(`Área "${a.name}" creada`);
-      } catch { toast.error('Error al crear el área'); }
+        toast.success(t('admin.forms.areaCreated', { name: a.name }));
+      } catch { toast.error(t('admin.forms.areaCreateError')); }
       finally { setInlineSaving(false); }
     };
 
@@ -1118,7 +1119,7 @@ function EditRigForm({ rig, onSubmit, onContractorsChanged }: EditRigFormProps) 
         const area = selectedArea ?? areas.find((a) => a.id === selectedId);
         setLocalRig((r) => ({ ...r, areaId: selectedId, areaName: area?.name ?? r.areaName }));
         setError('');
-        toast.success('Área actualizada');
+        toast.success(t('admin.forms.areaUpdated'));
       } finally { setSaving(false); }
     };
 
@@ -1235,8 +1236,8 @@ function EditRigForm({ rig, onSubmit, onContractorsChanged }: EditRigFormProps) 
         setSelectedOp(op);
         setShowInline(false);
         resetInline();
-        toast.success(`Operadora "${op.name}" creada`);
-      } catch { toast.error('Error al crear operadora'); }
+        toast.success(t('admin.forms.operatorCreated', { name: op.name }));
+      } catch { toast.error(t('admin.forms.operatorCreateError')); }
       finally { setInlineSaving(false); }
     };
 
@@ -1248,7 +1249,7 @@ function EditRigForm({ rig, onSubmit, onContractorsChanged }: EditRigFormProps) 
         await onSubmit({ operatorId: selectedId, operator: op?.name });
         setLocalRig((r) => ({ ...r, operatorId: selectedId, operatorName: op?.name ?? r.operatorName }));
         setError('');
-        toast.success('Operadora actualizada');
+        toast.success(t('admin.forms.operatorUpdated'));
       } finally { setSaving(false); }
     };
 
@@ -1338,8 +1339,8 @@ function EditRigForm({ rig, onSubmit, onContractorsChanged }: EditRigFormProps) 
         setSelected((prev) => [...prev.filter((x) => x.id !== c.id), { id: c.id, name: c.name }]);
         setShowInline(false);
         resetInline();
-        toast.success(`Contratista "${c.name}" creado`);
-      } catch { toast.error('Error al crear contratista'); }
+        toast.success(t('admin.forms.contractorCreated', { name: c.name }));
+      } catch { toast.error(t('admin.forms.contractorCreateError')); }
       finally { setInlineSaving(false); }
     };
 
@@ -1352,7 +1353,7 @@ function EditRigForm({ rig, onSubmit, onContractorsChanged }: EditRigFormProps) 
         onContractorsChanged?.(rig.id, selected.map((s) => s.id));
         setLocalRig((r) => ({ ...r, contractors: selected }));
         setError('');
-        toast.success('Contratistas actualizados');
+        toast.success(t('admin.forms.contractorsUpdated'));
       } finally { setSaving(false); }
     };
 

@@ -8,6 +8,7 @@ import type { RigPersonnel } from '../../types/rig';
 import { rigPersonnelApi, rigsApi, crewPositionsApi } from '../../lib/api';
 import { useAuthStore } from '../../store/authStore';
 import { useModal } from '../../store/modalStore';
+import { translateCrewPositionName } from '../../lib/translateCatalogs';
 import { Input } from '../ui';
 import type { CrewPosition } from '../../types/crewPosition';
 
@@ -154,7 +155,7 @@ function ShiftMembers({
                             }
                           }}
                           options={[
-                            ...positions.map((pos) => ({ value: pos.name, label: pos.name })),
+                            ...positions.map((pos) => ({ value: pos.name, label: translateCrewPositionName(pos.name, t) })),
                             { value: '__other__', label: `+ ${t('reports.forms.crew.otherPosition')}` },
                           ]}
                           placeholder={t('reports.forms.common.select')}

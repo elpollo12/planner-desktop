@@ -64,7 +64,7 @@ export default function LogoUploader({
     if (fileInputRef.current) fileInputRef.current.value = '';
 
     if (file.size > MAX_FILE_SIZE) {
-      toast.error('El archivo supera el límite de 2 MB.');
+      toast.error(t('admin.appearance.fileTooLarge'));
       return;
     }
 
@@ -75,7 +75,7 @@ export default function LogoUploader({
       if (removeBg) {
         setProcessing(true);
         setProgress(0);
-        toast.info('Procesando imagen…', { toastId: 'bg-removal', autoClose: false });
+        toast.info(t('admin.appearance.processingImage'), { toastId: 'bg-removal', autoClose: false });
 
         bytes = await removeLogoBackground(file, (p) => setProgress(p));
         fileName = file.name.replace(/\.[^.]+$/, '') + '_nobg.png';
@@ -90,13 +90,12 @@ export default function LogoUploader({
 
       setUploading(true);
       await onUpload(bytes, fileName);
-      toast.success('Logo actualizado correctamente.');
     } catch (err) {
       toast.dismiss('bg-removal');
       setProcessing(false);
       setProgress(null);
       console.error('[LogoUploader]', err);
-      toast.error('Error al procesar o subir el logo. Intente de nuevo.');
+      toast.error(String(err));
     } finally {
       setUploading(false);
     }
@@ -107,9 +106,9 @@ export default function LogoUploader({
     try {
       setUploading(true);
       await onRemove();
-      toast.success('Logo eliminado.');
+      toast.success(t('admin.appearance.logoDeleted'));
     } catch {
-      toast.error('No se pudo eliminar el logo.');
+      toast.error(t('admin.appearance.logoDeleteError'));
     } finally {
       setUploading(false);
     }

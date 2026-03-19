@@ -7,7 +7,7 @@ import { Select } from '@/components/ui/Select';
 import { modulePermissionsApi, usersApi, companiesApi } from '@/lib/api';
 import { toast } from 'react-toastify';
 import type { UserRole, UserWithRigs, AppModule } from '@/types/user';
-import { APP_MODULES, MODULE_LABELS, MODULE_DEFAULTS, PERMISSION_MODULES } from '@/types/user';
+import { APP_MODULES, MODULE_LABEL_KEYS, MODULE_DEFAULTS, PERMISSION_MODULES } from '@/types/user';
 import type { Rig } from '@/types/rig';
 import type { Company } from '@/types/company';
 
@@ -645,7 +645,7 @@ function TabPermissions({ userId, role, sessionToken, onSave }: TabPermissionsPr
                   className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                 />
                 <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                  {MODULE_LABELS[mod]}
+                  {t(MODULE_LABEL_KEYS[mod])}
                 </span>
               </div>
               {overridden && (

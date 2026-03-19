@@ -62,6 +62,8 @@ export function useAutoSync() {
   const doSync = useCallback(async () => {
     if (!sessionToken) return;
     if (isSyncingRef.current) return;
+    // Skip sync if paused (e.g. user editing a fluid report)
+    if (useConnectionStore.getState().syncPaused) return;
 
     try {
       isSyncingRef.current = true;

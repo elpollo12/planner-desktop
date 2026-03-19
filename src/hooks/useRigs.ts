@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
 import { rigsApi } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
@@ -15,6 +16,7 @@ interface UseRigsReturn {
 }
 
 export function useRigs(): UseRigsReturn {
+  const { t } = useTranslation();
   const user = useAuthStore((state) => state.user);
   const [rigs, setRigs] = useState<RigWithArea[]>([]);
   const [loading, setLoading] = useState(false);
@@ -28,7 +30,7 @@ export function useRigs(): UseRigsReturn {
       const data = await rigsApi.list(includeInactive);
       setRigs(data);
     } catch (err) {
-      const errorMsg = 'Error al cargar los taladros';
+      const errorMsg = t('admin.rigs.loadRigsError');
       setError(errorMsg);
       toast.error(errorMsg);
       console.error(err);
@@ -40,18 +42,18 @@ export function useRigs(): UseRigsReturn {
   // Create rig
   const createRig = async (data: CreateRigInput): Promise<RigWithArea | null> => {
     if (!user?.id) {
-      toast.error('Usuario no autenticado');
+      toast.error(t('errors.notAuthenticated'));
       return null;
     }
 
     setLoading(true);
     try {
       const newRig = await rigsApi.create(user.id, data);
-      toast.success('Taladro creado exitosamente');
+      toast.success(t('admin.rigs.created'));
       await fetchRigs();
       return newRig;
     } catch (err) {
-      toast.error('Error al crear el taladro');
+      toast.error(t('admin.rigs.createError'));
       console.error(err);
       return null;
     } finally {
@@ -65,18 +67,18 @@ export function useRigs(): UseRigsReturn {
     data: UpdateRigInput
   ): Promise<RigWithArea | null> => {
     if (!user?.id) {
-      toast.error('Usuario no autenticado');
+      toast.error(t('errors.notAuthenticated'));
       return null;
     }
 
     setLoading(true);
     try {
       const updated = await rigsApi.update(id, user.id, data);
-      toast.success('Taladro actualizado exitosamente');
+      toast.success(t('admin.rigs.updated'));
       await fetchRigs();
       return updated;
     } catch (err) {
-      toast.error('Error al actualizar el taladro');
+      toast.error(t('admin.rigs.updateError'));
       console.error(err);
       return null;
     } finally {
@@ -89,11 +91,11 @@ export function useRigs(): UseRigsReturn {
     setLoading(true);
     try {
       await rigsApi.delete(id);
-      toast.success('Taladro eliminado exitosamente');
+      toast.success(t('admin.rigs.deleted'));
       await fetchRigs();
       return true;
     } catch (err) {
-      toast.error('Error al eliminar el taladro');
+      toast.error(t('admin.rigs.deleteError'));
       console.error(err);
       return false;
     } finally {

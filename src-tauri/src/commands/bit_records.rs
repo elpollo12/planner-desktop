@@ -18,12 +18,23 @@ pub async fn save_bit_records(
         .lock()
         .map_err(|e| format!("Failed to lock database: {}", e))?;
 
-    let records = BitRecord::save_bulk(&conn, &report_id, &data)
-        .map_err(|e| e.to_string())?;
-
-    Report::touch_updated_at(&conn, &report_id).map_err(|e| e.to_string())?;
-
-    Ok(records)
+    conn.execute_batch("BEGIN IMMEDIATE").map_err(|e| e.to_string())?;
+    let result = (|| -> Result<_, String> {
+        let records = BitRecord::save_bulk(&conn, &report_id, &data)
+            .map_err(|e| e.to_string())?;
+        Report::touch_updated_at(&conn, &report_id).map_err(|e| e.to_string())?;
+        Ok(records)
+    })();
+    match result {
+        Ok(v) => {
+            conn.execute_batch("COMMIT").map_err(|e| e.to_string())?;
+            Ok(v)
+        }
+        Err(e) => {
+            let _ = conn.execute_batch("ROLLBACK");
+            Err(e)
+        }
+    }
 }
 
 #[tauri::command]

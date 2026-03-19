@@ -18,12 +18,23 @@ pub async fn save_drilling_parameters(
         .lock()
         .map_err(|e| format!("Failed to lock database: {}", e))?;
 
-    let params = DrillingParameter::save_bulk(&conn, &report_id, &data)
-        .map_err(|e| e.to_string())?;
-
-    Report::touch_updated_at(&conn, &report_id).map_err(|e| e.to_string())?;
-
-    Ok(params)
+    conn.execute_batch("BEGIN IMMEDIATE").map_err(|e| e.to_string())?;
+    let result = (|| -> Result<_, String> {
+        let params = DrillingParameter::save_bulk(&conn, &report_id, &data)
+            .map_err(|e| e.to_string())?;
+        Report::touch_updated_at(&conn, &report_id).map_err(|e| e.to_string())?;
+        Ok(params)
+    })();
+    match result {
+        Ok(v) => {
+            conn.execute_batch("COMMIT").map_err(|e| e.to_string())?;
+            Ok(v)
+        }
+        Err(e) => {
+            let _ = conn.execute_batch("ROLLBACK");
+            Err(e)
+        }
+    }
 }
 
 #[tauri::command]

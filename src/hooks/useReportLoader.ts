@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   reportsApi,
   drillStringApi,
@@ -56,6 +57,7 @@ async function tryLoad<T>(promise: Promise<T>): Promise<T | typeof SECTION_FAILE
 export function useReportLoader(
   sessionToken: string | null,
 ): UseReportLoaderReturn {
+  const { t } = useTranslation();
   const [existingReport, setExistingReport] = useState<Report | null>(null);
   const [isLoadingReport, setIsLoadingReport] = useState(false);
   const [failedSections, setFailedSections] = useState<Set<TabId>>(new Set());
@@ -106,7 +108,7 @@ export function useReportLoader(
         if (failed.size > 0) {
           setFailedSections(failed);
           toast.warning(
-            `${failed.size} sección(es) no se cargaron correctamente. Esas secciones no se guardarán para proteger tus datos.`,
+            t('reports.form.sectionsFailedWarning', { count: failed.size }),
           );
         }
 
@@ -207,7 +209,7 @@ export function useReportLoader(
         return formData;
       } catch (error) {
         console.error('Error loading report:', error);
-        toast.error('Error al cargar el reporte');
+        toast.error(t('reports.form.reportLoadError'));
         return null;
       } finally {
         setIsLoadingReport(false);

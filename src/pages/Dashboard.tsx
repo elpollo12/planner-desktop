@@ -106,7 +106,7 @@ export default function Dashboard() {
       actions.push({ icon: '🧪', title: t('dashboard.fluids'), description: t('dashboard.fluidsDesc'), href: '/fluids' });
     }
     return actions;
-  }, [canAccess.reports, canAccess.incidents, canAccess.approvals, canAccess.admin, canAccess.logistics, canAccess.fluids, stats.submitted]);
+  }, [t, canAccess.reports, canAccess.incidents, canAccess.approvals, canAccess.admin, canAccess.logistics, canAccess.fluids, stats.submitted]);
 
   if (!user) return null;
 

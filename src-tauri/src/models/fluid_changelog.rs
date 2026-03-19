@@ -146,10 +146,8 @@ fn row_field_diffs(old: &JsonValue, new: &JsonValue) -> Vec<String> {
             sorted.sort();
             sorted
         };
-        // Filter out the key field and metadata — we only want data fields
-        all_keys.retain(|k| {
-            !matches!(k.as_str(), "id" | "fluidReportId" | "createdAt" | "updatedAt" | "sortOrder")
-        });
+        // Filter out metadata — we only want data fields
+        all_keys.retain(|k| !METADATA_FIELDS.contains(&k.as_str()));
 
         for key in all_keys {
             let ov = old_map.get(key.as_str()).unwrap_or(&JsonValue::Null);
@@ -204,6 +202,9 @@ fn row_display_name(row: &JsonValue, key_field: &str, index: usize) -> String {
 const METADATA_FIELDS: &[&str] = &[
     "id", "fluidReportId", "fluid_report_id", "createdAt", "created_at",
     "updatedAt", "updated_at", "sortOrder", "sort_order",
+    "synced", "isDeleted", "is_deleted", "createdBy", "created_by",
+    "updatedBy", "updated_by", "reportNumber", "report_number",
+    "rigId", "rig_id",
 ];
 
 /// Check if a row has any meaningful (non-null, non-empty, non-zero) data,

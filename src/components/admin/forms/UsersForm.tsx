@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Tabs, TabPanel } from '@/components/ui/Tabs';
 import type { UserRole, UserWithRigs, AppModule } from '@/types/user';
-import { APP_MODULES, MODULE_LABELS, MODULE_DEFAULTS, PERMISSION_MODULES } from '@/types/user';
+import { APP_MODULES, MODULE_LABEL_KEYS, MODULE_DEFAULTS, PERMISSION_MODULES } from '@/types/user';
 import type { Rig } from '@/types/rig';
 import { modulePermissionsApi, usersApi } from '@/lib/api';
 import { toast } from 'react-toastify';
@@ -572,7 +572,7 @@ export default function UsersForm({ onSubmit, user, rigs, supervisors = [], isEd
                                                         disabled={isSubmitting}
                                                     />
                                                     <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                                                        {MODULE_LABELS[mod]}
+                                                        {t(MODULE_LABEL_KEYS[mod])}
                                                     </span>
                                                 </div>
                                                 {overridden && (

@@ -188,61 +188,72 @@ pub async fn save_fluid_tab1(
     let old_report = FluidReport::get_by_id(&conn, &fluid_report_id).ok();
     let old_props = FluidProps::list_by_fluid_report(&conn, &fluid_report_id).unwrap_or_default();
     let old_solids = FluidSolidsControl::list_by_fluid_report(&conn, &fluid_report_id).unwrap_or_default();
-    let old_activity = FluidActivity::get_by_fluid_report(&conn, &fluid_report_id).unwrap_or(None);
+    let _old_activity = FluidActivity::get_by_fluid_report(&conn, &fluid_report_id).unwrap_or(None);
 
-    // ── Apply changes ──
-    let report = FluidReport::update_header(&conn, &fluid_report_id, &data.header, &session.user_id)
-        .map_err(|e| e.to_string())?;
+    // ── Apply changes inside transaction ──
+    conn.execute_batch("BEGIN IMMEDIATE").map_err(|e| e.to_string())?;
 
-    let props = FluidProps::save_bulk(&conn, &fluid_report_id, &data.props)
-        .map_err(|e| e.to_string())?;
-
-    let solids_control = FluidSolidsControl::save_bulk(&conn, &fluid_report_id, &data.solids_control)
-        .map_err(|e| e.to_string())?;
-
-    // Activity (upsert or delete if all empty)
-    if let Some(ref act_data) = data.activity {
-        FluidActivity::upsert(&conn, &fluid_report_id, act_data)
+    let result = (|| -> Result<(FluidReport, Vec<FluidProps>, Vec<FluidSolidsControl>), String> {
+        let report = FluidReport::update_header(&conn, &fluid_report_id, &data.header, &session.user_id)
             .map_err(|e| e.to_string())?;
-    }
 
-    // ── Compute diff & insert changelog ──
-    let mut diff = serde_json::Map::new();
+        let props = FluidProps::save_bulk(&conn, &fluid_report_id, &data.props)
+            .map_err(|e| e.to_string())?;
 
-    if let Some(ref old) = old_report {
-        let old_json = serde_json::to_value(old).unwrap_or(JsonValue::Null);
-        let new_json = serde_json::to_value(&report).unwrap_or(JsonValue::Null);
-        if let (Some(old_map), Some(new_map)) = (old_json.as_object(), new_json.as_object()) {
-            let header_diff = compute_header_diff(old_map, new_map);
-            if !header_diff.is_empty() {
-                diff.insert("header".to_string(), JsonValue::Object(header_diff));
+        let solids_control = FluidSolidsControl::save_bulk(&conn, &fluid_report_id, &data.solids_control)
+            .map_err(|e| e.to_string())?;
+
+        if let Some(ref act_data) = data.activity {
+            FluidActivity::upsert(&conn, &fluid_report_id, act_data)
+                .map_err(|e| e.to_string())?;
+        }
+
+        Ok((report, props, solids_control))
+    })();
+
+    match result {
+        Ok((report, props, solids_control)) => {
+            conn.execute_batch("COMMIT").map_err(|e| e.to_string())?;
+
+            // ── Compute diff & insert changelog (after commit, non-critical) ──
+            let mut diff = serde_json::Map::new();
+
+            if let Some(ref old) = old_report {
+                let old_json = serde_json::to_value(old).unwrap_or(JsonValue::Null);
+                let new_json = serde_json::to_value(&report).unwrap_or(JsonValue::Null);
+                if let (Some(old_map), Some(new_map)) = (old_json.as_object(), new_json.as_object()) {
+                    let header_diff = compute_header_diff(old_map, new_map);
+                    if !header_diff.is_empty() {
+                        diff.insert("header".to_string(), JsonValue::Object(header_diff));
+                    }
+                }
             }
+
+            let old_props_json: Vec<JsonValue> = old_props.iter().map(|p| serde_json::to_value(p).unwrap_or(JsonValue::Null)).collect();
+            let new_props_json: Vec<JsonValue> = data.props.iter().map(|p| serde_json::to_value(p).unwrap_or(JsonValue::Null)).collect();
+            if let Some(d) = compute_subtable_diff(&old_props_json, &new_props_json, "props", "sampleHour") {
+                diff.insert("props".to_string(), d);
+            }
+
+            let old_solids_json: Vec<JsonValue> = old_solids.iter().map(|s| serde_json::to_value(s).unwrap_or(JsonValue::Null)).collect();
+            let new_solids_json: Vec<JsonValue> = data.solids_control.iter().map(|s| serde_json::to_value(s).unwrap_or(JsonValue::Null)).collect();
+            if let Some(d) = compute_subtable_diff(&old_solids_json, &new_solids_json, "solidsControl", "equipment") {
+                diff.insert("solidsControl".to_string(), d);
+            }
+
+            let changes = JsonValue::Object(diff);
+            let _ = FluidChangelogEntry::insert(
+                &conn, &fluid_report_id, "tab1", &session.user_id,
+                data.note.as_deref(), &changes,
+            );
+
+            Ok(SaveFluidTab1Response { report, props, solids_control })
+        }
+        Err(e) => {
+            let _ = conn.execute_batch("ROLLBACK");
+            Err(e)
         }
     }
-
-    let old_props_json: Vec<JsonValue> = old_props.iter().map(|p| serde_json::to_value(p).unwrap_or(JsonValue::Null)).collect();
-    let new_props_json: Vec<JsonValue> = data.props.iter().map(|p| serde_json::to_value(p).unwrap_or(JsonValue::Null)).collect();
-    if let Some(d) = compute_subtable_diff(&old_props_json, &new_props_json, "props", "sampleHour") {
-        diff.insert("props".to_string(), d);
-    }
-
-    let old_solids_json: Vec<JsonValue> = old_solids.iter().map(|s| serde_json::to_value(s).unwrap_or(JsonValue::Null)).collect();
-    let new_solids_json: Vec<JsonValue> = data.solids_control.iter().map(|s| serde_json::to_value(s).unwrap_or(JsonValue::Null)).collect();
-    if let Some(d) = compute_subtable_diff(&old_solids_json, &new_solids_json, "solidsControl", "equipment") {
-        diff.insert("solidsControl".to_string(), d);
-    }
-
-    let changes = JsonValue::Object(diff);
-    let _ = FluidChangelogEntry::insert(
-        &conn, &fluid_report_id, "tab1", &session.user_id,
-        data.note.as_deref(), &changes,
-    );
-
-    Ok(SaveFluidTab1Response {
-        report,
-        props,
-        solids_control,
-    })
 }
 
 #[tauri::command]
@@ -263,38 +274,49 @@ pub async fn save_fluid_tab2(
     let old_inv = FluidInventoryItem::list_by_fluid_report(&conn, &fluid_report_id).unwrap_or_default();
     let old_svc = FluidService::list_by_fluid_report(&conn, &fluid_report_id).unwrap_or_default();
 
-    // ── Apply changes ──
-    let inventory = FluidInventoryItem::save_bulk(&conn, &fluid_report_id, &data.inventory)
-        .map_err(|e| e.to_string())?;
+    // ── Apply changes inside transaction ──
+    conn.execute_batch("BEGIN IMMEDIATE").map_err(|e| e.to_string())?;
 
-    let services = FluidService::save_bulk(&conn, &fluid_report_id, &data.services)
-        .map_err(|e| e.to_string())?;
+    let result = (|| -> Result<(Vec<FluidInventoryItem>, Vec<FluidService>), String> {
+        let inventory = FluidInventoryItem::save_bulk(&conn, &fluid_report_id, &data.inventory)
+            .map_err(|e| e.to_string())?;
+        let services = FluidService::save_bulk(&conn, &fluid_report_id, &data.services)
+            .map_err(|e| e.to_string())?;
+        Ok((inventory, services))
+    })();
 
-    // ── Compute diff ──
-    let mut diff = serde_json::Map::new();
+    match result {
+        Ok((inventory, services)) => {
+            conn.execute_batch("COMMIT").map_err(|e| e.to_string())?;
 
-    let old_inv_json: Vec<JsonValue> = old_inv.iter().map(|i| serde_json::to_value(i).unwrap_or(JsonValue::Null)).collect();
-    let new_inv_json: Vec<JsonValue> = data.inventory.iter().map(|i| serde_json::to_value(i).unwrap_or(JsonValue::Null)).collect();
-    if let Some(d) = compute_subtable_diff(&old_inv_json, &new_inv_json, "inventory", "productId") {
-        diff.insert("inventory".to_string(), d);
+            // ── Compute diff ──
+            let mut diff = serde_json::Map::new();
+
+            let old_inv_json: Vec<JsonValue> = old_inv.iter().map(|i| serde_json::to_value(i).unwrap_or(JsonValue::Null)).collect();
+            let new_inv_json: Vec<JsonValue> = data.inventory.iter().map(|i| serde_json::to_value(i).unwrap_or(JsonValue::Null)).collect();
+            if let Some(d) = compute_subtable_diff(&old_inv_json, &new_inv_json, "inventory", "productId") {
+                diff.insert("inventory".to_string(), d);
+            }
+
+            let old_svc_json: Vec<JsonValue> = old_svc.iter().map(|s| serde_json::to_value(s).unwrap_or(JsonValue::Null)).collect();
+            let new_svc_json: Vec<JsonValue> = data.services.iter().map(|s| serde_json::to_value(s).unwrap_or(JsonValue::Null)).collect();
+            if let Some(d) = compute_subtable_diff(&old_svc_json, &new_svc_json, "services", "serviceName") {
+                diff.insert("services".to_string(), d);
+            }
+
+            let changes = JsonValue::Object(diff);
+            let _ = FluidChangelogEntry::insert(
+                &conn, &fluid_report_id, "tab2", &session.user_id,
+                data.note.as_deref(), &changes,
+            );
+
+            Ok(SaveFluidTab2Response { inventory, services })
+        }
+        Err(e) => {
+            let _ = conn.execute_batch("ROLLBACK");
+            Err(e)
+        }
     }
-
-    let old_svc_json: Vec<JsonValue> = old_svc.iter().map(|s| serde_json::to_value(s).unwrap_or(JsonValue::Null)).collect();
-    let new_svc_json: Vec<JsonValue> = data.services.iter().map(|s| serde_json::to_value(s).unwrap_or(JsonValue::Null)).collect();
-    if let Some(d) = compute_subtable_diff(&old_svc_json, &new_svc_json, "services", "serviceName") {
-        diff.insert("services".to_string(), d);
-    }
-
-    let changes = JsonValue::Object(diff);
-    let _ = FluidChangelogEntry::insert(
-        &conn, &fluid_report_id, "tab2", &session.user_id,
-        data.note.as_deref(), &changes,
-    );
-
-    Ok(SaveFluidTab2Response {
-        inventory,
-        services,
-    })
 }
 
 #[tauri::command]
@@ -314,42 +336,53 @@ pub async fn save_fluid_tab3(
     // ── Snapshot old state ──
     let old_tanks = FluidTank::list_by_fluid_report(&conn, &fluid_report_id).unwrap_or_default();
 
-    // ── Apply changes ──
-    let tanks = FluidTank::save_bulk(&conn, &fluid_report_id, &data.tanks)
-        .map_err(|e| e.to_string())?;
+    // ── Apply changes inside transaction ──
+    conn.execute_batch("BEGIN IMMEDIATE").map_err(|e| e.to_string())?;
 
-    // Activity is now saved in tab1, just read it here
-    let activity = FluidActivity::get_by_fluid_report(&conn, &fluid_report_id)
-        .map_err(|e| e.to_string())?;
+    let result = (|| -> Result<(Vec<FluidTank>, Option<FluidActivity>, Option<FluidVolStats>), String> {
+        let tanks = FluidTank::save_bulk(&conn, &fluid_report_id, &data.tanks)
+            .map_err(|e| e.to_string())?;
 
-    let vol_stats = if let Some(ref vol_data) = data.vol_stats {
-        FluidVolStats::upsert(&conn, &fluid_report_id, vol_data)
-            .map_err(|e| e.to_string())?
-    } else {
-        FluidVolStats::get_by_fluid_report(&conn, &fluid_report_id)
-            .map_err(|e| e.to_string())?
-    };
+        let activity = FluidActivity::get_by_fluid_report(&conn, &fluid_report_id)
+            .map_err(|e| e.to_string())?;
 
-    // ── Compute diff ──
-    let mut diff = serde_json::Map::new();
+        let vol_stats = if let Some(ref vol_data) = data.vol_stats {
+            FluidVolStats::upsert(&conn, &fluid_report_id, vol_data)
+                .map_err(|e| e.to_string())?
+        } else {
+            FluidVolStats::get_by_fluid_report(&conn, &fluid_report_id)
+                .map_err(|e| e.to_string())?
+        };
 
-    let old_tanks_json: Vec<JsonValue> = old_tanks.iter().map(|t| serde_json::to_value(t).unwrap_or(JsonValue::Null)).collect();
-    let new_tanks_json: Vec<JsonValue> = data.tanks.iter().map(|t| serde_json::to_value(t).unwrap_or(JsonValue::Null)).collect();
-    if let Some(d) = compute_subtable_diff(&old_tanks_json, &new_tanks_json, "tanks", "name") {
-        diff.insert("tanks".to_string(), d);
+        Ok((tanks, activity, vol_stats))
+    })();
+
+    match result {
+        Ok((tanks, activity, vol_stats)) => {
+            conn.execute_batch("COMMIT").map_err(|e| e.to_string())?;
+
+            // ── Compute diff ──
+            let mut diff = serde_json::Map::new();
+
+            let old_tanks_json: Vec<JsonValue> = old_tanks.iter().map(|t| serde_json::to_value(t).unwrap_or(JsonValue::Null)).collect();
+            let new_tanks_json: Vec<JsonValue> = data.tanks.iter().map(|t| serde_json::to_value(t).unwrap_or(JsonValue::Null)).collect();
+            if let Some(d) = compute_subtable_diff(&old_tanks_json, &new_tanks_json, "tanks", "name") {
+                diff.insert("tanks".to_string(), d);
+            }
+
+            let changes = JsonValue::Object(diff);
+            let _ = FluidChangelogEntry::insert(
+                &conn, &fluid_report_id, "tab3", &session.user_id,
+                data.note.as_deref(), &changes,
+            );
+
+            Ok(SaveFluidTab3Response { tanks, activity, vol_stats })
+        }
+        Err(e) => {
+            let _ = conn.execute_batch("ROLLBACK");
+            Err(e)
+        }
     }
-
-    let changes = JsonValue::Object(diff);
-    let _ = FluidChangelogEntry::insert(
-        &conn, &fluid_report_id, "tab3", &session.user_id,
-        data.note.as_deref(), &changes,
-    );
-
-    Ok(SaveFluidTab3Response {
-        tanks,
-        activity,
-        vol_stats,
-    })
 }
 
 // ============================================================================

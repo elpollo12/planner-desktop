@@ -12,6 +12,19 @@ export const APP_MODULES = [
 
 export type AppModule = typeof APP_MODULES[number];
 
+/** i18n keys for module labels — resolve with t(MODULE_LABEL_KEYS[mod]) */
+export const MODULE_LABEL_KEYS: Record<AppModule, string> = {
+  dashboard: 'modules.dashboard',
+  reports: 'modules.reports',
+  approvals: 'modules.approvals',
+  logistics: 'modules.logistics',
+  incidents: 'modules.incidents',
+  admin: 'modules.admin',
+  'cloud-logs': 'modules.cloudLogs',
+  fluids: 'modules.fluids',
+};
+
+/** @deprecated Use MODULE_LABEL_KEYS with t() instead */
 export const MODULE_LABELS: Record<AppModule, string> = {
   dashboard: 'Dashboard',
   reports: 'Reportes',

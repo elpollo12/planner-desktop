@@ -58,6 +58,16 @@
     "goBack": "Volver Atrás",
     "helpText": "Los permisos de acceso son configurados por el administrador desde el panel de usuarios."
   },
+  "modules": {
+    "dashboard": "Dashboard",
+    "reports": "Reportes",
+    "approvals": "Aprobaciones",
+    "logistics": "Logística",
+    "incidents": "Incidencias",
+    "admin": "Administración",
+    "cloudLogs": "Registros Diarios",
+    "fluids": "Reporte API"
+  },
   "actions": {
     "save": "Guardar",
     "cancel": "Cancelar",
@@ -149,7 +159,8 @@
     "unauthorized": "No tienes autorización para realizar esta acción.",
     "network": "Error de conexión. Verifica tu conexión a internet.",
     "noSession": "No hay sesión activa.",
-    "loadFailed": "Error al cargar los datos."
+    "loadFailed": "Error al cargar los datos.",
+    "notAuthenticated": "Usuario no autenticado"
   },
   "toast": {
     "savedSuccess": "Guardado exitosamente.",
@@ -272,6 +283,8 @@
       "selectSection": "Selecciona una Sección",
       "selectSectionDesc": "Elige el tipo de reporte que deseas completar",
       "loadError": "⚠ Error al cargar",
+      "reportLoadError": "Error al cargar el reporte",
+      "sectionsFailedWarning": "{{count}} sección(es) no se cargaron correctamente. Esas secciones no se guardarán para proteger tus datos.",
       "noData": "Sin datos",
       "selectTabPrompt": "Selecciona una pestaña para ingresar datos",
       "selectTabDesc": "Elige una de las secciones de arriba para comenzar a llenar la información del reporte.",
@@ -785,6 +798,8 @@
       "saved": "Configuración de la empresa guardada exitosamente",
       "saveError": "Error al guardar la configuración",
       "fileSizeExceeded": "El archivo excede el límite de 2MB",
+      "fileTooLarge": "El archivo supera el límite de 2 MB.",
+      "processingImage": "Procesando imagen…",
       "logoUploaded": "Logo subido exitosamente",
       "logoUploadError": "Error al subir el logo",
       "logoDeleted": "Logo eliminado",
@@ -960,15 +975,20 @@
       "deleteWarning": "Esta acción no se puede deshacer.",
       "confirmDeletion": "Confirmar Eliminación",
       "created": "Taladro creado exitosamente",
+      "createError": "Error al crear el taladro",
       "updated": "Taladro actualizado exitosamente",
+      "updateError": "Error al actualizar el taladro",
       "deleted": "Taladro eliminado",
+      "deleteError": "Error al eliminar el taladro",
       "loadError": "Error al cargar el taladro",
       "loadRigsError": "Error al cargar los taladros",
       "actions": "Acciones",
       "loading": "Cargando taladros...",
       "noResults": "No se encontraron taladros con los filtros aplicados",
       "noRigs": "No hay taladros registrados",
-      "createFirst": "Crear Primer Taladro"
+      "createFirst": "Crear Primer Taladro",
+      "delete": "Eliminar",
+      "cancel": "Cancelar"
     },
     "companies": {
       "title": "Gestión de Empresas",
