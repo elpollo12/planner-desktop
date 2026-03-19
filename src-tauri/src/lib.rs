@@ -212,6 +212,7 @@ pub fn run() {
             commands::admin_stats::get_admin_activity_stats,
             commands::admin_stats::get_admin_logistics_stats,
             commands::admin_stats::get_admin_incidents_stats,
+            commands::admin_stats::get_admin_fluid_stats,
             commands::module_permissions::get_my_module_permissions,
             commands::module_permissions::get_user_module_permissions,
             commands::module_permissions::save_user_module_permissions,

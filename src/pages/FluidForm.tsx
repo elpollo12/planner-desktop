@@ -826,26 +826,9 @@ export default function FluidForm() {
       title={isEditMode ? t('fluids.form.editTitle') : t('fluids.form.newTitle')}
       subtitle={reportHeader.wellNumber ? `${reportHeader.wellNumber} — ${reportHeader.rigNumber || ''}` : ''}
       headerActions={
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => navigate('/fluids')} icon={<ChevronLeft size={16} />}>
-            {t('fluids.form.back')}
-          </Button>
-          {activeTab === 'tab1' && (
-            <Button variant="primary" onClick={() => openSaveModal(t('fluids.form.tabs.tab1'), handleSaveTab1)} loading={saving} icon={<Save size={16} />}>
-              {t('fluids.form.saveTab1')}
-            </Button>
-          )}
-          {activeTab === 'tab2' && (
-            <Button variant="primary" onClick={() => openSaveModal(t('fluids.form.tabs.tab2'), handleSaveTab2)} loading={saving} icon={<Save size={16} />}>
-              {t('fluids.form.saveTab2')}
-            </Button>
-          )}
-          {activeTab === 'tab3' && (
-            <Button variant="primary" onClick={() => openSaveModal(t('fluids.form.tabs.tab3'), handleSaveTab3)} loading={saving} icon={<Save size={16} />}>
-              {t('fluids.form.saveTab3')}
-            </Button>
-          )}
-        </div>
+        <Button variant="outline" onClick={() => navigate('/fluids')} icon={<ChevronLeft size={16} />}>
+          {t('fluids.form.back')}
+        </Button>
       }
     >
       <div className="max-w-7xl mx-auto space-y-6">
@@ -909,7 +892,7 @@ export default function FluidForm() {
 
         {/* Tab Navigation */}
         <Card>
-          <div className="border-b border-gray-200 dark:border-gray-700">
+          <div className="border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
             <nav className="flex">
               {TABS.map((tab) => (
                 <button
@@ -926,6 +909,23 @@ export default function FluidForm() {
                 </button>
               ))}
             </nav>
+            <div className="flex gap-2 pr-4">
+              {activeTab === 'tab1' && (
+                <Button variant="primary" size="sm" onClick={() => openSaveModal(t('fluids.form.tabs.tab1'), handleSaveTab1)} loading={saving} icon={<Save size={16} />}>
+                  {t('fluids.form.saveTab1')}
+                </Button>
+              )}
+              {activeTab === 'tab2' && (
+                <Button variant="primary" size="sm" onClick={() => openSaveModal(t('fluids.form.tabs.tab2'), handleSaveTab2)} loading={saving} icon={<Save size={16} />}>
+                  {t('fluids.form.saveTab2')}
+                </Button>
+              )}
+              {activeTab === 'tab3' && (
+                <Button variant="primary" size="sm" onClick={() => openSaveModal(t('fluids.form.tabs.tab3'), handleSaveTab3)} loading={saving} icon={<Save size={16} />}>
+                  {t('fluids.form.saveTab3')}
+                </Button>
+              )}
+            </div>
           </div>
 
           <div className="p-6">
@@ -1077,12 +1077,6 @@ export default function FluidForm() {
                   </div>
                 </section>
 
-                {/* Save button bottom */}
-                <div className="flex justify-end pt-4 border-t border-gray-200 dark:border-gray-700">
-                  <Button variant="primary" onClick={() => openSaveModal(t('fluids.form.tabs.tab1'), handleSaveTab1)} loading={saving} icon={<Save size={16} />}>
-                    {t('fluids.form.saveTab1')}
-                  </Button>
-                </div>
               </div>
             )}
 
@@ -1120,12 +1114,6 @@ export default function FluidForm() {
                   />
                 </section>
 
-                {/* Save button bottom */}
-                <div className="flex justify-end pt-4 border-t border-gray-200 dark:border-gray-700">
-                  <Button variant="primary" onClick={() => openSaveModal(t('fluids.form.tabs.tab2'), handleSaveTab2)} loading={saving} icon={<Save size={16} />}>
-                    {t('fluids.form.saveTab2')}
-                  </Button>
-                </div>
               </div>
             )}
 
@@ -1162,12 +1150,6 @@ export default function FluidForm() {
                   />
                 </section>
 
-                {/* Save button bottom */}
-                <div className="flex justify-end pt-4 border-t border-gray-200 dark:border-gray-700">
-                  <Button variant="primary" onClick={() => openSaveModal(t('fluids.form.tabs.tab3'), handleSaveTab3)} loading={saving} icon={<Save size={16} />}>
-                    {t('fluids.form.saveTab3')}
-                  </Button>
-                </div>
               </div>
             )}
           </div>

@@ -353,9 +353,9 @@ export default function ReportView() {
                 <tbody className="bg-gray-50 dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                   {timeDistributions.map((td, idx) => (
                     <tr key={idx}>
-                      <TD align="left">{td.operationCode?.code || td.operationCodeId}</TD>
+                      <TD align="left">{td.operationCode?.name || td.operationCode?.code || td.operationCodeId}</TD>
                       <TD>{td.hoursShift1}</TD><TD>{td.hoursShift2}</TD><TD>{td.hoursShift3}</TD>
-                      <TD className="font-medium">{td.hoursShift1 + td.hoursShift2 + td.hoursShift3}h</TD>
+                      <TD className="font-medium">{Number((td.hoursShift1 + td.hoursShift2 + td.hoursShift3).toFixed(1))}h</TD>
                     </tr>
                   ))}
                 </tbody>

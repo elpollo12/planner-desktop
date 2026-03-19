@@ -15,16 +15,17 @@ export const Breadcrumbs = () => {
 
   // Map de rutas especiales para mostrar nombres legibles
   const routeNames: Record<string, string> = {
-    'dashboard': 'Dashboard',
+    'dashboard': t('breadcrumbs.dashboard'),
     'reports': t('breadcrumbs.reports'),
-    'admin': 'Admin',
-    'test': 'Test',
+    'admin': t('breadcrumbs.admin'),
+    'test': t('breadcrumbs.test'),
     'new': t('breadcrumbs.new'),
     'edit': t('breadcrumbs.edit'),
     'view': t('breadcrumbs.view'),
     'logistics': t('breadcrumbs.logistics'),
     'approvals': t('breadcrumbs.approvals'),
     'fluids': t('nav.fluids'),
+    'incidents': t('breadcrumbs.incidents'),
   }
 
   // Map of ?from values to their display info
@@ -160,7 +161,7 @@ export const Breadcrumbs = () => {
         to="/"
         className="text-primary-600 hover:text-primary-700 font-medium hover:underline transition-colors"
       >
-        Home
+        {t('breadcrumbs.home')}
       </Link>
       {crumbs.length > 0 && <span className="mx-2 text-gray-400">/</span>}
       {crumbs.map((crumb, index) => (

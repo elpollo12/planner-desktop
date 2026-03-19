@@ -51,7 +51,7 @@ export default function FluidList() {
   const [loading, setLoading] = useState(true);
 
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(5);
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
 
@@ -297,7 +297,7 @@ export default function FluidList() {
                 totalItems={totalItems}
                 pageSize={pageSize}
                 itemLabel={t('fluids.list.paginationLabel')}
-                pageSizeOptions={[5, 10, 25, 50]}
+                pageSizeOptions={[5, 10, 50, 100]}
                 onPageChange={setCurrentPage}
                 onPageSizeChange={handlePageSizeChange}
               />

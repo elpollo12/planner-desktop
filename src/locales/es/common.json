@@ -551,6 +551,11 @@
         "selectRigWarning": "Selecciona un taladro en el encabezado del reporte para poder asignar cuadrillas.",
         "noteLabel": "Nota:",
         "noteText": "Selecciona los miembros de la cuadrilla registrados en el taladro para cada turno. Las horas trabajadas son opcionales pero recomendadas.",
+        "otherPosition": "Otra posición...",
+        "newPosition": "Nueva Posición",
+        "newPositionDesc": "Ingresa el nombre de la nueva posición. Se agregará al catálogo y estará disponible para futuros reportes.",
+        "positionName": "Nombre de la posición",
+        "positionPlaceholder": "Ej: Geólogo, Químico, Electricista",
         "positions": {
           "driller": "Perforador",
           "derrickman": "Encuellador",
@@ -705,7 +710,8 @@
       "supervisors": "Supervisores",
       "operators": "Operadores",
       "logisticsMetrics": "Métricas de Logística",
-      "incidentsMetrics": "Métricas de Incidencias"
+      "incidentsMetrics": "Métricas de Incidencias",
+      "fluidMetrics": "Métricas de Reporte API"
     },
     "activityChart": {
       "noActivity": "No hay actividad de reportes en los últimos {{days}} días",
@@ -738,6 +744,15 @@
       "topRigsWithIncidents": "Top Taladros con Incidencias",
       "incidentsTrend": "Tendencia de Incidencias",
       "incidents": "{{count}} incidencias"
+    },
+    "fluidMetrics": {
+      "noData": "No hay datos de Reportes API disponibles",
+      "totalReports": "Reportes API",
+      "byFluidType": "Por Tipo de Fluido",
+      "byWellPhase": "Por Fase del Pozo",
+      "topRigs": "Top Taladros con Reportes API",
+      "dailyTrend": "Tendencia de Reportes API",
+      "reports": "{{count}} reportes"
     },
     "chartHelpers": {
       "requestType": {
@@ -2103,12 +2118,17 @@
     }
   },
   "breadcrumbs": {
+    "home": "Inicio",
+    "dashboard": "Panel",
     "reports": "Reportes",
+    "admin": "Administración",
+    "test": "Pruebas",
     "new": "Nuevo",
     "edit": "Editar",
     "view": "Ver",
     "logistics": "Logística",
     "approvals": "Aprobaciones",
+    "incidents": "Incidencias",
     "reportNumber": "Reporte #{{number}}",
     "report": "Reporte",
     "loading": "Cargando..."

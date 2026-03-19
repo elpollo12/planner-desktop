@@ -71,3 +71,14 @@ pub struct IncidentsAdminStats {
     pub top_rigs: Vec<RigCount>,
     pub total_incidents: i64,
 }
+
+/// Response for fluid/API report admin stats
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FluidAdminStats {
+    pub total_reports: i64,
+    pub by_fluid_type: Vec<CategoryCount>,
+    pub by_well_phase: Vec<CategoryCount>,
+    pub daily_reports: Vec<DailyCount>,
+    pub top_rigs: Vec<RigCount>,
+}

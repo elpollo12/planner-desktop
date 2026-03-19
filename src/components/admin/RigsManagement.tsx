@@ -348,7 +348,7 @@ export default function RigsManagement() {
             columns={columns}
             data={filteredRigs}
             pagination
-            pageSize={10}
+            pageSize={5}
             pageSizeOptions={[5, 10, 20, 50]}
             hoverable
             striped

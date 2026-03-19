@@ -5,21 +5,11 @@ import { Select, Button } from '../ui';
 import { Plus, Trash2 } from 'lucide-react';
 import type { CompleteReportData } from '../../schemas';
 import type { RigPersonnel } from '../../types/rig';
-import { rigPersonnelApi, rigsApi } from '../../lib/api';
+import { rigPersonnelApi, rigsApi, crewPositionsApi } from '../../lib/api';
 import { useAuthStore } from '../../store/authStore';
-
-const CREW_POSITION_KEYS = [
-  'driller',
-  'derrickman',
-  'floorman',
-  'roustabout',
-  'mechanic',
-  'welder',
-  'forkliftOperator',
-  'laborer',
-  'supervisor',
-  'other',
-] as const;
+import { useModal } from '../../store/modalStore';
+import { Input } from '../ui';
+import type { CrewPosition } from '../../types/crewPosition';
 
 type ShiftType = 'morning' | 'afternoon' | 'night';
 
@@ -27,9 +17,13 @@ type ShiftType = 'morning' | 'afternoon' | 'night';
 function ShiftMembers({
   shiftIndex,
   personnel,
+  positions,
+  onCreatePosition,
 }: {
   shiftIndex: number;
   personnel: RigPersonnel[];
+  positions: CrewPosition[];
+  onCreatePosition: (memberIndex: number) => void;
 }) {
   const { t } = useTranslation();
   const { register, control, setValue, watch } = useFormContext<CompleteReportData>();
@@ -151,7 +145,18 @@ function ShiftMembers({
                           {...register(
                             `crew.shifts.${shiftIndex}.members.${index}.position` as any
                           )}
-                          options={CREW_POSITION_KEYS.map((key) => ({ value: t(`reports.forms.crew.positions.${key}`), label: t(`reports.forms.crew.positions.${key}`) }))}
+                          onChange={(e) => {
+                            if (e.target.value === '__other__') {
+                              e.target.value = currentMembers[index]?.position || '';
+                              onCreatePosition(index);
+                            } else {
+                              setValue(`crew.shifts.${shiftIndex}.members.${index}.position` as any, e.target.value, { shouldDirty: true });
+                            }
+                          }}
+                          options={[
+                            ...positions.map((pos) => ({ value: pos.name, label: pos.name })),
+                            { value: '__other__', label: `+ ${t('reports.forms.crew.otherPosition')}` },
+                          ]}
                           placeholder={t('reports.forms.common.select')}
                         />
                       </td>
@@ -190,15 +195,67 @@ function ShiftMembers({
   );
 }
 
+function CreatePositionModal({
+  onSave,
+  onCancel,
+}: {
+  onSave: (name: string) => void;
+  onCancel: () => void;
+}) {
+  const { t } = useTranslation();
+  const [name, setName] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const handleSubmit = () => {
+    if (!name.trim()) return;
+    setSaving(true);
+    onSave(name.trim());
+  };
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-gray-600 dark:text-gray-400">
+        {t('reports.forms.crew.newPositionDesc')}
+      </p>
+      <Input
+        label={t('reports.forms.crew.positionName')}
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        placeholder={t('reports.forms.crew.positionPlaceholder')}
+        autoFocus
+        onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
+      />
+      <div className="flex justify-end gap-2 pt-2">
+        <Button type="button" variant="outline" onClick={onCancel}>
+          {t('actions.cancel')}
+        </Button>
+        <Button type="button" variant="primary" onClick={handleSubmit} disabled={!name.trim() || saving} loading={saving}>
+          {t('actions.save')}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export function CrewSection() {
   const { t } = useTranslation();
   const [activeShift, setActiveShift] = useState<ShiftType>('morning');
-  const { register, watch } = useFormContext<CompleteReportData>();
+  const { register, watch, setValue: setFormValue } = useFormContext<CompleteReportData>();
   const { sessionToken } = useAuthStore();
+  const { openModal, closeModal } = useModal();
 
   const rigName = watch('header.rigNumber');
   const [personnel, setPersonnel] = useState<RigPersonnel[]>([]);
+  const [positions, setPositions] = useState<CrewPosition[]>([]);
   const [loading, setLoading] = useState(false);
+
+  // Load crew positions (once)
+  useEffect(() => {
+    if (!sessionToken) return;
+    crewPositionsApi.list(sessionToken, true)
+      .then(setPositions)
+      .catch(console.error);
+  }, [sessionToken]);
 
   // Load rig personnel when rig changes
   useEffect(() => {
@@ -224,6 +281,32 @@ export function CrewSection() {
 
   const shiftIndex = activeShift === 'morning' ? 0 : activeShift === 'afternoon' ? 1 : 2;
   const shifts: ShiftType[] = ['morning', 'afternoon', 'night'];
+
+  const handleCreatePosition = (memberIndex: number) => {
+    openModal(
+      <CreatePositionModal
+        onSave={async (name) => {
+          if (!sessionToken) return;
+          try {
+            const maxOrder = positions.reduce((max, p) => Math.max(max, p.sortOrder), 0);
+            await crewPositionsApi.create(sessionToken, { name, sortOrder: maxOrder + 1 });
+            // Reload positions, then set the new value after React re-renders
+            const updated = await crewPositionsApi.list(sessionToken, true);
+            setPositions(updated);
+            closeModal();
+            // Defer setValue to next tick so the select re-renders with new options first
+            setTimeout(() => {
+              setFormValue(`crew.shifts.${shiftIndex}.members.${memberIndex}.position` as any, name, { shouldDirty: true });
+            }, 50);
+          } catch (error) {
+            console.error('Error creating position:', error);
+          }
+        }}
+        onCancel={closeModal}
+      />,
+      { title: t('reports.forms.crew.newPosition'), size: 'sm', showCloseButton: true },
+    );
+  };
 
   return (
     <div className="p-6">
@@ -302,6 +385,8 @@ export function CrewSection() {
           key={`shift-${shiftIndex}`}
           shiftIndex={shiftIndex}
           personnel={personnel}
+          positions={positions}
+          onCreatePosition={handleCreatePosition}
         />
       )}
 

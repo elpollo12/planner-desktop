@@ -47,6 +47,14 @@ export interface IncidentsAdminStats {
   dailyIncidents: Array<{ day: string; count: number }>;
 }
 
+export interface FluidAdminStats {
+  totalReports: number;
+  byFluidType: Array<{ category: string; count: number }>;
+  byWellPhase: Array<{ category: string; count: number }>;
+  dailyReports: Array<{ day: string; count: number }>;
+  topRigs: Array<{ rigName: string; count: number }>;
+}
+
 // ============================================================================
 // Admin Statistics Commands
 // ============================================================================
@@ -60,6 +68,9 @@ export const adminStatsApi = {
 
   getIncidentsStats: (sessionToken: string, days?: number) =>
     invoke<IncidentsAdminStats>('get_admin_incidents_stats', { sessionToken, days: days ?? null }),
+
+  getFluidStats: (sessionToken: string, days?: number) =>
+    invoke<FluidAdminStats>('get_admin_fluid_stats', { sessionToken, days: days ?? null }),
 };
 
 // ============================================================================

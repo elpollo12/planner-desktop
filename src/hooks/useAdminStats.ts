@@ -10,6 +10,7 @@ export const adminStatsKeys = {
   activity: (days: number) => ['admin-stats', 'activity', days] as const,
   logistics: (days: number) => ['admin-stats', 'logistics', days] as const,
   incidents: (days: number) => ['admin-stats', 'incidents', days] as const,
+  fluids: (days: number) => ['admin-stats', 'fluids', days] as const,
 };
 
 // ============================================================================
@@ -46,6 +47,17 @@ export function useIncidentsStats(days = 30) {
   return useQuery({
     queryKey: adminStatsKeys.incidents(days),
     queryFn: () => adminStatsApi.getIncidentsStats(sessionToken!, days),
+    enabled: !!sessionToken,
+    staleTime: STALE_TIME,
+    refetchInterval: REFETCH_INTERVAL,
+  });
+}
+
+export function useFluidStats(days = 30) {
+  const { sessionToken } = useAuthStore();
+  return useQuery({
+    queryKey: adminStatsKeys.fluids(days),
+    queryFn: () => adminStatsApi.getFluidStats(sessionToken!, days),
     enabled: !!sessionToken,
     staleTime: STALE_TIME,
     refetchInterval: REFETCH_INTERVAL,

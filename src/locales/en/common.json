@@ -551,6 +551,11 @@
         "selectRigWarning": "Select a rig in the report header to assign crews.",
         "noteLabel": "Note:",
         "noteText": "Select crew members registered in the rig for each shift. Working hours are optional but recommended.",
+        "otherPosition": "Other position...",
+        "newPosition": "New Position",
+        "newPositionDesc": "Enter the name of the new position. It will be added to the catalog and available for future reports.",
+        "positionName": "Position name",
+        "positionPlaceholder": "E.g.: Geologist, Chemist, Electrician",
         "positions": {
           "driller": "Driller",
           "derrickman": "Derrickman",
@@ -705,7 +710,8 @@
       "supervisors": "Supervisors",
       "operators": "Operators",
       "logisticsMetrics": "Logistics Metrics",
-      "incidentsMetrics": "Incidents Metrics"
+      "incidentsMetrics": "Incidents Metrics",
+      "fluidMetrics": "API Report Metrics"
     },
     "activityChart": {
       "noActivity": "No report activity in the last {{days}} days",
@@ -738,6 +744,15 @@
       "topRigsWithIncidents": "Top Rigs with Incidents",
       "incidentsTrend": "Incidents Trend",
       "incidents": "{{count}} incidents"
+    },
+    "fluidMetrics": {
+      "noData": "No API Report data available",
+      "totalReports": "API Reports",
+      "byFluidType": "By Fluid Type",
+      "byWellPhase": "By Well Phase",
+      "topRigs": "Top Rigs with API Reports",
+      "dailyTrend": "API Reports Trend",
+      "reports": "{{count}} reports"
     },
     "chartHelpers": {
       "requestType": {
@@ -2102,12 +2117,17 @@
     }
   },
   "breadcrumbs": {
+    "home": "Home",
+    "dashboard": "Dashboard",
     "reports": "Reports",
+    "admin": "Admin",
+    "test": "Test",
     "new": "New",
     "edit": "Edit",
     "view": "View",
     "logistics": "Logistics",
     "approvals": "Approvals",
+    "incidents": "Incidents",
     "reportNumber": "Report #{{number}}",
     "report": "Report",
     "loading": "Loading..."

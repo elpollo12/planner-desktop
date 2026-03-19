@@ -304,3 +304,133 @@ pub async fn get_admin_incidents_stats(
         total_incidents,
     })
 }
+
+// ============================================================================
+// GET FLUID / API REPORT STATS
+// ============================================================================
+
+#[tauri::command]
+pub async fn get_admin_fluid_stats(
+    session_token: String,
+    days: Option<i64>,
+    state: State<'_, AppState>,
+) -> Result<FluidAdminStats, String> {
+    check_permission(&session_token, UserRole::Admin, &state)
+        .map_err(|e| e.to_string())?;
+
+    let conn = state
+        .db
+        .lock()
+        .map_err(|e| format!("Failed to lock database: {}", e))?;
+
+    let period_days = days.unwrap_or(30).clamp(7, 90);
+    let modifier = format!("-{} days", period_days);
+
+    // 1) Total active reports
+    let total_reports: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM fluid_reports WHERE is_deleted = 0",
+            [],
+            |row| row.get(0),
+        )
+        .map_err(|e| e.to_string())?;
+
+    // 2) By fluid type
+    let mut stmt = conn
+        .prepare(
+            "SELECT COALESCE(fluid_type, 'N/A') as category, COUNT(*) as count
+             FROM fluid_reports
+             WHERE is_deleted = 0
+             GROUP BY fluid_type
+             ORDER BY count DESC",
+        )
+        .map_err(|e| e.to_string())?;
+
+    let by_fluid_type: Vec<CategoryCount> = stmt
+        .query_map([], |row| {
+            Ok(CategoryCount {
+                category: row.get(0)?,
+                count: row.get(1)?,
+            })
+        })
+        .map_err(|e| e.to_string())?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())?;
+
+    // 3) By well phase
+    let mut stmt = conn
+        .prepare(
+            "SELECT COALESCE(well_phase, 'N/A') as category, COUNT(*) as count
+             FROM fluid_reports
+             WHERE is_deleted = 0
+             GROUP BY well_phase
+             ORDER BY count DESC",
+        )
+        .map_err(|e| e.to_string())?;
+
+    let by_well_phase: Vec<CategoryCount> = stmt
+        .query_map([], |row| {
+            Ok(CategoryCount {
+                category: row.get(0)?,
+                count: row.get(1)?,
+            })
+        })
+        .map_err(|e| e.to_string())?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())?;
+
+    // 4) Daily reports in period
+    let mut stmt = conn
+        .prepare(
+            "SELECT DATE(created_at) as day, COUNT(*) as count
+             FROM fluid_reports
+             WHERE created_at >= date('now', ?1)
+               AND is_deleted = 0
+             GROUP BY DATE(created_at)
+             ORDER BY day ASC",
+        )
+        .map_err(|e| e.to_string())?;
+
+    let daily_reports: Vec<DailyCount> = stmt
+        .query_map(params![modifier], |row| {
+            Ok(DailyCount {
+                day: row.get(0)?,
+                count: row.get(1)?,
+            })
+        })
+        .map_err(|e| e.to_string())?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())?;
+
+    // 5) Top 5 rigs
+    let mut stmt = conn
+        .prepare(
+            "SELECT COALESCE(r.name, fr.rig_number, 'N/A') as rig_name, COUNT(fr.id) as count
+             FROM fluid_reports fr
+             LEFT JOIN rigs r ON fr.rig_id = r.id
+             WHERE fr.is_deleted = 0
+             GROUP BY COALESCE(fr.rig_id, fr.rig_number)
+             ORDER BY count DESC
+             LIMIT 5",
+        )
+        .map_err(|e| e.to_string())?;
+
+    let top_rigs: Vec<RigCount> = stmt
+        .query_map([], |row| {
+            Ok(RigCount {
+                rig_name: row.get(0)?,
+                count: row.get(1)?,
+            })
+        })
+        .map_err(|e| e.to_string())?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())?;
+
+    Ok(FluidAdminStats {
+        total_reports,
+        by_fluid_type,
+        by_well_phase,
+        daily_reports,
+        top_rigs,
+    })
+}

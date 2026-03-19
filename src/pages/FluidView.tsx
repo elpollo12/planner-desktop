@@ -21,7 +21,9 @@ import type { FluidReportFull } from '../types/fluid';
 
 const fmtNum = (v: number | string | null | undefined): string => {
   if (v === null || v === undefined || v === '') return '-';
-  return String(v);
+  const n = Number(v);
+  if (isNaN(n)) return String(v);
+  return parseFloat(n.toFixed(4)).toString();
 };
 
 const fmtStr = (v: string | null | undefined): string => v || '-';
@@ -141,9 +143,6 @@ export default function FluidView() {
             className="bg-red-600! hover:bg-red-400! border-2 hover:border-white!">PDF</Button>
           <Button variant="primary" size="sm" onClick={() => handleExport('excel')} icon={<FileSpreadsheet size={16} />}
             className="bg-green-600! hover:bg-green-400! border-2 hover:border-white!">Excel</Button>
-          <Button variant="primary" onClick={() => navigate(`/fluids/edit/${id}`)} icon={<Pencil size={16} />}>
-            {t('fluids.view.edit')}
-          </Button>
         </div>
       }
     >
@@ -167,7 +166,7 @@ export default function FluidView() {
 
         {/* Tab Navigation */}
         <Card>
-          <div className="border-b border-gray-200 dark:border-gray-700">
+          <div className="border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
             <nav className="flex">
               {TABS.map((tab) => (
                 <button
@@ -184,6 +183,11 @@ export default function FluidView() {
                 </button>
               ))}
             </nav>
+            <div className="flex gap-2 pr-4">
+              <Button variant="primary" size="sm" onClick={() => navigate(`/fluids/edit/${id}`)} icon={<Pencil size={16} />}>
+                {t('fluids.view.edit')}
+              </Button>
+            </div>
           </div>
 
           <div className="p-6">

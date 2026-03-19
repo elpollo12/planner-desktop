@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card } from '../ui';
-import { FileText, Users, Clock, CheckCircle, XCircle, TrendingUp, Package, AlertTriangle } from 'lucide-react';
+import { FileText, Users, Clock, CheckCircle, XCircle, TrendingUp, Package, AlertTriangle, Droplets } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { reportsApi, usersApi } from '../../lib/api';
-import { ActivityChart, LogisticsMetrics, IncidentsMetrics } from './stats';
+import { ActivityChart, LogisticsMetrics, IncidentsMetrics, FluidMetrics } from './stats';
 
 export function Statistics() {
   const { t } = useTranslation();
@@ -257,7 +257,7 @@ export function Statistics() {
         </div>
       </Card>
 
-      {/* Incidents Metrics — NEW */}
+      {/* Incidents Metrics */}
       <Card>
         <div className="p-6">
           <div className="flex items-center gap-2 mb-4">
@@ -265,6 +265,17 @@ export function Statistics() {
             <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{t('admin.stats.incidentsMetrics')}</h3>
           </div>
           <IncidentsMetrics />
+        </div>
+      </Card>
+
+      {/* Fluid / API Report Metrics */}
+      <Card>
+        <div className="p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Droplets className="text-blue-500" size={22} />
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{t('admin.stats.fluidMetrics')}</h3>
+          </div>
+          <FluidMetrics />
         </div>
       </Card>
     </div>
