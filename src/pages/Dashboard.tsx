@@ -102,8 +102,11 @@ export default function Dashboard() {
     if (canAccess.logistics) {
       actions.push({ icon: '🚚', title: t('dashboard.logistics'), description: t('dashboard.logisticsDesc'), href: '/logistics' });
     }
+    if (canAccess.fluids) {
+      actions.push({ icon: '🧪', title: t('dashboard.fluids'), description: t('dashboard.fluidsDesc'), href: '/fluids' });
+    }
     return actions;
-  }, [canAccess.reports, canAccess.incidents, canAccess.approvals, canAccess.admin, canAccess.logistics, stats.submitted]);
+  }, [canAccess.reports, canAccess.incidents, canAccess.approvals, canAccess.admin, canAccess.logistics, canAccess.fluids, stats.submitted]);
 
   if (!user) return null;
 

@@ -203,6 +203,8 @@
     "usersDesc": "Gestionar usuarios del sistema",
     "logistics": "Logística",
     "logisticsDesc": "Gestión de recursos y materiales",
+    "fluids": "Reporte API",
+    "fluidsDesc": "Reportes de fluidos de perforación",
     "noModules": "Sin acceso a módulos",
     "noModulesDesc": "Actualmente no tienes permisos para acceder a ningún módulo. Contacta con un administrador para que te asigne los permisos necesarios."
   },
@@ -2216,9 +2218,9 @@
       "tab1Saved": "Tab 1 guardado correctamente",
       "tab2Saved": "Tab 2 guardado correctamente",
       "tab3Saved": "Tab 3 guardado correctamente",
-      "saveTab1": "Guardar Tab 1",
-      "saveTab2": "Guardar Tab 2",
-      "saveTab3": "Guardar Tab 3",
+      "saveTab1": "Guardar Reporte API",
+      "saveTab2": "Guardar Inventario",
+      "saveTab3": "Guardar Volumetría",
       "back": "Volver",
       "tabs": {
         "tab1": "Reporte API",

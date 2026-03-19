@@ -99,8 +99,8 @@ export function UpdateModalContent() {
 
         <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
           {canPostpone && (
-            <Button variant="secondary" onClick={handlePostpone}>
-              <Clock size={16} /> Recordar más tarde
+            <Button variant="secondary" onClick={handlePostpone} icon={<Clock size={16} />}>
+              Recordar más tarde
             </Button>
           )}
           <Button variant="primary" onClick={handleDownload} icon={<Download size={16} />}>
@@ -138,8 +138,7 @@ export function UpdateModalContent() {
         <p className="text-gray-600 dark:text-gray-400">
           Actualización descargada correctamente.
         </p>
-        <Button variant="primary" onClick={() => prepareInstall()}
-          icon={<RefreshCw size={16} />}>
+        <Button variant="primary" onClick={() => prepareInstall()} icon={<RefreshCw size={16} />}>
           Preparar instalación
         </Button>
       </div>

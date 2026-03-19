@@ -132,6 +132,64 @@ fn rows_differ(old: &JsonValue, new: &JsonValue) -> bool {
     }
 }
 
+/// Compare two rows and return a list of field-level diffs: ["field: old → new", ...]
+fn row_field_diffs(old: &JsonValue, new: &JsonValue) -> Vec<String> {
+    let old_clean = strip_metadata(old);
+    let new_clean = strip_metadata(new);
+    let mut diffs = Vec::new();
+
+    if let (Some(old_map), Some(new_map)) = (old_clean.as_object(), new_clean.as_object()) {
+        let mut all_keys: Vec<&String> = {
+            let mut ks: std::collections::HashSet<&String> = old_map.keys().collect();
+            ks.extend(new_map.keys());
+            let mut sorted: Vec<&String> = ks.into_iter().collect();
+            sorted.sort();
+            sorted
+        };
+        // Filter out the key field and metadata — we only want data fields
+        all_keys.retain(|k| {
+            !matches!(k.as_str(), "id" | "fluidReportId" | "createdAt" | "updatedAt" | "sortOrder")
+        });
+
+        for key in all_keys {
+            let ov = old_map.get(key.as_str()).unwrap_or(&JsonValue::Null);
+            let nv = new_map.get(key.as_str()).unwrap_or(&JsonValue::Null);
+            let ov_norm = normalize_value(ov);
+            let nv_norm = normalize_value(nv);
+            if ov_norm != nv_norm {
+                let old_display = format_value_short(&ov_norm);
+                let new_display = format_value_short(&nv_norm);
+                diffs.push(format!("{}: {} → {}", key, old_display, new_display));
+            }
+        }
+    }
+    diffs
+}
+
+/// Format a JSON value for short display in diffs.
+fn format_value_short(v: &JsonValue) -> String {
+    match v {
+        JsonValue::Null => "—".to_string(),
+        JsonValue::String(s) if s.is_empty() => "—".to_string(),
+        JsonValue::String(s) => s.clone(),
+        JsonValue::Number(n) => {
+            // Show clean numbers (9.2 not 9.200000)
+            if let Some(f) = n.as_f64() {
+                let rounded = (f * 1000.0).round() / 1000.0;
+                if rounded == rounded.trunc() {
+                    format!("{}", rounded as i64)
+                } else {
+                    format!("{}", rounded)
+                }
+            } else {
+                n.to_string()
+            }
+        }
+        JsonValue::Bool(b) => b.to_string(),
+        other => other.to_string(),
+    }
+}
+
 /// Extract a display name from a row using the key field, or fall back to index.
 fn row_display_name(row: &JsonValue, key_field: &str, index: usize) -> String {
     row.as_object()
@@ -210,7 +268,7 @@ pub fn compute_subtable_diff(
             };
             added_items.push(JsonValue::String(name));
         } else if old_has && new_has && rows_differ(&old_rows[i], &new_rows[i]) {
-            // Both have data but differ → modified
+            // Both have data but differ → modified with field details
             let name = if !key_field.is_empty() {
                 let new_name = row_display_name(&new_rows[i], key_field, i);
                 let old_name = row_display_name(&old_rows[i], key_field, i);
@@ -222,7 +280,17 @@ pub fn compute_subtable_diff(
             } else {
                 format!("#{}", i + 1)
             };
-            modified_items.push(JsonValue::String(name));
+            let field_diffs = row_field_diffs(&old_rows[i], &new_rows[i]);
+            if field_diffs.is_empty() {
+                modified_items.push(JsonValue::String(name));
+            } else {
+                let mut obj = serde_json::Map::new();
+                obj.insert("name".to_string(), JsonValue::String(name));
+                obj.insert("fields".to_string(), JsonValue::Array(
+                    field_diffs.into_iter().map(JsonValue::String).collect()
+                ));
+                modified_items.push(JsonValue::Object(obj));
+            }
         }
     }
 

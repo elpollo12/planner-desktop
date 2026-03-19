@@ -58,9 +58,9 @@ export function TimeDistributionSection() {
 
   // Calculate totals for each shift
   const distributions = watch('timeDistribution.distributions') || [];
-  const shift1Total = distributions.reduce((sum, d) => sum + (d.hoursShift1 || 0), 0);
-  const shift2Total = distributions.reduce((sum, d) => sum + (d.hoursShift2 || 0), 0);
-  const shift3Total = distributions.reduce((sum, d) => sum + (d.hoursShift3 || 0), 0);
+  const shift1Total = Math.round(distributions.reduce((sum, d) => sum + (d.hoursShift1 || 0), 0) * 10) / 10;
+  const shift2Total = Math.round(distributions.reduce((sum, d) => sum + (d.hoursShift2 || 0), 0) * 10) / 10;
+  const shift3Total = Math.round(distributions.reduce((sum, d) => sum + (d.hoursShift3 || 0), 0) * 10) / 10;
 
   const shift1Valid = shift1Total === 24;
   const shift2Valid = shift2Total === 24;
@@ -161,7 +161,7 @@ export function TimeDistributionSection() {
             <tbody className="bg-gray-50 dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               {fields.map((field, index) => {
                 const row = distributions[index] || {};
-                const rowTotal = (row.hoursShift1 || 0) + (row.hoursShift2 || 0) + (row.hoursShift3 || 0);
+                const rowTotal = Math.round(((row.hoursShift1 || 0) + (row.hoursShift2 || 0) + (row.hoursShift3 || 0)) * 10) / 10;
 
                 return (
                   <tr key={field.id} className="hover:bg-gray-100 dark:hover:bg-gray-700">
@@ -272,9 +272,9 @@ export function TimeDistributionSection() {
             <p className="text-sm font-medium text-yellow-800">{t('reports.forms.timeDistribution.warningTitle')}</p>
             <p className="text-sm text-yellow-700 mt-1">
               {t('reports.forms.timeDistribution.warningText')}
-              {!shift1Valid && ` ${t('reports.shiftLabels.morning')}: ${shift1Total}h`}
-              {!shift2Valid && ` ${t('reports.shiftLabels.afternoon')}: ${shift2Total}h`}
-              {!shift3Valid && ` ${t('reports.shiftLabels.night')}: ${shift3Total}h`}
+              {!shift1Valid && ` ${t('reports.shiftLabels.morning')}: ${shift1Total.toFixed(1)}h`}
+              {!shift2Valid && ` ${t('reports.shiftLabels.afternoon')}: ${shift2Total.toFixed(1)}h`}
+              {!shift3Valid && ` ${t('reports.shiftLabels.night')}: ${shift3Total.toFixed(1)}h`}
             </p>
           </div>
         </div>

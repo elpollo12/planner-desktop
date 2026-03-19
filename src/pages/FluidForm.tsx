@@ -826,9 +826,29 @@ export default function FluidForm() {
       title={isEditMode ? t('fluids.form.editTitle') : t('fluids.form.newTitle')}
       subtitle={reportHeader.wellNumber ? `${reportHeader.wellNumber} — ${reportHeader.rigNumber || ''}` : ''}
       headerActions={
+        <>
         <Button variant="outline" onClick={() => navigate('/fluids')} icon={<ChevronLeft size={16} />}>
           {t('fluids.form.back')}
         </Button>
+                    <div className="flex gap-2 pr-4">
+              {activeTab === 'tab1' && (
+                <Button variant="primary" size="md" onClick={() => openSaveModal(t('fluids.form.tabs.tab1'), handleSaveTab1)} loading={saving} icon={<Save size={16} />}>
+                  {t('fluids.form.saveTab1')}
+                </Button>
+              )}
+              {activeTab === 'tab2' && (
+                <Button variant="primary" size="md" onClick={() => openSaveModal(t('fluids.form.tabs.tab2'), handleSaveTab2)} loading={saving} icon={<Save size={16} />}>
+                  {t('fluids.form.saveTab2')}
+                </Button>
+              )}
+              {activeTab === 'tab3' && (
+                <Button variant="primary" size="md" onClick={() => openSaveModal(t('fluids.form.tabs.tab3'), handleSaveTab3)} loading={saving} icon={<Save size={16} />}>
+                  {t('fluids.form.saveTab3')}
+                </Button>
+              )}
+            </div>
+        </>
+        
       }
     >
       <div className="max-w-7xl mx-auto space-y-6">
@@ -909,23 +929,7 @@ export default function FluidForm() {
                 </button>
               ))}
             </nav>
-            <div className="flex gap-2 pr-4">
-              {activeTab === 'tab1' && (
-                <Button variant="primary" size="sm" onClick={() => openSaveModal(t('fluids.form.tabs.tab1'), handleSaveTab1)} loading={saving} icon={<Save size={16} />}>
-                  {t('fluids.form.saveTab1')}
-                </Button>
-              )}
-              {activeTab === 'tab2' && (
-                <Button variant="primary" size="sm" onClick={() => openSaveModal(t('fluids.form.tabs.tab2'), handleSaveTab2)} loading={saving} icon={<Save size={16} />}>
-                  {t('fluids.form.saveTab2')}
-                </Button>
-              )}
-              {activeTab === 'tab3' && (
-                <Button variant="primary" size="sm" onClick={() => openSaveModal(t('fluids.form.tabs.tab3'), handleSaveTab3)} loading={saving} icon={<Save size={16} />}>
-                  {t('fluids.form.saveTab3')}
-                </Button>
-              )}
-            </div>
+
           </div>
 
           <div className="p-6">
@@ -974,10 +978,10 @@ export default function FluidForm() {
                           <tr key={row.label}>
                             <td className="px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300">{row.label}</td>
                             <td className="px-2 py-1">
-                              <Input value={circulation[row.minKey]} onChange={(e) => setCirculation((c) => ({ ...c, [row.minKey]: e.target.value }))} className="text-center text-sm !py-1" />
+                              <Input value={circulation[row.minKey]} onChange={(e) => setCirculation((c) => ({ ...c, [row.minKey]: e.target.value }))} className="text-center text-sm py-1!" />
                             </td>
                             <td className="px-2 py-1">
-                              <Input value={circulation[row.embKey]} onChange={(e) => setCirculation((c) => ({ ...c, [row.embKey]: e.target.value }))} className="text-center text-sm !py-1" />
+                              <Input value={circulation[row.embKey]} onChange={(e) => setCirculation((c) => ({ ...c, [row.embKey]: e.target.value }))} className="text-center text-sm py-1!" />
                             </td>
                           </tr>
                         ))}

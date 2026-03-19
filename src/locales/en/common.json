@@ -203,6 +203,8 @@
     "usersDesc": "Manage system users",
     "logistics": "Logistics",
     "logisticsDesc": "Resource and materials management",
+    "fluids": "API Report",
+    "fluidsDesc": "Drilling fluid reports",
     "noModules": "No module access",
     "noModulesDesc": "You currently don't have permissions to access any module. Contact an administrator to request access."
   },
@@ -2215,9 +2217,9 @@
       "tab1Saved": "Tab 1 saved successfully",
       "tab2Saved": "Tab 2 saved successfully",
       "tab3Saved": "Tab 3 saved successfully",
-      "saveTab1": "Save Tab 1",
-      "saveTab2": "Save Tab 2",
-      "saveTab3": "Save Tab 3",
+      "saveTab1": "Save API Report",
+      "saveTab2": "Save Inventory",
+      "saveTab3": "Save Volumetrics",
       "back": "Back",
       "tabs": {
         "tab1": "API Report",

@@ -87,12 +87,13 @@ function FieldDiff({ fieldKey, value, t }: { fieldKey: string; value: Record<str
   const v = value;
   const label = FIELD_LABEL_KEYS[fieldKey] ? t(FIELD_LABEL_KEYS[fieldKey]) : fieldKey;
 
-  // Sub-table diff (has added/removed/modified as arrays of names)
+  // Sub-table diff (has added/removed/modified as arrays)
   if ('added' in v || 'removed' in v || 'modified' in v) {
     const added = v.added as string[] | undefined;
     const removed = v.removed as string[] | undefined;
-    const modified = v.modified as string[] | undefined;
-    const hasChanges = (added && added.length > 0) || (removed && removed.length > 0) || (modified && modified.length > 0);
+    // modified can be string[] or {name, fields}[]
+    const modifiedRaw = v.modified as Array<string | { name: string; fields: string[] }> | undefined;
+    const hasChanges = (added && added.length > 0) || (removed && removed.length > 0) || (modifiedRaw && modifiedRaw.length > 0);
     if (!hasChanges) return null;
 
     return (
@@ -108,9 +109,22 @@ function FieldDiff({ fieldKey, value, t }: { fieldKey: string; value: Record<str
             − {t('fluids.changelog.removed')}: {removed.join(', ')}
           </div>
         )}
-        {modified && modified.length > 0 && (
+        {modifiedRaw && modifiedRaw.length > 0 && (
           <div className="ml-3 text-amber-600 dark:text-amber-400">
-            ✎ {t('fluids.changelog.modified')}: {modified.join(', ')}
+            {modifiedRaw.map((item, idx) => {
+              if (typeof item === 'string') {
+                return <div key={idx}>✎ {t('fluids.changelog.modified')}: {item}</div>;
+              }
+              // Object with name + field-level diffs
+              return (
+                <div key={idx} className="mb-1">
+                  <div>✎ {item.name}:</div>
+                  {item.fields.map((f, fi) => (
+                    <div key={fi} className="ml-4 text-gray-500 dark:text-gray-400">↳ {f}</div>
+                  ))}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

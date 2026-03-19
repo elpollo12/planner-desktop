@@ -25,6 +25,7 @@ export function usePermissions() {
     approvals:   canAccessModule(user, 'approvals'),
     logistics:   canAccessModule(user, 'logistics'),
     incidents:   canAccessModule(user, 'incidents'),
+    fluids:      canAccessModule(user, 'fluids'),
     admin:       canAccessModule(user, 'admin'),
     /** True if user has 'reports' OR 'approvals' (needed to view a report detail) */
     viewReport:  canViewReport(user),
