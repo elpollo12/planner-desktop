@@ -1149,7 +1149,7 @@
       "usernamePlaceholder": "Nombre de usuario",
       "usernameHint": "Mínimo 3 caracteres, solo letras y números",
       "password": "Contraseña",
-      "passwordHint": "Mínimo 6 caracteres",
+      "passwordHint": "Mínimo 8 caracteres",
       "fullName": "Nombre Completo",
       "fullNamePlaceholder": "Nombre y apellido",
       "idCard": "Cédula de Identidad",
