@@ -1,18 +1,24 @@
 import { Link, useLocation } from 'react-router-dom';
 import { getVersion } from '@tauri-apps/api/app';
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../../store/authStore';
 import { useAppSettingsStore } from '../../store/appSettingsStore';
 import { Button } from '../ui';
 import {
   ClipboardCheck,
+  Droplets,
   Forklift,
   LayoutDashboard,
   List,
   LogOut,
   Shield,
   AlertTriangle,
+  UserCircle,
+  CloudDownload,
 } from 'lucide-react';
+import { canAccessModule } from '../../lib/permissions';
+import type { AppModule } from '../../types/user';
 
 interface SidebarProps {
   className?: string;
@@ -20,6 +26,7 @@ interface SidebarProps {
 
 export function Sidebar({ className = '' }: SidebarProps) {
   const location = useLocation();
+  const { t } = useTranslation();
   const { user, logout } = useAuthStore();
   const logoPath = useAppSettingsStore((s) => s.settings?.logoPath ?? null);
   const [appVersion, setAppVersion] = useState('');
@@ -28,43 +35,20 @@ export function Sidebar({ className = '' }: SidebarProps) {
     getVersion().then(setAppVersion).catch(() => {});
   }, []);
 
-  const navigation = [
-    {
-      name: 'Dashboard',
-      href: '/dashboard',
-      icon: LayoutDashboard,
-      show: true,
-    },
-    {
-      name: 'Aprobaciones',
-      href: '/approvals',
-      icon: ClipboardCheck,
-      show: user?.role === 'supervisor' || user?.role === 'admin',
-    },
-    {
-      name: 'Reportes',
-      href: '/reports',
-      icon: List,
-      show: true,
-    },
-    {
-      name: 'Logística',
-      href: '/logistics',
-      icon: Forklift,
-      show: true,
-    },
-    {
-      name: 'Incidencias',
-      href: '/incidents',
-      icon: AlertTriangle,
-      show: true,
-    },
-    {
-      name: 'Administración',
-      href: '/admin',
-      icon: Shield,
-      show: user?.role === 'admin',
-    },
+  const navigation: Array<{
+    name: string;
+    href: string;
+    icon: typeof LayoutDashboard;
+    module: AppModule;
+  }> = [
+    { name: t('nav.dashboard'),  href: '/dashboard',  icon: LayoutDashboard, module: 'dashboard' },
+    { name: t('nav.approvals'),  href: '/approvals',  icon: ClipboardCheck,  module: 'approvals' },
+    { name: t('nav.reports'),    href: '/reports',     icon: List,            module: 'reports' },
+    { name: t('nav.fluids'),     href: '/fluids',      icon: Droplets,       module: 'fluids' },
+    { name: t('nav.logistics'),  href: '/logistics',   icon: Forklift,        module: 'logistics' },
+    { name: t('nav.incidents'),  href: '/incidents',   icon: AlertTriangle,  module: 'incidents' },
+    { name: t('nav.cloudLogs'),  href: '/cloud-logs',  icon: CloudDownload,  module: 'cloud-logs' },
+    { name: t('nav.admin'),      href: '/admin',       icon: Shield,         module: 'admin' },
   ];
 
   const isActive = (href: string) => {
@@ -90,28 +74,28 @@ export function Sidebar({ className = '' }: SidebarProps) {
     <aside
       className={`w-64 bg-gray-50 dark:bg-gray-800 border-r border-primary-200 dark:border-gray-700 flex flex-col ${className}`}
     >
-      {/* Logo/Brand — height matches Header component (py-4) */}
-      <div className="h-15 px-6 border-b border-primary-200 dark:border-gray-700 flex items-center">
-        {logoPath ? (
-          <div className="flex items-center justify-center w-full">
+      {/* Logo/Brand — outer fixes height, inner contains logo with overflow protection */}
+      <div className="h-16 flex-shrink-0 border-b border-primary-200 dark:border-gray-700 px-4">
+        <div className="w-full h-full overflow-hidden flex items-center justify-center">
+          {logoPath ? (
             <img
               src={logoPath}
-              alt="Logo de la empresa"
-              className="max-h-12 w-auto object-contain"
+              alt={t('sidebar.companyLogo')}
+              className="max-h-full max-w-full object-contain"
             />
-          </div>
-        ) : (
-          <div>
-            <h1 className="text-xl font-bold text-primary-500">DDR System</h1>
-            <p className="text-xs text-gray-500 mt-1">Reportes Petroleros</p>
-          </div>
-        )}
+          ) : (
+            <div className="w-full">
+              <h1 className="text-xl font-bold text-primary-500">DDR System</h1>
+              <p className="text-xs text-gray-500 mt-1">{t('sidebar.subtitle')}</p>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Navigation */}
       <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
         {navigation
-          .filter((item) => item.show)
+          .filter((item) => canAccessModule(user, item.module))
           .map((item) => {
             const Icon = item.icon;
             const active = isActive(item.href);
@@ -139,12 +123,27 @@ export function Sidebar({ className = '' }: SidebarProps) {
 
       {/* User Info & Logout */}
       <div className="p-4 border-t border-gray-200 dark:border-gray-700">
-        <div className="mb-3 px-2">
-          <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-            {user?.fullName}
-          </p>
-          <p className="text-xs text-gray-500 capitalize">Rol: <strong>{user?.role}</strong></p>
-        </div>
+        <Link
+          to="/profile"
+          className={`flex items-center gap-3 px-2 py-2 mb-2 rounded-lg transition-colors ${
+            location.pathname === '/profile'
+              ? 'bg-primary-500'
+              : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+          }`}
+          style={location.pathname === '/profile' ? { color: 'var(--color-primary-contrast)' } : undefined}
+        >
+          <UserCircle size={20} className={location.pathname === '/profile' ? '' : 'text-gray-500 dark:text-gray-400'} />
+          <div className="min-w-0 flex-1">
+            <p className={`text-sm font-medium truncate ${
+              location.pathname === '/profile' ? '' : 'text-gray-900 dark:text-gray-100'
+            }`}>
+              {user?.fullName || user?.username}
+            </p>
+            <p className={`text-xs capitalize ${
+              location.pathname === '/profile' ? 'opacity-80' : 'text-gray-500'
+            }`}>{t('auth.role')} {user?.role}</p>
+          </div>
+        </Link>
         <Button
           onClick={logout}
           variant="danger"
@@ -152,7 +151,7 @@ export function Sidebar({ className = '' }: SidebarProps) {
           icon={<LogOut size={16} />}
           className="w-full"
         >
-          <span>Cerrar Sesión</span>
+          <span>{t('auth.logout')}</span>
         </Button>
         {appVersion && (
           <p className="text-[10px] text-gray-400 dark:text-gray-600 text-center mt-3">

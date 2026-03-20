@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
+﻿import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
-import { Upload, Trash2, RotateCcw } from 'lucide-react';
+import { RotateCcw } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { useAppSettingsStore } from '@/store/appSettingsStore';
 import { backgroundPush } from '@/lib/syncHelper';
@@ -8,6 +9,7 @@ import { usePreferencesStore } from '@/store/preferencesStore';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
+import LogoUploader from '@/components/ui/LogoUploader';
 import { generatePalette, isValidHexColor } from '@/lib/colorUtils';
 import { DEFAULT_APP_SETTINGS } from '@/types/appSettings';
 import { applyThemeToDOM } from '@/hooks/useThemeApplicator';
@@ -21,14 +23,13 @@ const SECONDARY_PRESETS = [
 ];
 
 export default function AppearanceSettings() {
+  const { t } = useTranslation();
   const { sessionToken } = useAuthStore();
-  const { settings, saveSettings, uploadLogo, removeLogo, isLoading } = useAppSettingsStore();
+  const { settings, saveSettings, uploadLogoFromBytes, removeLogo, isLoading } = useAppSettingsStore();
   const { preferences } = usePreferencesStore();
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const isInitializedRef = useRef(false);
-  const userHasInteractedRef = useRef(false);
+  const isInitializedRef = { current: false };
+  const userHasInteractedRef = { current: false };
 
-  // Initialize state from settings (if available) or defaults
   const initialPrimary = settings?.primaryColor ?? DEFAULT_APP_SETTINGS.primaryColor;
   const initialSecondary = settings?.secondaryColor ?? DEFAULT_APP_SETTINGS.secondaryColor;
 
@@ -38,7 +39,7 @@ export default function AppearanceSettings() {
   const [secondaryHex, setSecondaryHex] = useState(initialSecondary);
   const [saving, setSaving] = useState(false);
 
-  // Sync state when settings load/change (but only if not initialized yet)
+  // Sync state when settings load/change (only once)
   useEffect(() => {
     if (settings && !isInitializedRef.current) {
       setPrimaryColor(settings.primaryColor);
@@ -47,15 +48,16 @@ export default function AppearanceSettings() {
       setSecondaryHex(settings.secondaryColor);
       isInitializedRef.current = true;
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings]);
 
-  // Live preview: ONLY apply theme when user makes changes (not on mount)
-  // The global theme is already applied by useThemeApplicator in App.tsx
+  // Live preview: only apply theme when user makes changes (not on mount)
   useEffect(() => {
     if (userHasInteractedRef.current) {
       const themeMode = preferences?.themeMode ?? 'light';
       applyThemeToDOM({ primaryColor, secondaryColor, themeMode });
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [primaryColor, secondaryColor, preferences]);
 
   const handlePrimaryColorChange = (color: string) => {
@@ -90,60 +92,28 @@ export default function AppearanceSettings() {
     if (!sessionToken) return;
     setSaving(true);
     try {
-      await saveSettings(sessionToken, {
-        primaryColor,
-        secondaryColor,
-      });
-      toast.success('Configuración de la empresa guardada exitosamente');
+      await saveSettings(sessionToken, { primaryColor, secondaryColor });
+      toast.success(t('admin.appearance.saved'));
       backgroundPush(sessionToken);
     } catch {
-      toast.error('Error al guardar la configuración');
+      toast.error(t('admin.appearance.saveError'));
     } finally {
       setSaving(false);
     }
   };
 
-  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !sessionToken) return;
+  // ── Logo handlers para LogoUploader ──────────────────────────────────────────
 
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error('El archivo excede el límite de 2MB');
-      return;
-    }
-
-    try {
-      const buffer = await file.arrayBuffer();
-      const fileData = Array.from(new Uint8Array(buffer));
-      await uploadLogo(sessionToken, fileData, file.name);
-      toast.success('Logo subido exitosamente');
-      backgroundPush(sessionToken);
-    } catch {
-      toast.error('Error al subir el logo');
-    }
-
-    // Reset input
-    if (fileInputRef.current) fileInputRef.current.value = '';
+  const handleLogoUpload = async (bytes: Uint8Array, fileName: string) => {
+    if (!sessionToken) return;
+    await uploadLogoFromBytes(sessionToken, bytes, fileName);
+    backgroundPush(sessionToken);
   };
 
   const handleRemoveLogo = async () => {
     if (!sessionToken) return;
-    try {
-      await removeLogo(sessionToken);
-      toast.success('Logo eliminado');
-      backgroundPush(sessionToken);
-    } catch {
-      toast.error('Error al eliminar el logo');
-    }
-  };
-
-  const handleResetPrimary = () => {
-    userHasInteractedRef.current = true;
-    handlePrimaryColorChange(DEFAULT_APP_SETTINGS.primaryColor);
-  };
-  const handleResetSecondary = () => {
-    userHasInteractedRef.current = true;
-    handleSecondaryColorChange(DEFAULT_APP_SETTINGS.secondaryColor);
+    await removeLogo(sessionToken);
+    backgroundPush(sessionToken);
   };
 
   const primaryPalette = generatePalette(primaryColor);
@@ -152,15 +122,15 @@ export default function AppearanceSettings() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Apariencia Corporativa</h2>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{t('admin.appearance.title')}</h2>
         <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-          Define los colores y logo de la empresa. Estos cambios se aplicarán a todos los usuarios.
+          {t('admin.appearance.subtitle')}
         </p>
       </div>
 
       {/* Color Primario */}
       <Card className="p-6">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Color Primario</h3>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">{t('admin.appearance.primaryColor')}</h3>
         <div className="flex items-center gap-4 mb-4">
           <input
             type="color"
@@ -176,13 +146,11 @@ export default function AppearanceSettings() {
               className={!isValidHexColor(primaryHex) && primaryHex.length > 0 ? 'error' : ''}
             />
           </div>
-          <Button variant="ghost" size="sm" onClick={handleResetPrimary}>
+          <Button variant="ghost" size="sm" onClick={() => { userHasInteractedRef.current = true; handlePrimaryColorChange(DEFAULT_APP_SETTINGS.primaryColor); }}>
             <RotateCcw size={16} />
-            Restablecer
+            {t('admin.appearance.reset')}
           </Button>
         </div>
-
-        {/* Presets */}
         <div className="flex gap-2 mb-4">
           {PRIMARY_PRESETS.map((color) => (
             <button
@@ -196,8 +164,6 @@ export default function AppearanceSettings() {
             />
           ))}
         </div>
-
-        {/* Palette preview */}
         <div className="flex rounded-lg overflow-hidden">
           {Object.entries(primaryPalette).map(([shade, color]) => (
             <div
@@ -216,7 +182,7 @@ export default function AppearanceSettings() {
 
       {/* Color Secundario */}
       <Card className="p-6">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Color Secundario</h3>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">{t('admin.appearance.secondaryColor')}</h3>
         <div className="flex items-center gap-4 mb-4">
           <input
             type="color"
@@ -232,13 +198,11 @@ export default function AppearanceSettings() {
               className={!isValidHexColor(secondaryHex) && secondaryHex.length > 0 ? 'error' : ''}
             />
           </div>
-          <Button variant="ghost" size="sm" onClick={handleResetSecondary}>
+          <Button variant="ghost" size="sm" onClick={() => { userHasInteractedRef.current = true; handleSecondaryColorChange(DEFAULT_APP_SETTINGS.secondaryColor); }}>
             <RotateCcw size={16} />
-            Restablecer
+            {t('admin.appearance.reset')}
           </Button>
         </div>
-
-        {/* Presets */}
         <div className="flex gap-2 mb-4">
           {SECONDARY_PRESETS.map((color) => (
             <button
@@ -252,8 +216,6 @@ export default function AppearanceSettings() {
             />
           ))}
         </div>
-
-        {/* Palette preview */}
         <div className="flex rounded-lg overflow-hidden">
           {Object.entries(secondaryPalette).map(([shade, color]) => (
             <div
@@ -270,58 +232,24 @@ export default function AppearanceSettings() {
         </div>
       </Card>
 
-      {/* Logo */}
+      {/* Logo — usa LogoUploader (soporta remoción de fondo con imgly) */}
       <Card className="p-6">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Logo de la Empresa</h3>
-        <div className="flex items-center gap-6">
-          {/* Preview */}
-          <div className="w-24 h-24 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center bg-gray-50 dark:bg-gray-700 overflow-hidden">
-            {settings?.logoPath ? (
-              <img
-                src={settings.logoPath}
-                alt="Logo de la empresa"
-                className="w-full h-full object-contain"
-              />
-            ) : (
-              <span className="text-xs text-gray-400 text-center px-2">Sin logo</span>
-            )}
-          </div>
-
-          <div className="space-y-3">
-            <div className="flex gap-2">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/png,image/jpeg,image/svg+xml,image/webp"
-                onChange={handleLogoUpload}
-                className="hidden"
-              />
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <Upload size={16} />
-                Subir Logo
-              </Button>
-              {settings?.logoPath && (
-                <Button variant="danger" size="sm" onClick={handleRemoveLogo}>
-                  <Trash2 size={16} />
-                  Eliminar
-                </Button>
-              )}
-            </div>
-            <p className="text-xs text-gray-500">
-              PNG, JPG, SVG o WEBP. Max 2MB. Este logo se mostrará en el sidebar para todos los usuarios.
-            </p>
-          </div>
-        </div>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">{t('admin.appearance.companyLogo')}</h3>
+        <LogoUploader
+          currentLogoUrl={settings?.logoPath}
+          onUpload={handleLogoUpload}
+          onRemove={handleRemoveLogo}
+          disabled={isLoading}
+          previewSize={96}
+          label={t('admin.appearance.uploadLogo')}
+          hint={t('admin.appearance.logoHint')}
+        />
       </Card>
 
       {/* Info Box */}
       <Card className="p-4 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
         <p className="text-sm text-blue-800 dark:text-blue-200">
-          <strong>Nota:</strong> Los usuarios pueden alternar entre modo claro y oscuro usando el botón en el encabezado. Los colores y el logo que configures aquí se aplicarán en ambos modos.
+          <strong>{t('admin.appearance.note')}</strong> {t('admin.appearance.noteText')}
         </p>
       </Card>
 
@@ -334,7 +262,7 @@ export default function AppearanceSettings() {
           loading={saving || isLoading}
           disabled={saving || isLoading}
         >
-          Guardar Cambios
+          {t('admin.appearance.save')}
         </Button>
       </div>
     </div>

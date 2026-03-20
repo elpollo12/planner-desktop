@@ -1,9 +1,46 @@
 use ed25519_dalek::{Signature, Verifier, VerifyingKey};
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use crate::sync::config as sync_config;
 
-/// Ed25519 public key embedded at compile time (32 bytes raw)
-const LICENSE_PUBLIC_KEY: &[u8; 32] = include_bytes!("../license_pub.key");
+/// Ed25519 public key embedded at compile time — used as fallback only
+const LICENSE_PUBLIC_KEY_FALLBACK: &[u8; 32] = include_bytes!("../license_pub.key");
+
+/// Load the Ed25519 public key.
+/// Priority:
+///   1. <resource_dir>/license_pub.key  (producción: Tauri resource dir)
+///   2. <exe_dir>/../../keys/license_pub.key  (desarrollo: planner-desktop/keys/)
+///   3. Clave embebida en el binario (fallback)
+fn load_public_key(resource_dir: &Path) -> [u8; 32] {
+    let candidates: Vec<PathBuf> = vec![
+        // Producción: Tauri resource dir
+        resource_dir.join("license_pub.key"),
+        // Desarrollo: planner-desktop/keys/license_pub.key
+        std::env::current_exe()
+            .ok()
+            .and_then(|p| {
+                // target/debug/ → ../.. → src-tauri → .. → planner-desktop
+                p.parent()?.parent()?.parent()
+                    .map(|d| d.join("keys").join("license_pub.key"))
+            })
+            .unwrap_or_default(),
+    ];
+
+    for path in &candidates {
+        if path.exists() {
+            if let Ok(bytes) = std::fs::read(path) {
+                if bytes.len() == 32 {
+                    let mut arr = [0u8; 32];
+                    arr.copy_from_slice(&bytes);
+                    return arr;
+                }
+            }
+        }
+    }
+
+    // Fallback: clave embebida
+    *LICENSE_PUBLIC_KEY_FALLBACK
+}
 
 /// License payload — the data that gets signed
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -11,9 +48,11 @@ const LICENSE_PUBLIC_KEY: &[u8; 32] = include_bytes!("../license_pub.key");
 pub struct LicensePayload {
     pub id: String,
     pub customer: String,
+    pub tenant: String,        // Slug del cliente en planner-sync (ej: "pdvsa-occidente")
+    pub api_endpoint: String,  // URL del servidor planner-sync asignado al cliente
     pub issued_at: String,
     pub expiry: Option<String>, // None = lifetime license
-    pub max_users: u32,
+    pub max_users: Option<u32>, // None = usuarios ilimitados
 }
 
 /// Full license with payload + signature
@@ -30,9 +69,11 @@ pub struct License {
 pub struct LicenseInfo {
     pub id: String,
     pub customer: String,
+    pub tenant: String,
+    pub api_endpoint: String,
     pub issued_at: String,
     pub expiry: Option<String>,
-    pub max_users: u32,
+    pub max_users: Option<u32>, // None = usuarios ilimitados
     pub is_valid: bool,
     pub is_lifetime: bool,
 }
@@ -49,6 +90,8 @@ impl From<&LicensePayload> for LicenseInfo {
         Self {
             id: p.id.clone(),
             customer: p.customer.clone(),
+            tenant: p.tenant.clone(),
+            api_endpoint: p.api_endpoint.clone(),
             issued_at: p.issued_at.clone(),
             expiry: p.expiry.clone(),
             max_users: p.max_users,
@@ -70,10 +113,9 @@ fn check_expiry(expiry: Option<&str>) -> bool {
 }
 
 /// Verify the Ed25519 signature of a license payload
-fn verify_signature(payload: &LicensePayload, signature_b64: &str) -> Result<(), String> {
+fn verify_signature(payload: &LicensePayload, signature_b64: &str, resource_dir: &Path) -> Result<(), String> {
     use base64::{engine::general_purpose, Engine as _};
 
-    // Decode signature from base64
     let sig_bytes = general_purpose::STANDARD
         .decode(signature_b64)
         .map_err(|e| format!("Firma inválida (base64): {}", e))?;
@@ -81,15 +123,13 @@ fn verify_signature(payload: &LicensePayload, signature_b64: &str) -> Result<(),
     let signature = Signature::from_slice(&sig_bytes)
         .map_err(|e| format!("Firma inválida (Ed25519): {}", e))?;
 
-    // Load public key
-    let verifying_key = VerifyingKey::from_bytes(LICENSE_PUBLIC_KEY)
+    let pub_key_bytes = load_public_key(resource_dir);
+    let verifying_key = VerifyingKey::from_bytes(&pub_key_bytes)
         .map_err(|e| format!("Error cargando clave pública: {}", e))?;
 
-    // Serialize payload to canonical JSON for verification
     let payload_json = serde_json::to_string(payload)
         .map_err(|e| format!("Error serializando payload: {}", e))?;
 
-    // Verify
     verifying_key
         .verify(payload_json.as_bytes(), &signature)
         .map_err(|_| "Licencia inválida: firma no válida".to_string())
@@ -113,10 +153,9 @@ fn get_license_path() -> Result<PathBuf, String> {
 }
 
 /// Decode a license key (base64-encoded JSON) and verify it
-pub fn verify_license_key(license_key: &str) -> Result<License, String> {
+pub fn verify_license_key(license_key: &str, resource_dir: &Path) -> Result<License, String> {
     use base64::{engine::general_purpose, Engine as _};
 
-    // Decode the license key from base64
     let json_bytes = general_purpose::STANDARD
         .decode(license_key.trim())
         .map_err(|e| format!("Clave de licencia inválida (formato): {}", e))?;
@@ -124,14 +163,11 @@ pub fn verify_license_key(license_key: &str) -> Result<License, String> {
     let json_str = String::from_utf8(json_bytes)
         .map_err(|e| format!("Clave de licencia inválida (UTF-8): {}", e))?;
 
-    // Parse the license
     let license: License = serde_json::from_str(&json_str)
         .map_err(|e| format!("Clave de licencia inválida (JSON): {}", e))?;
 
-    // Verify signature
-    verify_signature(&license.payload, &license.signature)?;
+    verify_signature(&license.payload, &license.signature, resource_dir)?;
 
-    // Check expiry
     if !check_expiry(license.payload.expiry.as_deref()) {
         return Err("Licencia expirada".to_string());
     }
@@ -179,21 +215,81 @@ fn delete_license_from_disk() -> Result<(), String> {
     Ok(())
 }
 
-/// Activate a license: verify + save + return info
-pub fn activate_license(license_key: &str) -> Result<LicenseInfo, String> {
-    let license = verify_license_key(license_key)?;
+/// Devuelve true si el host de la URL es una dirección IPv4 literal (ej. 187.77.221.60:3005)
+fn host_is_ip(url: &str) -> bool {
+    let without_scheme = url
+        .trim_start_matches("https://")
+        .trim_start_matches("http://");
+    let host_and_port = without_scheme.split('/').next().unwrap_or("");
+    // Elimina el puerto si existe
+    let host = if let Some(pos) = host_and_port.rfind(':') {
+        &host_and_port[..pos]
+    } else {
+        host_and_port
+    };
+    // IPv4: cuatro octetos numéricos separados por '.'
+    let parts: Vec<&str> = host.split('.').collect();
+    parts.len() == 4 && parts.iter().all(|p| p.parse::<u8>().is_ok())
+}
+
+/// Validate that the api_endpoint is a safe URL.
+/// - Dominios de texto: solo HTTPS.
+/// - IPs literales (ej. 187.77.221.60:3005): se permiten HTTP y HTTPS.
+fn validate_api_endpoint(url: &str) -> Result<(), String> {
+    if url.is_empty() {
+        return Err("La licencia no contiene un endpoint de API".to_string());
+    }
+    // Debe comenzar con http:// o https://
+    if !url.starts_with("https://") && !url.starts_with("http://") {
+        return Err(format!(
+            "El endpoint de API debe usar HTTP o HTTPS (recibido: '{}')",
+            url
+        ));
+    }
+    // Si el host es un dominio (no IP), exigir HTTPS
+    if !host_is_ip(url) && !url.starts_with("https://") {
+        return Err(format!(
+            "El endpoint de API con dominio debe usar HTTPS (recibido: '{}')",
+            url
+        ));
+    }
+    // No debe contener caracteres de control ni saltos de linea
+    if url.contains('\n') || url.contains('\r') || url.contains('\0') {
+        return Err("El endpoint de API contiene caracteres inválidos".to_string());
+    }
+    // Longitud razonable
+    if url.len() > 512 {
+        return Err("El endpoint de API es demasiado largo".to_string());
+    }
+    Ok(())
+}
+
+/// Activate a license: verify + save + persist api_endpoint + return info
+pub fn activate_license(license_key: &str, resource_dir: &Path) -> Result<LicenseInfo, String> {
+    let license = verify_license_key(license_key, resource_dir)?;
+
+    // Validar api_endpoint antes de guardar o usar
+    validate_api_endpoint(&license.payload.api_endpoint)?;
+
     save_license_to_disk(&license)?;
+
+    // Guardar apiEndpoint en sync_config.json como server_url (nivel 1 de SyncCredentials).
+    // Cualquier usuario puede conectarse sin configurar la URL manualmente.
+    let mut cfg = sync_config::load_config().unwrap_or_default();
+    cfg.server_url = Some(license.payload.api_endpoint.clone());
+    if let Err(e) = sync_config::save_config(&cfg) {
+        eprintln!("[License] Advertencia: no se pudo guardar server_url en sync_config: {}", e);
+    }
+
     Ok(LicenseInfo::from(&license.payload))
 }
 
 /// Get current license status
-pub fn get_license_status() -> Result<Option<LicenseInfo>, String> {
+pub fn get_license_status(resource_dir: &Path) -> Result<Option<LicenseInfo>, String> {
     match load_license()? {
         None => Ok(None),
         Some(license) => {
-            // Re-verify signature to prevent file tampering
-            verify_signature(&license.payload, &license.signature)?;
-
+            verify_signature(&license.payload, &license.signature, resource_dir)?;
             let info = LicenseInfo::from(&license.payload);
             Ok(Some(info))
         }

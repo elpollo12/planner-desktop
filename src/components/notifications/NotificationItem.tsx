@@ -1,8 +1,9 @@
 import { useNavigate } from 'react-router-dom';
-import { Forklift, AlertTriangle, FileText, X } from 'lucide-react';
+import { Forklift, AlertTriangle, FileText, ShieldCheck, X } from 'lucide-react';
 import { useMarkNotificationRead, useDeleteNotification } from '../../hooks/useNotifications';
 import { useLogisticsStore } from '../../store/logisticsStore';
 import { useIncidentsStore } from '../../store/incidentsStore';
+import { usePermissions } from '../../hooks/usePermissions';
 import type { Notification } from '../../types/notification';
 
 // Time-ago formatter (simple, in Spanish)
@@ -21,9 +22,10 @@ function timeAgo(dateStr: string): string {
 }
 
 const CATEGORY_CONFIG: Record<string, { icon: typeof FileText; color: string }> = {
-  logistics: { icon: Forklift, color: 'text-green-500 dark:text-green-400' },
-  incident: { icon: AlertTriangle, color: 'text-orange-500 dark:text-orange-400' },
-  report: { icon: FileText, color: 'text-blue-500 dark:text-blue-400' },
+  logistics:   { icon: Forklift,      color: 'text-green-500 dark:text-green-400'  },
+  incident:    { icon: AlertTriangle, color: 'text-orange-500 dark:text-orange-400' },
+  report:      { icon: FileText,      color: 'text-blue-500 dark:text-blue-400'    },
+  permissions: { icon: ShieldCheck,   color: 'text-amber-500 dark:text-amber-400'  },
 };
 
 interface NotificationItemProps {
@@ -33,6 +35,7 @@ interface NotificationItemProps {
 
 export function NotificationItem({ notification, onNavigate }: NotificationItemProps) {
   const navigate = useNavigate();
+  const { canAccess } = usePermissions();
   const markRead = useMarkNotificationRead();
   const deleteNotification = useDeleteNotification();
   const setLogisticsRig = useLogisticsStore((s) => s.setSelectedRig);
@@ -47,25 +50,31 @@ export function NotificationItem({ notification, onNavigate }: NotificationItemP
       markRead.mutate(notification.id);
     }
 
-    // Navigate based on reference type
+    // Navigate based on reference type — only if user has access to the target module
     switch (notification.referenceType) {
       case 'logistics_request':
-        if (notification.rigId && notification.rigName) {
-          setLogisticsRig(notification.rigId, notification.rigName);
+        if (canAccess.logistics) {
+          if (notification.rigId && notification.rigName) {
+            setLogisticsRig(notification.rigId, notification.rigName);
+          }
+          navigate('/logistics');
         }
-        navigate('/logistics');
         break;
       case 'incident':
-        if (notification.rigId && notification.rigName) {
-          setIncidentsRig(notification.rigId, notification.rigName);
+        if (canAccess.incidents) {
+          if (notification.rigId && notification.rigName) {
+            setIncidentsRig(notification.rigId, notification.rigName);
+          }
+          navigate('/incidents');
         }
-        navigate('/incidents');
         break;
       case 'report':
-        if (notification.referenceId) {
-          navigate(`/reports/view/${notification.referenceId}`);
-        } else {
-          navigate('/reports');
+        if (canAccess.viewReport) {
+          if (notification.referenceId) {
+            navigate(`/reports/view/${notification.referenceId}`);
+          } else {
+            navigate('/reports');
+          }
         }
         break;
       default:
@@ -84,15 +93,16 @@ export function NotificationItem({ notification, onNavigate }: NotificationItemP
     <div
       onClick={handleClick}
       className={`
-        group flex items-start gap-3 px-4 py-3 cursor-pointer transition-colors border-b border-gray-100 dark:border-gray-700/50 last:border-b-0
+        group flex items-start gap-3 px-4 py-3 cursor-pointer transition-all duration-200 border-b border-gray-100 dark:border-gray-700/50 last:border-b-0
+        hover:bg-primary-100 dark:hover:bg-gray-600
         ${notification.isRead
-          ? 'bg-transparent hover:bg-gray-50 dark:hover:bg-gray-750'
-          : 'bg-primary-50/50 dark:bg-primary-900/10 hover:bg-primary-50 dark:hover:bg-primary-900/20'
+          ? 'bg-transparent'
+          : 'bg-primary-50/50 dark:bg-primary-900/10'
         }
       `}
     >
       {/* Category icon */}
-      <div className={`mt-0.5 flex-shrink-0 ${config.color}`}>
+      <div className={`mt-0.5 shrink-0 ${config.color}`}>
         <Icon size={18} />
       </div>
 
@@ -102,7 +112,7 @@ export function NotificationItem({ notification, onNavigate }: NotificationItemP
           <p className={`text-sm leading-snug ${notification.isRead ? 'text-gray-700 dark:text-gray-300' : 'text-gray-900 dark:text-gray-100 font-medium'}`}>
             {notification.title}
           </p>
-          <span className="text-[10px] text-gray-400 flex-shrink-0 mt-0.5">
+          <span className="text-[10px] text-gray-400 shrink-0 mt-0.5">
             {timeAgo(notification.createdAt)}
           </span>
         </div>
@@ -119,7 +129,7 @@ export function NotificationItem({ notification, onNavigate }: NotificationItemP
       </div>
 
       {/* Unread dot + delete */}
-      <div className="flex flex-col items-center gap-1 flex-shrink-0 mt-0.5">
+      <div className="flex flex-col items-center gap-1 shrink-0 mt-0.5">
         {!notification.isRead && (
           <span className="w-2 h-2 bg-primary-500 rounded-full" />
         )}

@@ -1,6 +1,5 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
-import tailwind from "@tailwindcss/postcss";
 import path from "path";
 
 const host = process.env.TAURI_DEV_HOST;
@@ -9,6 +8,9 @@ const host = process.env.TAURI_DEV_HOST;
 export default defineConfig(async () => ({
   plugins: [
     react(),
+    // Nota: @imgly/background-removal v1.7+ descarga los modelos ONNX desde
+    // su CDN (staticimgly.com) en el primer uso y los cachea en el WebView.
+    // No se requiere copiar assets localmente.
   ],
 
   resolve: {

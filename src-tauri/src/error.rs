@@ -29,6 +29,9 @@ pub enum AppError {
 
     #[error("Internal error: {0}")]
     Internal(String),
+
+    #[error("Network error: {0}")]
+    NetworkError(String),
 }
 
 // Implement Serialize for Tauri compatibility

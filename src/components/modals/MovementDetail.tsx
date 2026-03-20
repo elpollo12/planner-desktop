@@ -1,7 +1,11 @@
+import { useTranslation } from 'react-i18next';
 import { Eye, Calendar, User, Tag, FileText, Package, ClipboardSignature, Info } from 'lucide-react';
 import { useModal } from '../../store/modalStore';
 import { Button } from '../ui';
 import { formatDateDMY, formatTimeHM } from '../../lib/dateUtils';
+import i18n from '../../lib/i18n';
+
+const t = (key: string, opts?: Record<string, any>) => i18n.t(key, opts) as string;
 
 interface DetailField {
   label: string;
@@ -15,6 +19,7 @@ interface MovementDetailModalProps {
 
 export default function MovementDetailModal({ fields }: MovementDetailModalProps) {
   const { closeModal } = useModal();
+  const { t } = useTranslation();
 
   return (
     <div className="space-y-4">
@@ -52,7 +57,7 @@ export default function MovementDetailModal({ fields }: MovementDetailModalProps
       {/* Actions */}
       <div className="flex justify-end pt-4 border-t border-gray-200 dark:border-gray-700">
         <Button variant="outline" onClick={closeModal}>
-          Cerrar
+          {t('logistics.modals.close')}
         </Button>
       </div>
     </div>
@@ -61,6 +66,7 @@ export default function MovementDetailModal({ fields }: MovementDetailModalProps
 
 // ============================================================================
 // Helper builders para cada tipo de movimiento
+// (plain functions — use module-level i18n.t)
 // ============================================================================
 
 export function buildWaterBottlesFields(movement: {
@@ -70,11 +76,11 @@ export function buildWaterBottlesFields(movement: {
   notes?: string;
 }, createdByName: string) {
   return [
-    { label: 'Fecha', value: `${formatDateDMY(movement.createdAt?.split('T')[0])} — ${formatTimeHM(movement.createdAt)}`, icon: Calendar },
-    { label: 'Tipo', value: movement.movementType === 'entry' ? 'Entrada' : 'Salida', icon: Tag },
-    { label: 'Cantidad', value: `${movement.quantity} botellones`, icon: Package },
-    { label: 'Registrado por', value: createdByName, icon: User },
-    { label: 'Observaciones', value: movement.notes || '—', icon: FileText },
+    { label: t('logistics.common.date'), value: `${formatDateDMY(movement.createdAt?.split('T')[0])} — ${formatTimeHM(movement.createdAt)}`, icon: Calendar },
+    { label: t('logistics.common.type'), value: t(`logistics.movementLabels.${movement.movementType}`), icon: Tag },
+    { label: t('logistics.common.quantity'), value: `${movement.quantity} ${t('logistics.waterBottles.unit')}`, icon: Package },
+    { label: t('logistics.modals.registeredBy'), value: createdByName, icon: User },
+    { label: t('logistics.common.notes'), value: movement.notes || '—', icon: FileText },
   ];
 }
 
@@ -85,11 +91,11 @@ export function buildFuelFields(movement: {
   notes?: string;
 }, createdByName: string) {
   return [
-    { label: 'Fecha', value: `${formatDateDMY(movement.createdAt?.split('T')[0])} — ${formatTimeHM(movement.createdAt)}`, icon: Calendar },
-    { label: 'Tipo', value: movement.movementType === 'entry' ? 'Entrada' : 'Salida', icon: Tag },
-    { label: 'Cantidad', value: `${movement.amount.toFixed(2)} litros`, icon: Package },
-    { label: 'Registrado por', value: createdByName, icon: User },
-    { label: 'Observaciones', value: movement.notes || '—', icon: FileText },
+    { label: t('logistics.common.date'), value: `${formatDateDMY(movement.createdAt?.split('T')[0])} — ${formatTimeHM(movement.createdAt)}`, icon: Calendar },
+    { label: t('logistics.common.type'), value: t(`logistics.movementLabels.${movement.movementType}`), icon: Tag },
+    { label: t('logistics.common.quantity'), value: `${movement.amount.toFixed(2)} ${t('logistics.fuel.unit')}`, icon: Package },
+    { label: t('logistics.modals.registeredBy'), value: createdByName, icon: User },
+    { label: t('logistics.common.notes'), value: movement.notes || '—', icon: FileText },
   ];
 }
 
@@ -100,11 +106,11 @@ export function buildMaterialFields(movement: {
   notes?: string;
 }, materialName: string, materialUnit: string, createdByName: string) {
   return [
-    { label: 'Fecha', value: `${formatDateDMY(movement.createdAt?.split('T')[0])} — ${formatTimeHM(movement.createdAt)}`, icon: Calendar },
-    { label: 'Tipo', value: movement.movementType === 'entry' ? 'Entrada' : 'Salida', icon: Tag },
-    { label: 'Material', value: `${materialName} (${movement.quantity} ${materialUnit})`, icon: Package },
-    { label: 'Registrado por', value: createdByName, icon: User },
-    { label: 'Observaciones', value: movement.notes || '—', icon: FileText },
+    { label: t('logistics.common.date'), value: `${formatDateDMY(movement.createdAt?.split('T')[0])} — ${formatTimeHM(movement.createdAt)}`, icon: Calendar },
+    { label: t('logistics.common.type'), value: t(`logistics.movementLabels.${movement.movementType}`), icon: Tag },
+    { label: t('logistics.modals.material'), value: `${materialName} (${movement.quantity} ${materialUnit})`, icon: Package },
+    { label: t('logistics.modals.registeredBy'), value: createdByName, icon: User },
+    { label: t('logistics.common.notes'), value: movement.notes || '—', icon: FileText },
   ];
 }
 
@@ -114,10 +120,10 @@ export function buildVacuumFields(action: {
   notes?: string;
 }, createdByName: string) {
   return [
-    { label: 'Fecha', value: `${formatDateDMY(action.createdAt?.split('T')[0])} — ${formatTimeHM(action.createdAt)}`, icon: Calendar },
-    { label: 'Acción', value: action.actionName, icon: Tag },
-    { label: 'Registrado por', value: createdByName, icon: User },
-    { label: 'Observaciones', value: action.notes || '—', icon: FileText },
+    { label: t('logistics.common.date'), value: `${formatDateDMY(action.createdAt?.split('T')[0])} — ${formatTimeHM(action.createdAt)}`, icon: Calendar },
+    { label: t('logistics.modals.action'), value: action.actionName, icon: Tag },
+    { label: t('logistics.modals.registeredBy'), value: createdByName, icon: User },
+    { label: t('logistics.common.notes'), value: action.notes || '—', icon: FileText },
   ];
 }
 
@@ -137,18 +143,18 @@ export function buildRequestFields(request: {
       : `${request.quantity ?? '—'}`;
 
   const fields = [
-    { label: 'Fecha de solicitud', value: `${formatDateDMY(request.requestedAt?.split('T')[0])} — ${formatTimeHM(request.requestedAt)}`, icon: Calendar },
-    { label: 'Tipo', value: typeLabel, icon: ClipboardSignature },
-    { label: 'Detalle', value: detail, icon: Package },
-    { label: 'Estado', value: statusLabel, icon: Info },
-    { label: 'Solicitado por', value: requestedByName, icon: User },
+    { label: t('logistics.modals.requestDate'), value: `${formatDateDMY(request.requestedAt?.split('T')[0])} — ${formatTimeHM(request.requestedAt)}`, icon: Calendar },
+    { label: t('logistics.common.type'), value: typeLabel, icon: ClipboardSignature },
+    { label: t('logistics.modals.detail'), value: detail, icon: Package },
+    { label: t('logistics.modals.status'), value: statusLabel, icon: Info },
+    { label: t('logistics.modals.requestedBy'), value: requestedByName, icon: User },
   ];
 
   if (request.statusChangedAt && statusChangedByName !== '—') {
-    fields.push({ label: 'Estado cambiado por', value: `${statusChangedByName} — ${formatDateDMY(request.statusChangedAt?.split('T')[0])}`, icon: Tag });
+    fields.push({ label: t('logistics.modals.statusChangedBy'), value: `${statusChangedByName} — ${formatDateDMY(request.statusChangedAt?.split('T')[0])}`, icon: Tag });
   }
 
-  fields.push({ label: 'Observaciones', value: request.notes || '—', icon: FileText });
+  fields.push({ label: t('logistics.common.notes'), value: request.notes || '—', icon: FileText });
 
   return fields;
 }

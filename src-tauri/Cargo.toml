@@ -1,6 +1,6 @@
 [package]
 name = "d-planner-temp"
-version = "0.2.0"
+version = "0.6.5"
 description = "A Tauri App"
 authors = ["you"]
 edition = "2021"
@@ -14,10 +14,6 @@ default-run = "d-planner-temp"
 # This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
 name = "d_planner_temp_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
-
-[[bin]]
-name = "license_gen"
-path = "src/bin/license_gen.rs"
 
 [build-dependencies]
 tauri-build = { version = "2.5", features = [] }
@@ -58,5 +54,4 @@ tokio = { version = "1", features = ["full"] }
 dirs = "5.0"
 dotenvy = "0.15"
 base64 = "0.22"
-
-
+urlencoding = "2"

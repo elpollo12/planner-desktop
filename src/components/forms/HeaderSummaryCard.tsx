@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { Card, Button } from '../ui';
 import { CheckCircle2, Edit2 } from 'lucide-react';
 import { formatDateDMY } from '../../lib/dateUtils';
@@ -9,6 +10,8 @@ interface HeaderSummaryCardProps {
 }
 
 export function HeaderSummaryCard({ headerData, onEdit }: HeaderSummaryCardProps) {
+  const { t } = useTranslation();
+
   if (!headerData) return null;
 
   return (
@@ -18,7 +21,7 @@ export function HeaderSummaryCard({ headerData, onEdit }: HeaderSummaryCardProps
           <div className="flex items-center gap-2">
             <CheckCircle2 className="text-blue-600" size={20} />
             <h3 className="font-semibold text-blue-900 dark:text-blue-100">
-              Encabezado Completado
+              {t('reports.header.headerCompleted')}
             </h3>
           </div>
           <Button
@@ -28,26 +31,26 @@ export function HeaderSummaryCard({ headerData, onEdit }: HeaderSummaryCardProps
             icon={<Edit2 size={14} />}
             className="border-blue-300 text-blue-700 hover:bg-blue-100 dark:border-blue-700 dark:text-blue-300"
           >
-            Modificar
+            {t('reports.header.modify')}
           </Button>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
           <div>
-            <span className="text-gray-600 dark:text-gray-400">Reporte #:</span>
+            <span className="text-gray-600 dark:text-gray-400">{t('reports.header.reportNumberLabel')}</span>
             <span className="ml-2 font-medium text-gray-900 dark:text-gray-100">
               {headerData.reportNumber}
             </span>
           </div>
           <div>
-            <span className="text-gray-600 dark:text-gray-400">Fecha:</span>
+            <span className="text-gray-600 dark:text-gray-400">{t('reports.header.dateLabel')}</span>
             <span className="ml-2 font-medium text-gray-900 dark:text-gray-100">
               {formatDateDMY(headerData.reportDate)}
             </span>
           </div>
           {headerData.wellNumber && (
             <div>
-              <span className="text-gray-600 dark:text-gray-400">Pozo:</span>
+              <span className="text-gray-600 dark:text-gray-400">{t('reports.header.wellLabel')}</span>
               <span className="ml-2 font-medium text-gray-900 dark:text-gray-100">
                 {headerData.wellNumber}
               </span>
@@ -55,7 +58,7 @@ export function HeaderSummaryCard({ headerData, onEdit }: HeaderSummaryCardProps
           )}
           {headerData.rigNumber && (
             <div>
-              <span className="text-gray-600 dark:text-gray-400">TAL:</span>
+              <span className="text-gray-600 dark:text-gray-400">{t('reports.header.rigLabel')}</span>
               <span className="ml-2 font-medium text-gray-900 dark:text-gray-100">
                 {headerData.rigNumber}
               </span>
@@ -63,7 +66,7 @@ export function HeaderSummaryCard({ headerData, onEdit }: HeaderSummaryCardProps
           )}
           {headerData.supervisor24h && (
             <div>
-              <span className="text-gray-600 dark:text-gray-400">Supervisor:</span>
+              <span className="text-gray-600 dark:text-gray-400">{t('reports.header.supervisorLabel')}</span>
               <span className="ml-2 font-medium text-gray-900 dark:text-gray-100">
                 {headerData.supervisor24h}
               </span>

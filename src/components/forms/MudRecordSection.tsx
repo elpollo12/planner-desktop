@@ -1,10 +1,11 @@
-﻿import { useFormContext, useFieldArray } from 'react-hook-form';
+import { useFormContext, useFieldArray } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
 import { Button, Input, Select } from '../ui';
 import { Plus, Trash2 } from 'lucide-react';
 import type { CompleteReportData } from '../../schemas';
-import { SHIFT_LABELS } from '../../types/report';
 
 export function MudRecordSection() {
+  const { t } = useTranslation();
   const {
     register,
     control,
@@ -47,7 +48,7 @@ export function MudRecordSection() {
       {/* Propiedades del Lodo */}
       <div>
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Propiedades del Lodo</h3>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{t('reports.forms.mud.title')}</h3>
           <Button
             type="button"
             variant="secondary"
@@ -55,13 +56,13 @@ export function MudRecordSection() {
             onClick={addMudRecord}
             icon={<Plus size={16} />}
           >
-            Agregar Medición
+            {t('reports.forms.mud.addMeasurement')}
           </Button>
         </div>
 
         {mudFields.length === 0 ? (
           <div className="text-center py-8 bg-gray-50 dark:bg-gray-800 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600">
-            <p className="text-gray-500 mb-3">No hay mediciones registradas</p>
+            <p className="text-gray-500 mb-3">{t('reports.forms.mud.noMeasurements')}</p>
             <Button
               type="button"
               variant="primary"
@@ -69,7 +70,7 @@ export function MudRecordSection() {
               onClick={addMudRecord}
               icon={<Plus size={16} />}
             >
-              Agregar Primera Medición
+              {t('reports.forms.mud.addFirstMeasurement')}
             </Button>
           </div>
         ) : (
@@ -77,7 +78,7 @@ export function MudRecordSection() {
             {mudFields.map((field, index) => (
               <div key={field.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-800">
                 <div className="flex justify-between items-center mb-4">
-                  <h4 className="font-medium text-gray-900 dark:text-gray-100">Medición #{index + 1}</h4>
+                  <h4 className="font-medium text-gray-900 dark:text-gray-100">{t('reports.forms.mud.measurementNumber', { number: index + 1 })}</h4>
                   <Button
                     type="button"
                     variant="secondary"
@@ -86,65 +87,65 @@ export function MudRecordSection() {
                     icon={<Trash2 size={16} />}
                     className="text-red-600"
                   >
-                    Eliminar
+                    {t('reports.forms.common.delete')}
                   </Button>
                 </div>
 
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                   <Select
-                    label="Turno"
+                    label={t('reports.forms.common.shift')}
                     {...register(`mudRecords.records.${index}.shift`)}
                   >
-                    <option value="">Seleccionar...</option>
-                    <option value="morning">{SHIFT_LABELS.morning}</option>
-                    <option value="afternoon">{SHIFT_LABELS.afternoon}</option>
-                    <option value="night">{SHIFT_LABELS.night}</option>
+                    <option value="">{t('reports.forms.common.select')}</option>
+                    <option value="morning">{t('reports.shiftLabels.morning')}</option>
+                    <option value="afternoon">{t('reports.shiftLabels.afternoon')}</option>
+                    <option value="night">{t('reports.shiftLabels.night')}</option>
                   </Select>
 
                   <Input
-                    label="Hora"
+                    label={t('reports.forms.mud.hour')}
                     type="time"
                     {...register(`mudRecords.records.${index}.hour`)}
                   />
 
                   <Input
-                    label="Peso (ppg)"
+                    label={t('reports.forms.mud.weight')}
                     {...register(`mudRecords.records.${index}.weight`)}
                     placeholder="9.5"
                   />
 
                   <Input
-                    label="Viscosidad (seg)"
+                    label={t('reports.forms.mud.viscosity')}
                     {...register(`mudRecords.records.${index}.viscosity`)}
                     placeholder="45"
                   />
 
                   <Input
-                    label="PVP (cps)"
+                    label={t('reports.forms.mud.pvp')}
                     {...register(`mudRecords.records.${index}.pvp`)}
                     placeholder="12"
                   />
 
                   <Input
-                    label="Gels (10'/10\)"
+                    label={t('reports.forms.mud.gels')}
                     {...register(`mudRecords.records.${index}.gels`)}
                     placeholder="8/12"
                   />
 
                   <Input
-                    label="Filtrado (ml)"
+                    label={t('reports.forms.mud.filtrate')}
                     {...register(`mudRecords.records.${index}.filtrate`)}
                     placeholder="7.5"
                   />
 
                   <Input
-                    label="pH"
+                    label={t('reports.forms.mud.ph')}
                     {...register(`mudRecords.records.${index}.ph`)}
                     placeholder="9.5"
                   />
 
                   <Input
-                    label="Sólidos (%)"
+                    label={t('reports.forms.mud.solids')}
                     {...register(`mudRecords.records.${index}.solids`)}
                     placeholder="8"
                   />
@@ -158,7 +159,7 @@ export function MudRecordSection() {
       {/* Aditivos */}
       <div>
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Aditivos y Químicos</h3>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{t('reports.forms.mud.additivesTitle')}</h3>
           <Button
             type="button"
             variant="secondary"
@@ -166,13 +167,13 @@ export function MudRecordSection() {
             onClick={addAdditive}
             icon={<Plus size={16} />}
           >
-            Agregar Aditivo
+            {t('reports.forms.mud.addAdditive')}
           </Button>
         </div>
 
         {additiveFields.length === 0 ? (
           <div className="text-center py-8 bg-gray-50 dark:bg-gray-800 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600">
-            <p className="text-gray-500 mb-3">No hay aditivos registrados</p>
+            <p className="text-gray-500 mb-3">{t('reports.forms.mud.noAdditives')}</p>
             <Button
               type="button"
               variant="primary"
@@ -180,7 +181,7 @@ export function MudRecordSection() {
               onClick={addAdditive}
               icon={<Plus size={16} />}
             >
-              Agregar Primer Aditivo
+              {t('reports.forms.mud.addFirstAdditive')}
             </Button>
           </div>
         ) : (
@@ -189,16 +190,16 @@ export function MudRecordSection() {
               <thead className="bg-gray-50 dark:bg-gray-800">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                    Turno
+                    {t('reports.forms.common.shift')}
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                    Tipo de Aditivo
+                    {t('reports.forms.mud.additiveType')}
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                    Cantidad
+                    {t('reports.forms.mud.quantity')}
                   </th>
                   <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                    Acciones
+                    {t('reports.forms.common.actions')}
                   </th>
                 </tr>
               </thead>
@@ -210,10 +211,10 @@ export function MudRecordSection() {
                         {...register(`mudRecords.additives.${index}.shift`)}
                         className="min-w-[150px]"
                       >
-                        <option value="">Seleccionar...</option>
-                        <option value="morning">{SHIFT_LABELS.morning}</option>
-                        <option value="afternoon">{SHIFT_LABELS.afternoon}</option>
-                        <option value="night">{SHIFT_LABELS.night}</option>
+                        <option value="">{t('reports.forms.common.select')}</option>
+                        <option value="morning">{t('reports.shiftLabels.morning')}</option>
+                        <option value="afternoon">{t('reports.shiftLabels.afternoon')}</option>
+                        <option value="night">{t('reports.shiftLabels.night')}</option>
                       </Select>
                     </td>
                     <td className="px-4 py-3">

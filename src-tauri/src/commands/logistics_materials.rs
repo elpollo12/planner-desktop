@@ -169,7 +169,9 @@ pub async fn delete_material(
     session_token: String, material_id: String, state: State<'_, AppState>,
 ) -> Result<(), String> {
     let session = get_session(&session_token, &state).map_err(|e| e.to_string())?;
-    match session.role.as_str() { "admin" => {} _ => return Err("Solo administradores pueden eliminar materiales".to_string()), }
+    if session.role != "admin" {
+        return Err("Solo administradores pueden eliminar materiales".to_string());
+    }
 
     let conn = state.db.lock().map_err(|e| format!("Failed to lock database: {}", e))?;
 

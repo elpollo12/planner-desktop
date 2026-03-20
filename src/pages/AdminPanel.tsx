@@ -1,21 +1,22 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { MainLayout } from '../components/layout';
 import { Card } from '../components/ui';
-import { Users, Bookmark, BarChart3, Activity, MapPin, Palette, Cloud, Building2, Wrench } from 'lucide-react';
+import { Users, BarChart3, Activity, MapPin, Palette, Cloud, Building2, Download, LayoutGrid, ShieldCheck } from 'lucide-react';
 import { OilRigIcon } from '../components/ui/icons/OilRigIcon';
 import { useAuthStore } from '../store/authStore';
 import { UsersManagement } from '../components/admin/UsersManagement';
-import { OperationCodesManagement } from '../components/admin/OperationCodesManagement';
 import { Statistics } from '../components/admin/Statistics';
-import AreasManagement from '../components/admin/AreasManagement';
 import RigsManagement from '../components/admin/RigsManagement';
 import AppearanceSettings from '../components/admin/AppearanceSettings';
 import SyncSettings from '../components/admin/SyncSettings';
-import OperatorsManagement from '../components/admin/OperatorsManagement';
-import RigsDiagnostic from '../components/admin/RigsDiagnostic';
+import CompaniesManagement from '../components/admin/CompaniesManagement';
+import UpdatesSettings from '../components/admin/UpdatesSettings';
+import MiscelaneosManagement from '../components/admin/MiscelaneosManagement';
+import AuditLog from '../components/admin/AuditLog';
 import { usersApi, areasApi, rigsApi, reportsApi } from '../lib/api';
 
-type AdminTab = 'users' | 'codes' | 'stats' | 'areas' | 'rigs' | 'operators' | 'appearance' | 'sync' | 'diagnostic';
+type AdminTab = 'users' | 'stats' | 'rigs' | 'companies' | 'misc' | 'appearance' | 'sync' | 'updates' | 'audit';
 
 interface AdminStats {
   totalUsers: number;
@@ -25,7 +26,8 @@ interface AdminStats {
 }
 
 export default function AdminPanel() {
-  const { user, sessionToken } = useAuthStore();
+  const { t } = useTranslation();
+  const { sessionToken } = useAuthStore();
   const [activeTab, setActiveTab] = useState<AdminTab>('users');
   const [stats, setStats] = useState<AdminStats>({
     totalUsers: 0,
@@ -71,28 +73,28 @@ export default function AdminPanel() {
   };
 
   const tabs = [
-    { id: 'users' as AdminTab, label: 'Usuarios', icon: Users },
-    { id: 'areas' as AdminTab, label: 'Áreas', icon: MapPin },
-    { id: 'rigs' as AdminTab, label: 'Taladros', icon: OilRigIcon },
-    { id: 'operators' as AdminTab, label: 'Operadores', icon: Building2 },
-    { id: 'codes' as AdminTab, label: 'Códigos de Operación', icon: Bookmark },
-    { id: 'stats' as AdminTab, label: 'Estadísticas', icon: BarChart3 },
-    { id: 'appearance' as AdminTab, label: 'Apariencia', icon: Palette },
-    { id: 'sync' as AdminTab, label: 'Sincronización', icon: Cloud },
-    { id: 'diagnostic' as AdminTab, label: 'Diagnóstico', icon: Wrench },
+    { id: 'users' as AdminTab, label: t('admin.panel.tabs.users'), icon: Users },
+    { id: 'rigs' as AdminTab, label: t('admin.panel.tabs.rigs'), icon: OilRigIcon },
+    { id: 'companies' as AdminTab, label: t('admin.panel.tabs.companies'), icon: Building2 },
+    { id: 'misc' as AdminTab, label: t('admin.panel.tabs.misc'), icon: LayoutGrid },
+    { id: 'stats' as AdminTab, label: t('admin.panel.tabs.stats'), icon: BarChart3 },
+    { id: 'sync' as AdminTab, label: t('admin.panel.tabs.sync'), icon: Cloud },
+    { id: 'updates' as AdminTab, label: t('admin.panel.tabs.updates'), icon: Download },
+    { id: 'appearance' as AdminTab, label: t('admin.panel.tabs.appearance'), icon: Palette },
+    { id: 'audit' as AdminTab, label: 'Auditoría', icon: ShieldCheck },
   ];
 
   return (
     <MainLayout
-      title="Panel de Administración"
-      subtitle="Gestión del sistema"
+      title={t('admin.panel.title')}
+      subtitle={t('admin.panel.subtitle')}
     >
-      {activeTab !== 'stats' && activeTab !== 'diagnostic' && (
+      {activeTab !== 'stats' && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
           <Card className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Total Usuarios</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">{t('admin.panel.totalUsers')}</p>
                 <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">
                   {loadingStats ? '...' : stats.totalUsers}
                 </p>
@@ -104,7 +106,7 @@ export default function AdminPanel() {
           <Card className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Áreas Activas</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">{t('admin.panel.activeAreas')}</p>
                 <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">
                   {loadingStats ? '...' : stats.activeAreas}
                 </p>
@@ -116,7 +118,7 @@ export default function AdminPanel() {
           <Card className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Taladros Activos</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">{t('admin.panel.activeRigs')}</p>
                 <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">
                   {loadingStats ? '...' : stats.activeRigs}
                 </p>
@@ -128,7 +130,7 @@ export default function AdminPanel() {
           <Card className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Reportes Creados Hoy</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">{t('admin.panel.reportsToday')}</p>
                 <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">
                   {loadingStats ? '...' : stats.activityToday}
                 </p>
@@ -172,14 +174,14 @@ export default function AdminPanel() {
 
           <div className="p-6">
             {activeTab === 'users' && <UsersManagement />}
-            {activeTab === 'areas' && <AreasManagement />}
             {activeTab === 'rigs' && <RigsManagement />}
-            {activeTab === 'operators' && <OperatorsManagement />}
-            {activeTab === 'codes' && <OperationCodesManagement />}
+            {activeTab === 'companies' && <CompaniesManagement />}
+            {activeTab === 'misc' && <MiscelaneosManagement />}
             {activeTab === 'stats' && <Statistics />}
             {activeTab === 'appearance' && <AppearanceSettings />}
             {activeTab === 'sync' && <SyncSettings />}
-            {activeTab === 'diagnostic' && <RigsDiagnostic />}
+            {activeTab === 'updates' && <UpdatesSettings />}
+            {activeTab === 'audit' && <AuditLog />}
           </div>
         </Card>
       </div>

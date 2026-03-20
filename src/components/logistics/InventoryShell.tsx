@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { Card } from '../ui';
 import { PaginationControls } from '../ui';
 
@@ -39,10 +40,14 @@ export function InventoryShell({
   filters,
   loading,
   isEmpty,
-  emptyMessage = 'No hay registros',
+  emptyMessage,
   pagination,
   children,
 }: InventoryShellProps) {
+  const { t } = useTranslation();
+
+  const resolvedEmptyMessage = emptyMessage ?? t('logistics.common.noRecords');
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -59,11 +64,11 @@ export function InventoryShell({
         {loading ? (
           <div className="p-8 text-center">
             <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            <p className="mt-2 text-gray-500">Cargando...</p>
+            <p className="mt-2 text-gray-500">{t('logistics.common.loading')}</p>
           </div>
         ) : isEmpty ? (
           <div className="p-8 text-center text-gray-500 dark:text-gray-400">
-            <p>{emptyMessage}</p>
+            <p>{resolvedEmptyMessage}</p>
           </div>
         ) : (
           <>

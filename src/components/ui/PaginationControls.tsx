@@ -1,4 +1,5 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface PaginationControlsProps {
   currentPage: number;
@@ -18,11 +19,13 @@ export function PaginationControls({
   totalPages,
   totalItems,
   pageSize,
-  itemLabel = 'registros',
+  itemLabel,
   pageSizeOptions = [5, 10, 20, 50],
   onPageChange,
   onPageSizeChange,
 }: PaginationControlsProps) {
+  const { t } = useTranslation();
+  const resolvedItemLabel = itemLabel ?? t('pagination.results');
   if (totalPages <= 1 && totalItems <= pageSize) return null;
 
   const startItem = (currentPage - 1) * pageSize + 1;
@@ -56,9 +59,8 @@ export function PaginationControls({
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-4">
           <span className="text-sm text-gray-700 dark:text-gray-300">
-            Mostrando <span className="font-medium">{startItem}</span> -{' '}
-            <span className="font-medium">{endItem}</span> de{' '}
-            <span className="font-medium">{totalItems}</span> {itemLabel}
+            {t('pagination.showing', { from: startItem, to: endItem, total: totalItems })}{' '}
+            {resolvedItemLabel}
           </span>
           {showPageSizeSelector && (
             <select
@@ -68,7 +70,7 @@ export function PaginationControls({
             >
               {(pageSizeOptions as number[]).map((size) => (
                 <option key={size} value={size}>
-                  {size} por página
+                  {size} {t('pagination.perPage')}
                 </option>
               ))}
             </select>

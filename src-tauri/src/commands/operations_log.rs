@@ -18,12 +18,23 @@ pub async fn save_operation_logs(
         .lock()
         .map_err(|e| format!("Failed to lock database: {}", e))?;
 
-    let logs = OperationLog::save_bulk(&conn, &report_id, &data)
-        .map_err(|e| e.to_string())?;
-
-    Report::touch_updated_at(&conn, &report_id).map_err(|e| e.to_string())?;
-
-    Ok(logs)
+    conn.execute_batch("BEGIN IMMEDIATE").map_err(|e| e.to_string())?;
+    let result = (|| -> Result<_, String> {
+        let logs = OperationLog::save_bulk(&conn, &report_id, &data)
+            .map_err(|e| e.to_string())?;
+        Report::touch_updated_at(&conn, &report_id).map_err(|e| e.to_string())?;
+        Ok(logs)
+    })();
+    match result {
+        Ok(v) => {
+            conn.execute_batch("COMMIT").map_err(|e| e.to_string())?;
+            Ok(v)
+        }
+        Err(e) => {
+            let _ = conn.execute_batch("ROLLBACK");
+            Err(e)
+        }
+    }
 }
 
 #[tauri::command]

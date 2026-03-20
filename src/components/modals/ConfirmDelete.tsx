@@ -1,4 +1,5 @@
 import { AlertTriangle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useModal } from '../../store/modalStore';
 import { Button } from '../ui';
 
@@ -9,17 +10,17 @@ interface ConfirmDeleteModalProps {
 }
 
 export default function ConfirmDeleteModal({
-  message = '¿Estás seguro de que deseas eliminar este reporte?',
+  message,
   itemName,
   onConfirm,
 }: ConfirmDeleteModalProps) {
-  
+  const { t } = useTranslation();
   const { closeModal, updateOptions } = useModal();
 
   const handleConfirm = async () => {
     // Disable buttons while deleting
     updateOptions({ disableConfirm: true, disableCancel: true });
-    
+
     try {
       await onConfirm();
       closeModal();
@@ -41,7 +42,7 @@ export default function ConfirmDeleteModal({
       {/* Message */}
       <div className="text-center">
         <p className="text-gray-700 dark:text-gray-300">
-          {message}
+          {message ?? t('confirm.deleteMessage')}
         </p>
         {itemName && (
           <p className="mt-2 font-semibold text-gray-900 dark:text-gray-100">
@@ -49,7 +50,7 @@ export default function ConfirmDeleteModal({
           </p>
         )}
         <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">
-          Esta acción no se puede deshacer.
+          {t('confirm.deleteWarning')}
         </p>
       </div>
 
@@ -59,14 +60,14 @@ export default function ConfirmDeleteModal({
           variant="outline"
           onClick={closeModal}
         >
-          Cancelar
+          {t('actions.cancel')}
         </Button>
         <Button
           variant="primary"
           onClick={handleConfirm}
           className="bg-red-600 hover:bg-red-700 focus:ring-red-500 dark:bg-red-600 dark:hover:bg-red-700"
         >
-          Eliminar
+          {t('actions.delete')}
         </Button>
       </div>
     </div>

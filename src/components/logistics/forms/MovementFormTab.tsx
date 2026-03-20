@@ -1,6 +1,7 @@
 import { useForm, type FieldValues, type UseFormRegister, type UseFormWatch, type UseFormSetValue, type FieldErrors, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { type LucideIcon } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useModalStore } from '@/store';
 import { useAuthStore } from '@/store/authStore';
 import { toast } from 'react-toastify';
@@ -54,6 +55,7 @@ export function MovementFormTab<TForm extends FieldValues>({
   onSuccess,
   renderFields,
 }: MovementFormTabProps<TForm>) {
+  const { t } = useTranslation();
   const sessionToken = useAuthStore((s) => s.sessionToken);
 
   const {
@@ -100,7 +102,7 @@ export function MovementFormTab<TForm extends FieldValues>({
           onClick={() => useModalStore.getState().closeModal()}
           variant="outline"
         >
-          Cancelar
+          {t('logistics.common.cancel')}
         </Button>
         <Button
           type="submit"

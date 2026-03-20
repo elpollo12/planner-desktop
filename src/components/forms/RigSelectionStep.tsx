@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { Card, Button } from '../ui';
 import { CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { RigWithArea } from '../../types/rig';
@@ -21,6 +22,8 @@ export function RigSelectionStep({
   onConfirm,
   onCancel,
 }: RigSelectionStepProps) {
+  const { t } = useTranslation();
+
   return (
     <Card>
       <div className="p-6">
@@ -30,10 +33,10 @@ export function RigSelectionStep({
           </div>
           <div>
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-              Selección de Taladro
+              {t('reports.rigStep.title')}
             </h2>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Selecciona el taladro para este reporte
+              {t('reports.rigStep.description')}
             </p>
           </div>
         </div>
@@ -45,7 +48,7 @@ export function RigSelectionStep({
         ) : accessibleRigs.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-gray-500 dark:text-gray-400">
-              No tienes taladros asignados. Contacta a tu administrador.
+              {t('reports.rigStep.noRigs')}
             </p>
           </div>
         ) : (
@@ -92,7 +95,7 @@ export function RigSelectionStep({
             onClick={onCancel}
             icon={<ChevronLeft size={16} />}
           >
-            Cancelar
+            {t('actions.cancel')}
           </Button>
           <Button
             variant="primary"
@@ -103,7 +106,7 @@ export function RigSelectionStep({
             icon={<ChevronRight size={20} />}
             iconPosition="right"
           >
-            Continuar
+            {t('actions.next')}
           </Button>
         </div>
       </div>

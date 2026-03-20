@@ -1,4 +1,4 @@
-use crate::auth::get_session;
+﻿use crate::auth::get_session;
 use crate::models::logistics::*;
 use crate::models::user::User;
 use crate::notification_helper;
@@ -112,11 +112,7 @@ pub async fn list_logistics_requests(
     let mut param_values: Vec<Box<dyn rusqlite::types::ToSql>> = vec![Box::new(rig_id.clone())];
     let mut idx = 2;
 
-    // Operators can only see their own requests
-    if session.role == "operator" {
-        conditions.push(format!("requested_by = ?{}", idx));
-        param_values.push(Box::new(session.user_id.clone())); idx += 1;
-    }
+    // All roles see all requests of their assigned rigs — rig access is the gate
 
     if let Some(ref rt) = request_type {
         conditions.push(format!("request_type = ?{}", idx));
@@ -277,18 +273,11 @@ pub async fn get_pending_requests_count(
         return Err("No tienes acceso a este taladro".to_string());
     }
 
-    // Operators only count their own pending requests
-    let count: i32 = if session.role == "operator" {
-        conn.query_row(
-            "SELECT COUNT(*) FROM logistics_requests WHERE status IN ('requested', 'pending') AND rig_id = ?1 AND requested_by = ?2 AND is_deleted = 0",
-            params![rig_id, session.user_id], |row| row.get(0),
-        ).map_err(|e| e.to_string())?
-    } else {
-        conn.query_row(
-            "SELECT COUNT(*) FROM logistics_requests WHERE status IN ('requested', 'pending') AND rig_id = ?1 AND is_deleted = 0",
-            params![rig_id], |row| row.get(0),
-        ).map_err(|e| e.to_string())?
-    };
+    // All roles see all pending requests of the rig
+    let count: i32 = conn.query_row(
+        "SELECT COUNT(*) FROM logistics_requests WHERE status IN ('requested', 'pending') AND rig_id = ?1 AND is_deleted = 0",
+        params![rig_id], |row| row.get(0),
+    ).map_err(|e| e.to_string())?;
 
     Ok(count)
 }
@@ -428,7 +417,15 @@ fn build_materials_summary(conn: &rusqlite::Connection, rig_id: &str, start: &st
             "SELECT COALESCE(SUM(quantity), 0) FROM logistics_materials_movements WHERE material_id = ?1 AND movement_type = 'exit' AND rig_id = ?2 AND created_at BETWEEN ?3 AND ?4 AND is_deleted = 0",
             params![id, rig_id, start, end], |row| row.get(0),
         ).map_err(|e| e.to_string())?;
-        summaries.push(MaterialSummary { material_id: id, material_name: name, unit, total_entries, total_exits, net: total_entries - total_exits });
+        let stock: f64 = conn.query_row(
+            "SELECT COALESCE(quantity, 0) FROM logistics_stock WHERE rig_id = ?1 AND category = ?2",
+            params![rig_id, format!("material:{}", id)],
+            |row| row.get(0),
+        ).unwrap_or(0.0);
+
+        if stock > 0.0 {
+            summaries.push(MaterialSummary { material_id: id, material_name: name, unit, total_entries, total_exits, net: total_entries - total_exits });
+        }
     }
     Ok(summaries)
 }

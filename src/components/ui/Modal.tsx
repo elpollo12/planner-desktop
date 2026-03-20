@@ -1,10 +1,15 @@
-﻿import { useEffect, useCallback } from "react";
+﻿import { useEffect, useCallback, useRef } from "react";
 import { useModalStore } from "../../store";
 import { X } from "lucide-react";
 import { Button } from "./Button";
 
+const FOCUSABLE_SELECTOR =
+  'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
 export const Modal = () => {
   const { isOpen, content, options, closeModal } = useModalStore();
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const previousFocusRef = useRef<Element | null>(null);
 
   const {
     title,
@@ -24,20 +29,83 @@ export const Modal = () => {
     disableBodyScroll = true,
   } = options;
 
-  // Handle ESC key
+  // Auto-focus dialog on open & restore focus on close
   useEffect(() => {
-    const handleEsc = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && closeOnEsc && isOpen) {
-        closeModal();
+    if (isOpen) {
+      previousFocusRef.current = document.activeElement;
+      // Wait for the modal to render, then focus
+      requestAnimationFrame(() => {
+        dialogRef.current?.focus();
+      });
+    } else if (previousFocusRef.current) {
+      (previousFocusRef.current as HTMLElement).focus?.();
+      previousFocusRef.current = null;
+    }
+  }, [isOpen]);
+
+  // Block context menu, Alt+Arrow navigation, and mouse back/forward buttons while modal is open
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleContextMenu = (e: MouseEvent) => e.preventDefault();
+
+    const handleNavKeys = (e: KeyboardEvent) => {
+      if (e.altKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+        e.preventDefault();
       }
     };
 
-    if (isOpen && closeOnEsc) {
-      document.addEventListener('keydown', handleEsc);
+    // Buttons 3 and 4 are back/forward on most mice
+    const handleMouseDown = (e: MouseEvent) => {
+      if (e.button === 3 || e.button === 4) e.preventDefault();
+    };
+
+    document.addEventListener('contextmenu', handleContextMenu);
+    document.addEventListener('keydown', handleNavKeys);
+    document.addEventListener('mousedown', handleMouseDown);
+
+    return () => {
+      document.removeEventListener('contextmenu', handleContextMenu);
+      document.removeEventListener('keydown', handleNavKeys);
+      document.removeEventListener('mousedown', handleMouseDown);
+    };
+  }, [isOpen]);
+
+  // Handle ESC key & focus trap
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && closeOnEsc && isOpen) {
+        closeModal();
+        return;
+      }
+
+      if (event.key === 'Tab' && isOpen && dialogRef.current) {
+        const focusableElements = dialogRef.current.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
+        if (focusableElements.length === 0) return;
+
+        const firstElement = focusableElements[0];
+        const lastElement = focusableElements[focusableElements.length - 1];
+
+        if (event.shiftKey) {
+          if (document.activeElement === firstElement || document.activeElement === dialogRef.current) {
+            event.preventDefault();
+            lastElement.focus();
+          }
+        } else {
+          if (document.activeElement === lastElement) {
+            event.preventDefault();
+            firstElement.focus();
+          }
+        }
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('keydown', handleKeyDown);
     }
 
     return () => {
-      document.removeEventListener('keydown', handleEsc);
+      document.removeEventListener('keydown', handleKeyDown);
     };
   }, [isOpen, closeOnEsc, closeModal]);
 
@@ -72,10 +140,10 @@ export const Modal = () => {
   }, [onClose, closeModal]);
 
   const sizeClasses = {
-    sm: 'w-full max-w-[24rem]',  // 24rem = 384px
-    md: 'w-full max-w-[28rem]',  // 28rem = 448px
-    lg: 'w-full max-w-[32rem]',  // 32rem = 512px
-    xl: 'w-full max-w-[48rem]',  // 48rem = 768px
+    sm: 'w-full max-w-[24rem]',   // 384px
+    md: 'w-full max-w-[28rem]',   // 448px
+    lg: 'w-full max-w-[36rem]',   // 576px — wizard fits here
+    xl: 'w-full max-w-[48rem]',   // 768px
     full: 'w-full max-w-[90vw]',
   };
 
@@ -96,7 +164,9 @@ export const Modal = () => {
         onClick={handleOutsideClick}
       >
         <div
-          className={`relative bg-gray-50 dark:bg-gray-800 flex flex-col rounded-lg shadow-xl w-full max-h-[90vh] ${sizeClasses[size]} transform transition-all duration-300 ${
+          ref={dialogRef}
+          tabIndex={-1}
+          className={`relative bg-gray-50 dark:bg-gray-800 flex flex-col rounded-lg shadow-xl w-full max-h-[90vh] ${sizeClasses[size]} transform transition-all duration-300 outline-none ${
             isOpen ? 'scale-100 opacity-100' : 'scale-95 opacity-0'
           } ${className}`}
           role="dialog"

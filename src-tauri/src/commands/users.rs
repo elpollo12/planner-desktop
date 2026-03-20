@@ -1,4 +1,8 @@
-use crate::auth::{check_permission, get_session, hash_password};
+use crate::auth::{check_permission, get_session, hash_password, verify_password};
+use crate::models::audit_log::{
+    AuditEntry, NewAuditEntry,
+    AUDIT_CREATE_USER, AUDIT_UPDATE_USER, AUDIT_DELETE_USER, AUDIT_CHANGE_PASSWORD,
+};
 use crate::models::user::{CreateUserRequest, UpdateUserRequest, User, UserRole, UserWithRigs};
 use crate::state::AppState;
 use tauri::State;
@@ -25,6 +29,17 @@ pub async fn create_user(
     // Create user
     let user = User::create(&conn, &user_data, password_hash, Some(current_user.user_id.clone()))
         .map_err(|e| e.to_string())?;
+
+    // Audit
+    AuditEntry::record(&conn, NewAuditEntry {
+        actor_id:    &current_user.user_id,
+        actor_name:  &current_user.username,
+        action:      AUDIT_CREATE_USER,
+        target_type: Some("user"),
+        target_id:   Some(&user.id),
+        target_name: Some(&user.username),
+        detail:      Some(format!("{{\"role\":\"{}\"}}", user_data.role)),
+    });
 
     // Get user with rigs
     let user_with_rigs = User::get_with_rigs(&conn, &user.id).map_err(|e| e.to_string())?;
@@ -86,11 +101,22 @@ pub async fn update_user(
         .lock()
         .map_err(|e| format!("Failed to lock database: {}", e))?;
 
-    let _user = User::update(&conn, &user_id, &user_data, Some(current_user.user_id))
+    let _user = User::update(&conn, &user_id, &user_data, Some(current_user.user_id.clone()))
         .map_err(|e| e.to_string())?;
 
-    // Get user with rigs
+    // Get user with rigs (necesario antes del audit para tener username)
     let user_with_rigs = User::get_with_rigs(&conn, &user_id).map_err(|e| e.to_string())?;
+
+    // Audit
+    AuditEntry::record(&conn, NewAuditEntry {
+        actor_id:    &current_user.user_id,
+        actor_name:  &current_user.username,
+        action:      AUDIT_UPDATE_USER,
+        target_type: Some("user"),
+        target_id:   Some(&user_id),
+        target_name: Some(&user_with_rigs.user.username),
+        detail:      None,
+    });
 
     Ok(user_with_rigs)
 }
@@ -102,14 +128,149 @@ pub async fn delete_user(
     state: State<'_, AppState>,
 ) -> Result<(), String> {
     // Only admin can delete users
-    check_permission(&session_token, UserRole::Admin, &state).map_err(|e| e.to_string())?;
+    let current_user = check_permission(&session_token, UserRole::Admin, &state)
+        .map_err(|e| e.to_string())?;
 
     let conn = state
         .db
         .lock()
         .map_err(|e| format!("Failed to lock database: {}", e))?;
 
+    // Obtener nombre antes de borrar (para el audit)
+    let username = conn.query_row(
+        "SELECT username FROM users WHERE id = ?1",
+        rusqlite::params![&user_id],
+        |row| row.get::<_, String>(0),
+    ).unwrap_or_else(|_| user_id.clone());
+
     User::delete(&conn, &user_id).map_err(|e| e.to_string())?;
+
+    // Audit
+    AuditEntry::record(&conn, NewAuditEntry {
+        actor_id:    &current_user.user_id,
+        actor_name:  &current_user.username,
+        action:      AUDIT_DELETE_USER,
+        target_type: Some("user"),
+        target_id:   Some(&user_id),
+        target_name: Some(&username),
+        detail:      None,
+    });
+
+    Ok(())
+}
+
+/// Admin resets a user's password (no current password required)
+#[tauri::command]
+pub async fn admin_change_password(
+    session_token: String,
+    user_id: String,
+    new_password: String,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    let current_user = check_permission(&session_token, UserRole::Admin, &state)
+        .map_err(|e| e.to_string())?;
+
+    if new_password.len() < 8 {
+        return Err("La contraseña debe tener al menos 8 caracteres".to_string());
+    }
+
+    let password_hash = hash_password(&new_password).map_err(|e| e.to_string())?;
+
+    let conn = state
+        .db
+        .lock()
+        .map_err(|e| format!("Failed to lock database: {}", e))?;
+
+    conn.execute(
+        "UPDATE users SET password_hash = ?1, updated_at = ?2 WHERE id = ?3",
+        rusqlite::params![&password_hash, chrono::Utc::now().to_rfc3339(), &user_id],
+    )
+    .map_err(|_| "Error actualizando contraseña".to_string())?;
+
+    // Audit
+    AuditEntry::record(&conn, NewAuditEntry {
+        actor_id:    &current_user.user_id,
+        actor_name:  &current_user.username,
+        action:      AUDIT_CHANGE_PASSWORD,
+        target_type: Some("user"),
+        target_id:   Some(&user_id),
+        target_name: None,
+        detail:      Some(r#"{"by":"admin"}"#.to_string()),
+    });
+
+    Ok(())
+}
+
+/// Verify user's current password without changing it
+#[tauri::command]
+pub async fn verify_own_password(
+    session_token: String,
+    current_password: String,
+    state: State<'_, AppState>,
+) -> Result<bool, String> {
+    let session = get_session(&session_token, &state).map_err(|e| e.to_string())?;
+
+    let conn = state
+        .db
+        .lock()
+        .map_err(|e| format!("Failed to lock database: {}", e))?;
+
+    let current_hash: String = conn
+        .query_row(
+            "SELECT password_hash FROM users WHERE id = ?1",
+            rusqlite::params![&session.user_id],
+            |row| row.get(0),
+        )
+        .map_err(|_| "Error de autenticación".to_string())?;
+
+    let valid = verify_password(&current_password, &current_hash)
+        .map_err(|_| "Error de autenticación".to_string())?;
+
+    Ok(valid)
+}
+
+/// User changes their own password (requires current password)
+#[tauri::command]
+pub async fn change_own_password(
+    session_token: String,
+    current_password: String,
+    new_password: String,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    let session = get_session(&session_token, &state).map_err(|e| e.to_string())?;
+
+    if new_password.len() < 8 {
+        return Err("La contraseña debe tener al menos 8 caracteres".to_string());
+    }
+
+    let conn = state
+        .db
+        .lock()
+        .map_err(|e| format!("Failed to lock database: {}", e))?;
+
+    // Get current password hash
+    let current_hash: String = conn
+        .query_row(
+            "SELECT password_hash FROM users WHERE id = ?1",
+            rusqlite::params![&session.user_id],
+            |row| row.get(0),
+        )
+        .map_err(|_| "Error de autenticación".to_string())?;
+
+    // Verify current password
+    let valid = verify_password(&current_password, &current_hash)
+        .map_err(|_| "Error de autenticación".to_string())?;
+    if !valid {
+        return Err("Contraseña actual incorrecta".to_string());
+    }
+
+    let new_hash = hash_password(&new_password).map_err(|e| e.to_string())?;
+
+    conn.execute(
+        "UPDATE users SET password_hash = ?1, updated_at = ?2 WHERE id = ?3",
+        rusqlite::params![&new_hash, chrono::Utc::now().to_rfc3339(), &session.user_id],
+    )
+    .map_err(|_| "Error actualizando contraseña".to_string())?;
 
     Ok(())
 }

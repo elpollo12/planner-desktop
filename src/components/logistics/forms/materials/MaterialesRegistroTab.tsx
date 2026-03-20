@@ -1,4 +1,5 @@
-﻿import { useForm } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Package, Ruler } from 'lucide-react';
 import { useModalStore } from '@/store';
@@ -15,6 +16,7 @@ interface Props {
 }
 
 export function MaterialesRegistroTab({ onSuccess }: Props) {
+  const { t } = useTranslation();
   const sessionToken = useAuthStore((s) => s.sessionToken);
   const qc = useQueryClient();
 
@@ -35,23 +37,23 @@ export function MaterialesRegistroTab({ onSuccess }: Props) {
         unit: data.unit,
         description: data.description || undefined,
       });
-      toast.success('Material registrado exitosamente');
+      toast.success(t('logistics.materials.materialRegistered'));
       qc.invalidateQueries({ queryKey: logisticsKeys.materialsCatalog() });
       onSuccess?.();
     } catch (error: any) {
-      toast.error(error?.toString() || 'Error al registrar');
+      toast.error(error?.toString() || t('logistics.materials.registerError'));
     }
   };
 
   return (
     <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-4">
       <div className="bg-green-50 dark:bg-green-900/10 p-4 rounded-lg mb-4">
-        <p className="text-sm text-green-700 dark:text-green-400">Registrar un nuevo tipo de material en el catálogo</p>
+        <p className="text-sm text-green-700 dark:text-green-400">{t('logistics.materials.registerNewBanner')}</p>
       </div>
       <div className="grid grid-cols-1 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Nombre del Material <span className="text-red-500">*</span>
+            {t('logistics.materials.materialName')} <span className="text-red-500">*</span>
           </label>
           <div className="relative">
             <Package className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
@@ -61,14 +63,14 @@ export function MaterialesRegistroTab({ onSuccess }: Props) {
               className={`w-full pl-10 pr-4 py-2.5 border rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
                 errors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
               }`}
-              placeholder='Ej: Cemento, Tubería 4", Grasa...'
+              placeholder={t('logistics.materials.materialNamePlaceholder')}
             />
           </div>
           {errors.name && <p className="mt-1 text-sm text-red-500">{errors.name.message}</p>}
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Unidad de Medida <span className="text-red-500">*</span>
+            {t('logistics.materials.unitOfMeasure')} <span className="text-red-500">*</span>
           </label>
           <div className="relative">
             <Ruler className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
@@ -78,30 +80,30 @@ export function MaterialesRegistroTab({ onSuccess }: Props) {
               className={`w-full pl-10 pr-4 py-2.5 border rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
                 errors.unit ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
               }`}
-              placeholder="Ej: kg, unidades, metros, litros..."
+              placeholder={t('logistics.materials.unitPlaceholder')}
             />
           </div>
           {errors.unit && <p className="mt-1 text-sm text-red-500">{errors.unit.message}</p>}
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Descripción</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('logistics.materials.description')}</label>
           <textarea
             {...register('description')}
             rows={3}
             className={`w-full px-4 py-2.5 border rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 ${
               errors.description ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
             }`}
-            placeholder="Descripción del material..."
+            placeholder={t('logistics.materials.descriptionPlaceholder')}
           />
           {errors.description && <p className="mt-1 text-sm text-red-500">{errors.description.message}</p>}
         </div>
       </div>
       <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
         <Button onClick={() => useModalStore.getState().closeModal()} variant="outline">
-          Cancelar
+          {t('logistics.common.cancel')}
         </Button>
         <Button type="submit" disabled={isSubmitting} icon={<Package size={16} />} className="bg-blue-500!">
-          {isSubmitting ? 'Registrando...' : 'Registrar Material'}
+          {isSubmitting ? t('logistics.common.registering') : t('logistics.materials.registerMaterial')}
         </Button>
       </div>
     </form>

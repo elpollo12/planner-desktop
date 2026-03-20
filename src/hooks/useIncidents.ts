@@ -8,17 +8,22 @@ import type { CreateIncidentInput, CreateIncidentTypeInput } from '../types/inci
 // ============================================================================
 
 export const incidentKeys = {
+  // Root key for a rig's incidents (for invalidation)
   all: (rigId: string) => ['incidents', rigId] as const,
 
+  // List with filters (matches the root prefix for proper invalidation)
   list: (rigId: string, incidentType: string, page: number, pageSize: number) =>
     ['incidents', rigId, 'list', { incidentType, page, pageSize }] as const,
 
+  // Single incident detail
   detail: (incidentId: string) =>
     ['incidents', 'detail', incidentId] as const,
 
+  // Personnel for a rig (used in form)
   personnel: (rigId: string) =>
     ['incidents', rigId, 'personnel'] as const,
 
+  // Incident types catalog
   types: () => ['incident-types'] as const,
 };
 
@@ -84,7 +89,12 @@ export function useCreateIncident(rigId: string) {
     mutationFn: (input: CreateIncidentInput) =>
       incidentsApi.create(sessionToken!, rigId, input),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: incidentKeys.all(rigId) });
+      // Invalidate AND refetch all incident lists for this rig
+      // Using refetchType: 'active' ensures mounted queries refetch immediately
+      qc.invalidateQueries({
+        queryKey: incidentKeys.all(rigId),
+        refetchType: 'active',
+      });
     },
   });
 }
@@ -100,7 +110,10 @@ export function useDeleteIncident(rigId: string) {
     mutationFn: (incidentId: string) =>
       incidentsApi.delete(sessionToken!, incidentId),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: incidentKeys.all(rigId) });
+      qc.invalidateQueries({
+        queryKey: incidentKeys.all(rigId),
+        refetchType: 'active',
+      });
     },
   });
 }
@@ -126,7 +139,10 @@ export function useCreateIncidentType() {
     mutationFn: (input: CreateIncidentTypeInput) =>
       incidentTypesApi.create(sessionToken!, input),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: incidentKeys.types() });
+      qc.invalidateQueries({
+        queryKey: incidentKeys.types(),
+        refetchType: 'active',
+      });
     },
   });
 }
@@ -138,7 +154,10 @@ export function useDeleteIncidentType() {
     mutationFn: (typeId: string) =>
       incidentTypesApi.delete(sessionToken!, typeId),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: incidentKeys.types() });
+      qc.invalidateQueries({
+        queryKey: incidentKeys.types(),
+        refetchType: 'active',
+      });
     },
   });
 }

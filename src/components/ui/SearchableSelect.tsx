@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ChevronDown, Search, X } from 'lucide-react';
 
 export interface SearchableSelectOption {
@@ -18,13 +19,14 @@ interface SearchableSelectProps {
 
 export function SearchableSelect({
   label,
-  placeholder = 'Seleccionar...',
+  placeholder,
   value,
   options,
   onChange,
   required,
   disabled,
 }: SearchableSelectProps) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
@@ -92,7 +94,7 @@ export function SearchableSelect({
         `}
       >
         <span className={selectedOption ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400 dark:text-gray-500'}>
-          {selectedOption?.label ?? placeholder}
+          {selectedOption?.label ?? placeholder ?? t('reports.forms.common.select')}
         </span>
         <div className="flex items-center gap-1 shrink-0">
           {value && !disabled && (
@@ -120,7 +122,7 @@ export function SearchableSelect({
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Buscar..."
+                placeholder={t('common.search')}
                 className="w-full pl-8 pr-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-md text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-primary-500/30 focus:border-primary-500"
               />
             </div>
@@ -130,7 +132,7 @@ export function SearchableSelect({
           <div className="max-h-48 overflow-y-auto">
             {filtered.length === 0 ? (
               <div className="px-3 py-4 text-center text-sm text-gray-400 dark:text-gray-500">
-                Sin resultados
+                {t('common.noResults')}
               </div>
             ) : (
               filtered.map((opt) => (

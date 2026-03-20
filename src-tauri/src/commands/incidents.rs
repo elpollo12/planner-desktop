@@ -133,7 +133,7 @@ pub async fn create_incident(
 }
 
 // ============================================================================
-// LIST INCIDENTS (with role-based filtering)
+// LIST INCIDENTS
 // ============================================================================
 
 #[tauri::command]
@@ -149,29 +149,21 @@ pub async fn list_incidents(
 
     let conn = state.db.lock().map_err(|e| format!("Failed to lock database: {}", e))?;
 
-    // Validate rig access
+    // Validate rig access — all roles see all incidents of their assigned rigs
     let has_access = User::has_rig_access(&conn, &session.user_id, &rig_id)
         .map_err(|e| e.to_string())?;
     if !has_access {
         return Err("No tienes acceso a este taladro".to_string());
     }
 
-    // Build WHERE clause based on role
-    // Operator: only see own incidents
-    // Supervisor/Admin: see all incidents in the rig
-    let is_operator = session.role == "operator";
-
+    // Base filters: rig + not deleted
     let mut where_clauses = vec![
         "i.rig_id = ?1".to_string(),
         "i.is_deleted = 0".to_string(),
     ];
     let mut count_params: Vec<Box<dyn rusqlite::ToSql>> = vec![Box::new(rig_id.clone())];
 
-    if is_operator {
-        where_clauses.push(format!("i.created_by = ?{}", count_params.len() + 1));
-        count_params.push(Box::new(session.user_id.clone()));
-    }
-
+    // Optional: filter by incident type
     if let Some(ref itype) = incident_type {
         if !itype.is_empty() {
             where_clauses.push(format!("i.incident_type = ?{}", count_params.len() + 1));
@@ -203,9 +195,7 @@ pub async fn list_incidents(
         count_params.len() + 2,
     );
 
-    let mut query_params: Vec<Box<dyn rusqlite::ToSql>> = count_params
-        .into_iter()
-        .collect();
+    let mut query_params: Vec<Box<dyn rusqlite::ToSql>> = count_params.into_iter().collect();
     query_params.push(Box::new(ps));
     query_params.push(Box::new(offset));
 
@@ -274,16 +264,11 @@ pub async fn get_incident(
         }),
     ).map_err(|_| "Incidencia no encontrada".to_string())?;
 
-    // Validate rig access
+    // Rig access is the gate for all roles — ownership is not checked for reads
     let has_access = User::has_rig_access(&conn, &session.user_id, &incident.rig_id)
         .map_err(|e| e.to_string())?;
     if !has_access {
         return Err("No tienes acceso a este taladro".to_string());
-    }
-
-    // Operator can only see own incidents
-    if session.role == "operator" && incident.created_by != session.user_id {
-        return Err("No tienes permisos para ver esta incidencia".to_string());
     }
 
     // Load involved personnel
@@ -340,9 +325,10 @@ pub async fn delete_incident(
         return Err("No tienes acceso a este taladro".to_string());
     }
 
-    // Operator can only delete own incidents
+    // Operators can only delete their own incidents
+    // Supervisors and admins can delete any incident in their rigs
     if session.role == "operator" && created_by != session.user_id {
-        return Err("Solo puedes eliminar tus propias incidencias".to_string());
+        return Err("Permiso denegado: Solo puedes eliminar tus propias incidencias".to_string());
     }
 
     let now = chrono::Utc::now().to_rfc3339();

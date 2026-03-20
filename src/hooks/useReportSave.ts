@@ -22,6 +22,9 @@ interface UseReportSaveOptions {
   formData: CompleteReportData;
   /** Sections that failed to load — must be skipped during save to prevent data loss */
   failedSections?: Set<TabId>;
+  /** Whether we are editing an existing report (true) or creating a new one (false).
+   *  When true, empty sections will be sent to the backend to trigger DELETE ALL. */
+  isEditMode?: boolean;
 }
 
 interface UseReportSaveReturn {
@@ -39,6 +42,7 @@ export function useReportSave({
   sessionToken,
   formData,
   failedSections = new Set(),
+  isEditMode = false,
 }: UseReportSaveOptions): UseReportSaveReturn {
 
   // ==========================================================================
@@ -292,8 +296,9 @@ export function useReportSave({
       ];
 
       // Skip sections that:
-      // 1. Have no data (empty in form AND never loaded from backend)
-      // 2. Failed to load — saving would overwrite existing data with empty arrays
+      // 1. Failed to load — saving would overwrite existing data with empty arrays
+      // 2. In CREATE mode: have no data (nothing to save or delete)
+      // In EDIT mode: empty sections ARE processed to trigger backend DELETE ALL
       const skippedFailed = sectionsToProcess.filter((s) => failedSections.has(s.id));
       if (skippedFailed.length > 0) {
         console.warn(
@@ -303,7 +308,7 @@ export function useReportSave({
       }
 
       const tasks = sectionsToProcess
-        .filter((section) => section.hasData && !failedSections.has(section.id))
+        .filter((section) => !failedSections.has(section.id) && (section.hasData || isEditMode))
         .map(async (section) => {
           try {
             await section.saveFn();

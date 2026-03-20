@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
 import { areasApi } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
@@ -15,6 +16,7 @@ interface UseAreasReturn {
 }
 
 export function useAreas(): UseAreasReturn {
+  const { t } = useTranslation();
   const user = useAuthStore((state) => state.user);
   const [areas, setAreas] = useState<Area[]>([]);
   const [loading, setLoading] = useState(false);
@@ -28,7 +30,7 @@ export function useAreas(): UseAreasReturn {
       const data = await areasApi.list(includeInactive);
       setAreas(data);
     } catch (err) {
-      const errorMsg = 'Error al cargar las áreas';
+      const errorMsg = t('admin.areas.loadError');
       setError(errorMsg);
       toast.error(errorMsg);
       console.error(err);
@@ -40,18 +42,18 @@ export function useAreas(): UseAreasReturn {
   // Create area
   const createArea = async (data: CreateAreaInput): Promise<Area | null> => {
     if (!user?.id) {
-      toast.error('Usuario no autenticado');
+      toast.error(t('errors.notAuthenticated'));
       return null;
     }
 
     setLoading(true);
     try {
       const newArea = await areasApi.create(user.id, data);
-      toast.success('Área creada exitosamente');
+      toast.success(t('admin.areas.created'));
       await fetchAreas();
       return newArea;
     } catch (err) {
-      toast.error('Error al crear el área');
+      toast.error(t('admin.areas.createError'));
       console.error(err);
       return null;
     } finally {
@@ -65,18 +67,18 @@ export function useAreas(): UseAreasReturn {
     data: UpdateAreaInput
   ): Promise<Area | null> => {
     if (!user?.id) {
-      toast.error('Usuario no autenticado');
+      toast.error(t('errors.notAuthenticated'));
       return null;
     }
 
     setLoading(true);
     try {
       const updated = await areasApi.update(id, user.id, data);
-      toast.success('Área actualizada exitosamente');
+      toast.success(t('admin.areas.updated'));
       await fetchAreas();
       return updated;
     } catch (err) {
-      toast.error('Error al actualizar el área');
+      toast.error(t('admin.areas.updateError'));
       console.error(err);
       return null;
     } finally {
@@ -89,11 +91,11 @@ export function useAreas(): UseAreasReturn {
     setLoading(true);
     try {
       await areasApi.delete(id);
-      toast.success('Área eliminada exitosamente');
+      toast.success(t('admin.areas.deleted'));
       await fetchAreas();
       return true;
     } catch (err) {
-      toast.error('Error al eliminar el área');
+      toast.error(t('admin.areas.deleteError'));
       console.error(err);
       return false;
     } finally {

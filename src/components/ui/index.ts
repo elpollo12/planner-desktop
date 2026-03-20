@@ -1,4 +1,4 @@
-export { Button } from './Button';
+﻿export { Button } from './Button';
 export { Card } from './Card';
 export { Input } from './Input';
 export { DateInput } from './DateInput';
@@ -16,3 +16,6 @@ export type { BadgeVariant, BadgeSize } from './Badge';
 export { ReportStatusBadge } from './ReportStatusBadge';
 export { SectionCarousel } from './SectionCarousel';
 export { PaginationControls } from './PaginationControls';
+export { ConnectionStatus } from './ConnectionStatus';
+export { HandshakeResultContent } from './HandshakeResultModal';
+export type { HandshakeOutcome } from './HandshakeResultModal';

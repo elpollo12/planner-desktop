@@ -15,10 +15,10 @@ export const headerSectionSchema = z.object({
   // Campos opcionales
   apiNumber: z.string().optional(),
   contract: z.string().optional(),
-  contractor: z.string().optional(),
-  fieldDistrict: z.string().optional(),
+  contractor: z.string().min(1, 'El contratista es requerido'),
+  fieldDistrict: z.string().min(1, 'El campo/distrito es requerido'),
   municipality: z.string().optional(),
-  supervisor24h: z.string().optional(),
+  supervisor24h: z.string().min(1, 'El supervisor 24h es requerido'),
 });
 
 // ============================================================================

@@ -4,9 +4,11 @@ import { invoke } from '@tauri-apps/api/core';
 export interface LicenseInfo {
   id: string;
   customer: string;
+  tenant: string;
+  apiEndpoint: string;
   issuedAt: string;
   expiry: string | null;
-  maxUsers: number;
+  maxUsers: number | null; // null = usuarios ilimitados
   isValid: boolean;
   isLifetime: boolean;
 }
@@ -16,10 +18,14 @@ interface LicenseState {
   isLicensed: boolean;
   isLoading: boolean;
   error: string | null;
+  handshakeInProgress: boolean; // evita doble disparo concurrente del handshake
+  activationInProgress: boolean; // true mientras el flujo de activación está activo (handshake + modal)
 
   checkLicense: () => Promise<void>;
   activateLicense: (key: string) => Promise<void>;
   deactivateLicense: () => Promise<void>;
+  setHandshakeInProgress: (value: boolean) => void;
+  completeActivation: () => void;
 }
 
 export const useLicenseStore = create<LicenseState>()((set) => ({
@@ -27,6 +33,12 @@ export const useLicenseStore = create<LicenseState>()((set) => ({
   isLicensed: false,
   isLoading: true,
   error: null,
+  handshakeInProgress: false,
+  activationInProgress: false,
+
+  setHandshakeInProgress: (value: boolean) => set({ handshakeInProgress: value }),
+
+  completeActivation: () => set({ activationInProgress: false }),
 
   checkLicense: async () => {
     set({ isLoading: true, error: null });
@@ -44,10 +56,12 @@ export const useLicenseStore = create<LicenseState>()((set) => ({
   },
 
   activateLicense: async (key: string) => {
-    set({ isLoading: true, error: null });
+    // activationInProgress desde el inicio para que App.tsx no desmonte
+    // <LicenseActivation/> al ver isLoading: true (mostraría spinner).
+    set({ isLoading: true, error: null, activationInProgress: true });
     try {
       const info = await invoke<LicenseInfo>('activate_license', { licenseKey: key });
-      set({ license: info, isLicensed: info.isValid, isLoading: false, error: null });
+      set({ license: info, isLicensed: info.isValid, activationInProgress: true, isLoading: false, error: null });
     } catch (error) {
       set({ isLoading: false, error: error as string });
       throw error;
@@ -57,7 +71,7 @@ export const useLicenseStore = create<LicenseState>()((set) => ({
   deactivateLicense: async () => {
     try {
       await invoke('deactivate_license');
-      set({ license: null, isLicensed: false, error: null });
+      set({ license: null, isLicensed: false, activationInProgress: false, error: null });
     } catch (error) {
       set({ error: error as string });
     }

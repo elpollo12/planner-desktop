@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Droplets, Plus, Minus } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useModalStore } from '../../../../store';
 import { BotellonesIngresoTab } from './BotellonesIngresoTab';
 import { BotellonesConsumoTab } from './BotellonesConsumoTab';
@@ -13,6 +14,7 @@ interface BotellonesFormProps {
 }
 
 export function BotellonesForm({ rigId, initialTab = 'ingreso' }: BotellonesFormProps) {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<TabType>(initialTab);
 
   const handleSuccess = () => {
@@ -20,8 +22,8 @@ export function BotellonesForm({ rigId, initialTab = 'ingreso' }: BotellonesForm
   };
 
   const tabs = [
-    { id: 'ingreso' as TabType, label: 'Ingreso', icon: Plus, className: `${activeTab === 'ingreso' ? 'bg-green-500! text-white!' : 'hover:bg-green-300!'}` },
-    { id: 'consumo' as TabType, label: 'Consumo', icon: Minus, className: `${activeTab === 'consumo' ? 'bg-red-500! text-white!' : 'hover:bg-red-300!'}` },
+    { id: 'ingreso' as TabType, label: t('logistics.common.entry'), icon: Plus, className: `${activeTab === 'ingreso' ? 'bg-green-500! text-white!' : 'hover:bg-green-300!'}` },
+    { id: 'consumo' as TabType, label: t('logistics.common.consumption'), icon: Minus, className: `${activeTab === 'consumo' ? 'bg-red-500! text-white!' : 'hover:bg-red-300!'}` },
   ];
 
   return (
@@ -32,10 +34,10 @@ export function BotellonesForm({ rigId, initialTab = 'ingreso' }: BotellonesForm
         </div>
         <div>
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-            Botellones de Agua
+            {t('logistics.waterBottles.title')}
           </h3>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Registrar movimiento de botellones
+            {t('logistics.waterBottles.registerMovementDesc')}
           </p>
         </div>
       </div>

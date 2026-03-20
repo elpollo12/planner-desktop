@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Card } from '../ui';
-import { FileText, Users, Clock, CheckCircle, XCircle, TrendingUp } from 'lucide-react';
+import { FileText, Users, Clock, CheckCircle, XCircle, TrendingUp, Package, AlertTriangle, Droplets } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { reportsApi, usersApi } from '../../lib/api';
+import { ActivityChart, LogisticsMetrics, IncidentsMetrics, FluidMetrics } from './stats';
 
 export function Statistics() {
+  const { t } = useTranslation();
   const { sessionToken } = useAuthStore();
   const [stats, setStats] = useState({
     totalReports: 0,
@@ -74,7 +77,29 @@ export function Statistics() {
   };
 
   if (loading) {
-    return <div className="text-center py-8 text-gray-500">Cargando estadísticas...</div>;
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[...Array(4)].map((_, i) => (
+            <Card key={i} className="p-6">
+              <div className="animate-pulse flex items-center justify-between">
+                <div className="space-y-2">
+                  <div className="h-3 w-24 bg-gray-200 dark:bg-gray-700 rounded" />
+                  <div className="h-8 w-16 bg-gray-200 dark:bg-gray-700 rounded" />
+                </div>
+                <div className="h-8 w-8 bg-gray-200 dark:bg-gray-700 rounded-full" />
+              </div>
+            </Card>
+          ))}
+        </div>
+        <Card className="p-6">
+          <div className="animate-pulse space-y-4">
+            <div className="h-4 w-40 bg-gray-200 dark:bg-gray-700 rounded" />
+            <div className="h-64 bg-gray-100 dark:bg-gray-800 rounded-lg" />
+          </div>
+        </Card>
+      </div>
+    );
   }
 
   return (
@@ -84,7 +109,7 @@ export function Statistics() {
         <Card className="p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Total Reportes</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">{t('admin.stats.totalReports')}</p>
               <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">{stats.totalReports}</p>
             </div>
             <FileText className="text-blue-500" size={32} />
@@ -94,7 +119,7 @@ export function Statistics() {
         <Card className="p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Total Usuarios</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">{t('admin.stats.totalUsers')}</p>
               <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">{stats.totalUsers}</p>
             </div>
             <Users className="text-green-500" size={32} />
@@ -104,7 +129,7 @@ export function Statistics() {
         <Card className="p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Tasa Aprobación</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">{t('admin.stats.approvalRate')}</p>
               <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">
                 {stats.totalReports > 0
                   ? Math.round((stats.reportsByStatus.approved / stats.totalReports) * 100)
@@ -119,7 +144,7 @@ export function Statistics() {
         <Card className="p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Pendientes</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">{t('admin.stats.pending')}</p>
               <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">{stats.reportsByStatus.submitted}</p>
             </div>
             <Clock className="text-yellow-500" size={32} />
@@ -127,10 +152,18 @@ export function Statistics() {
         </Card>
       </div>
 
+      {/* Activity Chart — replaces the old placeholder */}
+      <Card>
+        <div className="p-6">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">{t('admin.stats.recentActivity')}</h3>
+          <ActivityChart />
+        </div>
+      </Card>
+
       {/* Reports by Status */}
       <Card>
         <div className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-6">Reportes por Estado</h3>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-6">{t('admin.stats.reportsByStatus')}</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <div className="flex items-center gap-4">
               <div className="p-3 rounded-full bg-gray-100 dark:bg-gray-700">
@@ -138,7 +171,7 @@ export function Statistics() {
               </div>
               <div>
                 <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{stats.reportsByStatus.draft}</p>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Borradores</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">{t('admin.stats.drafts')}</p>
               </div>
             </div>
 
@@ -148,7 +181,7 @@ export function Statistics() {
               </div>
               <div>
                 <p className="text-2xl font-bold text-blue-600">{stats.reportsByStatus.submitted}</p>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Enviados</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">{t('admin.stats.submitted')}</p>
               </div>
             </div>
 
@@ -158,7 +191,7 @@ export function Statistics() {
               </div>
               <div>
                 <p className="text-2xl font-bold text-green-600">{stats.reportsByStatus.approved}</p>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Aprobados</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">{t('admin.stats.approved')}</p>
               </div>
             </div>
 
@@ -168,7 +201,7 @@ export function Statistics() {
               </div>
               <div>
                 <p className="text-2xl font-bold text-red-600">{stats.reportsByStatus.rejected}</p>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Rechazados</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">{t('admin.stats.rejected')}</p>
               </div>
             </div>
           </div>
@@ -178,7 +211,7 @@ export function Statistics() {
       {/* Users by Role */}
       <Card>
         <div className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-6">Usuarios por Rol</h3>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-6">{t('admin.stats.usersByRole')}</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="flex items-center gap-4">
               <div className="p-3 rounded-full bg-purple-100 dark:bg-purple-900/40">
@@ -186,7 +219,7 @@ export function Statistics() {
               </div>
               <div>
                 <p className="text-2xl font-bold text-purple-600">{stats.usersByRole.admin}</p>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Administradores</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">{t('admin.stats.admins')}</p>
               </div>
             </div>
 
@@ -196,7 +229,7 @@ export function Statistics() {
               </div>
               <div>
                 <p className="text-2xl font-bold text-blue-600">{stats.usersByRole.supervisor}</p>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Supervisores</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">{t('admin.stats.supervisors')}</p>
               </div>
             </div>
 
@@ -206,22 +239,43 @@ export function Statistics() {
               </div>
               <div>
                 <p className="text-2xl font-bold text-green-600">{stats.usersByRole.operator}</p>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Operadores</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">{t('admin.stats.operators')}</p>
               </div>
             </div>
           </div>
         </div>
       </Card>
 
-      {/* Performance Chart Placeholder */}
+      {/* Logistics Metrics — NEW */}
       <Card>
         <div className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-6">Resumen de Actividad</h3>
-          <div className="text-center py-12 text-gray-500">
-            <TrendingUp className="mx-auto mb-4 text-gray-400" size={48} />
-            <p>Gráfico de actividad por implementar</p>
-            <p className="text-sm mt-2">Próximamente: Reportes por día, semana y mes</p>
+          <div className="flex items-center gap-2 mb-4">
+            <Package className="text-emerald-500" size={22} />
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{t('admin.stats.logisticsMetrics')}</h3>
           </div>
+          <LogisticsMetrics />
+        </div>
+      </Card>
+
+      {/* Incidents Metrics */}
+      <Card>
+        <div className="p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <AlertTriangle className="text-orange-500" size={22} />
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{t('admin.stats.incidentsMetrics')}</h3>
+          </div>
+          <IncidentsMetrics />
+        </div>
+      </Card>
+
+      {/* Fluid / API Report Metrics */}
+      <Card>
+        <div className="p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Droplets className="text-blue-500" size={22} />
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{t('admin.stats.fluidMetrics')}</h3>
+          </div>
+          <FluidMetrics />
         </div>
       </Card>
     </div>

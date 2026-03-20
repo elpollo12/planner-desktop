@@ -16,10 +16,12 @@ pub async fn create_area(
     let id = Uuid::new_v4().to_string();
     let now = Utc::now().to_rfc3339();
 
+    let active_int = if input.active { 1 } else { 0 };
+    
     conn.execute(
         "INSERT INTO areas (id, name, country, state, active, created_by, created_at, updated_at)
-         VALUES (?1, ?2, ?3, ?4, 1, ?5, ?6, ?7)",
-        params![&id, &input.name, &input.country, &input.state, &user_id, &now, &now],
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+        params![&id, &input.name, &input.country, &input.state, active_int, &user_id, &now, &now],
     )?;
 
     Ok(Area {
@@ -27,7 +29,7 @@ pub async fn create_area(
         name: input.name,
         country: input.country,
         state: input.state,
-        active: true,
+        active: input.active,
         created_by: Some(user_id),
         updated_by: None,
         created_at: now.clone(),

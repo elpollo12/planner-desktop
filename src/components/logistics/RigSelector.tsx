@@ -1,4 +1,5 @@
-﻿import { ChevronDown, AlertTriangle, Loader2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { ChevronDown, AlertTriangle, Loader2 } from 'lucide-react';
 import type { RigWithArea } from '@/types/rig';
 import { OilRigIcon } from '../ui/icons/OilRigIcon';
 
@@ -11,12 +12,14 @@ interface RigSelectorProps {
 }
 
 export function RigSelector({ rigs, selectedRigId, selectedRigName: _selectedRigName, loading, onSelect }: RigSelectorProps) {
+  const { t } = useTranslation();
+
   // Loading state
   if (loading) {
     return (
       <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
         <Loader2 size={18} className="animate-spin text-gray-400" />
-        <span className="text-sm text-gray-500 dark:text-gray-400">Cargando taladros...</span>
+        <span className="text-sm text-gray-500 dark:text-gray-400">{t('logistics.rigSelector.loadingRigs')}</span>
       </div>
     );
   }
@@ -27,7 +30,7 @@ export function RigSelector({ rigs, selectedRigId, selectedRigName: _selectedRig
       <div className="flex items-center gap-3 px-4 py-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
         <AlertTriangle size={18} className="text-amber-500" />
         <span className="text-sm text-amber-700 dark:text-amber-400">
-          No tienes taladros asignados. Contacta a un administrador para obtener acceso.
+          {t('logistics.rigSelector.noAssignedRigs')}
         </span>
       </div>
     );
@@ -39,7 +42,7 @@ export function RigSelector({ rigs, selectedRigId, selectedRigName: _selectedRig
       <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-primary-200 dark:border-gray-700">
         <OilRigIcon size={18} className="text-gray-500 dark:text-gray-400" />
         <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-500 dark:text-gray-400">Taladro:</span>
+          <span className="text-sm text-gray-500 dark:text-gray-400">{t('logistics.rigSelector.rig')}</span>
           <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">{rigs[0].name}</span>
           {rigs[0].areaName && (
             <span className="text-xs text-gray-400 dark:text-gray-500">— {rigs[0].areaName}</span>
@@ -53,7 +56,7 @@ export function RigSelector({ rigs, selectedRigId, selectedRigName: _selectedRig
   return (
     <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-primary-200 dark:border-gray-700">
       <OilRigIcon size={18} className="text-gray-500 dark:text-gray-400 shrink-0" />
-      <span className="text-sm text-gray-500 dark:text-gray-400 shrink-0">Taladro:</span>
+      <span className="text-sm text-gray-500 dark:text-gray-400 shrink-0">{t('logistics.rigSelector.rig')}</span>
       <div className="relative">
         <select
           value={selectedRigId || ''}
@@ -64,7 +67,7 @@ export function RigSelector({ rigs, selectedRigId, selectedRigName: _selectedRig
           className="appearance-none bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md pl-3 pr-8 py-1.5 text-sm font-medium text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 cursor-pointer hover:border-gray-400 dark:hover:border-gray-500 transition-colors"
         >
           <option value="" disabled>
-            Seleccionar taladro...
+            {t('logistics.rigSelector.selectRig')}
           </option>
           {rigs.map((rig) => (
             <option key={rig.id} value={rig.id}>

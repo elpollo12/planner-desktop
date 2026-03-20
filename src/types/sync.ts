@@ -1,5 +1,5 @@
 export interface SyncStatus {
-  /** Whether Turso credentials are configured via environment variables */
+  /** Whether sync server URL is configured via environment variable */
   configured: boolean;
   /** Whether sync is enabled by admin */
   enabled: boolean;
@@ -11,7 +11,7 @@ export interface SyncStatus {
   lastPullAt: string | null;
   /** Auto-sync interval in minutes */
   syncIntervalMinutes: number;
-  /** Error message if credentials are not configured */
+  /** Error message if server URL is not configured */
   configError: string | null;
 }
 

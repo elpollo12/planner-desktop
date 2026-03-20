@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Package, Plus, Minus, ClipboardList } from 'lucide-react';
 import { useModalStore } from '../../../../store';
 import { MaterialesIngresoTab } from './MaterialesIngresoTab';
@@ -16,6 +17,7 @@ interface MaterialesFormProps {
 }
 
 export function MaterialesForm({ rigId, initialTab = 'ingreso', materials }: MaterialesFormProps) {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<TabType>(initialTab);
 
   const handleSuccess = () => {
@@ -23,9 +25,9 @@ export function MaterialesForm({ rigId, initialTab = 'ingreso', materials }: Mat
   };
 
   const tabs = [
-    { id: 'ingreso' as TabType, label: 'Ingreso', icon: Plus, className: `${activeTab === 'ingreso' ? 'bg-green-500! text-white!' : 'hover:bg-green-300!'}` },
-    { id: 'consumo' as TabType, label: 'Consumo', icon: Minus, className: `${activeTab === 'consumo' ? 'bg-red-500! text-white!' : 'hover:bg-red-300!'}` },
-    { id: 'registro' as TabType, label: 'Nuevo Material', icon: ClipboardList, className: `${activeTab === 'registro' ? 'bg-blue-500! text-white!' : 'hover:bg-blue-300!'}` },
+    { id: 'ingreso' as TabType, label: t('logistics.common.entry'), icon: Plus, className: `${activeTab === 'ingreso' ? 'bg-green-500! text-white!' : 'hover:bg-green-300!'}` },
+    { id: 'consumo' as TabType, label: t('logistics.common.consumption'), icon: Minus, className: `${activeTab === 'consumo' ? 'bg-red-500! text-white!' : 'hover:bg-red-300!'}` },
+    { id: 'registro' as TabType, label: t('logistics.materials.newMaterial'), icon: ClipboardList, className: `${activeTab === 'registro' ? 'bg-blue-500! text-white!' : 'hover:bg-blue-300!'}` },
   ];
 
   return (
@@ -35,8 +37,8 @@ export function MaterialesForm({ rigId, initialTab = 'ingreso', materials }: Mat
           <Package className="text-orange-600 dark:text-orange-400" size={24} />
         </div>
         <div>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Materiales</h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Registrar movimiento o nuevo material</p>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{t('logistics.materials.title')}</h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400">{t('logistics.materials.registerDesc')}</p>
         </div>
       </div>
 

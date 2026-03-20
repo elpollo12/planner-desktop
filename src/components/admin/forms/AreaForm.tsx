@@ -1,4 +1,5 @@
-﻿import { useForm } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { createAreaSchema } from '@/schemas';
 import { Input } from '@/components/ui/Input';
@@ -13,6 +14,7 @@ interface AreaFormProps {
 }
 
 export default function AreaForm({ onSubmit, area }: AreaFormProps) {
+  const { t } = useTranslation();
   const {
     register,
     handleSubmit,
@@ -25,12 +27,12 @@ export default function AreaForm({ onSubmit, area }: AreaFormProps) {
       name: '',
       country: '',
       state: '',
-      active: true, 
+      active: true,
     },
   });
 
   const selectedCountry = watch('country');
-  const active = watch('active'); // Observar el valor de active
+  const active = watch('active');
 
   const countryOptions = COMMON_COUNTRIES.map((country) => ({
     value: country,
@@ -55,23 +57,23 @@ export default function AreaForm({ onSubmit, area }: AreaFormProps) {
       <div className="space-y-4">
         <div>
           <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-            Nombre del Área <span className="text-red-500">*</span>
+            {t('admin.forms.areaNameLabel')} <span className="text-red-500">*</span>
           </label>
           <Input
             id="name"
             {...register('name')}
-            placeholder="Ej: Zulia Norte, Oriente, Costa Afuera"
+            placeholder={t('admin.forms.areaNameExamples')}
             error={errors.name?.message}
             disabled={isSubmitting}
           />
           <p className="mt-1 text-xs text-gray-500">
-            Nombre descriptivo del área geográfica
+            {t('admin.forms.areaNameDescriptive')}
           </p>
         </div>
 
         <div>
           <label htmlFor="country" className="block text-sm font-medium text-gray-700 mb-1">
-            País <span className="text-red-500">*</span>
+            {t('admin.forms.country')} <span className="text-red-500">*</span>
           </label>
           <Select
             id="country"
@@ -84,14 +86,14 @@ export default function AreaForm({ onSubmit, area }: AreaFormProps) {
 
         <div>
           <label htmlFor="state" className="block text-sm font-medium text-gray-700 mb-1">
-            Estado/Provincia <span className="text-red-500">*</span>
+            {t('admin.forms.stateProvince')} <span className="text-red-500">*</span>
           </label>
-          
+
           {showStateInput ? (
             <Input
               id="state"
               {...register('state')}
-              placeholder="Ej: Texas, Alberta, Neuquén"
+              placeholder={t('admin.forms.stateExamples')}
               error={errors.state?.message}
               disabled={isSubmitting}
             />
@@ -107,32 +109,32 @@ export default function AreaForm({ onSubmit, area }: AreaFormProps) {
             <Input
               id="state"
               {...register('state')}
-              placeholder="Primero selecciona un país"
+              placeholder={t('admin.forms.selectCountryFirst')}
               error={errors.state?.message}
               disabled={true}
             />
           )}
-          
+
           <p className="mt-1 text-xs text-gray-500">
-            {selectedCountry === 'Venezuela' 
-              ? 'Selecciona el estado venezolano' 
-              : selectedCountry 
-                ? 'Ingresa el estado o provincia' 
-                : 'Primero selecciona un país'}
+            {selectedCountry === 'Venezuela'
+              ? t('admin.forms.selectVenezuelanState')
+              : selectedCountry
+                ? t('admin.forms.enterStateProvince')
+                : t('admin.forms.selectCountryFirst')}
           </p>
         </div>
         <div className="flex items-center justify-between bg-gray-50 dark:bg-gray-800 rounded-lg">
           <div>
             <label htmlFor="active" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Estado del Área
+              {t('admin.forms.areaStatus')}
             </label>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              {active 
-                ? 'El área está activa y disponible para asignación'
-                : 'El área está inactiva y no aparecerá en las listas'}
+              {active
+                ? t('admin.forms.areaActiveDesc')
+                : t('admin.forms.areaInactiveDesc')}
             </p>
           </div>
-          
+
           <div className="flex items-center">
             <label className="relative inline-flex items-center cursor-pointer">
               <input
@@ -155,7 +157,7 @@ export default function AreaForm({ onSubmit, area }: AreaFormProps) {
           variant="primary"
           disabled={isSubmitting}
         >
-          {isSubmitting ? 'Guardando...' : area ? 'Actualizar' : 'Crear'}
+          {isSubmitting ? t('admin.forms.saving') : area ? t('admin.forms.update') : t('admin.forms.create')}
         </Button>
       </div>
     </form>

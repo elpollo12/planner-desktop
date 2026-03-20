@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { MainLayout } from '../components/layout';
 import { Card } from '../components/ui';
 import { PackageOpen } from 'lucide-react';
@@ -6,6 +7,7 @@ import { RigSelector } from '../components/logistics/RigSelector';
 import { IncidentsList } from '../components/incidents/IncidentsList';
 
 export default function IncidentsPage() {
+  const { t } = useTranslation();
   const {
     accessibleRigs,
     selectedRigId,
@@ -15,7 +17,7 @@ export default function IncidentsPage() {
   } = useIncidentsRigs();
 
   return (
-    <MainLayout title="Incidencias" subtitle="Registro de incidencias por taladro">
+    <MainLayout title={t('incidents.page.title')} subtitle={t('incidents.page.subtitle')}>
       {/* Rig Selector */}
       <div className="mb-4">
         <RigSelector
@@ -33,10 +35,10 @@ export default function IncidentsPage() {
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <PackageOpen size={48} className="text-gray-300 dark:text-gray-600 mb-4" />
             <p className="text-gray-500 dark:text-gray-400 text-lg font-medium">
-              Selecciona un taladro para gestionar incidencias
+              {t('incidents.page.selectRig')}
             </p>
             <p className="text-gray-400 dark:text-gray-500 text-sm mt-1">
-              Elige un taladro en el selector de arriba para ver y crear incidencias
+              {t('incidents.page.selectRigHint')}
             </p>
           </div>
         </Card>

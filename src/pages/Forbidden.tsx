@@ -1,9 +1,13 @@
 import { useNavigate } from 'react-router-dom';
-import { ShieldAlert, ArrowLeft, LayoutDashboard } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { ShieldAlert, ArrowLeft, LayoutDashboard, LogOut } from 'lucide-react';
 import { Button, Card } from '../components/ui';
+import { useAuthStore } from '../store/authStore';
 
 export default function Forbidden() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
+  const { logout, isAuthenticated } = useAuthStore();
 
   return (
     <div
@@ -26,15 +30,15 @@ export default function Forbidden() {
 
         {/* Title */}
         <h1 className="text-4xl font-bold text-gray-900 dark:text-gray-100 mb-4">
-          Acceso Denegado
+          {t('forbidden.title')}
         </h1>
 
         {/* Message */}
         <p className="text-lg text-gray-600 dark:text-gray-400 mb-2">
-          No tienes permisos para acceder a esta página
+          {t('forbidden.subtitle')}
         </p>
         <p className="text-sm text-gray-500 dark:text-gray-500 mb-8">
-          Código de error: <span className="font-mono font-semibold">403 Forbidden</span>
+          {t('forbidden.message')}
         </p>
 
         {/* Actions */}
@@ -44,20 +48,29 @@ export default function Forbidden() {
             icon={<LayoutDashboard size={16} />}
             onClick={() => navigate('/dashboard')}
           >
-            Ir al Dashboard
+            {t('forbidden.goToDashboard')}
           </Button>
           <Button
             variant="outline"
             icon={<ArrowLeft size={16} />}
             onClick={() => navigate(-1)}
           >
-            Volver Atrás
+            {t('forbidden.goBack')}
           </Button>
+          {isAuthenticated && (
+            <Button
+              variant="danger"
+              icon={<LogOut size={16} />}
+              onClick={logout}
+            >
+              {t('auth.logout')}
+            </Button>
+          )}
         </div>
 
         {/* Help text */}
         <p className="text-xs text-gray-400 dark:text-gray-600 mt-8">
-          Si crees que deberías tener acceso, contacta al administrador del sistema.
+          {t('forbidden.helpText')}
         </p>
       </Card>
     </div>

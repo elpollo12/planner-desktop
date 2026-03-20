@@ -1,5 +1,6 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { MainLayout } from '../components/layout';
 import { Button, Card, Select, ReportStatusBadge, PaginationControls } from '../components/ui';
 import {
@@ -10,6 +11,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useModal } from '../store/modalStore';
+import { PermissionGate } from '../components/guards/PermissionGate';
 import { reportsApi, rigsApi, usersApi } from '../lib/api';
 import ApproveReportModal from '../components/modals/ApproveReportModal';
 import RejectReportModal from '../components/modals/RejectReportModal';
@@ -34,6 +36,7 @@ export default function ReportApprovals() {
   const navigate = useNavigate();
   const { sessionToken } = useAuthStore();
   const { openModal, closeModal } = useModal();
+  const { t } = useTranslation();
 
   const [activeTab, setActiveTab] = useState<TabKey>('pending');
   const [reports, setReports] = useState<Report[]>([]);
@@ -131,7 +134,7 @@ export default function ReportApprovals() {
       }
     } catch (error) {
       console.error('Error loading reports:', error);
-      toast.error('Error al cargar reportes');
+      toast.error(t('reports.approvals.errorLoading'));
     } finally {
       setLoading(false);
     }
@@ -176,7 +179,7 @@ export default function ReportApprovals() {
           newNames[uid] = u.fullName || u.username;
           changed = true;
         } catch {
-          newNames[uid] = 'Desconocido';
+          newNames[uid] = t('reports.approvals.unknownUser');
           changed = true;
         }
       }),
@@ -188,54 +191,54 @@ export default function ReportApprovals() {
   // ── Actions ────────────────────────────────────────────────────────────
 
   const handleApprove = (report: Report) => {
-    const label = `DDR #${report.reportNumber} · ${report.wellNumber || 'Sin pozo'} · ${report.rigNumber || 'Sin taladro'}`;
+    const label = `DDR #${report.reportNumber} · ${report.wellNumber || t('reports.view.noWell')} · ${report.rigNumber || t('reports.view.noRig')}`;
     openModal(
       <ApproveReportModal
         reportLabel={label}
         onConfirm={async (comment) => {
           await reportsApi.approve(sessionToken!, report.id, comment);
           closeModal();
-          toast.success('Reporte aprobado exitosamente');
+          toast.success(t('reports.view.approvedSuccess'));
           backgroundPush(sessionToken!);
           loadReports();
           loadPendingCount();
         }}
       />,
-      { title: 'Aprobar Reporte', size: 'md' },
+      { title: t('reports.approvals.approveModalTitle'), size: 'md' },
     );
   };
 
   const handleReject = (report: Report) => {
-    const label = `DDR #${report.reportNumber} · ${report.wellNumber || 'Sin pozo'} · ${report.rigNumber || 'Sin taladro'}`;
+    const label = `DDR #${report.reportNumber} · ${report.wellNumber || t('reports.view.noWell')} · ${report.rigNumber || t('reports.view.noRig')}`;
     openModal(
       <RejectReportModal
         reportLabel={label}
         onConfirm={async (reason) => {
           await reportsApi.reject(sessionToken!, report.id, reason);
           closeModal();
-          toast.success('Reporte rechazado');
+          toast.success(t('reports.view.rejectedSuccess'));
           backgroundPush(sessionToken!);
           loadReports();
           loadPendingCount();
         }}
       />,
-      { title: 'Rechazar Reporte', size: 'md' },
+      { title: t('reports.approvals.rejectModalTitle'), size: 'md' },
     );
   };
 
   // ── Helpers ────────────────────────────────────────────────────────────
 
   const TABS: { key: TabKey; label: string }[] = [
-    { key: 'pending', label: 'Pendientes' },
-    { key: 'history', label: 'Historial' },
+    { key: 'pending', label: t('reports.approvals.pendingTab') },
+    { key: 'history', label: t('reports.approvals.historyTab') },
   ];
 
   // ── Render ─────────────────────────────────────────────────────────────
 
   return (
     <MainLayout
-      title="Aprobaciones"
-      subtitle="Gestión de revisión y aprobación de reportes DDR"
+      title={t('reports.approvals.title')}
+      subtitle={t('reports.approvals.subtitle')}
     >
       <div className="space-y-6 max-w-7xl mx-auto">
         {/* ── Tabs ──────────────────────────────────────────────────── */}
@@ -265,18 +268,18 @@ export default function ReportApprovals() {
             <div className=" flex-col flex-wrap items-end gap-4">
               <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-40 mb-2">
                 <Filter size={16} />
-                <span>Filtros</span>
+                <span>{t('reports.list.filters')}</span>
               </div>
               <div className='flex items-center gap-2 text-sm"'>
                 <div className="w-48">
                   <Select
                     value={historyStatus}
                     onChange={(e) => setHistoryStatus(e.target.value)}
-                    placeholder="Todos los estados"
+                    placeholder={t('reports.approvals.allStatuses')}
                     options={[
-                      { value: '', label: 'Todos' },
-                      { value: 'approved', label: 'Aprobados' },
-                      { value: 'rejected', label: 'Rechazados' },
+                      { value: '', label: t('reports.approvals.allStatuses') },
+                      { value: 'approved', label: t('reports.approvals.approvedFilter') },
+                      { value: 'rejected', label: t('reports.approvals.rejectedFilter') },
                     ]}
                   />
                 </div>
@@ -284,9 +287,9 @@ export default function ReportApprovals() {
                   <Select
                     value={filterRig}
                     onChange={(e) => setFilterRig(e.target.value)}
-                    placeholder="Todos los taladros"
+                    placeholder={t('reports.approvals.allRigs')}
                     options={[
-                      { value: '', label: 'Todos los taladros' },
+                      { value: '', label: t('reports.approvals.allRigs') },
                       ...rigs.map((r) => ({ value: r.name, label: r.name })),
                     ]}
                   />
@@ -301,7 +304,7 @@ export default function ReportApprovals() {
                   }}
                   icon={<XCircle size={14} />}
                 >
-                  Limpiar
+                  {t('reports.approvals.clearFilter')}
                 </Button>
               )}
               </div>
@@ -321,12 +324,12 @@ export default function ReportApprovals() {
               <CheckCircle size={40} className="text-gray-300 dark:text-gray-600 mb-3" />
               <p className="text-gray-500 dark:text-gray-400 font-medium">
                 {activeTab === 'pending'
-                  ? 'No hay reportes pendientes de aprobación'
-                  : 'No se encontraron reportes en el historial'}
+                  ? t('reports.approvals.noPending')
+                  : t('reports.approvals.noHistory')}
               </p>
               {activeTab === 'pending' && (
                 <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
-                  Los reportes enviados por los operadores aparecerán aquí.
+                  {t('reports.approvals.pendingHint')}
                 </p>
               )}
             </div>
@@ -348,24 +351,24 @@ export default function ReportApprovals() {
 
                     <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400 flex-wrap">
                       {report.rigNumber && (
-                        <span>Taladro: <span className="font-medium text-gray-800 dark:text-gray-200">{report.rigNumber}</span></span>
+                        <span>{t('reports.approvals.rigLabel')} <span className="font-medium text-gray-800 dark:text-gray-200">{report.rigNumber}</span></span>
                       )}
                       {report.wellNumber && (
-                        <span>Pozo: <span className="font-medium text-gray-800 dark:text-gray-200">{report.wellNumber}</span></span>
+                        <span>{t('reports.approvals.wellLabel')} <span className="font-medium text-gray-800 dark:text-gray-200">{report.wellNumber}</span></span>
                       )}
-                      <span>Fecha: {formatDateDMY(report.reportDate)}</span>
+                      <span>{t('reports.approvals.dateLabel')} {formatDateDMY(report.reportDate)}</span>
                     </div>
 
                     <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400 flex-wrap">
-                      <span>Creado por: {creatorNames[report.createdBy || ''] || report.createdBy || '-'}</span>
+                      <span>{t('reports.approvals.createdByLabel')} {creatorNames[report.createdBy || ''] || report.createdBy || '-'}</span>
                       {report.submittedAt && (
-                        <span>Enviado: {formatDateTime(report.submittedAt)}</span>
+                        <span>{t('reports.approvals.submittedLabel')} {formatDateTime(report.submittedAt)}</span>
                       )}
                       {report.approvedAt && (
-                        <span>Aprobado: {formatDateTime(report.approvedAt)}</span>
+                        <span>{t('reports.approvals.approvedLabel')} {formatDateTime(report.approvedAt)}</span>
                       )}
                       {report.rejectedAt && (
-                        <span>Rechazado: {formatDateTime(report.rejectedAt)}</span>
+                        <span>{t('reports.approvals.rejectedLabel')} {formatDateTime(report.rejectedAt)}</span>
                       )}
                     </div>
                   </div>
@@ -378,17 +381,17 @@ export default function ReportApprovals() {
                       onClick={() => navigate(`/reports/view/${report.id}?from=approvals`)}
                       icon={<Eye size={14} />}
                     >
-                      Ver
+                      {t('actions.view')}
                     </Button>
                     {activeTab === 'pending' && report.status === 'submitted' && (
-                      <>
+                      <PermissionGate minRole="supervisor">
                         <Button
                           variant="success"
                           size="sm"
                           onClick={() => handleApprove(report)}
                           icon={<CheckCircle size={14} />}
                         >
-                          Aprobar
+                          {t('actions.approve')}
                         </Button>
                         <Button
                           variant="danger"
@@ -396,9 +399,9 @@ export default function ReportApprovals() {
                           onClick={() => handleReject(report)}
                           icon={<XCircle size={14} />}
                         >
-                          Rechazar
+                          {t('actions.reject')}
                         </Button>
-                      </>
+                      </PermissionGate>
                     )}
                   </div>
                 </div>
@@ -414,7 +417,7 @@ export default function ReportApprovals() {
             totalPages={totalPages}
             totalItems={totalReports}
             pageSize={pageSize}
-            itemLabel="reportes"
+            itemLabel={t('reports.list.itemLabel')}
             pageSizeOptions={false}
             onPageChange={setCurrentPage}
           />

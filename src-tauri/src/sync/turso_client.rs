@@ -2,6 +2,9 @@ use serde::{Deserialize, Serialize};
 
 /// Turso HTTP API client using the Pipeline endpoint
 /// Reference: https://docs.turso.tech/sdk/http/reference
+/// 
+/// NOTE: This client is only used for CloudLogs (daily_reports/messages tables in Turso Cloud).
+/// Main sync now uses SyncClient (planner-sync REST API).
 
 #[derive(Debug, Clone)]
 pub struct TursoClient {
@@ -73,12 +76,15 @@ pub enum StreamResponse {
 
 #[derive(Debug, Deserialize)]
 pub struct ExecuteResult {
+    #[allow(dead_code)]
     pub cols: Vec<Column>,
     pub rows: Vec<Vec<TursoValue>>,
+    #[allow(dead_code)]
     pub affected_row_count: u64,
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 pub struct Column {
     pub name: String,
     #[serde(default)]
@@ -88,6 +94,7 @@ pub struct Column {
 #[derive(Debug, Deserialize)]
 pub struct TursoError {
     pub message: String,
+    #[allow(dead_code)]
     #[serde(default)]
     pub code: Option<String>,
 }
@@ -163,76 +170,6 @@ impl TursoClient {
             None => Err("No results in Turso response".to_string()),
         }
     }
-
-    /// Execute multiple SQL statements in a single pipeline request
-    pub async fn execute_batch(
-        &self,
-        statements: Vec<(String, Vec<TursoValue>)>,
-    ) -> Result<Vec<ExecuteResult>, String> {
-        if statements.is_empty() {
-            return Ok(vec![]);
-        }
-
-        let mut requests: Vec<StreamRequest> = statements
-            .into_iter()
-            .map(|(sql, args)| StreamRequest::Execute {
-                stmt: Statement {
-                    sql,
-                    args: if args.is_empty() { None } else { Some(args) },
-                },
-            })
-            .collect();
-
-        requests.push(StreamRequest::Close);
-
-        let request = PipelineRequest { requests };
-
-        let response = self
-            .client
-            .post(format!("{}/v2/pipeline", self.url))
-            .header("Authorization", format!("Bearer {}", self.auth_token))
-            .json(&request)
-            .send()
-            .await
-            .map_err(|e| format!("HTTP request failed: {}", e))?;
-
-        if !response.status().is_success() {
-            let status = response.status();
-            let body = response.text().await.unwrap_or_default();
-            return Err(format!("Turso API error ({}): {}", status, body));
-        }
-
-        let pipeline_response: PipelineResponse = response
-            .json()
-            .await
-            .map_err(|e| format!("Failed to parse Turso response: {}", e))?;
-
-        let mut results = Vec::new();
-        for stream_result in pipeline_response.results {
-            match stream_result {
-                StreamResult::Ok { response } => match response {
-                    StreamResponse::Execute { result } => results.push(result),
-                    StreamResponse::Close => {} // skip close
-                },
-                StreamResult::Error { error } => {
-                    return Err(format!("Turso SQL error: {}", error.message));
-                }
-            }
-        }
-
-        Ok(results)
-    }
-
-    /// Test the connection to Turso
-    pub async fn test_connection(&self) -> Result<String, String> {
-        let result = self.execute("SELECT 'connected' as status", vec![]).await?;
-        if let Some(row) = result.rows.first() {
-            if let Some(TursoValue::Text(val)) = row.first() {
-                return Ok(val.clone());
-            }
-        }
-        Ok("connected".to_string())
-    }
 }
 
 // Helper to convert rusqlite values to TursoValue
@@ -247,27 +184,5 @@ impl TursoValue {
 
     pub fn null() -> Self {
         TursoValue::Null
-    }
-
-    pub fn as_text(&self) -> Option<&str> {
-        match self {
-            TursoValue::Text(s) => Some(s),
-            _ => None,
-        }
-    }
-
-    pub fn as_integer(&self) -> Option<i64> {
-        match self {
-            TursoValue::Integer(s) => s.parse().ok(),
-            _ => None,
-        }
-    }
-
-    pub fn as_optional_text(&self) -> Option<String> {
-        match self {
-            TursoValue::Text(s) => Some(s.clone()),
-            TursoValue::Null => None,
-            _ => None,
-        }
     }
 }

@@ -1,4 +1,5 @@
 import { CheckCircle, Clock, XCircle, Send } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import type { ReportStatus } from '../../types/report';
 
 type BadgeSize = 'sm' | 'md';
@@ -12,27 +13,27 @@ interface ReportStatusBadgeProps {
 const STATUS_CONFIG: Record<ReportStatus, {
   icon: typeof Clock;
   color: string;
-  label: string;
+  labelKey: string;
 }> = {
   draft: {
     icon: Clock,
     color: 'text-gray-600 bg-gray-100 dark:bg-gray-700 dark:text-gray-300',
-    label: 'Borrador',
+    labelKey: 'status.draft',
   },
   submitted: {
     icon: Send,
     color: 'text-blue-600 bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400',
-    label: 'Enviado',
+    labelKey: 'status.submitted',
   },
   approved: {
     icon: CheckCircle,
     color: 'text-green-600 bg-green-100 dark:bg-green-900/30 dark:text-green-400',
-    label: 'Aprobado',
+    labelKey: 'status.approved',
   },
   rejected: {
     icon: XCircle,
     color: 'text-red-600 bg-red-100 dark:bg-red-900/30 dark:text-red-400',
-    label: 'Rechazado',
+    labelKey: 'status.rejected',
   },
 };
 
@@ -46,6 +47,7 @@ export const ReportStatusBadge = ({
   size = 'md',
   className = '',
 }: ReportStatusBadgeProps) => {
+  const { t } = useTranslation();
   const config = STATUS_CONFIG[status];
   const sizeConfig = SIZE_CLASSES[size];
   const Icon = config.icon;
@@ -60,7 +62,7 @@ export const ReportStatusBadge = ({
       `.trim()}
     >
       <Icon size={sizeConfig.icon} />
-      {config.label}
+      {t(config.labelKey)}
     </span>
   );
 };

@@ -18,6 +18,12 @@ pub struct CreateAreaInput {
     pub name: String,
     pub country: String,
     pub state: String,
+    #[serde(default = "default_active")]
+    pub active: bool,
+}
+
+fn default_active() -> bool {
+    true
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

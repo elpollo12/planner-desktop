@@ -12,7 +12,7 @@ jobs:
   build-windows:
     runs-on: windows-latest
     permissions:
-      contents: read
+      contents: write
 
     steps:
       - name: Checkout code
@@ -43,73 +43,358 @@ jobs:
 
       - name: Find build artifacts
         id: artifacts
-        shell: powershell
+        shell: bash
         run: |
-          $bundleDir = "src-tauri\target\release\bundle\nsis"
-
+          BUNDLE_DIR="src-tauri/target/release/bundle/nsis"
+          
           echo "=== Bundle contents ==="
-          Get-ChildItem -Path $bundleDir -Recurse | ForEach-Object { echo $_.FullName }
-
-          $exe = Get-ChildItem -Path $bundleDir -Filter "*.exe" | Where-Object { $_.Name -notlike "*.sig" } | Select-Object -First 1
-          $sig = Get-ChildItem -Path $bundleDir -Filter "*.exe.sig" | Select-Object -First 1
-
-          echo "EXE: $($exe.FullName)"
-          echo "SIG: $($sig.FullName)"
-
-          if (-not $exe -or -not $sig) {
+          ls -la "$BUNDLE_DIR"
+          
+          EXE_FILE=$(find "$BUNDLE_DIR" -maxdepth 1 -name "*.exe" ! -name "*.sig" | head -1)
+          SIG_FILE=$(find "$BUNDLE_DIR" -maxdepth 1 -name "*.exe.sig" | head -1)
+          
+          if [ -z "$EXE_FILE" ] || [ -z "$SIG_FILE" ]; then
             echo "ERROR: Missing artifacts!"
             exit 1
-          }
-
-          echo "nsis_exe=$($exe.FullName)" >> $env:GITHUB_OUTPUT
-          echo "nsis_sig=$($sig.FullName)" >> $env:GITHUB_OUTPUT
-          echo "nsis_exe_name=$($exe.Name)" >> $env:GITHUB_OUTPUT
+          fi
+          
+          EXE_NAME=$(basename "$EXE_FILE")
+          EXE_SIZE=$(stat -c%s "$EXE_FILE" 2>/dev/null || stat -f%z "$EXE_FILE")
+          
+          echo "nsis_exe=$EXE_FILE" >> $GITHUB_OUTPUT
+          echo "nsis_sig=$SIG_FILE" >> $GITHUB_OUTPUT
+          echo "nsis_exe_name=$EXE_NAME" >> $GITHUB_OUTPUT
+          echo "nsis_size=$EXE_SIZE" >> $GITHUB_OUTPUT
 
       - name: Read signature and get version
         id: meta
-        shell: powershell
+        shell: bash
         run: |
-          $sig = Get-Content "${{ steps.artifacts.outputs.nsis_sig }}" -Raw
-          $sig = $sig.Trim()
-          echo "signature=$sig" >> $env:GITHUB_OUTPUT
+          SIGNATURE=$(cat "${{ steps.artifacts.outputs.nsis_sig }}" | tr -d '\n\r')
+          echo "signature=$SIGNATURE" >> $GITHUB_OUTPUT
+          
+          VERSION="${{ github.ref_name }}"
+          VERSION="${VERSION#v}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          
+          PUB_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          echo "pub_date=$PUB_DATE" >> $GITHUB_OUTPUT
 
-          $version = "${{ github.ref_name }}" -replace '^v', ''
-          echo "version=$version" >> $env:GITHUB_OUTPUT
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-artifacts
+          path: |
+            ${{ steps.artifacts.outputs.nsis_exe }}
+            ${{ steps.artifacts.outputs.nsis_sig }}
+          retention-days: 1
 
-          $pubDate = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
-          echo "pub_date=$pubDate" >> $env:GITHUB_OUTPUT
+  build-macos:
+    runs-on: macos-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: 'src-tauri -> target'
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build Tauri app (universal macOS)
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: npm run tauri build -- --target universal-apple-darwin
+
+      - name: Create and sign .app.tar.gz for updater
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          DMG=$(find src-tauri/target/universal-apple-darwin/release/bundle/dmg -name "*.dmg" | head -1)
+          echo "Mounting DMG: $DMG"
+          hdiutil attach "$DMG" -mountpoint /tmp/planner_dmg -nobrowse -quiet
+
+          APP_PATH=$(find /tmp/planner_dmg -maxdepth 1 -name "*.app" -type d | head -1)
+          if [ -z "$APP_PATH" ]; then
+            echo "ERROR: No .app found inside DMG"
+            hdiutil detach /tmp/planner_dmg -quiet
+            exit 1
+          fi
+
+          APP_NAME=$(basename "$APP_PATH")
+          TAR_NAME="${APP_NAME%.app}.app.tar.gz"
+          TAR_DIR="src-tauri/target/universal-apple-darwin/release/bundle/macos"
+          mkdir -p "$TAR_DIR"
+          TAR_PATH="$TAR_DIR/$TAR_NAME"
+
+          echo "Found app: $APP_NAME"
+          echo "Creating tarball: $TAR_PATH"
+          cd /tmp/planner_dmg
+          tar -czf "$(cd - > /dev/null; pwd)/$TAR_PATH" "$APP_NAME"
+          cd -
+
+          hdiutil detach /tmp/planner_dmg -quiet
+
+          echo "Signing: $TAR_PATH"
+          npx tauri signer sign "$TAR_PATH" \
+            --private-key "$TAURI_SIGNING_PRIVATE_KEY" \
+            --password "$TAURI_SIGNING_PRIVATE_KEY_PASSWORD"
+
+          echo "Signature written to: ${TAR_PATH}.sig"
+
+      - name: Find macOS artifacts
+        id: mac_artifacts
+        run: |
+          BUNDLE_DMG="src-tauri/target/universal-apple-darwin/release/bundle/dmg"
+          BUNDLE_MACOS="src-tauri/target/universal-apple-darwin/release/bundle/macos"
+
+          DMG_FILE=$(find "$BUNDLE_DMG" -name "*.dmg" ! -name "*.sig" | head -1)
+          TAR_FILE=$(find "$BUNDLE_MACOS" -name "*.app.tar.gz" ! -name "*.sig" | head -1)
+          SIG_FILE="${TAR_FILE}.sig"
+
+          echo "=== DMG ==="
+          ls -la "$BUNDLE_DMG"
+          echo "=== macOS bundle ==="
+          ls -la "$BUNDLE_MACOS"
+
+          if [ -z "$DMG_FILE" ] || [ ! -f "$DMG_FILE" ]; then
+            echo "ERROR: DMG not found!"
+            exit 1
+          fi
+          if [ -z "$TAR_FILE" ] || [ ! -f "$TAR_FILE" ]; then
+            echo "ERROR: .app.tar.gz not found!"
+            exit 1
+          fi
+          if [ ! -f "$SIG_FILE" ]; then
+            echo "ERROR: Signature not found at $SIG_FILE"
+            exit 1
+          fi
+
+          DMG_NAME=$(basename "$DMG_FILE")
+          TAR_NAME=$(basename "$TAR_FILE")
+          echo "dmg=$DMG_FILE" >> $GITHUB_OUTPUT
+          echo "dmg_name=$DMG_NAME" >> $GITHUB_OUTPUT
+          echo "tar=$TAR_FILE" >> $GITHUB_OUTPUT
+          echo "tar_sig=$SIG_FILE" >> $GITHUB_OUTPUT
+          echo "tar_name=$TAR_NAME" >> $GITHUB_OUTPUT
+
+      - name: Read macOS signature
+        id: mac_meta
+        run: |
+          SIGNATURE=$(cat "${{ steps.mac_artifacts.outputs.tar_sig }}" | tr -d '\n\r')
+          echo "signature=$SIGNATURE" >> $GITHUB_OUTPUT
+          VERSION="${{ github.ref_name }}"
+          VERSION="${VERSION#v}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          PUB_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          echo "pub_date=$PUB_DATE" >> $GITHUB_OUTPUT
+
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-artifacts
+          path: |
+            ${{ steps.mac_artifacts.outputs.dmg }}
+            ${{ steps.mac_artifacts.outputs.tar }}
+            ${{ steps.mac_artifacts.outputs.tar_sig }}
+          retention-days: 1
+
+  publish:
+    needs: [build-windows, build-macos]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download Windows artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-artifacts
+          path: ./windows
+
+      - name: Download macOS artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-artifacts
+          path: ./macos
+
+      - name: Get version and tag
+        id: meta
+        run: |
+          VERSION="${{ github.ref_name }}"
+          VERSION="${VERSION#v}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          PUB_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          echo "pub_date=$PUB_DATE" >> $GITHUB_OUTPUT
+
+      - name: Read signatures
+        id: sigs
+        run: |
+          echo "=== windows artifacts ==="
+          find windows -type f | sort
+          echo "=== macos artifacts ==="
+          find macos -type f | sort
+
+          WIN_SIG_FILE=$(find windows -name "*.exe.sig" | head -1)
+          MAC_SIG_FILE=$(find macos -name "*.app.tar.gz.sig" | head -1)
+          WIN_EXE_FILE=$(find windows -name "*.exe" ! -name "*.sig" | head -1)
+          MAC_DMG_FILE=$(find macos -name "*.dmg" | head -1)
+          MAC_TAR_FILE=$(find macos -name "*.app.tar.gz" ! -name "*.sig" | head -1)
+
+          WIN_SIG=$(cat "$WIN_SIG_FILE" | tr -d '\n\r')
+          MAC_SIG=$(cat "$MAC_SIG_FILE" | tr -d '\n\r')
+          WIN_NAME=$(basename "$WIN_EXE_FILE")
+          MAC_DMG_NAME=$(basename "$MAC_DMG_FILE")
+          MAC_TAR_NAME=$(basename "$MAC_TAR_FILE")
+
+          echo "win_sig=$WIN_SIG" >> $GITHUB_OUTPUT
+          echo "mac_sig=$MAC_SIG" >> $GITHUB_OUTPUT
+          echo "win_name=$WIN_NAME" >> $GITHUB_OUTPUT
+          echo "mac_dmg_name=$MAC_DMG_NAME" >> $GITHUB_OUTPUT
+          echo "mac_tar_name=$MAC_TAR_NAME" >> $GITHUB_OUTPUT
+          echo "win_exe=$WIN_EXE_FILE" >> $GITHUB_OUTPUT
+          echo "win_sig_file=$WIN_SIG_FILE" >> $GITHUB_OUTPUT
+          echo "mac_dmg=$MAC_DMG_FILE" >> $GITHUB_OUTPUT
+          echo "mac_tar=$MAC_TAR_FILE" >> $GITHUB_OUTPUT
+          echo "mac_tar_sig=$MAC_SIG_FILE" >> $GITHUB_OUTPUT
 
       - name: Generate latest.json
-        shell: powershell
         run: |
-          $json = @{
-            version = "${{ steps.meta.outputs.version }}"
-            notes = "Actualización a versión ${{ steps.meta.outputs.version }}"
-            pub_date = "${{ steps.meta.outputs.pub_date }}"
-            platforms = @{
-              "windows-x86_64" = @{
-                signature = "${{ steps.meta.outputs.signature }}"
-                url = "https://github.com/${{ env.PUBLIC_REPO }}/releases/download/${{ github.ref_name }}/${{ steps.artifacts.outputs.nsis_exe_name }}"
+          VERSION="${{ steps.meta.outputs.version }}"
+          PUB_DATE="${{ steps.meta.outputs.pub_date }}"
+          TAG="${{ github.ref_name }}"
+          WIN_SIG="${{ steps.sigs.outputs.win_sig }}"
+          MAC_SIG="${{ steps.sigs.outputs.mac_sig }}"
+          WIN_NAME="${{ steps.sigs.outputs.win_name }}"
+          MAC_TAR_NAME="${{ steps.sigs.outputs.mac_tar_name }}"
+
+          cat > latest.json << ENDJSON
+          {
+            "version": "${VERSION}",
+            "notes": "Actualizacion a version ${VERSION}",
+            "pub_date": "${PUB_DATE}",
+            "platforms": {
+              "windows-x86_64": {
+                "signature": "${WIN_SIG}",
+                "url": "https://github.com/${{ env.PUBLIC_REPO }}/releases/download/${TAG}/${WIN_NAME}"
+              },
+              "darwin-aarch64": {
+                "signature": "${MAC_SIG}",
+                "url": "https://github.com/${{ env.PUBLIC_REPO }}/releases/download/${TAG}/${MAC_TAR_NAME}"
+              },
+              "darwin-x86_64": {
+                "signature": "${MAC_SIG}",
+                "url": "https://github.com/${{ env.PUBLIC_REPO }}/releases/download/${TAG}/${MAC_TAR_NAME}"
               }
             }
-          } | ConvertTo-Json -Depth 3
+          }
+          ENDJSON
 
-          [System.IO.File]::WriteAllText("latest.json", $json)
           echo "=== latest.json ==="
-          Get-Content "latest.json"
+          cat latest.json
 
       - name: Publish to public releases repo
-        shell: bash
         env:
           GH_TOKEN: ${{ secrets.RELEASE_PAT }}
         run: |
           TAG="${{ github.ref_name }}"
           VERSION="${{ steps.meta.outputs.version }}"
 
+          if gh release view "$TAG" --repo "${{ env.PUBLIC_REPO }}" > /dev/null 2>&1; then
+            echo "Release $TAG already exists, deleting..."
+            gh release delete "$TAG" --repo "${{ env.PUBLIC_REPO }}" --yes
+          fi
+
           gh release create "$TAG" \
             --repo "${{ env.PUBLIC_REPO }}" \
             --title "Planner $VERSION" \
             --notes "Actualización a versión $VERSION" \
-            "${{ steps.artifacts.outputs.nsis_exe }}" \
-            "${{ steps.artifacts.outputs.nsis_sig }}" \
-            "latest.json"
+            "${{ steps.sigs.outputs.win_exe }}" \
+            "${{ steps.sigs.outputs.win_sig_file }}" \
+            "${{ steps.sigs.outputs.mac_dmg }}" \
+            "${{ steps.sigs.outputs.mac_tar }}" \
+            "${{ steps.sigs.outputs.mac_tar_sig }}" \
+            latest.json
+
+      - name: Notify planner-sync of new release
+        if: env.SYNC_SERVER_URL != ''
+        env:
+          SYNC_SERVER_URL: ${{ secrets.SYNC_SERVER_URL }}
+          SYNC_ADMIN_USER: ${{ secrets.SYNC_ADMIN_USER }}
+          SYNC_ADMIN_PASS: ${{ secrets.SYNC_ADMIN_PASS }}
+        run: |
+          VERSION="${{ steps.meta.outputs.version }}"
+          WIN_NAME="${{ steps.sigs.outputs.win_name }}"
+          MAC_TAR_NAME="${{ steps.sigs.outputs.mac_tar_name }}"
+          PUB_DATE="${{ steps.meta.outputs.pub_date }}"
+          WIN_SIG="${{ steps.sigs.outputs.win_sig }}"
+          MAC_SIG="${{ steps.sigs.outputs.mac_sig }}"
+          TAG="${{ github.ref_name }}"
+          WIN_ASSET_URL="https://github.com/${{ env.PUBLIC_REPO }}/releases/download/${TAG}/${WIN_NAME}"
+          MAC_ASSET_URL="https://github.com/${{ env.PUBLIC_REPO }}/releases/download/${TAG}/${MAC_TAR_NAME}"
+
+          LOGIN_RESPONSE=$(curl -s -X POST "${SYNC_SERVER_URL}/api/v1/auth/login" \
+            -H "Content-Type: application/json" \
+            -d "{\"username\": \"${SYNC_ADMIN_USER}\", \"password\": \"${SYNC_ADMIN_PASS}\"}")
+
+          TOKEN=$(echo "$LOGIN_RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin)['token'])" 2>/dev/null)
+
+          if [ -z "$TOKEN" ]; then
+            echo "⚠️  Login to planner-sync failed — skipping notification"
+            exit 0
+          fi
+
+          HTTP_STATUS=$(curl -s -o /tmp/sync_response.json -w "%{http_code}" \
+            -X POST "${SYNC_SERVER_URL}/api/v1/updates/releases" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${TOKEN}" \
+            -d "{
+              \"version\": \"${VERSION}\",
+              \"notes\": \"Actualizacion a version ${VERSION}\",
+              \"channel\": \"stable\",
+              \"pubDate\": \"${PUB_DATE}\",
+              \"platforms\": {
+                \"windows-x86_64\": {
+                  \"assetUrl\": \"${WIN_ASSET_URL}\",
+                  \"assetSignature\": \"${WIN_SIG}\",
+                  \"assetSize\": 0
+                },
+                \"darwin-aarch64\": {
+                  \"assetUrl\": \"${MAC_ASSET_URL}\",
+                  \"assetSignature\": \"${MAC_SIG}\",
+                  \"assetSize\": 0
+                },
+                \"darwin-x86_64\": {
+                  \"assetUrl\": \"${MAC_ASSET_URL}\",
+                  \"assetSignature\": \"${MAC_SIG}\",
+                  \"assetSize\": 0
+                }
+              }
+            }")
+
+          echo "HTTP Status: ${HTTP_STATUS}"
+          cat /tmp/sync_response.json
+
+      - name: Summary
+        run: |
+          echo "## ✅ Release Published!" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** ${{ steps.meta.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Tag:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY

@@ -1,8 +1,8 @@
-﻿import { useFormContext, useFieldArray } from 'react-hook-form';
+import { useFormContext, useFieldArray } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
 import { Button, Input, Select } from '../ui';
 import { Plus, Trash2 } from 'lucide-react';
 import type { CompleteReportData } from '../../schemas';
-import { SHIFT_LABELS } from '../../types/report';
 
 export function BitRecordSection() {
   const {
@@ -10,6 +10,8 @@ export function BitRecordSection() {
     control,
     formState: { errors },
   } = useFormContext<CompleteReportData>();
+
+  const { t } = useTranslation();
 
   const { fields, append, remove } = useFieldArray({
     control,
@@ -38,7 +40,7 @@ export function BitRecordSection() {
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Record de Mechas</h3>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{t('reports.forms.bitRecord.title')}</h3>
         <Button
           type="button"
           variant="secondary"
@@ -46,13 +48,13 @@ export function BitRecordSection() {
           onClick={addRecord}
           icon={<Plus size={16} />}
         >
-          Agregar Mecha
+          {t('reports.forms.bitRecord.addBit')}
         </Button>
       </div>
 
       {fields.length === 0 ? (
         <div className="text-center py-8 bg-gray-50 dark:bg-gray-800 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600">
-          <p className="text-gray-500 mb-3">No hay mechas registradas</p>
+          <p className="text-gray-500 mb-3">{t('reports.forms.bitRecord.noBits')}</p>
           <Button
             type="button"
             variant="primary"
@@ -60,7 +62,7 @@ export function BitRecordSection() {
             onClick={addRecord}
             icon={<Plus size={16} />}
           >
-            Agregar Primera Mecha
+            {t('reports.forms.bitRecord.addFirstBit')}
           </Button>
         </div>
       ) : (
@@ -68,7 +70,7 @@ export function BitRecordSection() {
           {fields.map((field, index) => (
             <div key={field.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-6 bg-gray-50 dark:bg-gray-800">
               <div className="flex justify-between items-center mb-4">
-                <h4 className="font-medium text-gray-900 dark:text-gray-100">Mecha #{index + 1}</h4>
+                <h4 className="font-medium text-gray-900 dark:text-gray-100">{t('reports.forms.bitRecord.bitNumber', { number: index + 1 })}</h4>
                 <Button
                   type="button"
                   variant="secondary"
@@ -77,90 +79,90 @@ export function BitRecordSection() {
                   icon={<Trash2 size={16} />}
                   className="text-red-600"
                 >
-                  Eliminar
+                  {t('reports.forms.common.delete')}
                 </Button>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <Select
-                  label="Turno"
+                  label={t('reports.forms.common.shift')}
                   {...register(`bitRecords.records.${index}.shift`)}
                   error={errors.bitRecords?.records?.[index]?.shift?.message}
                 >
-                  <option value="">Seleccionar...</option>
-                  <option value="morning">{SHIFT_LABELS.morning}</option>
-                  <option value="afternoon">{SHIFT_LABELS.afternoon}</option>
-                  <option value="night">{SHIFT_LABELS.night}</option>
+                  <option value="">{t('reports.forms.common.select')}</option>
+                  <option value="morning">{t('reports.shiftLabels.morning')}</option>
+                  <option value="afternoon">{t('reports.shiftLabels.afternoon')}</option>
+                  <option value="night">{t('reports.shiftLabels.night')}</option>
                 </Select>
 
                 <Input
-                  label="Tamaño"
+                  label={t('reports.forms.bitRecord.size')}
                   {...register(`bitRecords.records.${index}.size`)}
                   placeholder='Ej: 8 1/2"'
                 />
 
                 <Input
-                  label="Código Fabricante"
+                  label={t('reports.forms.bitRecord.manufacturerCode')}
                   {...register(`bitRecords.records.${index}.manufacturerCode`)}
                 />
 
                 <Input
-                  label="Marca"
+                  label={t('reports.forms.bitRecord.brand')}
                   {...register(`bitRecords.records.${index}.brand`)}
                   placeholder="Ej: Smith, Baker Hughes"
                 />
 
                 <Input
-                  label="Tipo de Mecha"
+                  label={t('reports.forms.bitRecord.bitType')}
                   {...register(`bitRecords.records.${index}.bitType`)}
                   placeholder="Ej: Tricono, PDC"
                 />
 
                 <Input
-                  label="Número de Serie"
+                  label={t('reports.forms.bitRecord.serialNumber')}
                   {...register(`bitRecords.records.${index}.serialNumber`)}
                 />
 
                 <Input
-                  label="Chorros"
+                  label={t('reports.forms.bitRecord.jets')}
                   {...register(`bitRecords.records.${index}.jets`)}
                   placeholder="Ej: 13-13-13"
                 />
 
                 <Input
-                  label="TFA"
+                  label={t('reports.forms.bitRecord.tfa')}
                   {...register(`bitRecords.records.${index}.tfa`)}
                 />
 
                 <Input
-                  label="Prof. Sacada (ft)"
+                  label={t('reports.forms.bitRecord.depthOut')}
                   {...register(`bitRecords.records.${index}.depthOut`)}
                 />
 
                 <Input
-                  label="Prof. Metida (ft)"
+                  label={t('reports.forms.bitRecord.depthIn')}
                   {...register(`bitRecords.records.${index}.depthIn`)}
                 />
 
                 <Input
-                  label="Perf. Total (ft)"
+                  label={t('reports.forms.bitRecord.footage')}
                   {...register(`bitRecords.records.${index}.footage`)}
                 />
 
                 <Input
-                  label="Horas Totales"
+                  label={t('reports.forms.bitRecord.hoursTotal')}
                   type="number"
                   step="0.1"
                   {...register(`bitRecords.records.${index}.hoursTotal`, { valueAsNumber: true })}
                 />
 
                 <Input
-                  label="DP Tubos"
+                  label={t('reports.forms.bitRecord.dpTubos')}
                   {...register(`bitRecords.records.${index}.dpTubos`)}
                 />
 
                 <Input
-                  label="Kelly"
+                  label={t('reports.forms.bitRecord.kelly')}
                   {...register(`bitRecords.records.${index}.kelly`)}
                 />
               </div>

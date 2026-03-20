@@ -7,6 +7,9 @@ interface AppSettingsState {
   isLoading: boolean;
   loadSettings: () => Promise<void>;
   saveSettings: (sessionToken: string, input: SaveAppSettingsInput) => Promise<void>;
+  /** Upload desde bytes ya procesados (Uint8Array) — usado por LogoUploader (soporta imgly) */
+  uploadLogoFromBytes: (sessionToken: string, bytes: Uint8Array, fileName: string) => Promise<void>;
+  /** @deprecated Usar uploadLogoFromBytes. Mantenido por compatibilidad interna. */
   uploadLogo: (sessionToken: string, fileData: number[], fileName: string) => Promise<void>;
   removeLogo: (sessionToken: string) => Promise<void>;
   clearSettings: () => void;
@@ -43,6 +46,23 @@ export const useAppSettingsStore = create<AppSettingsState>((set) => ({
     }
   },
 
+  uploadLogoFromBytes: async (sessionToken: string, bytes: Uint8Array, fileName: string) => {
+    set({ isLoading: true });
+    try {
+      await invoke<string>('upload_company_logo', {
+        sessionToken,
+        fileData: Array.from(bytes),
+        fileName,
+      });
+      const settings = await invoke<AppSettings>('get_app_settings', {});
+      set({ settings, isLoading: false });
+    } catch (error) {
+      console.error('Error uploading logo:', error);
+      set({ isLoading: false });
+      throw error;
+    }
+  },
+
   uploadLogo: async (sessionToken: string, fileData: number[], fileName: string) => {
     set({ isLoading: true });
     try {
@@ -51,8 +71,6 @@ export const useAppSettingsStore = create<AppSettingsState>((set) => ({
         fileData,
         fileName,
       });
-
-      // Reload settings to get updated logo_path
       const settings = await invoke<AppSettings>('get_app_settings', {});
       set({ settings, isLoading: false });
     } catch (error) {
@@ -66,8 +84,6 @@ export const useAppSettingsStore = create<AppSettingsState>((set) => ({
     set({ isLoading: true });
     try {
       await invoke('remove_company_logo', { sessionToken });
-
-      // Reload settings to get updated logo_path
       const settings = await invoke<AppSettings>('get_app_settings', {});
       set({ settings, isLoading: false });
     } catch (error) {

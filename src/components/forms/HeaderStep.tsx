@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { Card, Button } from '../ui';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { HeaderSection } from './HeaderSection';
@@ -19,6 +20,8 @@ export function HeaderStep({
   onBack,
   onContinue,
 }: HeaderStepProps) {
+  const { t } = useTranslation();
+
   return (
     <>
       <Card>
@@ -29,10 +32,10 @@ export function HeaderStep({
             </div>
             <div>
               <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                Información del Encabezado
+                {t('reports.header.headerInfo')}
               </h2>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Completa los datos básicos del reporte
+                {t('reports.header.headerInfoDesc')}
               </p>
             </div>
           </div>
@@ -52,19 +55,19 @@ export function HeaderStep({
                 onClick={onBack}
                 icon={<ChevronLeft size={16} />}
               >
-                Atrás
+                {t('actions.back')}
               </Button>
             ) : (
               <p className="text-sm text-gray-600 dark:text-gray-400">
                 {isHeaderValid
-                  ? '✅ Encabezado completado. Puedes continuar.'
-                  : '⚠️ Completa los campos obligatorios para continuar'
+                  ? t('reports.header.headerComplete')
+                  : t('reports.header.headerIncomplete')
                 }
               </p>
             )}
             {errors.header && (
               <p className="text-sm text-red-600 dark:text-red-400 mt-1">
-                Hay errores en el encabezado
+                {t('reports.header.headerErrors')}
               </p>
             )}
             <Button
@@ -76,7 +79,7 @@ export function HeaderStep({
               icon={<ChevronRight size={20} />}
               iconPosition="right"
             >
-              Continuar
+              {t('actions.next')}
             </Button>
           </div>
         </div>

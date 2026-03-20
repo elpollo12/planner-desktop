@@ -1,8 +1,11 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { User, LoginResponse } from '../types';
+import i18n from '../lib/i18n';
+import type { User, LoginResponse, ModulePermissions } from '../types';
 import { invoke } from '@tauri-apps/api/core';
+import { modulePermissionsApi } from '../lib/api';
 import { useLogisticsStore } from './logisticsStore';
+import { useConnectionStore } from './connectionStore';
 import { queryClient } from '../lib/queryClient';
 
 interface AuthState {
@@ -30,28 +33,43 @@ export const useAuthStore = create<AuthState>()(
       login: async (username: string, password: string) => {
         set({ isLoading: true, error: null });
         try {
+          // El comando login en Rust ya hace sync_login + pull secuencialmente
+          // antes de responder — cuando llegamos aquí los datos ya están en la DB local.
           const response = await invoke<LoginResponse>('login', {
             username,
             password,
           });
 
+          let modulePermissions: ModulePermissions | undefined;
+          if (response.user.role !== 'admin') {
+            try {
+              modulePermissions = await modulePermissionsApi.getMine(
+                response.sessionToken,
+              ) as ModulePermissions;
+            } catch {
+              throw i18n.t('auth.errors.permissionsLoadFailed');
+            }
+          }
+
           set({
-            user: response.user,
+            user: { ...response.user, modulePermissions },
             sessionToken: response.sessionToken,
             isAuthenticated: true,
             isLoading: false,
             error: null,
           });
+
+          // Check connection status (fire and forget)
+          useConnectionStore.getState().checkConnection(response.sessionToken);
         } catch (error) {
           const rawError = error as string;
-          // Map backend error messages to user-friendly Spanish messages
           let errorMessage = rawError;
-          if (rawError.includes('User account is disabled')) {
-            errorMessage = 'Tu cuenta está desactivada. Contacta al administrador para más información.';
-          } else if (rawError.includes('Invalid password')) {
-            errorMessage = 'Contraseña incorrecta.';
+          if (rawError.includes('Rate limit exceeded')) {
+            errorMessage = i18n.t('auth.errors.rateLimited');
+          } else if (rawError.includes('User account is disabled')) {
+            errorMessage = i18n.t('auth.errors.disabled');
           } else if (rawError.includes('Authentication failed')) {
-            errorMessage = 'Credenciales inválidas. Verifica tu usuario y contraseña.';
+            errorMessage = i18n.t('auth.errors.invalidCredentials');
           }
           set({
             user: null,
@@ -81,10 +99,8 @@ export const useAuthStore = create<AuthState>()(
           error: null,
         });
 
-        // Clear logistics rig selection on logout
         useLogisticsStore.getState().clearSelectedRig();
-
-        // Clear all React Query cache to prevent stale data leaking between users
+        useConnectionStore.getState().reset();
         queryClient.clear();
       },
 
@@ -99,24 +115,45 @@ export const useAuthStore = create<AuthState>()(
         try {
           const user = await invoke<User>('get_current_user', { sessionToken });
 
-          // If the user account was deactivated, force logout
           if (!user.active) {
             set({
               user: null,
               sessionToken: null,
               isAuthenticated: false,
               isLoading: false,
-              error: 'Tu cuenta ha sido desactivada. Contacta al administrador.',
+              error: i18n.t('auth.errors.accountDeactivated'),
             });
             return;
           }
 
+          let modulePermissions: ModulePermissions | undefined;
+          if (user.role !== 'admin') {
+            try {
+              modulePermissions = await modulePermissionsApi.getMine(sessionToken) as ModulePermissions;
+            } catch {
+              set({
+                user: null,
+                sessionToken: null,
+                isAuthenticated: false,
+                isLoading: false,
+                error: null,
+              });
+              return;
+            }
+          }
+
           set({
-            user,
+            user: { ...user, modulePermissions },
             isAuthenticated: true,
             isLoading: false,
             error: null,
           });
+
+          invoke('refresh_session', { sessionToken }).catch((err) => {
+            console.error('Failed to refresh session:', err);
+          });
+
+          useConnectionStore.getState().checkConnection(sessionToken);
         } catch (error) {
           set({
             user: null,
@@ -135,7 +172,6 @@ export const useAuthStore = create<AuthState>()(
     {
       name: 'auth-storage',
       partialize: (state) => ({
-        user: state.user,
         sessionToken: state.sessionToken,
         isAuthenticated: state.isAuthenticated,
       }),

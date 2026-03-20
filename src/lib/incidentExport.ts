@@ -1,10 +1,14 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { savePdfDialog } from './logisticsSaveDialog';
-import { formatDateDMY } from './dateUtils';
+// formatDateDMY available if needed
+// import { formatDateDMY } from './dateUtils';
 import type { ReportBranding } from './logisticsExport';
 import type { IncidentWithPersonnel } from '../types/incident';
 import { toast } from 'react-toastify';
+import i18n from '@/lib/i18n';
+
+const t = (key: string, opts?: Record<string, any>) => i18n.t(key, opts) as string;
 
 // ============================================================================
 // HELPERS
@@ -139,16 +143,16 @@ export async function exportIncidentPdf({ incident, rigName, typeName, branding 
       : [30, 58, 95]; // default brand navy
 
     const dateStr = formatDateTimePdf(incident.createdAt);
-    const dateLabel = `Fecha de incidencia: ${dateStr}`;
+    const dateLabel = t('exports.incident.dateLabel', { date: dateStr });
 
-    let y = drawPdfHeader(doc, branding, 'Reporte de Incidencia', dateLabel);
+    let y = drawPdfHeader(doc, branding, t('exports.incident.title'), dateLabel);
 
     // ── Info table ──
     const headerData = [
-      ['Taladro', rigName],
-      ['Tipo de Incidencia', typeName],
-      ['Reportado por', incident.createdByName ?? '—'],
-      ['Fecha', dateStr],
+      [t('exports.incident.rig'), rigName],
+      [t('exports.incident.incidentType'), typeName],
+      [t('exports.incident.reportedBy'), incident.createdByName ?? '—'],
+      [t('exports.incident.date'), dateStr],
     ];
 
     autoTable(doc, {
@@ -169,7 +173,7 @@ export async function exportIncidentPdf({ incident, rigName, typeName, branding 
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...headColor);
-    doc.text('Descripción', margin, y);
+    doc.text(t('exports.incident.description'), margin, y);
     doc.setTextColor(0, 0, 0);
     y += 3;
 
@@ -198,7 +202,7 @@ export async function exportIncidentPdf({ incident, rigName, typeName, branding 
       doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(...headColor);
-      doc.text(`Personal Involucrado (${incident.personnel.length})`, margin, y);
+      doc.text(t('exports.incident.personnelTitle', { count: incident.personnel.length }), margin, y);
       doc.setTextColor(0, 0, 0);
       y += 3;
 
@@ -211,7 +215,7 @@ export async function exportIncidentPdf({ incident, rigName, typeName, branding 
 
       autoTable(doc, {
         startY: y,
-        head: [['#', 'Nombre', 'Cargo', 'CI']],
+        head: [[t('exports.incident.numCol'), t('exports.incident.nameCol'), t('exports.incident.positionCol'), t('exports.incident.ciCol')]],
         body: personnelRows,
         theme: 'grid',
         styles: { fontSize: 9, cellPadding: 3 },
@@ -223,16 +227,17 @@ export async function exportIncidentPdf({ incident, rigName, typeName, branding 
     }
 
     // ── Save ──
-    const dateTag = incident.createdAt.split('T')[0] ?? 'sin-fecha';
+    // dateTag available for future use
+    // const dateTag = incident.createdAt.split('T')[0] ?? 'sin-fecha';
     const rig = rigName.replace(/\s+/g, '_');
     const filename = `${rig} - Incidencia - ${getTodayForFilename()}.pdf`;
 
     const result = await savePdfDialog(doc, filename);
     if (result.path) {
-      toast.success('PDF exportado exitosamente');
+      toast.success(t('exports.incident.pdfExportSuccess'));
     }
   } catch (error) {
     console.error('Error exporting incident PDF:', error);
-    toast.error('Error al exportar PDF');
+    toast.error(t('exports.incident.pdfExportError'));
   }
 }

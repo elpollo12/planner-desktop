@@ -1,4 +1,5 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '../ui';
 import { CheckCircle } from 'lucide-react';
 
@@ -11,6 +12,7 @@ export default function ApproveReportModal({
   reportLabel,
   onConfirm,
 }: ApproveReportModalProps) {
+  const { t } = useTranslation();
   const [comment, setComment] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -29,7 +31,7 @@ export default function ApproveReportModal({
         <CheckCircle size={20} className="text-green-500 shrink-0" />
         <div>
           <p className="text-sm font-medium text-green-800 dark:text-green-300">
-            Aprobar reporte
+            {t('reports.modals.approveReport')}
           </p>
           <p className="text-xs text-green-600 dark:text-green-400 mt-0.5">
             {reportLabel}
@@ -39,12 +41,12 @@ export default function ApproveReportModal({
 
       <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-          Comentario <span className="text-gray-400 font-normal">(opcional)</span>
+          {t('reports.modals.commentLabel')} <span className="text-gray-400 font-normal">{t('reports.modals.commentOptional')}</span>
         </label>
         <textarea
           value={comment}
           onChange={(e) => setComment(e.target.value)}
-          placeholder="Ej: Aprobado con observación..."
+          placeholder={t('reports.modals.commentPlaceholder')}
           rows={3}
           className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none text-sm"
         />
@@ -58,7 +60,7 @@ export default function ApproveReportModal({
           loading={loading}
           icon={<CheckCircle size={16} />}
         >
-          Confirmar Aprobación
+          {t('reports.modals.confirmApproval')}
         </Button>
       </div>
     </div>

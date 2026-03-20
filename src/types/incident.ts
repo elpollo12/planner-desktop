@@ -24,16 +24,6 @@ export const INCIDENT_TYPE_BADGE_COLORS = [
   'red', 'orange', 'blue', 'green', 'purple', 'gray', 'yellow',
 ] as const;
 
-export const INCIDENT_TYPE_COLOR_LABELS: Record<string, string> = {
-  red: 'Rojo',
-  orange: 'Naranja',
-  blue: 'Azul',
-  green: 'Verde',
-  purple: 'Morado',
-  gray: 'Gris',
-  yellow: 'Amarillo',
-};
-
 // --- Incidencia base (listado) ---
 
 export interface Incident {

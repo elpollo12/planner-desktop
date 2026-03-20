@@ -1,4 +1,5 @@
 use crate::error::AppError;
+use crate::models::audit_log::AuditEntry;
 use crate::models::notification::CreateNotificationInput;
 use crate::state::SessionInfo;
 use rusqlite::{params, Connection};
@@ -310,11 +311,27 @@ fn insert_notification(
     Ok(())
 }
 
-/// Cleanup old notifications (> 30 days, already read).
-/// Call this periodically (e.g., on login or sync).
+/// Cleanup old notifications + audit log entries on each login.
+/// Reads `notification_retention_days` from `app_settings` for notifications.
+/// Audit log is always purged with a fixed 90-day retention.
+/// Both operations are silent — failures are logged but never propagate.
 pub fn cleanup_old_notifications(conn: &Connection) {
+    // Read retention days from app_settings
+    let retention_days: i64 = conn
+        .query_row(
+            "SELECT notification_retention_days FROM app_settings WHERE id = 1",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap_or(5);
+
+    // 0 means indefinite — skip cleanup
+    if retention_days == 0 {
+        return;
+    }
+
     let cutoff = chrono::Utc::now()
-        .checked_sub_signed(chrono::Duration::days(30))
+        .checked_sub_signed(chrono::Duration::days(retention_days))
         .map(|dt| dt.to_rfc3339());
 
     if let Some(cutoff_date) = cutoff {
@@ -333,4 +350,7 @@ pub fn cleanup_old_notifications(conn: &Connection) {
             Err(e) => eprintln!("[notifications] Cleanup error: {}", e),
         }
     }
+
+    // Purge old audit log entries (90-day fixed retention)
+    AuditEntry::purge_old(conn, 90);
 }

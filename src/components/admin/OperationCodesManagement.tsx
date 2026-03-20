@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
 import { Plus, Search, Edit, Trash2 } from 'lucide-react';
 import { operationCodesApi } from '@/lib/api';
@@ -13,6 +14,7 @@ import { Table } from '@/components/ui/Table';
 import { Card } from '@/components/ui/Card';
 
 export function OperationCodesManagement() {
+  const { t } = useTranslation();
   const { sessionToken } = useAuthStore();
   const { openModal, closeModal } = useModal();
   const [codes, setCodes] = useState<OperationCode[]>([]);
@@ -39,7 +41,7 @@ export function OperationCodesManagement() {
       setCodes(data);
     } catch (error) {
       console.error('Error cargando códigos:', error);
-      toast.error('Error al cargar los códigos de operación');
+      toast.error(t('admin.operationCodes.loadError'));
     } finally {
       setLoading(false);
     }
@@ -52,18 +54,18 @@ export function OperationCodesManagement() {
         onSubmit={async (data) => {
           try {
             await operationCodesApi.create(sessionToken!, data);
-            toast.success('Código creado exitosamente');
+            toast.success(t('admin.operationCodes.created'));
             closeModal();
             loadCodes();
             backgroundPush(sessionToken!);
           } catch (error: any) {
             console.error('Error creando código:', error);
-            toast.error(error.message || 'Error al crear el código');
+            toast.error(error.message || t('admin.operationCodes.createError'));
           }
         }}
       />,
       {
-        title: 'Crear Nuevo Código',
+        title: t('admin.operationCodes.createTitle'),
         size: 'md',
         showCloseButton: true,
       }
@@ -78,18 +80,18 @@ export function OperationCodesManagement() {
         onSubmit={async (data) => {
           try {
             await operationCodesApi.update(sessionToken!, code.id, data);
-            toast.success('Código actualizado exitosamente');
+            toast.success(t('admin.operationCodes.updated'));
             closeModal();
             loadCodes();
             backgroundPush(sessionToken!);
           } catch (error: any) {
             console.error('Error actualizando código:', error);
-            toast.error(error.message || 'Error al actualizar el código');
+            toast.error(error.message || t('admin.operationCodes.updateError'));
           }
         }}
       />,
       {
-        title: `Editar Código: ${code.code}`,
+        title: t('admin.operationCodes.editTitle', { code: code.code }),
         size: 'md',
         showCloseButton: true,
       }
@@ -101,28 +103,28 @@ export function OperationCodesManagement() {
     openModal(
       <div className="space-y-3">
         <p className="text-gray-700">
-          ¿Estás seguro de eliminar el código <strong className="text-gray-900">"{code.code} - {code.name}"</strong>?
+          {t('admin.operationCodes.confirmDelete')} <strong className="text-gray-900">"{code.code} - {code.name}"</strong>?
         </p>
         <p className="text-sm text-gray-500">
-          Esta acción no se puede deshacer. Los reportes que usen este código quedarán sin código asignado.
+          {t('admin.operationCodes.deleteWarning')}
         </p>
       </div>,
       {
-        title: 'Confirmar Eliminación',
+        title: t('admin.operationCodes.confirmDeletion'),
         size: 'sm',
         showConfirmButton: true,
         showCancelButton: true,
-        confirmText: 'Eliminar',
-        cancelText: 'Cancelar',
+        confirmText: t('admin.forms.delete'),
+        cancelText: t('admin.forms.cancel'),
         onConfirm: async () => {
           try {
             await operationCodesApi.delete(sessionToken!, code.id);
-            toast.success('Código eliminado exitosamente');
+            toast.success(t('admin.operationCodes.deleted'));
             loadCodes();
             backgroundPush(sessionToken!);
           } catch (error: any) {
             console.error('Error eliminando código:', error);
-            toast.error(error.message || 'Error al eliminar el código');
+            toast.error(error.message || t('admin.operationCodes.deleteError'));
           }
         },
       }
@@ -143,7 +145,7 @@ export function OperationCodesManagement() {
   const columns = [
     {
       key: 'code',
-      header: 'Código',
+      header: t('admin.operationCodes.code'),
       render: (code: OperationCode) => (
         <div>
           <span className="font-medium text-gray-900 dark:text-gray-100">{code.code}</span>
@@ -152,28 +154,28 @@ export function OperationCodesManagement() {
     },
     {
       key: 'name',
-      header: 'Nombre',
+      header: t('admin.operationCodes.name'),
       render: (code: OperationCode) => (
         <span className="text-gray-700 dark:text-gray-300">{code.name}</span>
       )
     },
     {
       key: 'category',
-      header: 'Categoría',
+      header: t('admin.operationCodes.category'),
       render: (code: OperationCode) => (
         <span className="text-gray-600 dark:text-gray-400">{code.category || '-'}</span>
       )
     },
     {
       key: 'sortOrder',
-      header: 'Orden',
+      header: t('admin.operationCodes.order'),
       render: (code: OperationCode) => (
         <span className="text-center block text-gray-700 dark:text-gray-300">{code.sortOrder}</span>
       )
     },
     {
       key: 'status',
-      header: 'Estado',
+      header: t('admin.operationCodes.status'),
       render: (code: OperationCode) => (
         <span
           className={`px-2 py-1 text-xs font-medium rounded-full ${code.active
@@ -181,20 +183,20 @@ export function OperationCodesManagement() {
               : 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300'
             }`}
         >
-          {code.active ? 'Activo' : 'Inactivo'}
+          {code.active ? t('admin.operationCodes.active') : t('admin.operationCodes.inactive')}
         </span>
       )
     },
     {
       key: 'actions',
-      header: 'Acciones',
+      header: t('admin.operationCodes.actions'),
       render: (code: OperationCode) => (
         <div className="flex gap-2">
           <Button
             variant="secondary"
             size="sm"
             onClick={() => handleEdit(code)}
-            title="Editar"
+            title={t('admin.forms.edit')}
             className="h-8 w-8 p-0"
           >
             <Edit className="w-4 h-4" />
@@ -203,7 +205,7 @@ export function OperationCodesManagement() {
             variant="danger"
             size="sm"
             onClick={() => handleDelete(code)}
-            title="Eliminar"
+            title={t('admin.forms.delete')}
             className="h-8 w-8 p-0"
           >
             <Trash2 className="w-4 h-4" />
@@ -218,9 +220,9 @@ export function OperationCodesManagement() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Códigos de Operación</h2>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{t('admin.operationCodes.title')}</h2>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-            Administra los códigos de operación para reportes de taladros
+            {t('admin.operationCodes.subtitle')}
           </p>
         </div>
         <Button
@@ -228,7 +230,7 @@ export function OperationCodesManagement() {
           onClick={handleCreate}
           icon={<Plus className="w-4 h-4" />}
         >
-          Nuevo Código
+          {t('admin.operationCodes.newCode')}
         </Button>
       </div>
 
@@ -238,14 +240,14 @@ export function OperationCodesManagement() {
           {/* Búsqueda */}
           <div>
             <label htmlFor="search" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Buscar
+              {t('admin.operationCodes.search')}
             </label>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
               <Input
                 id="search"
                 type="text"
-                placeholder="Buscar por código, nombre o categoría..."
+                placeholder={t('admin.operationCodes.searchPlaceholder')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100"
@@ -266,7 +268,7 @@ export function OperationCodesManagement() {
             className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600"
           />
           <label htmlFor="includeInactive" className="ml-2 text-sm text-gray-700 dark:text-gray-300">
-            Incluir códigos inactivos
+            {t('admin.operationCodes.includeInactive')}
           </label>
         </div>
       </Card>
@@ -276,14 +278,14 @@ export function OperationCodesManagement() {
         {loading ? (
           <div className="text-center py-12">
             <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            <p className="mt-2 text-gray-600 dark:text-gray-400">Cargando códigos...</p>
+            <p className="mt-2 text-gray-600 dark:text-gray-400">{t('admin.operationCodes.loading')}</p>
           </div>
         ) : filteredCodes.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-gray-500 dark:text-gray-400">
               {searchTerm
-                ? 'No se encontraron códigos con los filtros aplicados'
-                : 'No hay códigos registrados'}
+                ? t('admin.operationCodes.noResults')
+                : t('admin.operationCodes.noCodes')}
             </p>
             {!searchTerm && (
               <Button
@@ -292,7 +294,7 @@ export function OperationCodesManagement() {
                 className="mt-4"
                 icon={<Plus className="w-4 h-4" />}
               >
-                Crear Primer Código
+                {t('admin.operationCodes.createFirst')}
               </Button>
             )}
           </div>

@@ -18,14 +18,7 @@ pub fn check_permission(
     required_role: UserRole,
     state: &AppState,
 ) -> Result<SessionInfo, AppError> {
-    let sessions = state
-        .sessions
-        .lock()
-        .map_err(|e| AppError::Internal(format!("Failed to lock sessions: {}", e)))?;
-
-    let session = sessions
-        .get(session_token)
-        .ok_or(AppError::InvalidSession)?;
+    let session = get_session(session_token, state)?;
 
     // Parse the user's role
     let user_role = UserRole::from_str(&session.role)?;
@@ -38,18 +31,37 @@ pub fn check_permission(
         )));
     }
 
-    Ok(session.clone())
+    Ok(session)
 }
 
-/// Get session info without checking permissions
+/// Get session info without checking permissions.
+/// Returns InvalidSession if the token is missing or expired.
 pub fn get_session(session_token: &str, state: &AppState) -> Result<SessionInfo, AppError> {
-    let sessions = state
-        .sessions
-        .lock()
-        .map_err(|e| AppError::Internal(format!("Failed to lock sessions: {}", e)))?;
+    let session = {
+        let sessions = state
+            .sessions
+            .lock()
+            .map_err(|e| AppError::Internal(format!("Failed to lock sessions: {}", e)))?;
 
-    sessions
-        .get(session_token)
-        .cloned()
-        .ok_or(AppError::InvalidSession)
+        sessions
+            .get(session_token)
+            .cloned()
+            .ok_or(AppError::InvalidSession)?
+    };
+
+    // Check expiry
+    let expires_at = chrono::DateTime::parse_from_rfc3339(&session.expires_at)
+        .map_err(|_| AppError::Internal("Invalid session expiry format".to_string()))?;
+
+    if chrono::Utc::now() >= expires_at {
+        // Remove expired session from memory
+        let mut sessions_mut = state
+            .sessions
+            .lock()
+            .map_err(|e| AppError::Internal(format!("Failed to lock sessions: {}", e)))?;
+        sessions_mut.remove(session_token);
+        return Err(AppError::InvalidSession);
+    }
+
+    Ok(session)
 }

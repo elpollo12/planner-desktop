@@ -1,4 +1,5 @@
-﻿import { useForm } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Container, ClipboardList } from 'lucide-react';
 import { useModalStore } from '@/store';
@@ -16,6 +17,7 @@ interface VacuumFormProps {
 }
 
 export function VacuumForm({ rigId, onSuccess }: VacuumFormProps) {
+  const { t } = useTranslation();
   const sessionToken = useAuthStore((s) => s.sessionToken);
   const qc = useQueryClient();
 
@@ -37,12 +39,12 @@ export function VacuumForm({ rigId, onSuccess }: VacuumFormProps) {
       });
       qc.invalidateQueries({ queryKey: logisticsKeys.vacuum(rigId) });
       qc.invalidateQueries({ queryKey: logisticsKeys.pendingCount(rigId) });
-      toast.success('Acción de vacuum registrada');
+      toast.success(t('logistics.vacuum.actionRegistered'));
       onSuccess?.();
       useModalStore.getState().closeModal();
     } catch (error) {
       console.error('Error registrando acción:', error);
-      toast.error('Error al registrar la acción');
+      toast.error(t('logistics.vacuum.actionRegisterError'));
     }
   };
 
@@ -53,22 +55,22 @@ export function VacuumForm({ rigId, onSuccess }: VacuumFormProps) {
           <Container className="text-purple-600 dark:text-purple-400" size={24} />
         </div>
         <div>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Vacuum / Cisterna</h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Registrar acción realizada</p>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{t('logistics.vacuum.title')}</h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400">{t('logistics.vacuum.registerDesc')}</p>
         </div>
       </div>
 
       <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-4">
         <div className="bg-purple-50 dark:bg-purple-900/10 p-4 rounded-lg mb-4">
           <p className="text-sm text-purple-700 dark:text-purple-400">
-            Registrar una acción de vacuum/cisterna realizada
+            {t('logistics.vacuum.actionBanner')}
           </p>
         </div>
 
         <div className="grid grid-cols-1 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Acción Realizada <span className="text-red-500">*</span>
+              {t('logistics.vacuum.actionPerformed')} <span className="text-red-500">*</span>
             </label>
             <div className="relative">
               <ClipboardList className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
@@ -78,21 +80,21 @@ export function VacuumForm({ rigId, onSuccess }: VacuumFormProps) {
                 className={`w-full pl-10 pr-4 py-2.5 border rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
                   errors.actionName ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
                 }`}
-                placeholder="Ej: Limpieza de cisterna, Traslado de agua..."
+                placeholder={t('logistics.vacuum.actionPlaceholder')}
               />
             </div>
             {errors.actionName && <p className="mt-1 text-sm text-red-500">{errors.actionName.message}</p>}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Observaciones</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('logistics.common.notes')}</label>
             <textarea
               {...register('notes')}
               rows={3}
               className={`w-full px-4 py-2.5 border rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 ${
                 errors.notes ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
               }`}
-              placeholder="Observaciones adicionales..."
+              placeholder={t('logistics.common.notesPlaceholder')}
             />
             {errors.notes && <p className="mt-1 text-sm text-red-500">{errors.notes.message}</p>}
           </div>
@@ -100,10 +102,10 @@ export function VacuumForm({ rigId, onSuccess }: VacuumFormProps) {
 
         <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
           <Button onClick={() => useModalStore.getState().closeModal()} variant="outline">
-            Cancelar
+            {t('logistics.common.cancel')}
           </Button>
           <Button type="submit" disabled={isSubmitting} icon={<Container size={16} />}>
-            {isSubmitting ? 'Registrando...' : 'Registrar Acción'}
+            {isSubmitting ? t('logistics.common.registering') : t('logistics.vacuum.registerActionBtn')}
           </Button>
         </div>
       </form>
