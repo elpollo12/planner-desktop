@@ -89,10 +89,11 @@ export const Breadcrumbs = () => {
 
   for (let i = 0; i < segments.length; i++) {
     const segment = segments[i]
-    const isUUID = segment.includes('-') && segment.length > 20
+    const isEntityId = (segment.includes('-') && segment.length > 20) ||
+                       (i > 0 && (segments[i - 1] === 'view' || segments[i - 1] === 'edit') && !routeNames[segment.toLowerCase()])
 
-    // Si es un UUID y el segmento anterior es "view" o "edit"
-    if (isUUID && i > 0 && (segments[i - 1] === 'view' || segments[i - 1] === 'edit')) {
+    // Si es un ID y el segmento anterior es "view" o "edit"
+    if (isEntityId && i > 0 && (segments[i - 1] === 'view' || segments[i - 1] === 'edit')) {
       // Determinar el nombre a mostrar según la ruta
       const entityName = isFluidRoute
         ? (fluidName || t('breadcrumbs.loading'))
@@ -109,17 +110,17 @@ export const Breadcrumbs = () => {
       continue
     }
 
-    // Si es un UUID sin contexto, skip
-    if (isUUID) {
+    // Si es un ID sin contexto, skip
+    if (isEntityId) {
       continue
     }
 
     // Override the first segment (e.g. "reports") when ?from is present
     if (i === 0 && override) {
-      const hasUUIDNext = i < segments.length - 1 &&
-                         segments[i + 1].includes('-') &&
-                         segments[i + 1].length > 20
-      const isLast = i === segments.length - 1 || hasUUIDNext
+      const nextSegOverride = i < segments.length - 1 ? segments[i + 1] : null
+      const hasIdNext = nextSegOverride != null &&
+                       (nextSegOverride.includes('-') || !routeNames[nextSegOverride.toLowerCase()])
+      const isLast = i === segments.length - 1 || hasIdNext
 
       crumbs.push({
         displayName: override.displayName,
@@ -140,10 +141,11 @@ export const Breadcrumbs = () => {
                        segment.charAt(0).toUpperCase() + segment.slice(1)
 
     // Determinar si es el último crumb clickeable (no el último si hay UUID después)
-    const hasUUIDNext = i < segments.length - 1 &&
-                       segments[i + 1].includes('-') &&
-                       segments[i + 1].length > 20
-    const isLast = i === segments.length - 1 || hasUUIDNext
+    const nextSeg = i < segments.length - 1 ? segments[i + 1] : null
+    const hasEntityIdNext = nextSeg != null &&
+                           (segment === 'view' || segment === 'edit') &&
+                           !routeNames[nextSeg.toLowerCase()]
+    const isLast = i === segments.length - 1 || hasEntityIdNext
 
     crumbs.push({
       displayName,
