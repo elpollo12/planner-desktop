@@ -10,7 +10,7 @@ import {
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
-import { areasApi, companiesApi, rigPersonnelApi, rigContractorsApi } from '@/lib/api';
+import { areasApi, companiesApi, rigPersonnelApi, rigContractorsApi, crewPositionsApi } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 import {
   rigBasicSchema, inlineAreaSchema, inlineCompanySchema,
@@ -23,7 +23,7 @@ import type {
   RigPersonnel, CreateRigPersonnelInput, Area,
 } from '@/types/rig';
 import type { Company } from '@/types/company';
-
+import type { CrewPosition } from '@/types/crewPosition';
 import { translateCrewPositionName } from '@/lib/translateCatalogs';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -428,6 +428,7 @@ export default function RigUpdateForm({ rig, onSubmit, onContractorsChanged }: R
 
   const TabPersonnel = () => {
     const [personnel, setPersonnel] = useState<RigPersonnel[]>([]);
+    const [positions, setPositions] = useState<CrewPosition[]>([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [newRow, setNewRow] = useState<{ name: string; ci: string; position: string } | null>(null);
@@ -441,6 +442,11 @@ export default function RigUpdateForm({ rig, onSubmit, onContractorsChanged }: R
     }, []);
 
     useEffect(() => { load(); }, [load]);
+
+    useEffect(() => {
+      if (!sessionToken) return;
+      crewPositionsApi.list(sessionToken, true).then(setPositions).catch(console.error);
+    }, [sessionToken]);
 
     const handleAdd = async () => {
       if (!newRow?.name.trim() || !newRow.position) return;
@@ -492,9 +498,13 @@ export default function RigUpdateForm({ rig, onSubmit, onContractorsChanged }: R
       }
     };
 
+    const allPositionNames = [
+      ...CREW_POSITION_KEYS,
+      ...positions.map((p) => p.name).filter((n) => !CREW_POSITION_KEYS.includes(n)),
+    ];
     const positionOptions = [
       { value: '', label: t('admin.forms.select') },
-      ...CREW_POSITION_KEYS.map((p) => ({ value: p, label: translateCrewPositionName(p, t) })),
+      ...allPositionNames.map((p) => ({ value: p, label: translateCrewPositionName(p, t) })),
     ];
 
     return (

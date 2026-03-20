@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { useModalStore } from '@/store';
-import { areasApi, companiesApi, rigPersonnelApi } from '@/lib/api';
+import { areasApi, companiesApi, rigPersonnelApi, crewPositionsApi } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 import {
   rigBasicSchema, inlineAreaSchema, inlineCompanySchema,
@@ -24,6 +24,7 @@ import type {
   CreateRigInput, RigPersonnel, CreateRigPersonnelInput, Area,
 } from '@/types/rig';
 import type { Company } from '@/types/company';
+import type { CrewPosition } from '@/types/crewPosition';
 import { translateCrewPositionName } from '@/lib/translateCatalogs';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -685,7 +686,9 @@ interface StepPersonnelProps {
 
 function StepPersonnel({ rigId, rigName }: StepPersonnelProps) {
   const { t } = useTranslation();
+  const { sessionToken } = useAuthStore();
   const [personnel, setPersonnel] = useState<RigPersonnel[]>([]);
+  const [positions, setPositions] = useState<CrewPosition[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [newRow, setNewRow] = useState<{ name: string; ci: string; position: string } | null>(null);
@@ -699,6 +702,11 @@ function StepPersonnel({ rigId, rigName }: StepPersonnelProps) {
   }, [rigId]);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    if (!sessionToken) return;
+    crewPositionsApi.list(sessionToken, true).then(setPositions).catch(console.error);
+  }, [sessionToken]);
 
   const handleAdd = async () => {
     if (!newRow?.name.trim() || !newRow.position) return;
@@ -750,9 +758,13 @@ function StepPersonnel({ rigId, rigName }: StepPersonnelProps) {
     }
   };
 
+  const allPositionNames = [
+    ...CREW_POSITION_KEYS,
+    ...positions.map((p) => p.name).filter((n) => !CREW_POSITION_KEYS.includes(n)),
+  ];
   const positionOptions = [
     { value: '', label: t('admin.forms.select') },
-    ...CREW_POSITION_KEYS.map((p) => ({ value: p, label: translateCrewPositionName(p, t) })),
+    ...allPositionNames.map((p) => ({ value: p, label: translateCrewPositionName(p, t) })),
   ];
 
   return (
